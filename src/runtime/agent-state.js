@@ -1,8 +1,12 @@
+import { inferDealerEvidenceFacts } from "../dealer/dealer-evidence.js";
+
 export function createAgentState({ user, message, route, history = [], skills = [], enterpriseContext }) {
   const goal = inferGoal(message, route);
+  const taskMode = inferTaskMode(message, route);
   const requiredFacts = inferRequiredFacts(message, route);
   return {
     goal,
+    task_mode: taskMode,
     route,
     user: {
       id: user.id,
@@ -115,6 +119,7 @@ export function decideContinuation(state, followUpPlan) {
 export function snapshotAgentState(state) {
   return {
     goal: state.goal,
+    task_mode: state.task_mode,
     status: state.status,
     round: state.round,
     max_rounds: state.max_rounds,
@@ -153,6 +158,16 @@ function inferGoal(message, route) {
   return text || "处理用户请求";
 }
 
+export function inferTaskMode(message, route) {
+  const text = String(message ?? "");
+  if (/(报告|日报|周报|月报|材料|汇报稿|经营复盘|晨会)/.test(text)) return "report";
+  if (/(看板|仪表盘|红黄绿|健康度|监控)/.test(text)) return "dashboard";
+  if (/(计划|行动项|管理动作|负责人|下周|推进|落地|整改)/.test(text)) return "action_plan";
+  if (/(分析|复盘|原因|风险|优先级|对比|承压|最该关注|为什么|诊断)/.test(text)) return "analysis";
+  if (String(route?.intent_code ?? "").startsWith("dealer.") && route?.intent_code === "dealer.analysis_query") return "analysis";
+  return "lookup";
+}
+
 function inferRequiredFacts(message, route) {
   const text = String(message ?? "");
   const facts = [];
@@ -164,6 +179,7 @@ function inferRequiredFacts(message, route) {
     if (/(多少|几个|数量|统计|有多少)/.test(text)) facts.push("aggregate_metric");
     if (/(状态|进展|交付|发货|订单)/.test(text)) facts.push("business_status");
   }
+  facts.push(...inferDealerEvidenceFacts(message, route));
   if (["knowledge_qa", "mixed"].includes(route.intent)) facts.push("knowledge_context");
   return [...new Set(facts)];
 }
@@ -212,7 +228,23 @@ function extractFactsFromToolResult(result) {
     }
     return facts;
   }
+  if (String(data.resource ?? "").startsWith("dealer_")) return extractDealerFacts(data);
   return [];
+}
+
+function extractDealerFacts(data) {
+  const keyMap = {
+    dealer_metrics: "dealer_metrics",
+    dealer_vehicles: "dealer_inventory_detail",
+    dealer_leads: "dealer_lead_detail",
+    dealer_sales_orders: "dealer_order_detail",
+    dealer_finance: "dealer_finance_detail",
+    dealer_repair_orders: "dealer_after_sales_detail",
+    dealer_warranty_claims: "dealer_warranty_detail"
+  };
+  const key = keyMap[data.resource];
+  if (!key) return [];
+  return [{ key, text: summarizeBusinessData(data, readableResourceName(data.resource)) }];
 }
 
 function isScopedToReports(filters = []) {
@@ -261,6 +293,16 @@ function readableResourceName(resource) {
   if (resource === "orders") return "订单";
   if (resource === "sales_reports") return "销售报表";
   if (resource === "leave_requests") return "请假记录";
+  if (resource === "dealer_stores") return "经销商门店";
+  if (resource === "dealer_vehicles") return "整车库存";
+  if (resource === "dealer_inbounds") return "在途订单";
+  if (resource === "dealer_quotas") return "配额记录";
+  if (resource === "dealer_leads") return "销售线索";
+  if (resource === "dealer_sales_orders") return "销售订单";
+  if (resource === "dealer_finance") return "财务流水";
+  if (resource === "dealer_repair_orders") return "售后工单";
+  if (resource === "dealer_warranty_claims") return "三包索赔";
+  if (resource === "dealer_metrics") return "经营指标";
   return "业务数据";
 }
 

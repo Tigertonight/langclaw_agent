@@ -1,0 +1,12 @@
+{
+  "id": "dealer-after-sales",
+  "name": "dealer-after-sales",
+  "version": "0.1.0",
+  "enabled": true,
+  "description": "Plan dealer after-sales repair order and warranty claim queries.",
+  "planning_style": "guided",
+  "intents": ["data_query", "mixed"],
+  "intent_codes": ["dealer.after_sales_query", "dealer.warranty_query"],
+  "required_primitives": ["query"],
+  "output_modes": ["answer", "table", "report"]
+}

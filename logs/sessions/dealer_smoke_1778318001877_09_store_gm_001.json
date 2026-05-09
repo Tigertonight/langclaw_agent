@@ -1,0 +1,270 @@
+{
+  "id": "dealer_smoke_1778318001877_09_store_gm_001",
+  "active_intent": null,
+  "active_skill": "dealer-analysis",
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "id": "turn-1778318002059-user",
+      "role": "user",
+      "text": "华东旗舰店经营风险总览",
+      "at": "2026-05-09T09:13:22.059Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "dealer.analysis_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "dealer-analysis",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_metrics",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "store_name",
+                  "op": "contains",
+                  "value": "华东旗舰店"
+                },
+                {
+                  "field": "severity",
+                  "op": "in",
+                  "value": [
+                    "critical",
+                    "warning"
+                  ]
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "store_name",
+                "category",
+                "metric",
+                "value",
+                "unit",
+                "severity",
+                "summary",
+                "recommendation",
+                "related_resource",
+                "related_ids"
+              ],
+              "sort": [
+                {
+                  "field": "severity",
+                  "direction": "asc"
+                },
+                {
+                  "field": "category",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_metrics",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_metrics",
+            "operation": "search",
+            "total": 9,
+            "row_count": 9,
+            "sample_rows": [
+              {
+                "store_name": "比亚迪华东旗舰店",
+                "category": "inventory",
+                "metric": "stock_risk_vehicle_count",
+                "value": 2,
+                "unit": "辆",
+                "severity": "critical",
+                "summary": "比亚迪华东旗舰店 有 2 辆库龄风险车，其中 1 辆紧急。",
+                "recommendation": "优先处理90天以上库存，制定清库、调拨或促销方案。",
+                "related_resource": "dealer_vehicles",
+                "related_ids": [
+                  "LGXCF6CD0P000001",
+                  "LGXCF6CD0P000004"
+                ]
+              },
+              {
+                "store_name": "比亚迪华东旗舰店",
+                "category": "warranty",
+                "metric": "warranty_claim_loss_risk_amount",
+                "value": 2200,
+                "unit": "元",
+                "severity": "critical",
+                "summary": "比亚迪华东旗舰店 三包索赔损失风险金额为 2200 元。",
+                "recommendation": "优先补齐照片不足的索赔材料，并复盘被拒原因。",
+                "related_resource": "dealer_warranty_claims",
+                "related_ids": [
+                  "WC-202604-011",
+                  "WC-202604-012"
+                ]
+              },
+              {
+                "store_name": "比亚迪华东旗舰店",
+                "category": "after_sales",
+                "metric": "open_repair_order_count",
+                "value": 2,
+                "unit": "单",
+                "severity": "warning",
+                "summary": "比亚迪华东旗舰店 有 2 张售后工单未关闭。",
+                "recommendation": "跟进施工、质检和结算节点，避免超时。",
+                "related_resource": "dealer_repair_orders",
+                "related_ids": [
+                  "RO-202605-001",
+                  "RO-202605-003"
+                ]
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 9 条经营指标： - 比亚迪华东旗舰店 / inventory / stock_risk_vehicle_count：2辆，风险级别「critical」。比亚迪华东旗舰店 有 2 辆库龄风险车，其中 1 辆紧急。 建议：优先处理90天以上库存，制定清库、调拨或促销方案。 - 比亚迪华东旗舰店 / warranty / warranty_claim_loss_risk_amount：2200元，风险级别「critical」。比亚迪华东旗舰店 三包索赔损失风险金额为 22..."
+      }
+    },
+    {
+      "id": "turn-1778318002059-assistant",
+      "role": "assistant",
+      "text": "查询到 9 条经营指标： - 比亚迪华东旗舰店 / inventory / stock_risk_vehicle_count：2辆，风险级别「critical」。比亚迪华东旗舰店 有 2 辆库龄风险车，其中 1 辆紧急。 建议：优先处理90天以上库存，制定清库、调拨或促销方案。 - 比亚迪华东旗舰店 / warranty / warranty_claim_loss_risk_amount：2200元，风险级别「critical」。比亚迪华东旗舰店 三包索赔损失风险金额为 2200 元。 建议：优先补齐照片不足的索赔材料，并复盘被拒原因。 - 比亚迪华东旗舰店 / after_sales / open_repair_order_count：2单，风险级别「warning」。比亚迪华东旗舰店 有 2 张售后工单未关闭。 建议：跟进施工、质检和结算节点，避免超时。 - 比亚迪华东旗舰店 / finance / discount_wallet_balance：252000元，风险级别「warning」。比亚迪华东旗舰店 折让金最新余额为 252000 元。 建议：结合近期采购计划评估折让金抵扣...",
+      "at": "2026-05-09T09:13:22.059Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "dealer.analysis_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "dealer-analysis",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_metrics",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "store_name",
+                  "op": "contains",
+                  "value": "华东旗舰店"
+                },
+                {
+                  "field": "severity",
+                  "op": "in",
+                  "value": [
+                    "critical",
+                    "warning"
+                  ]
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "store_name",
+                "category",
+                "metric",
+                "value",
+                "unit",
+                "severity",
+                "summary",
+                "recommendation",
+                "related_resource",
+                "related_ids"
+              ],
+              "sort": [
+                {
+                  "field": "severity",
+                  "direction": "asc"
+                },
+                {
+                  "field": "category",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_metrics",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_metrics",
+            "operation": "search",
+            "total": 9,
+            "row_count": 9,
+            "sample_rows": [
+              {
+                "store_name": "比亚迪华东旗舰店",
+                "category": "inventory",
+                "metric": "stock_risk_vehicle_count",
+                "value": 2,
+                "unit": "辆",
+                "severity": "critical",
+                "summary": "比亚迪华东旗舰店 有 2 辆库龄风险车，其中 1 辆紧急。",
+                "recommendation": "优先处理90天以上库存，制定清库、调拨或促销方案。",
+                "related_resource": "dealer_vehicles",
+                "related_ids": [
+                  "LGXCF6CD0P000001",
+                  "LGXCF6CD0P000004"
+                ]
+              },
+              {
+                "store_name": "比亚迪华东旗舰店",
+                "category": "warranty",
+                "metric": "warranty_claim_loss_risk_amount",
+                "value": 2200,
+                "unit": "元",
+                "severity": "critical",
+                "summary": "比亚迪华东旗舰店 三包索赔损失风险金额为 2200 元。",
+                "recommendation": "优先补齐照片不足的索赔材料，并复盘被拒原因。",
+                "related_resource": "dealer_warranty_claims",
+                "related_ids": [
+                  "WC-202604-011",
+                  "WC-202604-012"
+                ]
+              },
+              {
+                "store_name": "比亚迪华东旗舰店",
+                "category": "after_sales",
+                "metric": "open_repair_order_count",
+                "value": 2,
+                "unit": "单",
+                "severity": "warning",
+                "summary": "比亚迪华东旗舰店 有 2 张售后工单未关闭。",
+                "recommendation": "跟进施工、质检和结算节点，避免超时。",
+                "related_resource": "dealer_repair_orders",
+                "related_ids": [
+                  "RO-202605-001",
+                  "RO-202605-003"
+                ]
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 9 条经营指标： - 比亚迪华东旗舰店 / inventory / stock_risk_vehicle_count：2辆，风险级别「critical」。比亚迪华东旗舰店 有 2 辆库龄风险车，其中 1 辆紧急。 建议：优先处理90天以上库存，制定清库、调拨或促销方案。 - 比亚迪华东旗舰店 / warranty / warranty_claim_loss_risk_amount：2200元，风险级别「critical」。比亚迪华东旗舰店 三包索赔损失风险金额为 22..."
+      }
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-09T09:13:22.051Z",
+  "updated_at": "2026-05-09T09:13:22.059Z"
+}

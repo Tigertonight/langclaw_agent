@@ -109,6 +109,9 @@ function normalizeMetrics(ir, schema) {
   if (schema.entity === "leave_request") {
     return [{ type: "count", field: "id", as: "leave_request_count" }];
   }
+  if (schema.entity === "dealer_metric") {
+    return [{ type: "count", field: "id", as: "dealer_metric_count" }];
+  }
   const field = schema.entity === "employee" ? "userid" : "id";
   return [{ type: "count", field, as: `${schema.entity}_count` }];
 }
@@ -119,6 +122,7 @@ function hasDepartmentFilter(filters = []) {
 
 function defaultLimitForTarget(target, operation) {
   if (operation === QUERY_OPERATIONS.AGGREGATE) return 20;
+  if (target === "dealer_metrics") return 50;
   if (target === "employees" || target === "departments") return 100;
   return 20;
 }

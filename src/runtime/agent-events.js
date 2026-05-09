@@ -164,6 +164,13 @@ function readableResourceName(resource) {
   if (resource === "customers") return "客户";
   if (resource === "orders") return "订单";
   if (resource === "sales_reports") return "销售报表";
+  if (resource === "dealer_metrics") return "经营指标";
+  if (resource === "dealer_vehicles") return "整车库存";
+  if (resource === "dealer_leads") return "销售线索";
+  if (resource === "dealer_sales_orders") return "销售订单";
+  if (resource === "dealer_finance") return "财务流水";
+  if (resource === "dealer_repair_orders") return "售后工单";
+  if (resource === "dealer_warranty_claims") return "三包索赔";
   return "记录";
 }
 
@@ -175,7 +182,14 @@ function readableFactName(name) {
     customer_scope: "客户范围",
     aggregate_metric: "统计指标",
     business_status: "业务状态",
-    knowledge_context: "知识库依据"
+    knowledge_context: "知识库依据",
+    dealer_metrics: "经营指标",
+    dealer_inventory_detail: "库存明细",
+    dealer_lead_detail: "线索明细",
+    dealer_order_detail: "订单明细",
+    dealer_finance_detail: "财务明细",
+    dealer_after_sales_detail: "售后明细",
+    dealer_warranty_detail: "三包索赔明细"
   };
   return names[name] ?? name;
 }

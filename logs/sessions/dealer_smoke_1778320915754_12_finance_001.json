@@ -1,0 +1,408 @@
+{
+  "id": "dealer_smoke_1778320915754_12_finance_001",
+  "active_intent": null,
+  "active_skill": "dealer-analysis",
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "id": "turn-1778320916012-user",
+      "role": "user",
+      "text": "华东旗舰店财务风险有哪些",
+      "at": "2026-05-09T10:01:56.012Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "dealer.analysis_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "dealer-analysis",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_metrics",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "store_name",
+                  "op": "contains",
+                  "value": "华东旗舰店"
+                },
+                {
+                  "field": "category",
+                  "op": "eq",
+                  "value": "finance"
+                },
+                {
+                  "field": "severity",
+                  "op": "in",
+                  "value": [
+                    "critical",
+                    "warning"
+                  ]
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "store_name",
+                "category",
+                "metric",
+                "value",
+                "unit",
+                "severity",
+                "summary",
+                "recommendation",
+                "related_resource",
+                "related_ids"
+              ],
+              "sort": [
+                {
+                  "field": "severity",
+                  "direction": "asc"
+                },
+                {
+                  "field": "category",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_metrics",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          },
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_finance",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "store_name",
+                  "op": "contains",
+                  "value": "华东旗舰店"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "resource_type",
+                "store_name",
+                "direction",
+                "category",
+                "amount",
+                "balance_after",
+                "related_order_id",
+                "occurred_at",
+                "status"
+              ],
+              "sort": [
+                {
+                  "field": "occurred_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_finance",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_metrics",
+            "operation": "search",
+            "total": 2,
+            "row_count": 2,
+            "sample_rows": [
+              {
+                "store_name": "比亚迪华东旗舰店",
+                "category": "finance",
+                "metric": "discount_wallet_balance",
+                "value": 252000,
+                "unit": "元",
+                "severity": "warning",
+                "summary": "比亚迪华东旗舰店 折让金最新余额为 252000 元。",
+                "recommendation": "结合近期采购计划评估折让金抵扣能力。",
+                "related_resource": "dealer_finance",
+                "related_ids": [
+                  "DW-202605-002"
+                ]
+              },
+              {
+                "store_name": "比亚迪华东旗舰店",
+                "category": "finance",
+                "metric": "pending_rebate_amount",
+                "value": 96000,
+                "unit": "元",
+                "severity": "warning",
+                "summary": "比亚迪华东旗舰店 待结算返利金额为 96000 元。",
+                "recommendation": "跟进返利结算进度，避免折让金入账滞后影响采购。",
+                "related_resource": "dealer_finance",
+                "related_ids": [
+                  "RB-202605-001"
+                ]
+              }
+            ]
+          },
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_finance",
+            "operation": "search",
+            "total": 4,
+            "row_count": 4,
+            "sample_rows": [
+              {
+                "id": "DW-202605-002",
+                "resource_type": "discount_wallet",
+                "store_name": "比亚迪华东旗舰店",
+                "direction": "出账",
+                "category": "采购抵扣",
+                "amount": 168000,
+                "balance_after": 252000,
+                "status": "已出账"
+              },
+              {
+                "id": "RC-202605-001",
+                "resource_type": "receipt",
+                "store_name": "比亚迪华东旗舰店",
+                "direction": "收款",
+                "category": "客户首付",
+                "amount": 90000,
+                "balance_after": null,
+                "status": "已到账"
+              },
+              {
+                "id": "DW-202605-001",
+                "resource_type": "discount_wallet",
+                "store_name": "比亚迪华东旗舰店",
+                "direction": "入账",
+                "category": "销售返利",
+                "amount": 180000,
+                "balance_after": 420000,
+                "status": "已入账"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "## 经营风险判断 **结论：当前最该关注 比亚迪华东旗舰店 的 财务「折让金余额」252000元（warning）。** ### 关键风险 **比亚迪华东旗舰店** - 风险概览：0 项严重、2 项警示，风险分 2。 - 财务「折让金余额」252000元（warning）：比亚迪华东旗舰店 折让金最新余额为 252000 元。 - 财务「待结算返利」96000元（warning）：比亚迪华东旗舰店 待结算返利金额为 96000 元。 ### 数据明细支撑 - 财务：DW-2..."
+      }
+    },
+    {
+      "id": "turn-1778320916012-assistant",
+      "role": "assistant",
+      "text": "## 经营风险判断 **结论：当前最该关注 比亚迪华东旗舰店 的 财务「折让金余额」252000元（warning）。** ### 关键风险 **比亚迪华东旗舰店** - 风险概览：0 项严重、2 项警示，风险分 2。 - 财务「折让金余额」252000元（warning）：比亚迪华东旗舰店 折让金最新余额为 252000 元。 - 财务「待结算返利」96000元（warning）：比亚迪华东旗舰店 待结算返利金额为 96000 元。 ### 数据明细支撑 - 财务：DW-202605-002/discount_wallet/168000/已出账，RC-202605-001/receipt/90000/已到账，DW-202605-001/discount_wallet/180000/已入账，RB-202605-001/rebate/96000/待结算 ### 关键动作 **比亚迪华东旗舰店** - 财务负责人：跟进折让金、应付和返利，评估采购现金流安全边界。",
+      "at": "2026-05-09T10:01:56.012Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "dealer.analysis_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "dealer-analysis",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_metrics",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "store_name",
+                  "op": "contains",
+                  "value": "华东旗舰店"
+                },
+                {
+                  "field": "category",
+                  "op": "eq",
+                  "value": "finance"
+                },
+                {
+                  "field": "severity",
+                  "op": "in",
+                  "value": [
+                    "critical",
+                    "warning"
+                  ]
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "store_name",
+                "category",
+                "metric",
+                "value",
+                "unit",
+                "severity",
+                "summary",
+                "recommendation",
+                "related_resource",
+                "related_ids"
+              ],
+              "sort": [
+                {
+                  "field": "severity",
+                  "direction": "asc"
+                },
+                {
+                  "field": "category",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_metrics",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          },
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_finance",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "store_name",
+                  "op": "contains",
+                  "value": "华东旗舰店"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "resource_type",
+                "store_name",
+                "direction",
+                "category",
+                "amount",
+                "balance_after",
+                "related_order_id",
+                "occurred_at",
+                "status"
+              ],
+              "sort": [
+                {
+                  "field": "occurred_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_finance",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_metrics",
+            "operation": "search",
+            "total": 2,
+            "row_count": 2,
+            "sample_rows": [
+              {
+                "store_name": "比亚迪华东旗舰店",
+                "category": "finance",
+                "metric": "discount_wallet_balance",
+                "value": 252000,
+                "unit": "元",
+                "severity": "warning",
+                "summary": "比亚迪华东旗舰店 折让金最新余额为 252000 元。",
+                "recommendation": "结合近期采购计划评估折让金抵扣能力。",
+                "related_resource": "dealer_finance",
+                "related_ids": [
+                  "DW-202605-002"
+                ]
+              },
+              {
+                "store_name": "比亚迪华东旗舰店",
+                "category": "finance",
+                "metric": "pending_rebate_amount",
+                "value": 96000,
+                "unit": "元",
+                "severity": "warning",
+                "summary": "比亚迪华东旗舰店 待结算返利金额为 96000 元。",
+                "recommendation": "跟进返利结算进度，避免折让金入账滞后影响采购。",
+                "related_resource": "dealer_finance",
+                "related_ids": [
+                  "RB-202605-001"
+                ]
+              }
+            ]
+          },
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_finance",
+            "operation": "search",
+            "total": 4,
+            "row_count": 4,
+            "sample_rows": [
+              {
+                "id": "DW-202605-002",
+                "resource_type": "discount_wallet",
+                "store_name": "比亚迪华东旗舰店",
+                "direction": "出账",
+                "category": "采购抵扣",
+                "amount": 168000,
+                "balance_after": 252000,
+                "status": "已出账"
+              },
+              {
+                "id": "RC-202605-001",
+                "resource_type": "receipt",
+                "store_name": "比亚迪华东旗舰店",
+                "direction": "收款",
+                "category": "客户首付",
+                "amount": 90000,
+                "balance_after": null,
+                "status": "已到账"
+              },
+              {
+                "id": "DW-202605-001",
+                "resource_type": "discount_wallet",
+                "store_name": "比亚迪华东旗舰店",
+                "direction": "入账",
+                "category": "销售返利",
+                "amount": 180000,
+                "balance_after": 420000,
+                "status": "已入账"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "## 经营风险判断 **结论：当前最该关注 比亚迪华东旗舰店 的 财务「折让金余额」252000元（warning）。** ### 关键风险 **比亚迪华东旗舰店** - 风险概览：0 项严重、2 项警示，风险分 2。 - 财务「折让金余额」252000元（warning）：比亚迪华东旗舰店 折让金最新余额为 252000 元。 - 财务「待结算返利」96000元（warning）：比亚迪华东旗舰店 待结算返利金额为 96000 元。 ### 数据明细支撑 - 财务：DW-2..."
+      }
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-09T10:01:56.003Z",
+  "updated_at": "2026-05-09T10:01:56.012Z"
+}

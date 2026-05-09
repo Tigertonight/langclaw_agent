@@ -1,0 +1,1102 @@
+{
+  "id": "manager_table_1778318976341_24",
+  "active_intent": null,
+  "active_skill": "dealer-analysis",
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "id": "turn-1778318977049-user",
+      "role": "user",
+      "text": "帮我分析华东旗舰店近期业绩承压的原因，要求联查线索、订单、库存、财务和售后数据，最后给出优先级建议。",
+      "at": "2026-05-09T09:29:37.049Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "dealer.analysis_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "dealer-analysis",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_metrics",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "store_name",
+                  "op": "contains",
+                  "value": "华东旗舰店"
+                },
+                {
+                  "field": "category",
+                  "op": "in",
+                  "value": [
+                    "inventory",
+                    "lead",
+                    "sales",
+                    "finance",
+                    "after_sales"
+                  ]
+                },
+                {
+                  "field": "severity",
+                  "op": "in",
+                  "value": [
+                    "critical",
+                    "warning"
+                  ]
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "store_name",
+                "category",
+                "metric",
+                "value",
+                "unit",
+                "severity",
+                "summary",
+                "recommendation",
+                "related_resource",
+                "related_ids"
+              ],
+              "sort": [
+                {
+                  "field": "severity",
+                  "direction": "asc"
+                },
+                {
+                  "field": "category",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_metrics",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          },
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_sales_orders",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "store_name",
+                  "op": "contains",
+                  "value": "华东旗舰店"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "store_name",
+                "customer_name",
+                "owner_name",
+                "vin",
+                "series",
+                "model",
+                "order_type",
+                "order_status",
+                "payment_status",
+                "delivery_status",
+                "final_price",
+                "gross_profit",
+                "expected_delivery_date"
+              ],
+              "sort": [
+                {
+                  "field": "created_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_sales_orders",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          },
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_vehicles",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "store_name",
+                  "op": "contains",
+                  "value": "华东旗舰店"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "vin",
+                "store_name",
+                "series",
+                "model",
+                "color",
+                "status",
+                "stock_age_days",
+                "stock_warning_level",
+                "landing_cost",
+                "certificate_status",
+                "sales_order_id"
+              ],
+              "sort": [
+                {
+                  "field": "stock_age_days",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_vehicles",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          },
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_leads",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "store_name",
+                  "op": "contains",
+                  "value": "华东旗舰店"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "customer_name",
+                "source",
+                "store_name",
+                "owner_name",
+                "interested_series",
+                "intention_level",
+                "status",
+                "followup_count",
+                "visit_count",
+                "last_followup_at",
+                "lost_reason",
+                "converted_order_id"
+              ],
+              "sort": [
+                {
+                  "field": "created_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_leads",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          },
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_finance",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "store_name",
+                  "op": "contains",
+                  "value": "华东旗舰店"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "resource_type",
+                "store_name",
+                "direction",
+                "category",
+                "amount",
+                "balance_after",
+                "related_order_id",
+                "occurred_at",
+                "status"
+              ],
+              "sort": [
+                {
+                  "field": "occurred_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_finance",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          },
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_repair_orders",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "store_name",
+                  "op": "contains",
+                  "value": "华东旗舰店"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "store_name",
+                "customer_name",
+                "vin",
+                "series",
+                "service_advisor_name",
+                "order_type",
+                "status",
+                "promised_finish_at",
+                "receivable_amount",
+                "warranty_claim_id"
+              ],
+              "sort": [
+                {
+                  "field": "appointment_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_repair_orders",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_metrics",
+            "operation": "search",
+            "total": 8,
+            "row_count": 8,
+            "sample_rows": [
+              {
+                "store_name": "比亚迪华东旗舰店",
+                "category": "inventory",
+                "metric": "stock_risk_vehicle_count",
+                "value": 2,
+                "unit": "辆",
+                "severity": "critical",
+                "summary": "比亚迪华东旗舰店 有 2 辆库龄风险车，其中 1 辆紧急。",
+                "recommendation": "优先处理90天以上库存，制定清库、调拨或促销方案。",
+                "related_resource": "dealer_vehicles",
+                "related_ids": [
+                  "LGXCF6CD0P000001",
+                  "LGXCF6CD0P000004"
+                ]
+              },
+              {
+                "store_name": "比亚迪华东旗舰店",
+                "category": "after_sales",
+                "metric": "open_repair_order_count",
+                "value": 2,
+                "unit": "单",
+                "severity": "warning",
+                "summary": "比亚迪华东旗舰店 有 2 张售后工单未关闭。",
+                "recommendation": "跟进施工、质检和结算节点，避免超时。",
+                "related_resource": "dealer_repair_orders",
+                "related_ids": [
+                  "RO-202605-001",
+                  "RO-202605-003"
+                ]
+              },
+              {
+                "store_name": "比亚迪华东旗舰店",
+                "category": "finance",
+                "metric": "discount_wallet_balance",
+                "value": 252000,
+                "unit": "元",
+                "severity": "warning",
+                "summary": "比亚迪华东旗舰店 折让金最新余额为 252000 元。",
+                "recommendation": "结合近期采购计划评估折让金抵扣能力。",
+                "related_resource": "dealer_finance",
+                "related_ids": [
+                  "DW-202605-002"
+                ]
+              }
+            ]
+          },
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_sales_orders",
+            "operation": "search",
+            "total": 2,
+            "row_count": 2,
+            "sample_rows": [
+              {
+                "id": "SO-202605-001",
+                "store_name": "比亚迪华东旗舰店",
+                "customer_name": "李明",
+                "owner_name": "林悦",
+                "vin": "LGXCF6CD0P000002",
+                "series": "宋L",
+                "order_status": "待交付",
+                "payment_status": "部分收款",
+                "delivery_status": "整备中",
+                "final_price": 176800,
+                "gross_profit": 5600
+              },
+              {
+                "id": "SO-202604-009",
+                "store_name": "比亚迪华东旗舰店",
+                "customer_name": "孙洁",
+                "owner_name": "沈清和",
+                "vin": "LGXCF6CD0P000099",
+                "series": "秦PLUS",
+                "order_status": "已交付",
+                "payment_status": "已结清",
+                "delivery_status": "已交付",
+                "final_price": 121800,
+                "gross_profit": 6600
+              }
+            ]
+          },
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_vehicles",
+            "operation": "search",
+            "total": 4,
+            "row_count": 4,
+            "sample_rows": [
+              {
+                "vin": "LGXCF6CD0P000001",
+                "store_name": "比亚迪华东旗舰店",
+                "series": "汉",
+                "model": "汉EV荣耀版 605KM 尊贵型",
+                "status": "在库",
+                "stock_age_days": 98,
+                "stock_warning_level": "紧急",
+                "landing_cost": 242600
+              },
+              {
+                "vin": "LGXCF6CD0P000004",
+                "store_name": "比亚迪华东旗舰店",
+                "series": "秦PLUS",
+                "model": "秦PLUS DM-i荣耀版 120KM",
+                "status": "试驾车",
+                "stock_age_days": 37,
+                "stock_warning_level": "关注",
+                "landing_cost": 115500
+              },
+              {
+                "vin": "LGXCF6CD0P000002",
+                "store_name": "比亚迪华东旗舰店",
+                "series": "宋L",
+                "model": "宋L Plus荣耀版 112KM",
+                "status": "锁定",
+                "stock_age_days": 21,
+                "stock_warning_level": "正常",
+                "landing_cost": 171200
+              }
+            ]
+          },
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_leads",
+            "operation": "search",
+            "total": 3,
+            "row_count": 3,
+            "sample_rows": [
+              {
+                "id": "LD-202605-002",
+                "customer_name": "王芳",
+                "source": "抖音直播",
+                "store_name": "比亚迪华东旗舰店",
+                "owner_name": "林悦",
+                "interested_series": "腾势N7",
+                "intention_level": "A",
+                "status": "跟进中",
+                "followup_count": 2,
+                "visit_count": 0
+              },
+              {
+                "id": "LD-202605-004",
+                "customer_name": "陈婧",
+                "source": "门店自然到访",
+                "store_name": "比亚迪华东旗舰店",
+                "owner_name": "沈清和",
+                "interested_series": "秦PLUS",
+                "intention_level": "B",
+                "status": "战败",
+                "followup_count": 3,
+                "visit_count": 1
+              },
+              {
+                "id": "LD-202605-001",
+                "customer_name": "李明",
+                "source": "懂车帝",
+                "store_name": "比亚迪华东旗舰店",
+                "owner_name": "林悦",
+                "interested_series": "汉",
+                "intention_level": "H",
+                "status": "已到店",
+                "followup_count": 4,
+                "visit_count": 1
+              }
+            ]
+          },
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_finance",
+            "operation": "search",
+            "total": 4,
+            "row_count": 4,
+            "sample_rows": [
+              {
+                "id": "DW-202605-002",
+                "resource_type": "discount_wallet",
+                "store_name": "比亚迪华东旗舰店",
+                "direction": "出账",
+                "category": "采购抵扣",
+                "amount": 168000,
+                "balance_after": 252000,
+                "status": "已出账"
+              },
+              {
+                "id": "RC-202605-001",
+                "resource_type": "receipt",
+                "store_name": "比亚迪华东旗舰店",
+                "direction": "收款",
+                "category": "客户首付",
+                "amount": 90000,
+                "balance_after": null,
+                "status": "已到账"
+              },
+              {
+                "id": "DW-202605-001",
+                "resource_type": "discount_wallet",
+                "store_name": "比亚迪华东旗舰店",
+                "direction": "入账",
+                "category": "销售返利",
+                "amount": 180000,
+                "balance_after": 420000,
+                "status": "已入账"
+              }
+            ]
+          },
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_repair_orders",
+            "operation": "search",
+            "total": 2,
+            "row_count": 2,
+            "sample_rows": [
+              {
+                "id": "RO-202605-001",
+                "store_name": "比亚迪华东旗舰店",
+                "customer_name": "王芳",
+                "vin": "LGXCF6CD0P000088",
+                "order_type": "常规保养",
+                "status": "待结算",
+                "receivable_amount": 378,
+                "warranty_claim_id": null
+              },
+              {
+                "id": "RO-202605-003",
+                "store_name": "比亚迪华东旗舰店",
+                "customer_name": "孙洁",
+                "vin": "LGXCF6CD0P000099",
+                "order_type": "事故维修",
+                "status": "施工中",
+                "receivable_amount": 4400,
+                "warranty_claim_id": null
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 8 条经营指标： - 比亚迪华东旗舰店 / inventory / stock_risk_vehicle_count：2辆，风险级别「critical」。比亚迪华东旗舰店 有 2 辆库龄风险车，其中 1 辆紧急。 建议：优先处理90天以上库存，制定清库、调拨或促销方案。 - 比亚迪华东旗舰店 / after_sales / open_repair_order_count：2单，风险级别「warning」。比亚迪华东旗舰店 有 2 张售后工单未关闭。 建议：跟进施工、质..."
+      }
+    },
+    {
+      "id": "turn-1778318977049-assistant",
+      "role": "assistant",
+      "text": "查询到 8 条经营指标： - 比亚迪华东旗舰店 / inventory / stock_risk_vehicle_count：2辆，风险级别「critical」。比亚迪华东旗舰店 有 2 辆库龄风险车，其中 1 辆紧急。 建议：优先处理90天以上库存，制定清库、调拨或促销方案。 - 比亚迪华东旗舰店 / after_sales / open_repair_order_count：2单，风险级别「warning」。比亚迪华东旗舰店 有 2 张售后工单未关闭。 建议：跟进施工、质检和结算节点，避免超时。 - 比亚迪华东旗舰店 / finance / discount_wallet_balance：252000元，风险级别「warning」。比亚迪华东旗舰店 折让金最新余额为 252000 元。 建议：结合近期采购计划评估折让金抵扣能力。 - 比亚迪华东旗舰店 / finance / pending_rebate_amount：96000元，风险级别「warning」。比亚迪华东旗舰店 待结算返利金额为 96000 元。 建议：跟进返利结算进度，避免折让金入账滞后影响采购。 - 比亚迪华东旗...",
+      "at": "2026-05-09T09:29:37.049Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "dealer.analysis_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "dealer-analysis",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_metrics",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "store_name",
+                  "op": "contains",
+                  "value": "华东旗舰店"
+                },
+                {
+                  "field": "category",
+                  "op": "in",
+                  "value": [
+                    "inventory",
+                    "lead",
+                    "sales",
+                    "finance",
+                    "after_sales"
+                  ]
+                },
+                {
+                  "field": "severity",
+                  "op": "in",
+                  "value": [
+                    "critical",
+                    "warning"
+                  ]
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "store_name",
+                "category",
+                "metric",
+                "value",
+                "unit",
+                "severity",
+                "summary",
+                "recommendation",
+                "related_resource",
+                "related_ids"
+              ],
+              "sort": [
+                {
+                  "field": "severity",
+                  "direction": "asc"
+                },
+                {
+                  "field": "category",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_metrics",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          },
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_sales_orders",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "store_name",
+                  "op": "contains",
+                  "value": "华东旗舰店"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "store_name",
+                "customer_name",
+                "owner_name",
+                "vin",
+                "series",
+                "model",
+                "order_type",
+                "order_status",
+                "payment_status",
+                "delivery_status",
+                "final_price",
+                "gross_profit",
+                "expected_delivery_date"
+              ],
+              "sort": [
+                {
+                  "field": "created_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_sales_orders",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          },
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_vehicles",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "store_name",
+                  "op": "contains",
+                  "value": "华东旗舰店"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "vin",
+                "store_name",
+                "series",
+                "model",
+                "color",
+                "status",
+                "stock_age_days",
+                "stock_warning_level",
+                "landing_cost",
+                "certificate_status",
+                "sales_order_id"
+              ],
+              "sort": [
+                {
+                  "field": "stock_age_days",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_vehicles",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          },
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_leads",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "store_name",
+                  "op": "contains",
+                  "value": "华东旗舰店"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "customer_name",
+                "source",
+                "store_name",
+                "owner_name",
+                "interested_series",
+                "intention_level",
+                "status",
+                "followup_count",
+                "visit_count",
+                "last_followup_at",
+                "lost_reason",
+                "converted_order_id"
+              ],
+              "sort": [
+                {
+                  "field": "created_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_leads",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          },
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_finance",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "store_name",
+                  "op": "contains",
+                  "value": "华东旗舰店"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "resource_type",
+                "store_name",
+                "direction",
+                "category",
+                "amount",
+                "balance_after",
+                "related_order_id",
+                "occurred_at",
+                "status"
+              ],
+              "sort": [
+                {
+                  "field": "occurred_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_finance",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          },
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_repair_orders",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "store_name",
+                  "op": "contains",
+                  "value": "华东旗舰店"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "store_name",
+                "customer_name",
+                "vin",
+                "series",
+                "service_advisor_name",
+                "order_type",
+                "status",
+                "promised_finish_at",
+                "receivable_amount",
+                "warranty_claim_id"
+              ],
+              "sort": [
+                {
+                  "field": "appointment_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_repair_orders",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_metrics",
+            "operation": "search",
+            "total": 8,
+            "row_count": 8,
+            "sample_rows": [
+              {
+                "store_name": "比亚迪华东旗舰店",
+                "category": "inventory",
+                "metric": "stock_risk_vehicle_count",
+                "value": 2,
+                "unit": "辆",
+                "severity": "critical",
+                "summary": "比亚迪华东旗舰店 有 2 辆库龄风险车，其中 1 辆紧急。",
+                "recommendation": "优先处理90天以上库存，制定清库、调拨或促销方案。",
+                "related_resource": "dealer_vehicles",
+                "related_ids": [
+                  "LGXCF6CD0P000001",
+                  "LGXCF6CD0P000004"
+                ]
+              },
+              {
+                "store_name": "比亚迪华东旗舰店",
+                "category": "after_sales",
+                "metric": "open_repair_order_count",
+                "value": 2,
+                "unit": "单",
+                "severity": "warning",
+                "summary": "比亚迪华东旗舰店 有 2 张售后工单未关闭。",
+                "recommendation": "跟进施工、质检和结算节点，避免超时。",
+                "related_resource": "dealer_repair_orders",
+                "related_ids": [
+                  "RO-202605-001",
+                  "RO-202605-003"
+                ]
+              },
+              {
+                "store_name": "比亚迪华东旗舰店",
+                "category": "finance",
+                "metric": "discount_wallet_balance",
+                "value": 252000,
+                "unit": "元",
+                "severity": "warning",
+                "summary": "比亚迪华东旗舰店 折让金最新余额为 252000 元。",
+                "recommendation": "结合近期采购计划评估折让金抵扣能力。",
+                "related_resource": "dealer_finance",
+                "related_ids": [
+                  "DW-202605-002"
+                ]
+              }
+            ]
+          },
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_sales_orders",
+            "operation": "search",
+            "total": 2,
+            "row_count": 2,
+            "sample_rows": [
+              {
+                "id": "SO-202605-001",
+                "store_name": "比亚迪华东旗舰店",
+                "customer_name": "李明",
+                "owner_name": "林悦",
+                "vin": "LGXCF6CD0P000002",
+                "series": "宋L",
+                "order_status": "待交付",
+                "payment_status": "部分收款",
+                "delivery_status": "整备中",
+                "final_price": 176800,
+                "gross_profit": 5600
+              },
+              {
+                "id": "SO-202604-009",
+                "store_name": "比亚迪华东旗舰店",
+                "customer_name": "孙洁",
+                "owner_name": "沈清和",
+                "vin": "LGXCF6CD0P000099",
+                "series": "秦PLUS",
+                "order_status": "已交付",
+                "payment_status": "已结清",
+                "delivery_status": "已交付",
+                "final_price": 121800,
+                "gross_profit": 6600
+              }
+            ]
+          },
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_vehicles",
+            "operation": "search",
+            "total": 4,
+            "row_count": 4,
+            "sample_rows": [
+              {
+                "vin": "LGXCF6CD0P000001",
+                "store_name": "比亚迪华东旗舰店",
+                "series": "汉",
+                "model": "汉EV荣耀版 605KM 尊贵型",
+                "status": "在库",
+                "stock_age_days": 98,
+                "stock_warning_level": "紧急",
+                "landing_cost": 242600
+              },
+              {
+                "vin": "LGXCF6CD0P000004",
+                "store_name": "比亚迪华东旗舰店",
+                "series": "秦PLUS",
+                "model": "秦PLUS DM-i荣耀版 120KM",
+                "status": "试驾车",
+                "stock_age_days": 37,
+                "stock_warning_level": "关注",
+                "landing_cost": 115500
+              },
+              {
+                "vin": "LGXCF6CD0P000002",
+                "store_name": "比亚迪华东旗舰店",
+                "series": "宋L",
+                "model": "宋L Plus荣耀版 112KM",
+                "status": "锁定",
+                "stock_age_days": 21,
+                "stock_warning_level": "正常",
+                "landing_cost": 171200
+              }
+            ]
+          },
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_leads",
+            "operation": "search",
+            "total": 3,
+            "row_count": 3,
+            "sample_rows": [
+              {
+                "id": "LD-202605-002",
+                "customer_name": "王芳",
+                "source": "抖音直播",
+                "store_name": "比亚迪华东旗舰店",
+                "owner_name": "林悦",
+                "interested_series": "腾势N7",
+                "intention_level": "A",
+                "status": "跟进中",
+                "followup_count": 2,
+                "visit_count": 0
+              },
+              {
+                "id": "LD-202605-004",
+                "customer_name": "陈婧",
+                "source": "门店自然到访",
+                "store_name": "比亚迪华东旗舰店",
+                "owner_name": "沈清和",
+                "interested_series": "秦PLUS",
+                "intention_level": "B",
+                "status": "战败",
+                "followup_count": 3,
+                "visit_count": 1
+              },
+              {
+                "id": "LD-202605-001",
+                "customer_name": "李明",
+                "source": "懂车帝",
+                "store_name": "比亚迪华东旗舰店",
+                "owner_name": "林悦",
+                "interested_series": "汉",
+                "intention_level": "H",
+                "status": "已到店",
+                "followup_count": 4,
+                "visit_count": 1
+              }
+            ]
+          },
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_finance",
+            "operation": "search",
+            "total": 4,
+            "row_count": 4,
+            "sample_rows": [
+              {
+                "id": "DW-202605-002",
+                "resource_type": "discount_wallet",
+                "store_name": "比亚迪华东旗舰店",
+                "direction": "出账",
+                "category": "采购抵扣",
+                "amount": 168000,
+                "balance_after": 252000,
+                "status": "已出账"
+              },
+              {
+                "id": "RC-202605-001",
+                "resource_type": "receipt",
+                "store_name": "比亚迪华东旗舰店",
+                "direction": "收款",
+                "category": "客户首付",
+                "amount": 90000,
+                "balance_after": null,
+                "status": "已到账"
+              },
+              {
+                "id": "DW-202605-001",
+                "resource_type": "discount_wallet",
+                "store_name": "比亚迪华东旗舰店",
+                "direction": "入账",
+                "category": "销售返利",
+                "amount": 180000,
+                "balance_after": 420000,
+                "status": "已入账"
+              }
+            ]
+          },
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_repair_orders",
+            "operation": "search",
+            "total": 2,
+            "row_count": 2,
+            "sample_rows": [
+              {
+                "id": "RO-202605-001",
+                "store_name": "比亚迪华东旗舰店",
+                "customer_name": "王芳",
+                "vin": "LGXCF6CD0P000088",
+                "order_type": "常规保养",
+                "status": "待结算",
+                "receivable_amount": 378,
+                "warranty_claim_id": null
+              },
+              {
+                "id": "RO-202605-003",
+                "store_name": "比亚迪华东旗舰店",
+                "customer_name": "孙洁",
+                "vin": "LGXCF6CD0P000099",
+                "order_type": "事故维修",
+                "status": "施工中",
+                "receivable_amount": 4400,
+                "warranty_claim_id": null
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 8 条经营指标： - 比亚迪华东旗舰店 / inventory / stock_risk_vehicle_count：2辆，风险级别「critical」。比亚迪华东旗舰店 有 2 辆库龄风险车，其中 1 辆紧急。 建议：优先处理90天以上库存，制定清库、调拨或促销方案。 - 比亚迪华东旗舰店 / after_sales / open_repair_order_count：2单，风险级别「warning」。比亚迪华东旗舰店 有 2 张售后工单未关闭。 建议：跟进施工、质..."
+      }
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-09T09:29:37.038Z",
+  "updated_at": "2026-05-09T09:29:37.050Z"
+}

@@ -1,0 +1,13 @@
+{
+  "id": "dealer-finance",
+  "name": "dealer-finance",
+  "version": "0.1.0",
+  "enabled": true,
+  "description": "Plan dealer finance, discount wallet, payable, receipt, rebate, and gross margin queries.",
+  "planning_style": "guided",
+  "intents": ["data_query", "mixed"],
+  "intent_codes": ["dealer.finance_query"],
+  "required_primitives": ["query"],
+  "required_permissions": ["finance:read"],
+  "output_modes": ["answer", "table", "report"]
+}

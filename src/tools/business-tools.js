@@ -2,6 +2,7 @@ import { loadJson, saveJson } from "../data/load-json.js";
 import { appendFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { resolveProjectPath } from "../data/load-json.js";
+import { buildDealerMetrics } from "../dealer/dealer-metrics.js";
 
 function normalize(text) {
   return String(text ?? "").trim();
@@ -95,6 +96,46 @@ const RESOURCE_CONFIG = {
       "status",
       "submitted_at"
     ]
+  },
+  dealer_stores: {
+    file: "data/dealer-stores.json",
+    fields: ["id", "name", "short_name", "city", "region", "store_type", "manager_user_id", "capacity", "status"]
+  },
+  dealer_vehicles: {
+    file: "data/dealer-vehicles.json",
+    fields: ["vin", "store_id", "store_name", "series", "model", "year", "color", "source_type", "purchase_mode", "cost", "finance_interest_accrued", "landing_cost", "min_sale_price", "inbound_date", "stock_age_days", "stock_warning_level", "status", "certificate_status", "vehicle_tag", "mileage", "sales_order_id"]
+  },
+  dealer_inbounds: {
+    file: "data/dealer-inbounds.json",
+    fields: ["id", "store_id", "store_name", "order_type", "series", "model", "color", "customer_name", "sales_consultant_id", "byd_order_no", "status", "expected_arrival_date", "customer_promised_date", "deposit_amount"]
+  },
+  dealer_quotas: {
+    file: "data/dealer-quotas.json",
+    fields: ["id", "store_id", "store_name", "month", "series", "model", "color", "quota_total", "bound_inbound_count", "available_quota"]
+  },
+  dealer_leads: {
+    file: "data/dealer-leads.json",
+    fields: ["id", "customer_name", "phone_masked", "source", "campaign", "store_id", "store_name", "owner_user_id", "owner_name", "interested_series", "intention_level", "status", "created_at", "assigned_at", "first_contact_at", "last_followup_at", "followup_count", "visit_count", "expected_purchase_date", "lost_reason", "converted_order_id"]
+  },
+  dealer_sales_orders: {
+    file: "data/dealer-sales-orders.json",
+    fields: ["id", "store_id", "store_name", "customer_name", "owner_user_id", "owner_name", "vin", "series", "model", "order_type", "order_status", "payment_status", "invoice_status", "delivery_status", "list_price", "final_price", "landing_cost", "gross_profit", "deposit_amount", "paid_amount", "finance_amount", "created_at", "expected_delivery_date"]
+  },
+  dealer_finance: {
+    file: "data/dealer-finance.json",
+    fields: ["id", "resource_type", "store_id", "store_name", "direction", "category", "amount", "balance_after", "related_order_id", "occurred_at", "status"]
+  },
+  dealer_repair_orders: {
+    file: "data/dealer-repair-orders.json",
+    fields: ["id", "store_id", "store_name", "customer_name", "vin", "series", "service_advisor_id", "service_advisor_name", "order_type", "status", "appointment_at", "reception_at", "promised_finish_at", "labor_amount", "part_amount", "receivable_amount", "warranty_claim_id", "next_service_suggestion"]
+  },
+  dealer_warranty_claims: {
+    file: "data/dealer-warranty-claims.json",
+    fields: ["id", "repair_order_id", "store_id", "store_name", "customer_name", "vin", "series", "fault_category", "fault_code", "claim_status", "claimed_amount", "approved_amount", "difference_amount", "submitted_at", "expected_settlement_at", "evidence_status"]
+  },
+  dealer_metrics: {
+    loader: buildDealerMetrics,
+    fields: ["id", "scope", "store_name", "category", "metric", "value", "unit", "severity", "summary", "recommendation", "related_resource", "related_ids"]
   }
 };
 
@@ -121,8 +162,7 @@ const FIELD_LABELS = {
   expected_delivery: "预计交付时间",
   period: "周期",
   revenue: "销售收入",
-  pipeline: "Pipeline"
-  ,
+  pipeline: "Pipeline",
   userid: "员工ID",
   alias: "别名",
   department_name: "所属组织",
@@ -143,7 +183,100 @@ const FIELD_LABELS = {
   start_time: "开始时间",
   end_time: "结束时间",
   reason: "请假理由",
-  submitted_at: "提交时间"
+  submitted_at: "提交时间",
+  vin: "VIN",
+  store_id: "门店ID",
+  store_name: "门店",
+  short_name: "门店简称",
+  city: "城市",
+  region: "区域",
+  store_type: "门店类型",
+  manager_user_id: "门店负责人",
+  capacity: "库容",
+  series: "车系",
+  model: "车型",
+  year: "年款",
+  color: "颜色",
+  source_type: "来源类型",
+  purchase_mode: "进车方式",
+  cost: "成本",
+  finance_interest_accrued: "融资利息累计",
+  landing_cost: "综合落地成本",
+  min_sale_price: "最低售价参考",
+  inbound_date: "入库日期",
+  stock_age_days: "库龄天数",
+  stock_warning_level: "库龄预警",
+  certificate_status: "合格证状态",
+  vehicle_tag: "车辆标签",
+  mileage: "里程",
+  sales_order_id: "销售订单",
+  order_type: "订单类型",
+  expected_arrival_date: "预计到店",
+  customer_promised_date: "客户承诺交期",
+  deposit_amount: "定金",
+  month: "月份",
+  quota_total: "总配额",
+  bound_inbound_count: "已绑定在途",
+  available_quota: "剩余配额",
+  phone_masked: "手机号",
+  source: "来源",
+  campaign: "活动",
+  owner_user_id: "负责人",
+  owner_name: "负责人",
+  interested_series: "意向车系",
+  intention_level: "意向等级",
+  assigned_at: "分配时间",
+  first_contact_at: "首次联系",
+  last_followup_at: "最近跟进",
+  followup_count: "跟进次数",
+  visit_count: "到店次数",
+  expected_purchase_date: "预计购车",
+  lost_reason: "战败原因",
+  converted_order_id: "成交订单",
+  order_status: "订单状态",
+  payment_status: "收款状态",
+  invoice_status: "开票状态",
+  delivery_status: "交付状态",
+  list_price: "指导价",
+  final_price: "成交价",
+  gross_profit: "毛利",
+  paid_amount: "已收金额",
+  finance_amount: "金融放款",
+  expected_delivery_date: "预计交付",
+  resource_type: "资金类型",
+  direction: "方向",
+  category: "类别",
+  balance_after: "变动后余额",
+  related_order_id: "关联单据",
+  occurred_at: "发生日期",
+  service_advisor_id: "服务顾问ID",
+  service_advisor_name: "服务顾问",
+  appointment_at: "预约时间",
+  reception_at: "接待时间",
+  promised_finish_at: "承诺完工",
+  labor_amount: "工时费",
+  part_amount: "配件费",
+  receivable_amount: "应收金额",
+  warranty_claim_id: "三包索赔单",
+  next_service_suggestion: "下次服务建议",
+  repair_order_id: "维修工单",
+  fault_category: "故障类别",
+  fault_code: "故障代码",
+  claim_status: "索赔状态",
+  claimed_amount: "申报金额",
+  approved_amount: "核准金额",
+  difference_amount: "差异金额",
+  expected_settlement_at: "预计结算",
+  evidence_status: "证据状态",
+  scope: "范围",
+  metric: "指标",
+  value: "指标值",
+  unit: "单位",
+  severity: "严重程度",
+  summary: "摘要",
+  recommendation: "建议",
+  related_resource: "关联资源",
+  related_ids: "关联记录"
 };
 
 async function findCustomerByName(customerName) {
@@ -160,7 +293,7 @@ async function executeBusinessDataQuery(args, context) {
   }
 
   const operation = args.operation ?? "search";
-  let rows = await loadJson(config.file);
+  let rows = config.loader ? await config.loader(context) : await loadJson(config.file);
   if (args.resource === "leave_requests") {
     rows = rows.map(normalizeLeaveRequestRecord);
   }
@@ -247,12 +380,46 @@ function normalizeQueryArgs(args = {}) {
 
 function normalizeFilters(filters = []) {
   if (!Array.isArray(filters)) return [];
-  return filters
+  const normalized = filters
     .map((filter) => ({
       ...filter,
       op: filter.op ?? filter.operator
     }))
     .filter((filter) => filter.field && filter.op);
+  return mergeSameFieldEqFilters(normalized);
+}
+
+function mergeSameFieldEqFilters(filters) {
+  const eqGroups = new Map();
+  for (const filter of filters) {
+    if (filter.op !== "eq") continue;
+    const key = filter.field;
+    const values = eqGroups.get(key) ?? [];
+    values.push(filter.value);
+    eqGroups.set(key, values);
+  }
+
+  const mergedFields = new Set([...eqGroups.entries()]
+    .filter(([, values]) => new Set(values.map(String)).size > 1)
+    .map(([field]) => field));
+  if (!mergedFields.size) return filters;
+
+  const emitted = new Set();
+  const result = [];
+  for (const filter of filters) {
+    if (filter.op !== "eq" || !mergedFields.has(filter.field)) {
+      result.push(filter);
+      continue;
+    }
+    if (emitted.has(filter.field)) continue;
+    emitted.add(filter.field);
+    result.push({
+      ...filter,
+      op: "in",
+      value: [...new Set(eqGroups.get(filter.field).map((value) => value))]
+    });
+  }
+  return result;
 }
 
 function normalizeSort(sort = []) {
@@ -485,7 +652,7 @@ export function createBusinessTools() {
         type: "object",
         required: ["resource"],
         properties: {
-          resource: { type: "string", enum: ["customers", "orders", "sales_reports", "employees", "departments", "leave_requests"] },
+          resource: { type: "string", enum: Object.keys(RESOURCE_CONFIG) },
           operation: { type: "string", enum: ["search", "aggregate"] },
           filters: {
             type: "array",

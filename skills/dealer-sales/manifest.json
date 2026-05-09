@@ -1,0 +1,12 @@
+{
+  "id": "dealer-sales",
+  "name": "dealer-sales",
+  "version": "0.1.0",
+  "enabled": true,
+  "description": "Plan dealer lead funnel, intention, lost-sale, sales order, delivery, and gross-profit queries.",
+  "planning_style": "guided",
+  "intents": ["data_query", "mixed"],
+  "intent_codes": ["dealer.lead_query", "dealer.order_query"],
+  "required_primitives": ["query"],
+  "output_modes": ["answer", "table", "report"]
+}

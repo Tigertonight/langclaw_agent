@@ -85,6 +85,11 @@ export async function checkToolPermission(user, toolCall) {
       return deny("missing_permission", "你没有权限查看请假记录。");
     }
 
+    if (String(resource).startsWith("dealer_")) {
+      if (canReadDealerResource(user, resource)) return allow();
+      return deny("missing_permission", "你没有权限查看该经销商业务数据。");
+    }
+
     return deny("invalid_resource", "不支持该业务资源。");
   }
 
@@ -158,6 +163,32 @@ function getLeaveRequestScope(filters = []) {
   if (applicantFilter.value === "__CURRENT_USER_SUBORDINATES__" || applicantFilter.value === "__CURRENT_USER_REPORTS__") return "team";
   if (applicantFilter.value === "__ALL_ORG_USERS__") return "company";
   return "other";
+}
+
+function canReadDealerResource(user, resource) {
+  if (hasPermission(user, "dealer:read")) return true;
+  if (["store_general_manager", "sales_manager"].includes(user.role)) return true;
+  if (resource === "dealer_metrics") {
+    return hasPermission(user, "inventory:read")
+      || hasPermission(user, "customer:read")
+      || hasPermission(user, "order:read")
+      || hasPermission(user, "sales_report:read")
+      || hasPermission(user, "finance:read")
+      || hasPermission(user, "after_sales:read");
+  }
+  if (["dealer_vehicles", "dealer_inbounds", "dealer_quotas", "dealer_stores"].includes(resource)) {
+    return hasPermission(user, "inventory:read") || hasPermission(user, "order:read") || hasPermission(user, "sales_report:read");
+  }
+  if (["dealer_leads", "dealer_sales_orders"].includes(resource)) {
+    return hasPermission(user, "customer:read") || hasPermission(user, "order:read") || hasPermission(user, "sales_report:read");
+  }
+  if (resource === "dealer_finance") {
+    return hasPermission(user, "finance:read") || user.role === "store_general_manager";
+  }
+  if (["dealer_repair_orders", "dealer_warranty_claims"].includes(resource)) {
+    return hasPermission(user, "after_sales:read") || user.role === "store_general_manager";
+  }
+  return false;
 }
 
 function normalizeFilters(filters = []) {
