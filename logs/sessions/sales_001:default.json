@@ -1,0 +1,652 @@
+{
+  "id": "sales_001:default",
+  "active_intent": null,
+  "scenario": null,
+  "state": {},
+  "status": "idle",
+  "created_at": "2026-05-08T14:33:22.873Z",
+  "updated_at": "2026-05-09T08:07:27.153Z",
+  "history": [
+    {
+      "id": "turn-1778314038732-user",
+      "role": "user",
+      "text": "帮我查一下星河科技最近订单状态",
+      "at": "2026-05-09T08:07:18.732Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "business.order_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "business-query",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "orders",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "customer_name",
+                  "op": "eq",
+                  "value": "星河科技"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "customer_name",
+                "status",
+                "amount",
+                "created_at",
+                "expected_delivery"
+              ],
+              "sort": [
+                {
+                  "field": "created_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 1,
+              "display": {
+                "domain": "sales",
+                "target": "orders",
+                "operation": "search",
+                "entity_type": "customer",
+                "entity_name": "星河科技",
+                "include_children": false,
+                "reason": "用户查询客户订单状态。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "orders",
+            "operation": "search",
+            "total": 1,
+            "row_count": 1,
+            "sample_rows": [
+              {
+                "id": "O1001",
+                "customer_name": "星河科技",
+                "status": "待发货",
+                "amount": 86000,
+                "created_at": "2026-04-28",
+                "expected_delivery": "2026-05-12"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "客户「星河科技」最近订单 O1001 当前状态为「待发货」，金额 86000 元。预计交付时间是 2026-05-12。"
+      }
+    },
+    {
+      "id": "turn-1778314038732-assistant",
+      "role": "assistant",
+      "text": "客户「星河科技」最近订单 O1001 当前状态为「待发货」，金额 86000 元。预计交付时间是 2026-05-12。",
+      "at": "2026-05-09T08:07:18.732Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "business.order_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "business-query",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "orders",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "customer_name",
+                  "op": "eq",
+                  "value": "星河科技"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "customer_name",
+                "status",
+                "amount",
+                "created_at",
+                "expected_delivery"
+              ],
+              "sort": [
+                {
+                  "field": "created_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 1,
+              "display": {
+                "domain": "sales",
+                "target": "orders",
+                "operation": "search",
+                "entity_type": "customer",
+                "entity_name": "星河科技",
+                "include_children": false,
+                "reason": "用户查询客户订单状态。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "orders",
+            "operation": "search",
+            "total": 1,
+            "row_count": 1,
+            "sample_rows": [
+              {
+                "id": "O1001",
+                "customer_name": "星河科技",
+                "status": "待发货",
+                "amount": 86000,
+                "created_at": "2026-04-28",
+                "expected_delivery": "2026-05-12"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "客户「星河科技」最近订单 O1001 当前状态为「待发货」，金额 86000 元。预计交付时间是 2026-05-12。"
+      }
+    },
+    {
+      "id": "turn-1778314038757-user",
+      "role": "user",
+      "text": "南湾零售最近订单状态是什么？",
+      "at": "2026-05-09T08:07:18.757Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "business.order_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "business-query",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "orders",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "customer_name",
+                  "op": "eq",
+                  "value": "南湾零售"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "customer_name",
+                "status",
+                "amount",
+                "created_at",
+                "expected_delivery"
+              ],
+              "sort": [
+                {
+                  "field": "created_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 1,
+              "display": {
+                "domain": "sales",
+                "target": "orders",
+                "operation": "search",
+                "entity_type": "customer",
+                "entity_name": "南湾零售",
+                "include_children": false,
+                "reason": "用户查询客户订单状态。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": false,
+            "tool": "query_business_data",
+            "error": "permission_denied",
+            "message": "你没有权限查看客户「南湾零售」的数据。"
+          }
+        ],
+        "answer_summary": "你没有权限查看客户「南湾零售」的数据。"
+      }
+    },
+    {
+      "id": "turn-1778314038757-assistant",
+      "role": "assistant",
+      "text": "你没有权限查看客户「南湾零售」的数据。",
+      "at": "2026-05-09T08:07:18.757Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "business.order_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "business-query",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "orders",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "customer_name",
+                  "op": "eq",
+                  "value": "南湾零售"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "customer_name",
+                "status",
+                "amount",
+                "created_at",
+                "expected_delivery"
+              ],
+              "sort": [
+                {
+                  "field": "created_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 1,
+              "display": {
+                "domain": "sales",
+                "target": "orders",
+                "operation": "search",
+                "entity_type": "customer",
+                "entity_name": "南湾零售",
+                "include_children": false,
+                "reason": "用户查询客户订单状态。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": false,
+            "tool": "query_business_data",
+            "error": "permission_denied",
+            "message": "你没有权限查看客户「南湾零售」的数据。"
+          }
+        ],
+        "answer_summary": "你没有权限查看客户「南湾零售」的数据。"
+      }
+    },
+    {
+      "id": "turn-1778314038796-user",
+      "role": "user",
+      "text": "差旅报销标准是什么？",
+      "at": "2026-05-09T08:07:18.796Z",
+      "metadata": {
+        "route": {
+          "intent": "knowledge_qa",
+          "intent_code": "knowledge.policy_qa",
+          "confidence": 0.86,
+          "reason": "涉及制度、流程或知识库内容"
+        },
+        "selected_skill": "knowledge-qa",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "一线城市住宿标准为每晚不超过 600 元，其他城市每晚不超过 450 元。超过标准需要在报销单中说明原因，并由部门负责人审批。 参考来源：差旅与报销制度 / 住宿标准；差旅与报销制度 / 交通标准；差旅与报销制度 / 适用范围；差旅与报销制度 / 提交时限"
+      }
+    },
+    {
+      "id": "turn-1778314038796-assistant",
+      "role": "assistant",
+      "text": "一线城市住宿标准为每晚不超过 600 元，其他城市每晚不超过 450 元。超过标准需要在报销单中说明原因，并由部门负责人审批。 参考来源：差旅与报销制度 / 住宿标准；差旅与报销制度 / 交通标准；差旅与报销制度 / 适用范围；差旅与报销制度 / 提交时限",
+      "at": "2026-05-09T08:07:18.796Z",
+      "metadata": {
+        "route": {
+          "intent": "knowledge_qa",
+          "intent_code": "knowledge.policy_qa",
+          "confidence": 0.86,
+          "reason": "涉及制度、流程或知识库内容"
+        },
+        "selected_skill": "knowledge-qa",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "一线城市住宿标准为每晚不超过 600 元，其他城市每晚不超过 450 元。超过标准需要在报销单中说明原因，并由部门负责人审批。 参考来源：差旅与报销制度 / 住宿标准；差旅与报销制度 / 交通标准；差旅与报销制度 / 适用范围；差旅与报销制度 / 提交时限"
+      }
+    },
+    {
+      "id": "turn-1778314047100-user",
+      "role": "user",
+      "text": "帮我查一下星河科技最近订单状态",
+      "at": "2026-05-09T08:07:27.100Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "business.order_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "business-query",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "orders",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "customer_name",
+                  "op": "eq",
+                  "value": "星河科技"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "customer_name",
+                "status",
+                "amount",
+                "created_at",
+                "expected_delivery"
+              ],
+              "sort": [
+                {
+                  "field": "created_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 1,
+              "display": {
+                "domain": "sales",
+                "target": "orders",
+                "operation": "search",
+                "entity_type": "customer",
+                "entity_name": "星河科技",
+                "include_children": false,
+                "reason": "用户查询客户订单状态。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "orders",
+            "operation": "search",
+            "total": 1,
+            "row_count": 1,
+            "sample_rows": [
+              {
+                "id": "O1001",
+                "customer_name": "星河科技",
+                "status": "待发货",
+                "amount": 86000,
+                "created_at": "2026-04-28",
+                "expected_delivery": "2026-05-12"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "客户「星河科技」最近订单 O1001 当前状态为「待发货」，金额 86000 元。预计交付时间是 2026-05-12。"
+      }
+    },
+    {
+      "id": "turn-1778314047100-assistant",
+      "role": "assistant",
+      "text": "客户「星河科技」最近订单 O1001 当前状态为「待发货」，金额 86000 元。预计交付时间是 2026-05-12。",
+      "at": "2026-05-09T08:07:27.100Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "business.order_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "business-query",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "orders",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "customer_name",
+                  "op": "eq",
+                  "value": "星河科技"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "customer_name",
+                "status",
+                "amount",
+                "created_at",
+                "expected_delivery"
+              ],
+              "sort": [
+                {
+                  "field": "created_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 1,
+              "display": {
+                "domain": "sales",
+                "target": "orders",
+                "operation": "search",
+                "entity_type": "customer",
+                "entity_name": "星河科技",
+                "include_children": false,
+                "reason": "用户查询客户订单状态。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "orders",
+            "operation": "search",
+            "total": 1,
+            "row_count": 1,
+            "sample_rows": [
+              {
+                "id": "O1001",
+                "customer_name": "星河科技",
+                "status": "待发货",
+                "amount": 86000,
+                "created_at": "2026-04-28",
+                "expected_delivery": "2026-05-12"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "客户「星河科技」最近订单 O1001 当前状态为「待发货」，金额 86000 元。预计交付时间是 2026-05-12。"
+      }
+    },
+    {
+      "id": "turn-1778314047118-user",
+      "role": "user",
+      "text": "南湾零售最近订单状态是什么？",
+      "at": "2026-05-09T08:07:27.118Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "business.order_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "business-query",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "orders",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "customer_name",
+                  "op": "eq",
+                  "value": "南湾零售"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "customer_name",
+                "status",
+                "amount",
+                "created_at",
+                "expected_delivery"
+              ],
+              "sort": [
+                {
+                  "field": "created_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 1,
+              "display": {
+                "domain": "sales",
+                "target": "orders",
+                "operation": "search",
+                "entity_type": "customer",
+                "entity_name": "南湾零售",
+                "include_children": false,
+                "reason": "用户查询客户订单状态。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": false,
+            "tool": "query_business_data",
+            "error": "permission_denied",
+            "message": "你没有权限查看客户「南湾零售」的数据。"
+          }
+        ],
+        "answer_summary": "你没有权限查看客户「南湾零售」的数据。"
+      }
+    },
+    {
+      "id": "turn-1778314047118-assistant",
+      "role": "assistant",
+      "text": "你没有权限查看客户「南湾零售」的数据。",
+      "at": "2026-05-09T08:07:27.118Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "business.order_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "business-query",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "orders",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "customer_name",
+                  "op": "eq",
+                  "value": "南湾零售"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "customer_name",
+                "status",
+                "amount",
+                "created_at",
+                "expected_delivery"
+              ],
+              "sort": [
+                {
+                  "field": "created_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 1,
+              "display": {
+                "domain": "sales",
+                "target": "orders",
+                "operation": "search",
+                "entity_type": "customer",
+                "entity_name": "南湾零售",
+                "include_children": false,
+                "reason": "用户查询客户订单状态。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": false,
+            "tool": "query_business_data",
+            "error": "permission_denied",
+            "message": "你没有权限查看客户「南湾零售」的数据。"
+          }
+        ],
+        "answer_summary": "你没有权限查看客户「南湾零售」的数据。"
+      }
+    },
+    {
+      "id": "turn-1778314047153-user",
+      "role": "user",
+      "text": "差旅报销标准是什么？",
+      "at": "2026-05-09T08:07:27.153Z",
+      "metadata": {
+        "route": {
+          "intent": "knowledge_qa",
+          "intent_code": "knowledge.policy_qa",
+          "confidence": 0.86,
+          "reason": "涉及制度、流程或知识库内容"
+        },
+        "selected_skill": "knowledge-qa",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "一线城市住宿标准为每晚不超过 600 元，其他城市每晚不超过 450 元。超过标准需要在报销单中说明原因，并由部门负责人审批。 参考来源：差旅与报销制度 / 住宿标准；差旅与报销制度 / 交通标准；差旅与报销制度 / 适用范围；差旅与报销制度 / 提交时限"
+      }
+    },
+    {
+      "id": "turn-1778314047153-assistant",
+      "role": "assistant",
+      "text": "一线城市住宿标准为每晚不超过 600 元，其他城市每晚不超过 450 元。超过标准需要在报销单中说明原因，并由部门负责人审批。 参考来源：差旅与报销制度 / 住宿标准；差旅与报销制度 / 交通标准；差旅与报销制度 / 适用范围；差旅与报销制度 / 提交时限",
+      "at": "2026-05-09T08:07:27.153Z",
+      "metadata": {
+        "route": {
+          "intent": "knowledge_qa",
+          "intent_code": "knowledge.policy_qa",
+          "confidence": 0.86,
+          "reason": "涉及制度、流程或知识库内容"
+        },
+        "selected_skill": "knowledge-qa",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "一线城市住宿标准为每晚不超过 600 元，其他城市每晚不超过 450 元。超过标准需要在报销单中说明原因，并由部门负责人审批。 参考来源：差旅与报销制度 / 住宿标准；差旅与报销制度 / 交通标准；差旅与报销制度 / 适用范围；差旅与报销制度 / 提交时限"
+      }
+    }
+  ],
+  "active_skill": "knowledge-qa"
+}

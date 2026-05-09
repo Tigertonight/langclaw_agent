@@ -1,0 +1,222 @@
+{
+  "id": "eval_leave_cancel_001",
+  "active_intent": null,
+  "scenario": null,
+  "state": {},
+  "status": "idle",
+  "created_at": "2026-05-08T13:15:01.786Z",
+  "updated_at": "2026-05-09T08:07:27.262Z",
+  "history": [
+    {
+      "id": "turn-1778313999432-user",
+      "role": "user",
+      "text": "我明天想请假",
+      "at": "2026-05-09T08:06:39.432Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "intent_code": "workflow.leave_request",
+          "confidence": 0.9,
+          "reason": "涉及请假申请业务场景"
+        },
+        "selected_skill": "leave-request",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "我已记录： - 开始时间：明天 还需要补充：请假类型（年假、病假、事假或调休）、结束时间或请假时长、请假事由。"
+      }
+    },
+    {
+      "id": "turn-1778313999432-assistant",
+      "role": "assistant",
+      "text": "我已记录： - 开始时间：明天 还需要补充：请假类型（年假、病假、事假或调休）、结束时间或请假时长、请假事由。",
+      "at": "2026-05-09T08:06:39.432Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "intent_code": "workflow.leave_request",
+          "confidence": 0.9,
+          "reason": "涉及请假申请业务场景"
+        },
+        "selected_skill": "leave-request",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "我已记录： - 开始时间：明天 还需要补充：请假类型（年假、病假、事假或调休）、结束时间或请假时长、请假事由。"
+      }
+    },
+    {
+      "id": "turn-1778313999448-user",
+      "role": "user",
+      "text": "不请假了",
+      "at": "2026-05-09T08:06:39.448Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "confidence": 1,
+          "reason": "继续当前多轮业务场景"
+        },
+        "selected_skill": null,
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "已取消本次请假申请。"
+      }
+    },
+    {
+      "id": "turn-1778313999448-assistant",
+      "role": "assistant",
+      "text": "已取消本次请假申请。",
+      "at": "2026-05-09T08:06:39.448Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "confidence": 1,
+          "reason": "继续当前多轮业务场景"
+        },
+        "selected_skill": null,
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "已取消本次请假申请。"
+      }
+    },
+    {
+      "id": "turn-1778314038910-user",
+      "role": "user",
+      "text": "我明天想请假",
+      "at": "2026-05-09T08:07:18.910Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "intent_code": "workflow.leave_request",
+          "confidence": 0.9,
+          "reason": "涉及请假申请业务场景"
+        },
+        "selected_skill": "leave-request",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "我已记录： - 开始时间：明天 还需要补充：请假类型（年假、病假、事假或调休）、结束时间或请假时长、请假事由。"
+      }
+    },
+    {
+      "id": "turn-1778314038910-assistant",
+      "role": "assistant",
+      "text": "我已记录： - 开始时间：明天 还需要补充：请假类型（年假、病假、事假或调休）、结束时间或请假时长、请假事由。",
+      "at": "2026-05-09T08:07:18.910Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "intent_code": "workflow.leave_request",
+          "confidence": 0.9,
+          "reason": "涉及请假申请业务场景"
+        },
+        "selected_skill": "leave-request",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "我已记录： - 开始时间：明天 还需要补充：请假类型（年假、病假、事假或调休）、结束时间或请假时长、请假事由。"
+      }
+    },
+    {
+      "id": "turn-1778314038922-user",
+      "role": "user",
+      "text": "不请假了",
+      "at": "2026-05-09T08:07:18.922Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "confidence": 1,
+          "reason": "继续当前多轮业务场景"
+        },
+        "selected_skill": null,
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "已取消本次请假申请。"
+      }
+    },
+    {
+      "id": "turn-1778314038922-assistant",
+      "role": "assistant",
+      "text": "已取消本次请假申请。",
+      "at": "2026-05-09T08:07:18.922Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "confidence": 1,
+          "reason": "继续当前多轮业务场景"
+        },
+        "selected_skill": null,
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "已取消本次请假申请。"
+      }
+    },
+    {
+      "id": "turn-1778314047249-user",
+      "role": "user",
+      "text": "我明天想请假",
+      "at": "2026-05-09T08:07:27.249Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "intent_code": "workflow.leave_request",
+          "confidence": 0.9,
+          "reason": "涉及请假申请业务场景"
+        },
+        "selected_skill": "leave-request",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "我已记录： - 开始时间：明天 还需要补充：请假类型（年假、病假、事假或调休）、结束时间或请假时长、请假事由。"
+      }
+    },
+    {
+      "id": "turn-1778314047249-assistant",
+      "role": "assistant",
+      "text": "我已记录： - 开始时间：明天 还需要补充：请假类型（年假、病假、事假或调休）、结束时间或请假时长、请假事由。",
+      "at": "2026-05-09T08:07:27.249Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "intent_code": "workflow.leave_request",
+          "confidence": 0.9,
+          "reason": "涉及请假申请业务场景"
+        },
+        "selected_skill": "leave-request",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "我已记录： - 开始时间：明天 还需要补充：请假类型（年假、病假、事假或调休）、结束时间或请假时长、请假事由。"
+      }
+    },
+    {
+      "id": "turn-1778314047262-user",
+      "role": "user",
+      "text": "不请假了",
+      "at": "2026-05-09T08:07:27.262Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "confidence": 1,
+          "reason": "继续当前多轮业务场景"
+        },
+        "selected_skill": null,
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "已取消本次请假申请。"
+      }
+    },
+    {
+      "id": "turn-1778314047262-assistant",
+      "role": "assistant",
+      "text": "已取消本次请假申请。",
+      "at": "2026-05-09T08:07:27.262Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "confidence": 1,
+          "reason": "继续当前多轮业务场景"
+        },
+        "selected_skill": null,
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "已取消本次请假申请。"
+      }
+    }
+  ],
+  "active_skill": null
+}

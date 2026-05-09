@@ -1,0 +1,58 @@
+[
+  {
+    "id": "store_gm_001",
+    "name": "顾明远",
+    "role": "store_general_manager",
+    "department": "门店管理层",
+    "accessible_customer_ids": ["C001", "C002", "C003", "C004"],
+    "permissions": ["customer:read", "order:read", "sales_report:read", "policy:read", "leave:submit", "org:read"]
+  },
+  {
+    "id": "finance_001",
+    "name": "唐若溪",
+    "role": "finance_specialist",
+    "department": "财务",
+    "accessible_customer_ids": [],
+    "permissions": ["finance:read", "order:read", "policy:read", "leave:submit", "org:read"]
+  },
+  {
+    "id": "sales_manager_001",
+    "name": "周景行",
+    "role": "sales_manager",
+    "department": "销售部",
+    "accessible_customer_ids": ["C001", "C002", "C003", "C004"],
+    "permissions": ["customer:read", "order:read", "sales_report:read", "policy:read", "leave:submit", "org:read"]
+  },
+  {
+    "id": "sales_001",
+    "name": "林悦",
+    "role": "sales",
+    "department": "华东销售部",
+    "accessible_customer_ids": ["C001", "C002"],
+    "permissions": ["customer:read", "order:read", "policy:read", "leave:submit", "org:read"]
+  },
+  {
+    "id": "sales_002",
+    "name": "周辰",
+    "role": "sales",
+    "department": "华南销售部",
+    "accessible_customer_ids": ["C003"],
+    "permissions": ["customer:read", "order:read", "policy:read", "leave:submit", "org:read"]
+  },
+  {
+    "id": "hr_001",
+    "name": "许宁",
+    "role": "hr",
+    "department": "人力资源部",
+    "accessible_customer_ids": [],
+    "permissions": ["hr_policy:read", "policy:read", "leave:submit", "org:read"]
+  },
+  {
+    "id": "manager_001",
+    "name": "沈砚",
+    "role": "manager",
+    "department": "华东销售部",
+    "accessible_customer_ids": ["C001", "C002", "C004"],
+    "permissions": ["customer:read", "order:read", "sales_report:read", "policy:read", "leave:submit", "org:read"]
+  }
+]

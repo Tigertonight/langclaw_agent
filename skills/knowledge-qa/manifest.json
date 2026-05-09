@@ -1,0 +1,11 @@
+{
+  "id": "knowledge-qa",
+  "name": "knowledge-qa",
+  "version": "0.1.0",
+  "enabled": true,
+  "description": "Answer policy and process questions from permission-filtered knowledge base chunks.",
+  "planning_style": "guided",
+  "intents": ["knowledge_qa", "mixed"],
+  "required_primitives": ["retrieve"],
+  "output_modes": ["answer"]
+}

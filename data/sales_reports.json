@@ -1,0 +1,16 @@
+[
+  {
+    "department": "华东销售部",
+    "period": "2026Q2",
+    "revenue": 790000,
+    "pipeline": 1320000,
+    "top_customers": ["星河科技", "青杉制造"]
+  },
+  {
+    "department": "华南销售部",
+    "period": "2026Q2",
+    "revenue": 610000,
+    "pipeline": 980000,
+    "top_customers": ["南湾零售"]
+  }
+]

@@ -1,0 +1,35 @@
+[
+  {
+    "id": "ST-001",
+    "name": "比亚迪华东旗舰店",
+    "short_name": "华东旗舰店",
+    "city": "上海",
+    "region": "华东",
+    "store_type": "旗舰店",
+    "manager_user_id": "store_gm_001",
+    "capacity": 80,
+    "status": "正常营业"
+  },
+  {
+    "id": "ST-002",
+    "name": "比亚迪华南标准店",
+    "short_name": "华南标准店",
+    "city": "广州",
+    "region": "华南",
+    "store_type": "标准店",
+    "manager_user_id": "store_gm_001",
+    "capacity": 55,
+    "status": "正常营业"
+  },
+  {
+    "id": "ST-003",
+    "name": "比亚迪华北卫星店",
+    "short_name": "华北卫星店",
+    "city": "北京",
+    "region": "华北",
+    "store_type": "卫星店",
+    "manager_user_id": "store_gm_001",
+    "capacity": 32,
+    "status": "装修中"
+  }
+]

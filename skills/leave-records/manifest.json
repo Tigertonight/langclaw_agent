@@ -1,0 +1,13 @@
+{
+  "id": "leave-records",
+  "name": "leave-records",
+  "version": "0.1.0",
+  "enabled": true,
+  "description": "Plan governed leave record queries for self, team, and named employees within enterprise scope.",
+  "planning_style": "guided",
+  "intents": ["data_query"],
+  "intent_codes": ["attendance.leave_query"],
+  "required_primitives": ["query"],
+  "required_permissions": ["leave:submit"],
+  "output_modes": ["answer"]
+}

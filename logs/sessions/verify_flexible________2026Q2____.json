@@ -1,0 +1,21 @@
+{
+  "id": "verify_flexible_看一下销售部 2026Q2 的报表",
+  "active_intent": null,
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "role": "user",
+      "text": "看一下销售部 2026Q2 的报表",
+      "at": "2026-05-09T03:32:57.825Z"
+    },
+    {
+      "role": "assistant",
+      "text": "你只能查看自己部门的销售报表。",
+      "at": "2026-05-09T03:32:57.825Z"
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-09T03:32:57.823Z",
+  "updated_at": "2026-05-09T03:32:57.825Z"
+}

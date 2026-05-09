@@ -1,0 +1,50 @@
+[
+  {
+    "id": "IB-202605-001",
+    "store_id": "ST-001",
+    "store_name": "比亚迪华东旗舰店",
+    "order_type": "压货批次",
+    "series": "宋L",
+    "model": "宋L Plus荣耀版 112KM",
+    "color": "雪域白",
+    "customer_name": null,
+    "sales_consultant_id": null,
+    "byd_order_no": "BYD-DL-20260501",
+    "status": "已发货",
+    "expected_arrival_date": "2026-05-14",
+    "customer_promised_date": null,
+    "deposit_amount": 0
+  },
+  {
+    "id": "IB-202605-002",
+    "store_id": "ST-002",
+    "store_name": "比亚迪华南标准店",
+    "order_type": "客户定制",
+    "series": "汉",
+    "model": "汉EV荣耀版 715KM 旗舰型",
+    "color": "冰川蓝",
+    "customer_name": "赵强",
+    "sales_consultant_id": "sales_002",
+    "byd_order_no": "BYD-DL-20260502",
+    "status": "生产中",
+    "expected_arrival_date": "2026-05-29",
+    "customer_promised_date": "2026-06-02",
+    "deposit_amount": 20000
+  },
+  {
+    "id": "IB-202605-003",
+    "store_id": "ST-001",
+    "store_name": "比亚迪华东旗舰店",
+    "order_type": "客户定制",
+    "series": "腾势N7",
+    "model": "腾势N7 702KM 智驾Pro",
+    "color": "月曜灰",
+    "customer_name": "王芳",
+    "sales_consultant_id": "sales_001",
+    "byd_order_no": "BYD-DL-20260503",
+    "status": "已排产",
+    "expected_arrival_date": "2026-06-08",
+    "customer_promised_date": "2026-06-12",
+    "deposit_amount": 30000
+  }
+]

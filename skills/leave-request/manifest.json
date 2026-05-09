@@ -1,0 +1,11 @@
+{
+  "id": "leave-request",
+  "name": "leave-request",
+  "version": "0.1.0",
+  "enabled": true,
+  "description": "Guide controlled leave request workflows with slot collection, confirmation, and submit tool usage.",
+  "planning_style": "strict_workflow",
+  "intents": ["leave_request"],
+  "required_primitives": ["act"],
+  "output_modes": ["answer", "workflow_receipt"]
+}

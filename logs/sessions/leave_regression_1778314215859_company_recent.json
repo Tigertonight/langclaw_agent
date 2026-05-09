@@ -1,0 +1,232 @@
+{
+  "id": "leave_regression_1778314215859_company_recent",
+  "active_intent": null,
+  "active_skill": "leave-records",
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "id": "turn-1778314215973-user",
+      "role": "user",
+      "text": "查一下整个公司最近三个月的请假记录",
+      "at": "2026-05-09T08:10:15.973Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "attendance.leave_query",
+          "confidence": 0.9,
+          "reason": "查询请假记录、请假统计或团队请假情况"
+        },
+        "selected_skill": "leave-records",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "leave_requests",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "applicant_user_id",
+                  "op": "in",
+                  "value": "__ALL_ORG_USERS__"
+                },
+                {
+                  "field": "start_time",
+                  "op": "gte",
+                  "value": "2026-02-09"
+                },
+                {
+                  "field": "start_time",
+                  "op": "lte",
+                  "value": "2026-05-09"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "applicant_name",
+                "leave_type",
+                "leave_duration",
+                "start_time",
+                "end_time",
+                "reason",
+                "status",
+                "submitted_at"
+              ],
+              "sort": [
+                {
+                  "field": "start_time",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "attendance",
+                "target": "leave_requests",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询组织范围内的请假记录。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "leave_requests",
+            "operation": "search",
+            "total": 4,
+            "row_count": 4,
+            "sample_rows": [
+              {
+                "id": "LR-20260502-001",
+                "applicant_name": "周辰",
+                "leave_type": "事假",
+                "leave_duration": "1天",
+                "start_time": "2026-05-09 09:00",
+                "end_time": "2026-05-09 18:00",
+                "status": "submitted",
+                "reason": "办理个人事务"
+              },
+              {
+                "id": "LR-20260503-001",
+                "applicant_name": "林悦",
+                "leave_type": "病假",
+                "leave_duration": "半天",
+                "start_time": "2026-05-08 13:00",
+                "end_time": "2026-05-08 18:00",
+                "status": "submitted",
+                "reason": "身体不舒服，去医院检查"
+              },
+              {
+                "id": "LR-1778309268228",
+                "applicant_name": "沈清和",
+                "leave_type": "病假",
+                "leave_duration": "1天",
+                "start_time": "2026-05-08 09:00",
+                "end_time": "2026-05-08 18:00",
+                "status": "submitted",
+                "reason": "去看医生"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 4 条请假记录： - 周辰：事假，1天，2026-05-09 09:00 至 2026-05-09 18:00，事由：办理个人事务，状态：submitted。 - 林悦：病假，半天，2026-05-08 13:00 至 2026-05-08 18:00，事由：身体不舒服，去医院检查，状态：submitted。 - 沈清和：病假，1天，2026-05-08 09:00 至 2026-05-08 18:00，事由：去看医生，状态：submitted。 - 林悦：年假，1天..."
+      }
+    },
+    {
+      "id": "turn-1778314215973-assistant",
+      "role": "assistant",
+      "text": "查询到 4 条请假记录： - 周辰：事假，1天，2026-05-09 09:00 至 2026-05-09 18:00，事由：办理个人事务，状态：submitted。 - 林悦：病假，半天，2026-05-08 13:00 至 2026-05-08 18:00，事由：身体不舒服，去医院检查，状态：submitted。 - 沈清和：病假，1天，2026-05-08 09:00 至 2026-05-08 18:00，事由：去看医生，状态：submitted。 - 林悦：年假，1天，2026-05-06 09:00 至 2026-05-06 18:00，事由：家里有事，状态：submitted。",
+      "at": "2026-05-09T08:10:15.973Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "attendance.leave_query",
+          "confidence": 0.9,
+          "reason": "查询请假记录、请假统计或团队请假情况"
+        },
+        "selected_skill": "leave-records",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "leave_requests",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "applicant_user_id",
+                  "op": "in",
+                  "value": "__ALL_ORG_USERS__"
+                },
+                {
+                  "field": "start_time",
+                  "op": "gte",
+                  "value": "2026-02-09"
+                },
+                {
+                  "field": "start_time",
+                  "op": "lte",
+                  "value": "2026-05-09"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "applicant_name",
+                "leave_type",
+                "leave_duration",
+                "start_time",
+                "end_time",
+                "reason",
+                "status",
+                "submitted_at"
+              ],
+              "sort": [
+                {
+                  "field": "start_time",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "attendance",
+                "target": "leave_requests",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询组织范围内的请假记录。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "leave_requests",
+            "operation": "search",
+            "total": 4,
+            "row_count": 4,
+            "sample_rows": [
+              {
+                "id": "LR-20260502-001",
+                "applicant_name": "周辰",
+                "leave_type": "事假",
+                "leave_duration": "1天",
+                "start_time": "2026-05-09 09:00",
+                "end_time": "2026-05-09 18:00",
+                "status": "submitted",
+                "reason": "办理个人事务"
+              },
+              {
+                "id": "LR-20260503-001",
+                "applicant_name": "林悦",
+                "leave_type": "病假",
+                "leave_duration": "半天",
+                "start_time": "2026-05-08 13:00",
+                "end_time": "2026-05-08 18:00",
+                "status": "submitted",
+                "reason": "身体不舒服，去医院检查"
+              },
+              {
+                "id": "LR-1778309268228",
+                "applicant_name": "沈清和",
+                "leave_type": "病假",
+                "leave_duration": "1天",
+                "start_time": "2026-05-08 09:00",
+                "end_time": "2026-05-08 18:00",
+                "status": "submitted",
+                "reason": "去看医生"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 4 条请假记录： - 周辰：事假，1天，2026-05-09 09:00 至 2026-05-09 18:00，事由：办理个人事务，状态：submitted。 - 林悦：病假，半天，2026-05-08 13:00 至 2026-05-08 18:00，事由：身体不舒服，去医院检查，状态：submitted。 - 沈清和：病假，1天，2026-05-08 09:00 至 2026-05-08 18:00，事由：去看医生，状态：submitted。 - 林悦：年假，1天..."
+      }
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-09T08:10:15.960Z",
+  "updated_at": "2026-05-09T08:10:15.973Z"
+}

@@ -1,0 +1,21 @@
+{
+  "id": "debug_org_12",
+  "active_intent": null,
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "role": "user",
+      "text": "新员工试用期规则是什么？",
+      "at": "2026-05-08T14:55:07.676Z"
+    },
+    {
+      "role": "assistant",
+      "text": "你没有权限查询组织架构或人员汇报关系。",
+      "at": "2026-05-08T14:55:07.676Z"
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-08T14:55:07.667Z",
+  "updated_at": "2026-05-08T14:55:07.676Z"
+}

@@ -1,0 +1,67 @@
+[
+  {
+    "id": "LR-20260501-001",
+    "applicant_user_id": "sales_001",
+    "applicant_name": "林悦",
+    "department": "华东销售部",
+    "leave_type": "年假",
+    "leave_duration": "1天",
+    "start_time": "2026-05-06 09:00",
+    "end_time": "2026-05-06 18:00",
+    "reason": "家里有事",
+    "status": "submitted",
+    "submitted_at": "2026-05-01T09:30:00.000Z"
+  },
+  {
+    "id": "LR-20260503-001",
+    "applicant_user_id": "sales_001",
+    "applicant_name": "林悦",
+    "department": "华东销售部",
+    "leave_type": "病假",
+    "leave_duration": "半天",
+    "start_time": "2026-05-08 13:00",
+    "end_time": "2026-05-08 18:00",
+    "reason": "身体不舒服，去医院检查",
+    "status": "submitted",
+    "submitted_at": "2026-05-03T11:10:00.000Z"
+  },
+  {
+    "id": "LR-20260502-001",
+    "applicant_user_id": "sales_002",
+    "applicant_name": "周辰",
+    "department": "华南销售部",
+    "leave_type": "事假",
+    "leave_duration": "1天",
+    "start_time": "2026-05-09 09:00",
+    "end_time": "2026-05-09 18:00",
+    "reason": "办理个人事务",
+    "status": "submitted",
+    "submitted_at": "2026-05-02T08:20:00.000Z"
+  },
+  {
+    "id": "LR-20260504-001",
+    "applicant_user_id": "hr_001",
+    "applicant_name": "许宁",
+    "department": "人力资源部",
+    "leave_type": "调休",
+    "leave_duration": "半天",
+    "start_time": "2026-05-12 09:00",
+    "end_time": "2026-05-12 13:00",
+    "reason": "处理家庭事务",
+    "status": "submitted",
+    "submitted_at": "2026-05-04T07:45:00.000Z"
+  },
+  {
+    "id": "LR-1778309268228",
+    "applicant_user_id": "showroom_lead_001",
+    "applicant_name": "沈清和",
+    "department": "展厅销售组",
+    "leave_duration": "1天",
+    "status": "submitted",
+    "leave_type": "病假",
+    "start_time": "2026-05-08 09:00",
+    "end_time": "2026-05-08 18:00",
+    "reason": "去看医生",
+    "submitted_at": "2026-05-09T06:47:48.228Z"
+  }
+]

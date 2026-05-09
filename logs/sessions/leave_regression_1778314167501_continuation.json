@@ -1,0 +1,364 @@
+{
+  "id": "leave_regression_1778314167501_continuation",
+  "active_intent": null,
+  "active_skill": "business-query",
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "id": "turn-1778314167648-user",
+      "role": "user",
+      "text": "查一下请假记录",
+      "at": "2026-05-09T08:09:27.648Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "attendance.leave_query",
+          "confidence": 0.9,
+          "reason": "查询请假记录、请假统计或团队请假情况"
+        },
+        "selected_skill": "leave-records",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "leave_requests",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "applicant_user_id",
+                  "op": "eq",
+                  "value": "__CURRENT_USER__"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "applicant_name",
+                "leave_type",
+                "leave_duration",
+                "start_time",
+                "end_time",
+                "reason",
+                "status",
+                "submitted_at"
+              ],
+              "sort": [
+                {
+                  "field": "start_time",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "attendance",
+                "target": "leave_requests",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询本人请假记录。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "leave_requests",
+            "operation": "search",
+            "total": 0,
+            "row_count": 0,
+            "sample_rows": []
+          }
+        ],
+        "answer_summary": "没有找到符合条件的请假记录。"
+      }
+    },
+    {
+      "id": "turn-1778314167648-assistant",
+      "role": "assistant",
+      "text": "没有找到符合条件的请假记录。",
+      "at": "2026-05-09T08:09:27.648Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "attendance.leave_query",
+          "confidence": 0.9,
+          "reason": "查询请假记录、请假统计或团队请假情况"
+        },
+        "selected_skill": "leave-records",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "leave_requests",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "applicant_user_id",
+                  "op": "eq",
+                  "value": "__CURRENT_USER__"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "applicant_name",
+                "leave_type",
+                "leave_duration",
+                "start_time",
+                "end_time",
+                "reason",
+                "status",
+                "submitted_at"
+              ],
+              "sort": [
+                {
+                  "field": "start_time",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "attendance",
+                "target": "leave_requests",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询本人请假记录。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "leave_requests",
+            "operation": "search",
+            "total": 0,
+            "row_count": 0,
+            "sample_rows": []
+          }
+        ],
+        "answer_summary": "没有找到符合条件的请假记录。"
+      }
+    },
+    {
+      "id": "turn-1778314167661-user",
+      "role": "user",
+      "text": "销售部 最近三个月",
+      "at": "2026-05-09T08:09:27.661Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "system.unsupported",
+          "confidence": 0.86,
+          "reason": "涉及企业通讯录、组织架构或人员汇报关系"
+        },
+        "selected_skill": "business-query",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "employees",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "department",
+                  "op": "in",
+                  "value": [
+                    10,
+                    11,
+                    12,
+                    13,
+                    14,
+                    15,
+                    16,
+                    17,
+                    18
+                  ]
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "userid",
+                "name",
+                "department_name",
+                "position",
+                "role",
+                "direct_leader",
+                "reporting",
+                "main_department",
+                "department"
+              ],
+              "sort": [
+                {
+                  "field": "main_department",
+                  "direction": "asc"
+                },
+                {
+                  "field": "userid",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 50,
+              "display": {
+                "domain": "organization",
+                "target": "employees",
+                "operation": "search",
+                "entity_type": "department",
+                "entity_name": "销售部",
+                "include_children": true,
+                "reason": "用户查询组织人员数据。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "employees",
+            "operation": "search",
+            "total": 20,
+            "row_count": 20,
+            "sample_rows": [
+              {
+                "userid": "sales_manager_001",
+                "name": "周景行",
+                "department_name": "销售部",
+                "position": "销售经理",
+                "role": "sales_manager"
+              },
+              {
+                "userid": "sales_001",
+                "name": "林悦",
+                "department_name": "展厅销售组",
+                "position": "销售顾问",
+                "role": "sales_consultant"
+              },
+              {
+                "userid": "sales_consultant_002",
+                "name": "陈砚舟",
+                "department_name": "展厅销售组",
+                "position": "销售顾问",
+                "role": "sales_consultant"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 20 名员工： - 周景行（sales_manager_001）：销售部 / 销售经理。直属上级：顾明远（门店管理层 / 门店总经理）。门店线汇报给 顾明远（门店管理层 / 门店总经理）。 - 林悦（sales_001）：展厅销售组 / 销售顾问。直属上级：沈清和（展厅销售组 / 展厅主管）。门店线汇报给 沈清和（展厅销售组 / 展厅主管）。 - 陈砚舟（sales_consultant_002）：展厅销售组 / 销售顾问。直属上级：沈清和（展厅销售组 / 展厅主管）..."
+      }
+    },
+    {
+      "id": "turn-1778314167661-assistant",
+      "role": "assistant",
+      "text": "查询到 20 名员工： - 周景行（sales_manager_001）：销售部 / 销售经理。直属上级：顾明远（门店管理层 / 门店总经理）。门店线汇报给 顾明远（门店管理层 / 门店总经理）。 - 林悦（sales_001）：展厅销售组 / 销售顾问。直属上级：沈清和（展厅销售组 / 展厅主管）。门店线汇报给 沈清和（展厅销售组 / 展厅主管）。 - 陈砚舟（sales_consultant_002）：展厅销售组 / 销售顾问。直属上级：沈清和（展厅销售组 / 展厅主管）。门店线汇报给 沈清和（展厅销售组 / 展厅主管）。 - 苏晚晴（sales_consultant_003）：展厅销售组 / 销售顾问。直属上级：沈清和（展厅销售组 / 展厅主管）。门店线汇报给 沈清和（展厅销售组 / 展厅主管）。 - 陆星澜（sales_consultant_004）：展厅销售组 / 销售顾问。直属上级：沈清和（展厅销售组 / 展厅主管）。门店线汇报给 沈清和（展厅销售组 / 展厅主管）。 - 叶知微（sales_consultant_005）：展厅销售组 / 销售顾问。直属上级：沈清和（展厅销...",
+      "at": "2026-05-09T08:09:27.661Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "system.unsupported",
+          "confidence": 0.86,
+          "reason": "涉及企业通讯录、组织架构或人员汇报关系"
+        },
+        "selected_skill": "business-query",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "employees",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "department",
+                  "op": "in",
+                  "value": [
+                    10,
+                    11,
+                    12,
+                    13,
+                    14,
+                    15,
+                    16,
+                    17,
+                    18
+                  ]
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "userid",
+                "name",
+                "department_name",
+                "position",
+                "role",
+                "direct_leader",
+                "reporting",
+                "main_department",
+                "department"
+              ],
+              "sort": [
+                {
+                  "field": "main_department",
+                  "direction": "asc"
+                },
+                {
+                  "field": "userid",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 50,
+              "display": {
+                "domain": "organization",
+                "target": "employees",
+                "operation": "search",
+                "entity_type": "department",
+                "entity_name": "销售部",
+                "include_children": true,
+                "reason": "用户查询组织人员数据。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "employees",
+            "operation": "search",
+            "total": 20,
+            "row_count": 20,
+            "sample_rows": [
+              {
+                "userid": "sales_manager_001",
+                "name": "周景行",
+                "department_name": "销售部",
+                "position": "销售经理",
+                "role": "sales_manager"
+              },
+              {
+                "userid": "sales_001",
+                "name": "林悦",
+                "department_name": "展厅销售组",
+                "position": "销售顾问",
+                "role": "sales_consultant"
+              },
+              {
+                "userid": "sales_consultant_002",
+                "name": "陈砚舟",
+                "department_name": "展厅销售组",
+                "position": "销售顾问",
+                "role": "sales_consultant"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 20 名员工： - 周景行（sales_manager_001）：销售部 / 销售经理。直属上级：顾明远（门店管理层 / 门店总经理）。门店线汇报给 顾明远（门店管理层 / 门店总经理）。 - 林悦（sales_001）：展厅销售组 / 销售顾问。直属上级：沈清和（展厅销售组 / 展厅主管）。门店线汇报给 沈清和（展厅销售组 / 展厅主管）。 - 陈砚舟（sales_consultant_002）：展厅销售组 / 销售顾问。直属上级：沈清和（展厅销售组 / 展厅主管）..."
+      }
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-09T08:09:27.641Z",
+  "updated_at": "2026-05-09T08:09:27.661Z"
+}
