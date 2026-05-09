@@ -1,0 +1,186 @@
+{
+  "id": "agent_loop_eval_1778316986426_1",
+  "active_intent": null,
+  "active_skill": "business-query",
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "id": "turn-1778316986459-user",
+      "role": "user",
+      "text": "客户想订一台汉EV 715KM 冰川蓝，帮我看看还能不能承诺交期",
+      "at": "2026-05-09T08:56:26.459Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "business.customer_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "business-query",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "customers",
+              "operation": "search",
+              "filters": [],
+              "metrics": [],
+              "fields": [
+                "id",
+                "name",
+                "tier",
+                "industry",
+                "industry_category",
+                "deal_status",
+                "follow_status",
+                "renewal_status",
+                "annual_revenue",
+                "next_follow_up_at",
+                "contract_expire_at"
+              ],
+              "sort": [
+                {
+                  "field": "next_follow_up_at",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "sales",
+                "target": "customers",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询客户数据。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "customers",
+            "operation": "search",
+            "total": 4,
+            "row_count": 4,
+            "sample_rows": [
+              {
+                "id": "C001",
+                "name": "星河科技",
+                "tier": "A",
+                "deal_status": "已签单",
+                "annual_revenue": 520000
+              },
+              {
+                "id": "C002",
+                "name": "青杉制造",
+                "tier": "B",
+                "deal_status": "未签单",
+                "annual_revenue": 180000
+              },
+              {
+                "id": "C003",
+                "name": "南湾零售",
+                "tier": "A",
+                "deal_status": "已签单",
+                "annual_revenue": 610000
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 4 条客户： - 星河科技（C001）：A 类，企业软件，签单状态「已签单」，跟进状态「交付跟进」，续签状态「待续签」，年度成交额 520000 元。 - 青杉制造（C002）：B 类，智能制造，签单状态「未签单」，跟进状态「跟进中」，续签状态「无需续签」，年度成交额 180000 元。 - 南湾零售（C003）：A 类，零售，签单状态「已签单」，跟进状态「稳定服务」，续签状态「正常」，年度成交额 610000 元。 - 云舟物流（C004）：C 类，物流，签单状态「..."
+      }
+    },
+    {
+      "id": "turn-1778316986459-assistant",
+      "role": "assistant",
+      "text": "查询到 4 条客户： - 星河科技（C001）：A 类，企业软件，签单状态「已签单」，跟进状态「交付跟进」，续签状态「待续签」，年度成交额 520000 元。 - 青杉制造（C002）：B 类，智能制造，签单状态「未签单」，跟进状态「跟进中」，续签状态「无需续签」，年度成交额 180000 元。 - 南湾零售（C003）：A 类，零售，签单状态「已签单」，跟进状态「稳定服务」，续签状态「正常」，年度成交额 610000 元。 - 云舟物流（C004）：C 类，物流，签单状态「未签单」，跟进状态「低活跃」，续签状态「无需续签」，年度成交额 90000 元。",
+      "at": "2026-05-09T08:56:26.459Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "business.customer_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "business-query",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "customers",
+              "operation": "search",
+              "filters": [],
+              "metrics": [],
+              "fields": [
+                "id",
+                "name",
+                "tier",
+                "industry",
+                "industry_category",
+                "deal_status",
+                "follow_status",
+                "renewal_status",
+                "annual_revenue",
+                "next_follow_up_at",
+                "contract_expire_at"
+              ],
+              "sort": [
+                {
+                  "field": "next_follow_up_at",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "sales",
+                "target": "customers",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询客户数据。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "customers",
+            "operation": "search",
+            "total": 4,
+            "row_count": 4,
+            "sample_rows": [
+              {
+                "id": "C001",
+                "name": "星河科技",
+                "tier": "A",
+                "deal_status": "已签单",
+                "annual_revenue": 520000
+              },
+              {
+                "id": "C002",
+                "name": "青杉制造",
+                "tier": "B",
+                "deal_status": "未签单",
+                "annual_revenue": 180000
+              },
+              {
+                "id": "C003",
+                "name": "南湾零售",
+                "tier": "A",
+                "deal_status": "已签单",
+                "annual_revenue": 610000
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 4 条客户： - 星河科技（C001）：A 类，企业软件，签单状态「已签单」，跟进状态「交付跟进」，续签状态「待续签」，年度成交额 520000 元。 - 青杉制造（C002）：B 类，智能制造，签单状态「未签单」，跟进状态「跟进中」，续签状态「无需续签」，年度成交额 180000 元。 - 南湾零售（C003）：A 类，零售，签单状态「已签单」，跟进状态「稳定服务」，续签状态「正常」，年度成交额 610000 元。 - 云舟物流（C004）：C 类，物流，签单状态「..."
+      }
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-09T08:56:26.427Z",
+  "updated_at": "2026-05-09T08:56:26.459Z"
+}

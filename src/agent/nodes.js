@@ -8,6 +8,9 @@ export async function classifyIntentNode({ llm, user, message, history = [], ent
 }
 
 export async function retrieveKnowledgeNode({ knowledgeBase, user, message, route }) {
+  if (String(route.intent_code ?? "").startsWith("dealer.")) {
+    return [];
+  }
   if (![INTENTS.KNOWLEDGE_QA, INTENTS.MIXED].includes(route.intent)) {
     return [];
   }

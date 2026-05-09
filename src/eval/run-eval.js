@@ -13,11 +13,11 @@ const leaveRequestsSnapshot = await readFile(leaveRequestsPath, "utf8").catch(()
 let passed = 0;
 const failures = [];
 
-for (const testCase of cases) {
+for (const [index, testCase] of cases.entries()) {
   const result = await agent.run({
     userId: testCase.user_id,
     message: testCase.message,
-    sessionId: makeSessionId(testCase),
+    sessionId: makeSessionId(testCase, index),
     debug: true
   });
   const checks = [
@@ -150,7 +150,7 @@ function getToolNames(result) {
   return result.debug.selected_tools ?? [];
 }
 
-function makeSessionId(testCase) {
-  if (!testCase.session_id) return `eval_${runId}_${testCase.name}`;
+function makeSessionId(testCase, index) {
+  if (!testCase.session_id) return `eval_${runId}_${String(index + 1).padStart(2, "0")}`;
   return `${testCase.session_id}_${runId}`;
 }

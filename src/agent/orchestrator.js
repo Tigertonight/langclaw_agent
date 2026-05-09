@@ -108,6 +108,7 @@ export class SimpleWorkflowOrchestrator {
       toolPlan: result.toolPlan,
       toolResults: result.toolResults,
       answer: result.answer,
+      artifacts: result.artifacts,
       agentSteps: result.agentSteps,
       agentState: result.agentState,
       enterpriseContext,
@@ -230,6 +231,7 @@ export class SimpleWorkflowOrchestrator {
       toolPlan: result.toolPlan,
       toolResults: result.toolResults,
       answer: result.answer,
+      artifacts: result.artifacts,
       agentSteps: visibleSteps,
       agentState: result.agentState,
       enterpriseContext,
@@ -275,12 +277,13 @@ export class SimpleWorkflowOrchestrator {
     });
   }
 
-  async finish({ user, sessionId, message, route, docs, toolPlan, toolResults, answer, scenarioDebug, agentSteps = [], agentState, enterpriseContext, conversationContext, skills = [], selectedSkill, session, debug, startedAt }) {
+  async finish({ user, sessionId, message, route, docs, toolPlan, toolResults, answer, artifacts = [], scenarioDebug, agentSteps = [], agentState, enterpriseContext, conversationContext, skills = [], selectedSkill, session, debug, startedAt }) {
     const memoryUpdate = await this.maybeWriteUserMemory({ user, message });
     const output = {
       session_id: sessionId,
       answer,
-      sources: createSources(docs)
+      sources: createSources(docs),
+      artifacts
     };
 
     const rawDebugInfo = {
@@ -322,6 +325,7 @@ export class SimpleWorkflowOrchestrator {
       session_id: sessionId,
       message,
       answer,
+      artifacts,
       debug: rawDebugInfo,
       sources: output.sources
     });
@@ -350,6 +354,7 @@ export class SimpleWorkflowOrchestrator {
     toolPlan,
     toolResults,
     answer,
+    artifacts = [],
     scenarioDebug,
     agentSteps = [],
     agentState,
@@ -379,6 +384,7 @@ export class SimpleWorkflowOrchestrator {
       toolPlan,
       toolResults,
       answer,
+      artifacts,
       scenarioDebug,
       agentSteps,
       agentState,
@@ -493,7 +499,17 @@ function pickDebugRowFields(resource, row) {
     leave_requests: ["id", "applicant_user_id", "applicant_name", "leave_type", "leave_duration", "start_time", "end_time", "status", "reason"],
     customers: ["id", "name", "owner_user_id", "department", "tier", "deal_status", "annual_revenue"],
     orders: ["id", "customer_name", "status", "amount", "created_at", "expected_delivery"],
-    sales_reports: ["department", "period", "revenue", "pipeline"]
+    sales_reports: ["department", "period", "revenue", "pipeline"],
+    dealer_stores: ["id", "name", "city", "region", "store_type", "capacity", "status"],
+    dealer_vehicles: ["vin", "store_name", "series", "model", "status", "stock_age_days", "stock_warning_level", "landing_cost"],
+    dealer_inbounds: ["id", "store_name", "order_type", "series", "model", "customer_name", "status", "expected_arrival_date"],
+    dealer_quotas: ["id", "store_name", "month", "series", "model", "quota_total", "bound_inbound_count", "available_quota"],
+    dealer_leads: ["id", "customer_name", "source", "store_name", "owner_name", "interested_series", "intention_level", "status", "followup_count", "visit_count"],
+    dealer_sales_orders: ["id", "store_name", "customer_name", "owner_name", "vin", "series", "order_status", "payment_status", "delivery_status", "final_price", "gross_profit"],
+    dealer_finance: ["id", "resource_type", "store_name", "direction", "category", "amount", "balance_after", "status"],
+    dealer_repair_orders: ["id", "store_name", "customer_name", "vin", "order_type", "status", "receivable_amount", "warranty_claim_id"],
+    dealer_warranty_claims: ["id", "repair_order_id", "store_name", "customer_name", "vin", "fault_category", "claim_status", "claimed_amount", "approved_amount"],
+    dealer_metrics: ["store_name", "category", "metric", "value", "unit", "severity", "summary", "recommendation", "related_resource", "related_ids"]
   };
   const fields = fieldMap[resource] ?? Object.keys(row).slice(0, 8);
   return Object.fromEntries(fields.filter((field) => row[field] !== undefined).map((field) => [field, row[field]]));
@@ -512,6 +528,7 @@ function summarizeState(state) {
   if (!state) return null;
   return {
     goal: state.goal,
+    task_mode: state.task_mode,
     status: state.status,
     round: state.round,
     required_facts: state.required_facts,

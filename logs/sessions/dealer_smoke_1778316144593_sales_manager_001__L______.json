@@ -1,0 +1,178 @@
+{
+  "id": "dealer_smoke_1778316144593_sales_manager_001_宋L 这个月还有",
+  "active_intent": null,
+  "active_skill": "dealer-inventory",
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "id": "turn-1778316144744-user",
+      "role": "user",
+      "text": "宋L 这个月还有多少配额可以承诺",
+      "at": "2026-05-09T08:42:24.744Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "dealer.inventory_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "dealer-inventory",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_quotas",
+              "operation": "aggregate",
+              "filters": [
+                {
+                  "field": "series",
+                  "op": "contains",
+                  "value": "宋L"
+                }
+              ],
+              "metrics": [
+                {
+                  "type": "count",
+                  "field": "id",
+                  "as": "dealer_quotas_count"
+                }
+              ],
+              "fields": [
+                "id",
+                "store_name",
+                "month",
+                "series",
+                "model",
+                "color",
+                "quota_total",
+                "bound_inbound_count",
+                "available_quota"
+              ],
+              "sort": [
+                {
+                  "field": "available_quota",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_quotas",
+                "operation": "aggregate",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_quotas",
+            "operation": "aggregate",
+            "total": 1,
+            "row_count": 0,
+            "sample_rows": [],
+            "metrics": [
+              {
+                "as": "dealer_quotas_count",
+                "type": "count",
+                "field": "id",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询结果：符合条件的配额记录共 1 条。"
+      }
+    },
+    {
+      "id": "turn-1778316144744-assistant",
+      "role": "assistant",
+      "text": "查询结果：符合条件的配额记录共 1 条。",
+      "at": "2026-05-09T08:42:24.744Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "dealer.inventory_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "dealer-inventory",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_quotas",
+              "operation": "aggregate",
+              "filters": [
+                {
+                  "field": "series",
+                  "op": "contains",
+                  "value": "宋L"
+                }
+              ],
+              "metrics": [
+                {
+                  "type": "count",
+                  "field": "id",
+                  "as": "dealer_quotas_count"
+                }
+              ],
+              "fields": [
+                "id",
+                "store_name",
+                "month",
+                "series",
+                "model",
+                "color",
+                "quota_total",
+                "bound_inbound_count",
+                "available_quota"
+              ],
+              "sort": [
+                {
+                  "field": "available_quota",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_quotas",
+                "operation": "aggregate",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_quotas",
+            "operation": "aggregate",
+            "total": 1,
+            "row_count": 0,
+            "sample_rows": [],
+            "metrics": [
+              {
+                "as": "dealer_quotas_count",
+                "type": "count",
+                "field": "id",
+                "value": 1
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询结果：符合条件的配额记录共 1 条。"
+      }
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-09T08:42:24.733Z",
+  "updated_at": "2026-05-09T08:42:24.744Z"
+}

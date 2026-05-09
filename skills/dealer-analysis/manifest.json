@@ -1,0 +1,12 @@
+{
+  "id": "dealer-analysis",
+  "name": "dealer-analysis",
+  "version": "0.1.0",
+  "enabled": true,
+  "description": "Plan dealer operating analysis, risk review, daily/weekly report, dashboard, and priority diagnosis queries.",
+  "planning_style": "guided",
+  "intents": ["data_query", "mixed"],
+  "intent_codes": ["dealer.analysis_query"],
+  "required_primitives": ["query"],
+  "output_modes": ["answer", "table", "report"]
+}

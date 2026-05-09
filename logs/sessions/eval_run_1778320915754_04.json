@@ -1,0 +1,48 @@
+{
+  "id": "eval_run_1778320915754_04",
+  "active_intent": null,
+  "active_skill": "knowledge-qa",
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "id": "turn-1778320915862-user",
+      "role": "user",
+      "text": "差旅报销标准是什么？",
+      "at": "2026-05-09T10:01:55.862Z",
+      "metadata": {
+        "route": {
+          "intent": "knowledge_qa",
+          "intent_code": "knowledge.policy_qa",
+          "confidence": 0.86,
+          "reason": "涉及制度、流程或知识库内容"
+        },
+        "selected_skill": "knowledge-qa",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "一线城市住宿标准为每晚不超过 600 元，其他城市每晚不超过 450 元。超过标准需要在报销单中说明原因，并由部门负责人审批。 参考来源：差旅与报销制度 / 住宿标准；差旅与报销制度 / 交通标准；差旅与报销制度 / 适用范围；差旅与报销制度 / 提交时限"
+      }
+    },
+    {
+      "id": "turn-1778320915862-assistant",
+      "role": "assistant",
+      "text": "一线城市住宿标准为每晚不超过 600 元，其他城市每晚不超过 450 元。超过标准需要在报销单中说明原因，并由部门负责人审批。 参考来源：差旅与报销制度 / 住宿标准；差旅与报销制度 / 交通标准；差旅与报销制度 / 适用范围；差旅与报销制度 / 提交时限",
+      "at": "2026-05-09T10:01:55.862Z",
+      "metadata": {
+        "route": {
+          "intent": "knowledge_qa",
+          "intent_code": "knowledge.policy_qa",
+          "confidence": 0.86,
+          "reason": "涉及制度、流程或知识库内容"
+        },
+        "selected_skill": "knowledge-qa",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "一线城市住宿标准为每晚不超过 600 元，其他城市每晚不超过 450 元。超过标准需要在报销单中说明原因，并由部门负责人审批。 参考来源：差旅与报销制度 / 住宿标准；差旅与报销制度 / 交通标准；差旅与报销制度 / 适用范围；差旅与报销制度 / 提交时限"
+      }
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-09T10:01:55.850Z",
+  "updated_at": "2026-05-09T10:01:55.862Z"
+}

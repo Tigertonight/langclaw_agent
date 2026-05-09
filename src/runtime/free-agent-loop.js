@@ -1,4 +1,5 @@
 import { summarizeUser } from "../auth/users.js";
+import { planDealerEvidenceFollowUp } from "../dealer/dealer-evidence.js";
 import {
   executeToolsNode,
   generateAnswerNode,
@@ -65,6 +66,7 @@ export class FreeAgentLoop {
     const previousCalls = [];
     let currentToolPlan = toolPlan;
     for (let round = 0; round < this.maxToolRounds && currentToolPlan.calls.length > 0; round += 1) {
+      agentSteps.push(createAgentStep("tool_round", `第 ${round + 1} 轮执行`, describeToolRound(round, currentToolPlan)));
       const roundResults = await executeToolsNode({
         toolRegistry: this.toolRegistry,
         user,
@@ -75,6 +77,24 @@ export class FreeAgentLoop {
       recordToolRound(state, currentToolPlan, roundResults);
       agentSteps.push(...createToolSteps(currentToolPlan, roundResults));
       agentSteps.push(createObservationStep(state));
+
+      const evidenceFollowUpPlan = planDealerEvidenceFollowUp({
+        message,
+        route,
+        agentState: snapshotAgentState(state),
+        previousCalls
+      });
+      decideContinuation(state, evidenceFollowUpPlan);
+      if (evidenceFollowUpPlan.calls?.length && state.status === "running") {
+        agentSteps.push(createAgentStep("plan_evidence", "补齐证据", "长任务还缺少可引用的数据明细，继续补齐经营分析证据。", {
+          action: {
+            type: "tool_call",
+            tools: evidenceFollowUpPlan.calls.map((call) => call.name)
+          }
+        }));
+        currentToolPlan = evidenceFollowUpPlan;
+        continue;
+      }
 
       const followUpPlan = await planFollowUpToolCallsNode({
         llm: this.llm,
@@ -110,7 +130,7 @@ export class FreeAgentLoop {
     });
 
     agentSteps.push(createAgentStep("final_answer", "生成最终答复", "已结合可访问的数据、知识库片段和执行结果组织回答。"));
-    return { docs, toolPlan: { calls: previousCalls }, toolResults, answer: generated.answer, agentSteps, agentState: snapshotAgentState(state) };
+    return { docs, toolPlan: { calls: previousCalls }, toolResults, answer: generated.answer, artifacts: generated.artifacts ?? [], agentSteps, agentState: snapshotAgentState(state) };
   }
 
   async runStream({ user, message, route, history = [], skills = [], selectedSkill, enterpriseContext, conversationContext, agentSteps, emit, pushStep }) {
@@ -155,6 +175,7 @@ export class FreeAgentLoop {
     const previousCalls = [];
     let currentToolPlan = toolPlan;
     for (let round = 0; round < this.maxToolRounds && currentToolPlan.calls.length > 0; round += 1) {
+      await pushStep(createAgentStep("tool_round", `第 ${round + 1} 轮执行`, describeToolRound(round, currentToolPlan)));
       const roundResults = await executeToolsNode({
         toolRegistry: this.toolRegistry,
         user,
@@ -167,6 +188,24 @@ export class FreeAgentLoop {
         await pushStep(step);
       }
       await pushStep(createObservationStep(state));
+
+      const evidenceFollowUpPlan = planDealerEvidenceFollowUp({
+        message,
+        route,
+        agentState: snapshotAgentState(state),
+        previousCalls
+      });
+      decideContinuation(state, evidenceFollowUpPlan);
+      if (evidenceFollowUpPlan.calls?.length && state.status === "running") {
+        await pushStep(createAgentStep("plan_evidence", "补齐证据", "长任务还缺少可引用的数据明细，继续补齐经营分析证据。", {
+          action: {
+            type: "tool_call",
+            tools: evidenceFollowUpPlan.calls.map((call) => call.name)
+          }
+        }));
+        currentToolPlan = evidenceFollowUpPlan;
+        continue;
+      }
 
       const followUpPlan = await planFollowUpToolCallsNode({
         llm: this.llm,
@@ -213,9 +252,19 @@ export class FreeAgentLoop {
       toolPlan: { calls: previousCalls },
       toolResults,
       answer: generated.answer || answer,
+      artifacts: generated.artifacts ?? [],
       agentSteps,
       agentState: snapshotAgentState(state),
       answerAlreadyStreamed: true
     };
   }
+}
+
+function describeToolRound(round, toolPlan) {
+  const resources = (toolPlan.calls ?? [])
+    .map((call) => call.args?.resource)
+    .filter(Boolean);
+  const target = resources.length ? resources.join("、") : (toolPlan.calls ?? []).map((call) => call.name).join("、");
+  if (round === 0) return `首轮查询核心事实：${target || "业务工具"}。`;
+  return `第 ${round + 1} 轮 loop 补充缺失证据：${target || "业务工具"}。`;
 }

@@ -1,0 +1,748 @@
+{
+  "id": "manager_table_1778318976341_23",
+  "active_intent": null,
+  "active_skill": "dealer-analysis",
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "id": "turn-1778318977030-user",
+      "role": "user",
+      "text": "帮我从门店总经理视角制定下周经营计划，要求先找风险，再拆解到销售、库存、财务、售后三个负责人。",
+      "at": "2026-05-09T09:29:37.030Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "dealer.analysis_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "dealer-analysis",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_metrics",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "category",
+                  "op": "in",
+                  "value": [
+                    "inventory",
+                    "sales",
+                    "finance",
+                    "after_sales"
+                  ]
+                },
+                {
+                  "field": "severity",
+                  "op": "in",
+                  "value": [
+                    "critical",
+                    "warning"
+                  ]
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "store_name",
+                "category",
+                "metric",
+                "value",
+                "unit",
+                "severity",
+                "summary",
+                "recommendation",
+                "related_resource",
+                "related_ids"
+              ],
+              "sort": [
+                {
+                  "field": "severity",
+                  "direction": "asc"
+                },
+                {
+                  "field": "category",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_metrics",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          },
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_vehicles",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "stock_warning_level",
+                  "op": "in",
+                  "value": [
+                    "关注",
+                    "预警",
+                    "紧急"
+                  ]
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "vin",
+                "store_name",
+                "series",
+                "model",
+                "color",
+                "status",
+                "stock_age_days",
+                "stock_warning_level",
+                "landing_cost",
+                "certificate_status",
+                "sales_order_id"
+              ],
+              "sort": [
+                {
+                  "field": "stock_age_days",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_vehicles",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          },
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_finance",
+              "operation": "search",
+              "filters": [],
+              "metrics": [],
+              "fields": [
+                "id",
+                "resource_type",
+                "store_name",
+                "direction",
+                "category",
+                "amount",
+                "balance_after",
+                "related_order_id",
+                "occurred_at",
+                "status"
+              ],
+              "sort": [
+                {
+                  "field": "occurred_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_finance",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          },
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_repair_orders",
+              "operation": "search",
+              "filters": [],
+              "metrics": [],
+              "fields": [
+                "id",
+                "store_name",
+                "customer_name",
+                "vin",
+                "series",
+                "service_advisor_name",
+                "order_type",
+                "status",
+                "promised_finish_at",
+                "receivable_amount",
+                "warranty_claim_id"
+              ],
+              "sort": [
+                {
+                  "field": "appointment_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_repair_orders",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_metrics",
+            "operation": "search",
+            "total": 13,
+            "row_count": 13,
+            "sample_rows": [
+              {
+                "store_name": "比亚迪华南标准店",
+                "category": "finance",
+                "metric": "discount_wallet_balance",
+                "value": 0,
+                "unit": "元",
+                "severity": "critical",
+                "summary": "比亚迪华南标准店 折让金最新余额为 0 元。",
+                "recommendation": "结合近期采购计划评估折让金抵扣能力。",
+                "related_resource": "dealer_finance",
+                "related_ids": []
+              },
+              {
+                "store_name": "比亚迪华东旗舰店",
+                "category": "inventory",
+                "metric": "stock_risk_vehicle_count",
+                "value": 2,
+                "unit": "辆",
+                "severity": "critical",
+                "summary": "比亚迪华东旗舰店 有 2 辆库龄风险车，其中 1 辆紧急。",
+                "recommendation": "优先处理90天以上库存，制定清库、调拨或促销方案。",
+                "related_resource": "dealer_vehicles",
+                "related_ids": [
+                  "LGXCF6CD0P000001",
+                  "LGXCF6CD0P000004"
+                ]
+              },
+              {
+                "store_name": "比亚迪华东旗舰店",
+                "category": "after_sales",
+                "metric": "open_repair_order_count",
+                "value": 2,
+                "unit": "单",
+                "severity": "warning",
+                "summary": "比亚迪华东旗舰店 有 2 张售后工单未关闭。",
+                "recommendation": "跟进施工、质检和结算节点，避免超时。",
+                "related_resource": "dealer_repair_orders",
+                "related_ids": [
+                  "RO-202605-001",
+                  "RO-202605-003"
+                ]
+              }
+            ]
+          },
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_vehicles",
+            "operation": "search",
+            "total": 3,
+            "row_count": 3,
+            "sample_rows": [
+              {
+                "vin": "LGXCF6CD0P000001",
+                "store_name": "比亚迪华东旗舰店",
+                "series": "汉",
+                "model": "汉EV荣耀版 605KM 尊贵型",
+                "status": "在库",
+                "stock_age_days": 98,
+                "stock_warning_level": "紧急",
+                "landing_cost": 242600
+              },
+              {
+                "vin": "LGXCF6CD0P000003",
+                "store_name": "比亚迪华南标准店",
+                "series": "海豹",
+                "model": "海豹DM-i荣耀版 121KM",
+                "status": "展车",
+                "stock_age_days": 45,
+                "stock_warning_level": "关注",
+                "landing_cost": 181900
+              },
+              {
+                "vin": "LGXCF6CD0P000004",
+                "store_name": "比亚迪华东旗舰店",
+                "series": "秦PLUS",
+                "model": "秦PLUS DM-i荣耀版 120KM",
+                "status": "试驾车",
+                "stock_age_days": 37,
+                "stock_warning_level": "关注",
+                "landing_cost": 115500
+              }
+            ]
+          },
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_finance",
+            "operation": "search",
+            "total": 5,
+            "row_count": 5,
+            "sample_rows": [
+              {
+                "id": "AP-202605-001",
+                "resource_type": "payable",
+                "store_name": "比亚迪华南标准店",
+                "direction": "应付",
+                "category": "整车采购",
+                "amount": 286000,
+                "balance_after": 286000,
+                "status": "未结清"
+              },
+              {
+                "id": "DW-202605-002",
+                "resource_type": "discount_wallet",
+                "store_name": "比亚迪华东旗舰店",
+                "direction": "出账",
+                "category": "采购抵扣",
+                "amount": 168000,
+                "balance_after": 252000,
+                "status": "已出账"
+              },
+              {
+                "id": "RC-202605-001",
+                "resource_type": "receipt",
+                "store_name": "比亚迪华东旗舰店",
+                "direction": "收款",
+                "category": "客户首付",
+                "amount": 90000,
+                "balance_after": null,
+                "status": "已到账"
+              }
+            ]
+          },
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_repair_orders",
+            "operation": "search",
+            "total": 3,
+            "row_count": 3,
+            "sample_rows": [
+              {
+                "id": "RO-202605-001",
+                "store_name": "比亚迪华东旗舰店",
+                "customer_name": "王芳",
+                "vin": "LGXCF6CD0P000088",
+                "order_type": "常规保养",
+                "status": "待结算",
+                "receivable_amount": 378,
+                "warranty_claim_id": null
+              },
+              {
+                "id": "RO-202605-003",
+                "store_name": "比亚迪华东旗舰店",
+                "customer_name": "孙洁",
+                "vin": "LGXCF6CD0P000099",
+                "order_type": "事故维修",
+                "status": "施工中",
+                "receivable_amount": 4400,
+                "warranty_claim_id": null
+              },
+              {
+                "id": "RO-202605-002",
+                "store_name": "比亚迪华南标准店",
+                "customer_name": "赵强",
+                "vin": "LGXCF6CD0P000077",
+                "order_type": "三包索赔",
+                "status": "厂家审核中",
+                "receivable_amount": 0,
+                "warranty_claim_id": "WC-202605-001"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 13 条经营指标： - 比亚迪华南标准店 / finance / discount_wallet_balance：0元，风险级别「critical」。比亚迪华南标准店 折让金最新余额为 0 元。 建议：结合近期采购计划评估折让金抵扣能力。 - 比亚迪华东旗舰店 / inventory / stock_risk_vehicle_count：2辆，风险级别「critical」。比亚迪华东旗舰店 有 2 辆库龄风险车，其中 1 辆紧急。 建议：优先处理90天以上库存，制定清..."
+      }
+    },
+    {
+      "id": "turn-1778318977030-assistant",
+      "role": "assistant",
+      "text": "查询到 13 条经营指标： - 比亚迪华南标准店 / finance / discount_wallet_balance：0元，风险级别「critical」。比亚迪华南标准店 折让金最新余额为 0 元。 建议：结合近期采购计划评估折让金抵扣能力。 - 比亚迪华东旗舰店 / inventory / stock_risk_vehicle_count：2辆，风险级别「critical」。比亚迪华东旗舰店 有 2 辆库龄风险车，其中 1 辆紧急。 建议：优先处理90天以上库存，制定清库、调拨或促销方案。 - 比亚迪华东旗舰店 / after_sales / open_repair_order_count：2单，风险级别「warning」。比亚迪华东旗舰店 有 2 张售后工单未关闭。 建议：跟进施工、质检和结算节点，避免超时。 - 比亚迪华南标准店 / after_sales / open_repair_order_count：1单，风险级别「warning」。比亚迪华南标准店 有 1 张售后工单未关闭。 建议：跟进施工、质检和结算节点，避免超时。 - 比亚迪华东旗舰店 / finance / ...",
+      "at": "2026-05-09T09:29:37.030Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "dealer.analysis_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "dealer-analysis",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_metrics",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "category",
+                  "op": "in",
+                  "value": [
+                    "inventory",
+                    "sales",
+                    "finance",
+                    "after_sales"
+                  ]
+                },
+                {
+                  "field": "severity",
+                  "op": "in",
+                  "value": [
+                    "critical",
+                    "warning"
+                  ]
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "store_name",
+                "category",
+                "metric",
+                "value",
+                "unit",
+                "severity",
+                "summary",
+                "recommendation",
+                "related_resource",
+                "related_ids"
+              ],
+              "sort": [
+                {
+                  "field": "severity",
+                  "direction": "asc"
+                },
+                {
+                  "field": "category",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_metrics",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          },
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_vehicles",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "stock_warning_level",
+                  "op": "in",
+                  "value": [
+                    "关注",
+                    "预警",
+                    "紧急"
+                  ]
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "vin",
+                "store_name",
+                "series",
+                "model",
+                "color",
+                "status",
+                "stock_age_days",
+                "stock_warning_level",
+                "landing_cost",
+                "certificate_status",
+                "sales_order_id"
+              ],
+              "sort": [
+                {
+                  "field": "stock_age_days",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_vehicles",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          },
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_finance",
+              "operation": "search",
+              "filters": [],
+              "metrics": [],
+              "fields": [
+                "id",
+                "resource_type",
+                "store_name",
+                "direction",
+                "category",
+                "amount",
+                "balance_after",
+                "related_order_id",
+                "occurred_at",
+                "status"
+              ],
+              "sort": [
+                {
+                  "field": "occurred_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_finance",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          },
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_repair_orders",
+              "operation": "search",
+              "filters": [],
+              "metrics": [],
+              "fields": [
+                "id",
+                "store_name",
+                "customer_name",
+                "vin",
+                "series",
+                "service_advisor_name",
+                "order_type",
+                "status",
+                "promised_finish_at",
+                "receivable_amount",
+                "warranty_claim_id"
+              ],
+              "sort": [
+                {
+                  "field": "appointment_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_repair_orders",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_metrics",
+            "operation": "search",
+            "total": 13,
+            "row_count": 13,
+            "sample_rows": [
+              {
+                "store_name": "比亚迪华南标准店",
+                "category": "finance",
+                "metric": "discount_wallet_balance",
+                "value": 0,
+                "unit": "元",
+                "severity": "critical",
+                "summary": "比亚迪华南标准店 折让金最新余额为 0 元。",
+                "recommendation": "结合近期采购计划评估折让金抵扣能力。",
+                "related_resource": "dealer_finance",
+                "related_ids": []
+              },
+              {
+                "store_name": "比亚迪华东旗舰店",
+                "category": "inventory",
+                "metric": "stock_risk_vehicle_count",
+                "value": 2,
+                "unit": "辆",
+                "severity": "critical",
+                "summary": "比亚迪华东旗舰店 有 2 辆库龄风险车，其中 1 辆紧急。",
+                "recommendation": "优先处理90天以上库存，制定清库、调拨或促销方案。",
+                "related_resource": "dealer_vehicles",
+                "related_ids": [
+                  "LGXCF6CD0P000001",
+                  "LGXCF6CD0P000004"
+                ]
+              },
+              {
+                "store_name": "比亚迪华东旗舰店",
+                "category": "after_sales",
+                "metric": "open_repair_order_count",
+                "value": 2,
+                "unit": "单",
+                "severity": "warning",
+                "summary": "比亚迪华东旗舰店 有 2 张售后工单未关闭。",
+                "recommendation": "跟进施工、质检和结算节点，避免超时。",
+                "related_resource": "dealer_repair_orders",
+                "related_ids": [
+                  "RO-202605-001",
+                  "RO-202605-003"
+                ]
+              }
+            ]
+          },
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_vehicles",
+            "operation": "search",
+            "total": 3,
+            "row_count": 3,
+            "sample_rows": [
+              {
+                "vin": "LGXCF6CD0P000001",
+                "store_name": "比亚迪华东旗舰店",
+                "series": "汉",
+                "model": "汉EV荣耀版 605KM 尊贵型",
+                "status": "在库",
+                "stock_age_days": 98,
+                "stock_warning_level": "紧急",
+                "landing_cost": 242600
+              },
+              {
+                "vin": "LGXCF6CD0P000003",
+                "store_name": "比亚迪华南标准店",
+                "series": "海豹",
+                "model": "海豹DM-i荣耀版 121KM",
+                "status": "展车",
+                "stock_age_days": 45,
+                "stock_warning_level": "关注",
+                "landing_cost": 181900
+              },
+              {
+                "vin": "LGXCF6CD0P000004",
+                "store_name": "比亚迪华东旗舰店",
+                "series": "秦PLUS",
+                "model": "秦PLUS DM-i荣耀版 120KM",
+                "status": "试驾车",
+                "stock_age_days": 37,
+                "stock_warning_level": "关注",
+                "landing_cost": 115500
+              }
+            ]
+          },
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_finance",
+            "operation": "search",
+            "total": 5,
+            "row_count": 5,
+            "sample_rows": [
+              {
+                "id": "AP-202605-001",
+                "resource_type": "payable",
+                "store_name": "比亚迪华南标准店",
+                "direction": "应付",
+                "category": "整车采购",
+                "amount": 286000,
+                "balance_after": 286000,
+                "status": "未结清"
+              },
+              {
+                "id": "DW-202605-002",
+                "resource_type": "discount_wallet",
+                "store_name": "比亚迪华东旗舰店",
+                "direction": "出账",
+                "category": "采购抵扣",
+                "amount": 168000,
+                "balance_after": 252000,
+                "status": "已出账"
+              },
+              {
+                "id": "RC-202605-001",
+                "resource_type": "receipt",
+                "store_name": "比亚迪华东旗舰店",
+                "direction": "收款",
+                "category": "客户首付",
+                "amount": 90000,
+                "balance_after": null,
+                "status": "已到账"
+              }
+            ]
+          },
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_repair_orders",
+            "operation": "search",
+            "total": 3,
+            "row_count": 3,
+            "sample_rows": [
+              {
+                "id": "RO-202605-001",
+                "store_name": "比亚迪华东旗舰店",
+                "customer_name": "王芳",
+                "vin": "LGXCF6CD0P000088",
+                "order_type": "常规保养",
+                "status": "待结算",
+                "receivable_amount": 378,
+                "warranty_claim_id": null
+              },
+              {
+                "id": "RO-202605-003",
+                "store_name": "比亚迪华东旗舰店",
+                "customer_name": "孙洁",
+                "vin": "LGXCF6CD0P000099",
+                "order_type": "事故维修",
+                "status": "施工中",
+                "receivable_amount": 4400,
+                "warranty_claim_id": null
+              },
+              {
+                "id": "RO-202605-002",
+                "store_name": "比亚迪华南标准店",
+                "customer_name": "赵强",
+                "vin": "LGXCF6CD0P000077",
+                "order_type": "三包索赔",
+                "status": "厂家审核中",
+                "receivable_amount": 0,
+                "warranty_claim_id": "WC-202605-001"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 13 条经营指标： - 比亚迪华南标准店 / finance / discount_wallet_balance：0元，风险级别「critical」。比亚迪华南标准店 折让金最新余额为 0 元。 建议：结合近期采购计划评估折让金抵扣能力。 - 比亚迪华东旗舰店 / inventory / stock_risk_vehicle_count：2辆，风险级别「critical」。比亚迪华东旗舰店 有 2 辆库龄风险车，其中 1 辆紧急。 建议：优先处理90天以上库存，制定清..."
+      }
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-09T09:29:37.015Z",
+  "updated_at": "2026-05-09T09:29:37.030Z"
+}

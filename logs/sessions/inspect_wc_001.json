@@ -1,0 +1,48 @@
+{
+  "id": "inspect_wc_001",
+  "active_intent": null,
+  "active_skill": "knowledge-qa",
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "id": "turn-1778319876502-user",
+      "role": "user",
+      "text": "WC-202604-012 这一单谁在跟",
+      "at": "2026-05-09T09:44:36.502Z",
+      "metadata": {
+        "route": {
+          "intent": "knowledge_qa",
+          "intent_code": "knowledge.policy_qa",
+          "confidence": 0.55,
+          "reason": "默认优先检索知识库"
+        },
+        "selected_skill": "knowledge-qa",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "我没有在可访问的数据或知识库中找到足够依据，暂时无法确认。"
+      }
+    },
+    {
+      "id": "turn-1778319876502-assistant",
+      "role": "assistant",
+      "text": "我没有在可访问的数据或知识库中找到足够依据，暂时无法确认。",
+      "at": "2026-05-09T09:44:36.502Z",
+      "metadata": {
+        "route": {
+          "intent": "knowledge_qa",
+          "intent_code": "knowledge.policy_qa",
+          "confidence": 0.55,
+          "reason": "默认优先检索知识库"
+        },
+        "selected_skill": "knowledge-qa",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "我没有在可访问的数据或知识库中找到足够依据，暂时无法确认。"
+      }
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-09T09:44:36.437Z",
+  "updated_at": "2026-05-09T09:44:36.502Z"
+}

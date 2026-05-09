@@ -1,0 +1,48 @@
+{
+  "id": "eval_run_1778319985226_05",
+  "active_intent": null,
+  "active_skill": "knowledge-qa",
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "id": "turn-1778319985358-user",
+      "role": "user",
+      "text": "新员工试用期规则是什么？",
+      "at": "2026-05-09T09:46:25.358Z",
+      "metadata": {
+        "route": {
+          "intent": "knowledge_qa",
+          "intent_code": "knowledge.policy_qa",
+          "confidence": 0.86,
+          "reason": "涉及制度、流程或知识库内容"
+        },
+        "selected_skill": "knowledge-qa",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "正式员工试用期通常为 3 个月。 参考来源：员工手册 / 试用期；员工手册 / 入职材料；员工手册 / 员工隐私；员工手册 / 年假；员工手册 / 病假"
+      }
+    },
+    {
+      "id": "turn-1778319985358-assistant",
+      "role": "assistant",
+      "text": "正式员工试用期通常为 3 个月。 参考来源：员工手册 / 试用期；员工手册 / 入职材料；员工手册 / 员工隐私；员工手册 / 年假；员工手册 / 病假",
+      "at": "2026-05-09T09:46:25.358Z",
+      "metadata": {
+        "route": {
+          "intent": "knowledge_qa",
+          "intent_code": "knowledge.policy_qa",
+          "confidence": 0.86,
+          "reason": "涉及制度、流程或知识库内容"
+        },
+        "selected_skill": "knowledge-qa",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "正式员工试用期通常为 3 个月。 参考来源：员工手册 / 试用期；员工手册 / 入职材料；员工手册 / 员工隐私；员工手册 / 年假；员工手册 / 病假"
+      }
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-09T09:46:25.348Z",
+  "updated_at": "2026-05-09T09:46:25.358Z"
+}

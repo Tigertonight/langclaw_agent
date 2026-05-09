@@ -1,0 +1,174 @@
+{
+  "id": "manager_table_1778318976341_25",
+  "active_intent": null,
+  "active_skill": "business-query",
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "id": "turn-1778318977064-user",
+      "role": "user",
+      "text": "帮我准备一份晨会材料：昨天风险、今天重点、需要协调的问题、每个部门的行动项。",
+      "at": "2026-05-09T09:29:37.064Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "org.employee_query",
+          "confidence": 0.86,
+          "reason": "涉及企业通讯录、组织架构或人员汇报关系"
+        },
+        "selected_skill": "business-query",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "employees",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "userid",
+                  "op": "eq",
+                  "value": "__CURRENT_USER__"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "userid",
+                "name",
+                "department_name",
+                "position",
+                "role",
+                "direct_leader",
+                "reporting",
+                "main_department",
+                "department"
+              ],
+              "sort": [
+                {
+                  "field": "main_department",
+                  "direction": "asc"
+                },
+                {
+                  "field": "userid",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 1,
+              "display": {
+                "domain": "organization",
+                "target": "employees",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询员工个人组织、岗位或上级信息。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "employees",
+            "operation": "search",
+            "total": 1,
+            "row_count": 1,
+            "sample_rows": [
+              {
+                "userid": "store_gm_001",
+                "name": "顾明远",
+                "department_name": "门店管理层",
+                "position": "门店总经理",
+                "role": "store_general_manager"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 1 名员工： - 顾明远（store_gm_001）：门店管理层 / 门店总经理。直属上级：无。门店线最高负责人。"
+      }
+    },
+    {
+      "id": "turn-1778318977064-assistant",
+      "role": "assistant",
+      "text": "查询到 1 名员工： - 顾明远（store_gm_001）：门店管理层 / 门店总经理。直属上级：无。门店线最高负责人。",
+      "at": "2026-05-09T09:29:37.064Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "org.employee_query",
+          "confidence": 0.86,
+          "reason": "涉及企业通讯录、组织架构或人员汇报关系"
+        },
+        "selected_skill": "business-query",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "employees",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "userid",
+                  "op": "eq",
+                  "value": "__CURRENT_USER__"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "userid",
+                "name",
+                "department_name",
+                "position",
+                "role",
+                "direct_leader",
+                "reporting",
+                "main_department",
+                "department"
+              ],
+              "sort": [
+                {
+                  "field": "main_department",
+                  "direction": "asc"
+                },
+                {
+                  "field": "userid",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 1,
+              "display": {
+                "domain": "organization",
+                "target": "employees",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询员工个人组织、岗位或上级信息。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "employees",
+            "operation": "search",
+            "total": 1,
+            "row_count": 1,
+            "sample_rows": [
+              {
+                "userid": "store_gm_001",
+                "name": "顾明远",
+                "department_name": "门店管理层",
+                "position": "门店总经理",
+                "role": "store_general_manager"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 1 名员工： - 顾明远（store_gm_001）：门店管理层 / 门店总经理。直属上级：无。门店线最高负责人。"
+      }
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-09T09:29:37.052Z",
+  "updated_at": "2026-05-09T09:29:37.064Z"
+}

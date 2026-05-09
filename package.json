@@ -8,6 +8,7 @@
     "chat": "node src/cli.js",
     "server": "node src/server/http.js",
     "eval": "node src/eval/run-eval.js",
+    "eval:dealer": "node src/eval/dealer-smoke.js",
     "smoke": "node src/eval/smoke.js",
     "arch:smoke": "node src/eval/architecture-smoke.js",
     "session:smoke": "node src/eval/session-recovery.js",

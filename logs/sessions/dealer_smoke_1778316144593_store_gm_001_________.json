@@ -1,0 +1,416 @@
+{
+  "id": "dealer_smoke_1778316144593_store_gm_001_查一下当前整车库",
+  "active_intent": null,
+  "active_skill": "dealer-sales",
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "id": "turn-1778316144713-user",
+      "role": "user",
+      "text": "查一下当前整车库存库龄风险",
+      "at": "2026-05-09T08:42:24.713Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "dealer.inventory_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "dealer-inventory",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_vehicles",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "stock_warning_level",
+                  "op": "in",
+                  "value": [
+                    "关注",
+                    "预警",
+                    "紧急"
+                  ]
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "vin",
+                "store_name",
+                "series",
+                "model",
+                "color",
+                "status",
+                "stock_age_days",
+                "stock_warning_level",
+                "landing_cost",
+                "certificate_status",
+                "sales_order_id"
+              ],
+              "sort": [
+                {
+                  "field": "stock_age_days",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_vehicles",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_vehicles",
+            "operation": "search",
+            "total": 3,
+            "row_count": 3,
+            "sample_rows": [
+              {
+                "vin": "LGXCF6CD0P000001",
+                "store_name": "比亚迪华东旗舰店",
+                "series": "汉",
+                "model": "汉EV荣耀版 605KM 尊贵型",
+                "status": "在库",
+                "stock_age_days": 98,
+                "stock_warning_level": "紧急",
+                "landing_cost": 242600
+              },
+              {
+                "vin": "LGXCF6CD0P000003",
+                "store_name": "比亚迪华南标准店",
+                "series": "海豹",
+                "model": "海豹DM-i荣耀版 121KM",
+                "status": "展车",
+                "stock_age_days": 45,
+                "stock_warning_level": "关注",
+                "landing_cost": 181900
+              },
+              {
+                "vin": "LGXCF6CD0P000004",
+                "store_name": "比亚迪华东旗舰店",
+                "series": "秦PLUS",
+                "model": "秦PLUS DM-i荣耀版 120KM",
+                "status": "试驾车",
+                "stock_age_days": 37,
+                "stock_warning_level": "关注",
+                "landing_cost": 115500
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 3 条整车库存： - LGXCF6CD0P000001：比亚迪华东旗舰店 / 汉 汉EV荣耀版 605KM 尊贵型，状态「在库」，库龄 98 天（紧急），综合成本 242600 元。 - LGXCF6CD0P000003：比亚迪华南标准店 / 海豹 海豹DM-i荣耀版 121KM，状态「展车」，库龄 45 天（关注），综合成本 181900 元。 - LGXCF6CD0P000004：比亚迪华东旗舰店 / 秦PLUS 秦PLUS DM-i荣耀版 120KM，状态「试驾..."
+      }
+    },
+    {
+      "id": "turn-1778316144713-assistant",
+      "role": "assistant",
+      "text": "查询到 3 条整车库存： - LGXCF6CD0P000001：比亚迪华东旗舰店 / 汉 汉EV荣耀版 605KM 尊贵型，状态「在库」，库龄 98 天（紧急），综合成本 242600 元。 - LGXCF6CD0P000003：比亚迪华南标准店 / 海豹 海豹DM-i荣耀版 121KM，状态「展车」，库龄 45 天（关注），综合成本 181900 元。 - LGXCF6CD0P000004：比亚迪华东旗舰店 / 秦PLUS 秦PLUS DM-i荣耀版 120KM，状态「试驾车」，库龄 37 天（关注），综合成本 115500 元。",
+      "at": "2026-05-09T08:42:24.713Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "dealer.inventory_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "dealer-inventory",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_vehicles",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "stock_warning_level",
+                  "op": "in",
+                  "value": [
+                    "关注",
+                    "预警",
+                    "紧急"
+                  ]
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "vin",
+                "store_name",
+                "series",
+                "model",
+                "color",
+                "status",
+                "stock_age_days",
+                "stock_warning_level",
+                "landing_cost",
+                "certificate_status",
+                "sales_order_id"
+              ],
+              "sort": [
+                {
+                  "field": "stock_age_days",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_vehicles",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_vehicles",
+            "operation": "search",
+            "total": 3,
+            "row_count": 3,
+            "sample_rows": [
+              {
+                "vin": "LGXCF6CD0P000001",
+                "store_name": "比亚迪华东旗舰店",
+                "series": "汉",
+                "model": "汉EV荣耀版 605KM 尊贵型",
+                "status": "在库",
+                "stock_age_days": 98,
+                "stock_warning_level": "紧急",
+                "landing_cost": 242600
+              },
+              {
+                "vin": "LGXCF6CD0P000003",
+                "store_name": "比亚迪华南标准店",
+                "series": "海豹",
+                "model": "海豹DM-i荣耀版 121KM",
+                "status": "展车",
+                "stock_age_days": 45,
+                "stock_warning_level": "关注",
+                "landing_cost": 181900
+              },
+              {
+                "vin": "LGXCF6CD0P000004",
+                "store_name": "比亚迪华东旗舰店",
+                "series": "秦PLUS",
+                "model": "秦PLUS DM-i荣耀版 120KM",
+                "status": "试驾车",
+                "stock_age_days": 37,
+                "stock_warning_level": "关注",
+                "landing_cost": 115500
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 3 条整车库存： - LGXCF6CD0P000001：比亚迪华东旗舰店 / 汉 汉EV荣耀版 605KM 尊贵型，状态「在库」，库龄 98 天（紧急），综合成本 242600 元。 - LGXCF6CD0P000003：比亚迪华南标准店 / 海豹 海豹DM-i荣耀版 121KM，状态「展车」，库龄 45 天（关注），综合成本 181900 元。 - LGXCF6CD0P000004：比亚迪华东旗舰店 / 秦PLUS 秦PLUS DM-i荣耀版 120KM，状态「试驾..."
+      }
+    },
+    {
+      "id": "turn-1778316144786-user",
+      "role": "user",
+      "text": "查一下待交付的销售订单",
+      "at": "2026-05-09T08:42:24.786Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "dealer.order_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "dealer-sales",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "你想查询哪个客户的订单状态？"
+      }
+    },
+    {
+      "id": "turn-1778316144786-assistant",
+      "role": "assistant",
+      "text": "你想查询哪个客户的订单状态？",
+      "at": "2026-05-09T08:42:24.786Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "dealer.order_query",
+          "confidence": 0.86,
+          "reason": "涉及客户、订单或销售报表"
+        },
+        "selected_skill": "dealer-sales",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "你想查询哪个客户的订单状态？"
+      }
+    },
+    {
+      "id": "turn-1778316144823-user",
+      "role": "user",
+      "text": "查一下三包索赔审核和被拒情况",
+      "at": "2026-05-09T08:42:24.823Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "dealer.order_query",
+          "confidence": 0.88,
+          "reason": "当前消息是对上一轮任务的范围、时间或筛选条件补充。"
+        },
+        "selected_skill": "dealer-sales",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_warranty_claims",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "claim_status",
+                  "op": "eq",
+                  "value": "已拒绝"
+                },
+                {
+                  "field": "claim_status",
+                  "op": "contains",
+                  "value": "审核"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "repair_order_id",
+                "store_name",
+                "customer_name",
+                "vin",
+                "series",
+                "fault_category",
+                "claim_status",
+                "claimed_amount",
+                "approved_amount",
+                "difference_amount",
+                "expected_settlement_at",
+                "evidence_status"
+              ],
+              "sort": [
+                {
+                  "field": "submitted_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_warranty_claims",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_warranty_claims",
+            "operation": "search",
+            "total": 0,
+            "row_count": 0,
+            "sample_rows": []
+          }
+        ],
+        "answer_summary": "没有找到符合条件的三包索赔。"
+      }
+    },
+    {
+      "id": "turn-1778316144823-assistant",
+      "role": "assistant",
+      "text": "没有找到符合条件的三包索赔。",
+      "at": "2026-05-09T08:42:24.823Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "dealer.order_query",
+          "confidence": 0.88,
+          "reason": "当前消息是对上一轮任务的范围、时间或筛选条件补充。"
+        },
+        "selected_skill": "dealer-sales",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "dealer_warranty_claims",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "claim_status",
+                  "op": "eq",
+                  "value": "已拒绝"
+                },
+                {
+                  "field": "claim_status",
+                  "op": "contains",
+                  "value": "审核"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "repair_order_id",
+                "store_name",
+                "customer_name",
+                "vin",
+                "series",
+                "fault_category",
+                "claim_status",
+                "claimed_amount",
+                "approved_amount",
+                "difference_amount",
+                "expected_settlement_at",
+                "evidence_status"
+              ],
+              "sort": [
+                {
+                  "field": "submitted_at",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "dealer",
+                "target": "dealer_warranty_claims",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询经销商管理系统业务数据。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "dealer_warranty_claims",
+            "operation": "search",
+            "total": 0,
+            "row_count": 0,
+            "sample_rows": []
+          }
+        ],
+        "answer_summary": "没有找到符合条件的三包索赔。"
+      }
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-09T08:42:24.620Z",
+  "updated_at": "2026-05-09T08:42:24.823Z"
+}
