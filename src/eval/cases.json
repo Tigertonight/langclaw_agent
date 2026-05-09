@@ -1,0 +1,213 @@
+[
+  {
+    "name": "销售查询自己客户订单",
+    "user_id": "sales_001",
+    "message": "帮我查一下星河科技最近订单状态",
+    "expected_intent": "data_query",
+    "expected_tools": ["query_business_data"],
+    "expected_answer_contains": ["待发货"],
+    "expected_permission": "allowed"
+  },
+  {
+    "name": "销售越权查询别人客户订单",
+    "user_id": "sales_001",
+    "message": "南湾零售最近订单状态是什么？",
+    "expected_intent": "data_query",
+    "expected_tools": ["query_business_data"],
+    "expected_answer_contains": ["没有权限"],
+    "expected_permission": "denied",
+    "expected_available_tools_excludes": ["query_sales_report"]
+  },
+  {
+    "name": "HR 越权查询销售额",
+    "user_id": "hr_001",
+    "message": "星河科技今年成交额是多少？",
+    "expected_intent": "data_query",
+    "expected_tools": ["query_business_data"],
+    "expected_answer_contains": ["没有权限"],
+    "expected_permission": "denied"
+  },
+  {
+    "name": "员工查询报销政策",
+    "user_id": "sales_001",
+    "message": "差旅报销标准是什么？",
+    "expected_intent": "knowledge_qa",
+    "expected_tools": [],
+    "expected_sources": ["docs/knowledge/expense_policy.md"],
+    "expected_answer_contains": ["住宿标准"]
+  },
+  {
+    "name": "HR 查询试用期规则",
+    "user_id": "hr_001",
+    "message": "新员工试用期规则是什么？",
+    "expected_intent": "knowledge_qa",
+    "expected_tools": [],
+    "expected_sources": ["docs/knowledge/hr_handbook.md"],
+    "expected_answer_contains": ["试用期"]
+  },
+  {
+    "name": "管理者查询部门报表",
+    "user_id": "manager_001",
+    "message": "华东销售部今年销售额和pipeline是多少？",
+    "expected_intent": "data_query",
+    "expected_tools": ["query_business_data"],
+    "expected_answer_contains": ["790000", "1320000"],
+    "expected_permission": "allowed"
+  },
+  {
+    "name": "请假场景首轮缺槽位",
+    "user_id": "sales_001",
+    "session_id": "eval_leave_001",
+    "message": "我明天想请假",
+    "expected_intent": "leave_request",
+    "expected_tools": [],
+    "expected_answer_contains": ["请假类型", "结束时间", "请假事由"],
+    "expected_scenario_step": "collecting",
+    "expected_available_tools_excludes": ["submit_leave_request"]
+  },
+  {
+    "name": "请假场景补齐后等待确认",
+    "user_id": "sales_001",
+    "session_id": "eval_leave_001",
+    "message": "年假，请到下午6点，因为家里有事",
+    "expected_intent": "leave_request",
+    "expected_tools": [],
+    "expected_answer_contains": ["请确认", "年假", "家里有事"],
+    "expected_scenario_step": "awaiting_confirmation",
+    "expected_available_tools_includes": ["submit_leave_request"]
+  },
+  {
+    "name": "请假场景确认提交",
+    "user_id": "sales_001",
+    "session_id": "eval_leave_001",
+    "message": "确认",
+    "expected_intent": "leave_request",
+    "expected_tools": [],
+    "expected_answer_contains": ["请假申请已提交", "LR-"],
+    "expected_scenario_step": "completed",
+    "expected_scenario_available_tools_includes": ["submit_leave_request"]
+  },
+  {
+    "name": "请假场景可自然取消",
+    "user_id": "sales_001",
+    "session_id": "eval_leave_cancel_001",
+    "message": "我明天想请假",
+    "expected_intent": "leave_request",
+    "expected_tools": [],
+    "expected_answer_contains": ["请假类型"],
+    "expected_scenario_step": "collecting"
+  },
+  {
+    "name": "请假场景取消后退出",
+    "user_id": "sales_001",
+    "session_id": "eval_leave_cancel_001",
+    "message": "不请假了",
+    "expected_intent": "leave_request",
+    "expected_tools": [],
+    "expected_answer_contains": ["已取消"],
+    "expected_scenario_step": "cancelled"
+  },
+  {
+    "name": "请假场景中可切换到知识库",
+    "user_id": "sales_001",
+    "session_id": "eval_leave_switch_001",
+    "message": "我明天想请假",
+    "expected_intent": "leave_request",
+    "expected_tools": [],
+    "expected_answer_contains": ["请假类型"],
+    "expected_scenario_step": "collecting"
+  },
+  {
+    "name": "请假场景切换后回答制度问题",
+    "user_id": "sales_001",
+    "session_id": "eval_leave_switch_001",
+    "message": "我想问下年假的制度",
+    "expected_intent": "knowledge_qa",
+    "expected_tools": [],
+    "expected_sources": ["docs/knowledge/hr_handbook.md"],
+    "expected_answer_contains": ["年假"]
+  },
+  {
+    "name": "请假口语表达进入 workflow",
+    "user_id": "sales_001",
+    "session_id": "eval_leave_colloquial_001",
+    "message": "我要请个假",
+    "expected_intent": "leave_request",
+    "expected_tools": [],
+    "expected_answer_contains": ["请假类型", "开始时间", "结束时间", "请假事由"],
+    "expected_scenario_step": "collecting"
+  },
+  {
+    "name": "查询员工汇报关系",
+    "user_id": "sales_001",
+    "session_id": "eval_org_001",
+    "message": "林悦的上级和所属组织是什么？",
+    "expected_intent": "data_query",
+    "expected_tools": ["query_business_data"],
+    "expected_answer_contains": ["林悦", "展厅销售组", "直属上级"]
+  },
+  {
+    "name": "查询组织架构部门",
+    "user_id": "sales_001",
+    "session_id": "eval_org_002",
+    "message": "本地组织架构里有哪些部门？",
+    "expected_intent": "data_query",
+    "expected_tools": ["query_business_data"],
+    "expected_answer_contains": ["组织节点", "销售部", "行政人事部"]
+  },
+  {
+    "name": "按部门名称统计人员数量",
+    "user_id": "store_gm_001",
+    "session_id": "eval_org_department_count_001",
+    "message": "行政人事部有多少人",
+    "expected_intent": "data_query",
+    "expected_tools": ["query_business_data"],
+    "expected_answer_contains": ["员工", "3 人"],
+    "expected_agent_state": {
+      "status": "ready_to_answer",
+      "known_facts_includes": ["aggregate_metric"],
+      "missing_facts_excludes": ["aggregate_metric"]
+    }
+  },
+  {
+    "name": "按部门简称查询人员名单",
+    "user_id": "store_gm_001",
+    "session_id": "eval_org_department_alias_people_001",
+    "message": "都谁在行政部",
+    "expected_intent": "data_query",
+    "expected_tools": ["query_business_data"],
+    "expected_answer_contains": ["许宁", "梁初白", "马春兰"]
+  },
+  {
+    "name": "主管查询直属下属",
+    "user_id": "store_gm_001",
+    "session_id": "eval_org_003",
+    "message": "我下面有哪些同学",
+    "expected_intent": "data_query",
+    "expected_tools": ["query_business_data"],
+    "expected_answer_contains": ["唐若溪", "韩知秋", "周景行"]
+  },
+  {
+    "name": "员工查询上级返回姓名",
+    "user_id": "finance_001",
+    "session_id": "eval_org_004",
+    "message": "我的上级是谁",
+    "expected_intent": "data_query",
+    "expected_tools": ["query_business_data"],
+    "expected_answer_contains": ["顾明远", "门店总经理"]
+  },
+  {
+    "name": "主管同时查询上下级",
+    "user_id": "sales_manager_001",
+    "session_id": "eval_org_005",
+    "message": "帮我看下我的上级和下级都是谁",
+    "expected_intent": "data_query",
+    "expected_tools": ["query_business_data", "query_business_data"],
+    "expected_answer_contains": ["顾明远", "沈清和", "孟云岚"],
+    "expected_agent_state": {
+      "status": "ready_to_answer",
+      "known_facts_includes": ["direct_leader", "direct_reports"],
+      "missing_facts_excludes": ["direct_leader", "direct_reports"]
+    }
+  }
+]

@@ -1,0 +1,11 @@
+{
+  "id": "business-query",
+  "name": "business-query",
+  "version": "0.1.0",
+  "enabled": true,
+  "description": "Convert flexible business data questions into Query IR, then compile it into safe query_business_data tool calls.",
+  "planning_style": "guided",
+  "intents": ["data_query", "mixed"],
+  "required_primitives": ["query"],
+  "output_modes": ["answer"]
+}

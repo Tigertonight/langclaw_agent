@@ -1,0 +1,238 @@
+{
+  "id": "store_gm_001:session-1778314658365-45sflnrqv78",
+  "active_intent": null,
+  "active_skill": "leave-records",
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "id": "turn-1778314703121-user",
+      "role": "user",
+      "text": "查一下销售部的人请假情况",
+      "at": "2026-05-09T08:18:23.121Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "attendance.leave_query",
+          "confidence": 0.9,
+          "reason": "用户查询销售部员工的请假情况，属于请假记录查询，符合'attendance.leave_query'的分类标准（查询谁请假了、最近请假的同学等场景）。"
+        },
+        "selected_skill": "leave-records",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "leave_requests",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "department",
+                  "op": "in",
+                  "value": [
+                    "销售部",
+                    "销售",
+                    "展厅销售组",
+                    "网销",
+                    "销售金融",
+                    "试驾",
+                    "交付",
+                    "前台接待",
+                    "水吧",
+                    "客服",
+                    "华东销售部",
+                    "华南销售部"
+                  ]
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "applicant_name",
+                "leave_type",
+                "leave_duration",
+                "start_time",
+                "end_time",
+                "reason",
+                "status",
+                "submitted_at"
+              ],
+              "sort": [
+                {
+                  "field": "start_time",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "attendance",
+                "target": "leave_requests",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询本人请假记录。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "leave_requests",
+            "operation": "search",
+            "total": 4,
+            "row_count": 4,
+            "sample_rows": [
+              {
+                "id": "LR-20260502-001",
+                "applicant_name": "周辰",
+                "leave_type": "事假",
+                "leave_duration": "1天",
+                "start_time": "2026-05-09 09:00",
+                "end_time": "2026-05-09 18:00",
+                "status": "submitted",
+                "reason": "办理个人事务"
+              },
+              {
+                "id": "LR-20260503-001",
+                "applicant_name": "林悦",
+                "leave_type": "病假",
+                "leave_duration": "半天",
+                "start_time": "2026-05-08 13:00",
+                "end_time": "2026-05-08 18:00",
+                "status": "submitted",
+                "reason": "身体不舒服，去医院检查"
+              },
+              {
+                "id": "LR-1778309268228",
+                "applicant_name": "沈清和",
+                "leave_type": "病假",
+                "leave_duration": "1天",
+                "start_time": "2026-05-08 09:00",
+                "end_time": "2026-05-08 18:00",
+                "status": "submitted",
+                "reason": "去看医生"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到销售部及子部门共有 **4条** 请假记录（按最近时间倒序）： | 申请人 | 请假类型 | 时长 | 开始时间 | 结束时间 | 请假理由 | 状态 | |--------|----------|------|----------|----------|----------|------| | 周辰 | 事假 | 1天 | 2026-05-09 09:00 | 2026-05-09 18:00 | 办理个人事务 | 已提交 | | 林悦 | 病假 | 半天 | 202..."
+      }
+    },
+    {
+      "id": "turn-1778314703121-assistant",
+      "role": "assistant",
+      "text": "查询到销售部及子部门共有 **4条** 请假记录（按最近时间倒序）： | 申请人 | 请假类型 | 时长 | 开始时间 | 结束时间 | 请假理由 | 状态 | |--------|----------|------|----------|----------|----------|------| | 周辰 | 事假 | 1天 | 2026-05-09 09:00 | 2026-05-09 18:00 | 办理个人事务 | 已提交 | | 林悦 | 病假 | 半天 | 2026-05-08 13:00 | 2026-05-08 18:00 | 身体不舒服，去医院检查 | 已提交 | | 沈清和 | 病假 | 1天 | 2026-05-08 09:00 | 2026-05-08 18:00 | 去看医生 | 已提交 | | 林悦 | 年假 | 1天 | 2026-05-06 09:00 | 2026-05-06 18:00 | 家里有事 | 已提交 | 以上是销售部及其子部门（展厅销售组、网销、销售金融、试驾、交付、前台接待、水吧、客服等）员工近期的请假情况，均为**待审批**状态。",
+      "at": "2026-05-09T08:18:23.121Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "attendance.leave_query",
+          "confidence": 0.9,
+          "reason": "用户查询销售部员工的请假情况，属于请假记录查询，符合'attendance.leave_query'的分类标准（查询谁请假了、最近请假的同学等场景）。"
+        },
+        "selected_skill": "leave-records",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "leave_requests",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "department",
+                  "op": "in",
+                  "value": [
+                    "销售部",
+                    "销售",
+                    "展厅销售组",
+                    "网销",
+                    "销售金融",
+                    "试驾",
+                    "交付",
+                    "前台接待",
+                    "水吧",
+                    "客服",
+                    "华东销售部",
+                    "华南销售部"
+                  ]
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "applicant_name",
+                "leave_type",
+                "leave_duration",
+                "start_time",
+                "end_time",
+                "reason",
+                "status",
+                "submitted_at"
+              ],
+              "sort": [
+                {
+                  "field": "start_time",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "attendance",
+                "target": "leave_requests",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询本人请假记录。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "leave_requests",
+            "operation": "search",
+            "total": 4,
+            "row_count": 4,
+            "sample_rows": [
+              {
+                "id": "LR-20260502-001",
+                "applicant_name": "周辰",
+                "leave_type": "事假",
+                "leave_duration": "1天",
+                "start_time": "2026-05-09 09:00",
+                "end_time": "2026-05-09 18:00",
+                "status": "submitted",
+                "reason": "办理个人事务"
+              },
+              {
+                "id": "LR-20260503-001",
+                "applicant_name": "林悦",
+                "leave_type": "病假",
+                "leave_duration": "半天",
+                "start_time": "2026-05-08 13:00",
+                "end_time": "2026-05-08 18:00",
+                "status": "submitted",
+                "reason": "身体不舒服，去医院检查"
+              },
+              {
+                "id": "LR-1778309268228",
+                "applicant_name": "沈清和",
+                "leave_type": "病假",
+                "leave_duration": "1天",
+                "start_time": "2026-05-08 09:00",
+                "end_time": "2026-05-08 18:00",
+                "status": "submitted",
+                "reason": "去看医生"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到销售部及子部门共有 **4条** 请假记录（按最近时间倒序）： | 申请人 | 请假类型 | 时长 | 开始时间 | 结束时间 | 请假理由 | 状态 | |--------|----------|------|----------|----------|----------|------| | 周辰 | 事假 | 1天 | 2026-05-09 09:00 | 2026-05-09 18:00 | 办理个人事务 | 已提交 | | 林悦 | 病假 | 半天 | 202..."
+      }
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-09T08:17:39.707Z",
+  "updated_at": "2026-05-09T08:18:23.122Z"
+}

@@ -1,0 +1,248 @@
+{
+  "id": "eval_leave_001",
+  "active_intent": null,
+  "scenario": null,
+  "state": {},
+  "status": "idle",
+  "created_at": "2026-05-08T07:33:44.479Z",
+  "updated_at": "2026-05-09T08:07:27.231Z",
+  "history": [
+    {
+      "id": "turn-1778314038848-user",
+      "role": "user",
+      "text": "我明天想请假",
+      "at": "2026-05-09T08:07:18.848Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "intent_code": "workflow.leave_request",
+          "confidence": 0.9,
+          "reason": "涉及请假申请业务场景"
+        },
+        "selected_skill": "leave-request",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "我已记录： - 开始时间：明天 还需要补充：请假类型（年假、病假、事假或调休）、结束时间或请假时长、请假事由。"
+      }
+    },
+    {
+      "id": "turn-1778314038848-assistant",
+      "role": "assistant",
+      "text": "我已记录： - 开始时间：明天 还需要补充：请假类型（年假、病假、事假或调休）、结束时间或请假时长、请假事由。",
+      "at": "2026-05-09T08:07:18.848Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "intent_code": "workflow.leave_request",
+          "confidence": 0.9,
+          "reason": "涉及请假申请业务场景"
+        },
+        "selected_skill": "leave-request",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "我已记录： - 开始时间：明天 还需要补充：请假类型（年假、病假、事假或调休）、结束时间或请假时长、请假事由。"
+      }
+    },
+    {
+      "id": "turn-1778314038867-user",
+      "role": "user",
+      "text": "年假，请到下午6点，因为家里有事",
+      "at": "2026-05-09T08:07:18.867Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "confidence": 1,
+          "reason": "继续当前多轮业务场景"
+        },
+        "selected_skill": null,
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "请确认是否提交这条请假申请： - 类型：年假 - 开始：明天 - 结束：同日下午6点 - 事由：家里有事 回复「确认」后我会提交；如果要修改，直接告诉我新的信息。"
+      }
+    },
+    {
+      "id": "turn-1778314038867-assistant",
+      "role": "assistant",
+      "text": "请确认是否提交这条请假申请： - 类型：年假 - 开始：明天 - 结束：同日下午6点 - 事由：家里有事 回复「确认」后我会提交；如果要修改，直接告诉我新的信息。",
+      "at": "2026-05-09T08:07:18.867Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "confidence": 1,
+          "reason": "继续当前多轮业务场景"
+        },
+        "selected_skill": null,
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "请确认是否提交这条请假申请： - 类型：年假 - 开始：明天 - 结束：同日下午6点 - 事由：家里有事 回复「确认」后我会提交；如果要修改，直接告诉我新的信息。"
+      }
+    },
+    {
+      "id": "turn-1778314038891-user",
+      "role": "user",
+      "text": "确认",
+      "at": "2026-05-09T08:07:18.891Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "confidence": 1,
+          "reason": "继续当前多轮业务场景"
+        },
+        "selected_skill": null,
+        "tool_calls": [],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "submit_leave_request",
+            "row_count": 0,
+            "sample_rows": []
+          }
+        ],
+        "answer_summary": "请假申请已提交，申请编号 LR-1778314038877。 - 类型：年假 - 开始：明天 - 结束：同日下午6点 - 事由：家里有事"
+      }
+    },
+    {
+      "id": "turn-1778314038891-assistant",
+      "role": "assistant",
+      "text": "请假申请已提交，申请编号 LR-1778314038877。 - 类型：年假 - 开始：明天 - 结束：同日下午6点 - 事由：家里有事",
+      "at": "2026-05-09T08:07:18.891Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "confidence": 1,
+          "reason": "继续当前多轮业务场景"
+        },
+        "selected_skill": null,
+        "tool_calls": [],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "submit_leave_request",
+            "row_count": 0,
+            "sample_rows": []
+          }
+        ],
+        "answer_summary": "请假申请已提交，申请编号 LR-1778314038877。 - 类型：年假 - 开始：明天 - 结束：同日下午6点 - 事由：家里有事"
+      }
+    },
+    {
+      "id": "turn-1778314047197-user",
+      "role": "user",
+      "text": "我明天想请假",
+      "at": "2026-05-09T08:07:27.197Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "intent_code": "workflow.leave_request",
+          "confidence": 0.9,
+          "reason": "涉及请假申请业务场景"
+        },
+        "selected_skill": "leave-request",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "我已记录： - 开始时间：明天 还需要补充：请假类型（年假、病假、事假或调休）、结束时间或请假时长、请假事由。"
+      }
+    },
+    {
+      "id": "turn-1778314047197-assistant",
+      "role": "assistant",
+      "text": "我已记录： - 开始时间：明天 还需要补充：请假类型（年假、病假、事假或调休）、结束时间或请假时长、请假事由。",
+      "at": "2026-05-09T08:07:27.197Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "intent_code": "workflow.leave_request",
+          "confidence": 0.9,
+          "reason": "涉及请假申请业务场景"
+        },
+        "selected_skill": "leave-request",
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "我已记录： - 开始时间：明天 还需要补充：请假类型（年假、病假、事假或调休）、结束时间或请假时长、请假事由。"
+      }
+    },
+    {
+      "id": "turn-1778314047211-user",
+      "role": "user",
+      "text": "年假，请到下午6点，因为家里有事",
+      "at": "2026-05-09T08:07:27.211Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "confidence": 1,
+          "reason": "继续当前多轮业务场景"
+        },
+        "selected_skill": null,
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "请确认是否提交这条请假申请： - 类型：年假 - 开始：明天 - 结束：同日下午6点 - 事由：家里有事 回复「确认」后我会提交；如果要修改，直接告诉我新的信息。"
+      }
+    },
+    {
+      "id": "turn-1778314047211-assistant",
+      "role": "assistant",
+      "text": "请确认是否提交这条请假申请： - 类型：年假 - 开始：明天 - 结束：同日下午6点 - 事由：家里有事 回复「确认」后我会提交；如果要修改，直接告诉我新的信息。",
+      "at": "2026-05-09T08:07:27.211Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "confidence": 1,
+          "reason": "继续当前多轮业务场景"
+        },
+        "selected_skill": null,
+        "tool_calls": [],
+        "tool_results": [],
+        "answer_summary": "请确认是否提交这条请假申请： - 类型：年假 - 开始：明天 - 结束：同日下午6点 - 事由：家里有事 回复「确认」后我会提交；如果要修改，直接告诉我新的信息。"
+      }
+    },
+    {
+      "id": "turn-1778314047231-user",
+      "role": "user",
+      "text": "确认",
+      "at": "2026-05-09T08:07:27.231Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "confidence": 1,
+          "reason": "继续当前多轮业务场景"
+        },
+        "selected_skill": null,
+        "tool_calls": [],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "submit_leave_request",
+            "row_count": 0,
+            "sample_rows": []
+          }
+        ],
+        "answer_summary": "请假申请已提交，申请编号 LR-1778314047220。 - 类型：年假 - 开始：明天 - 结束：同日下午6点 - 事由：家里有事"
+      }
+    },
+    {
+      "id": "turn-1778314047231-assistant",
+      "role": "assistant",
+      "text": "请假申请已提交，申请编号 LR-1778314047220。 - 类型：年假 - 开始：明天 - 结束：同日下午6点 - 事由：家里有事",
+      "at": "2026-05-09T08:07:27.231Z",
+      "metadata": {
+        "route": {
+          "intent": "leave_request",
+          "confidence": 1,
+          "reason": "继续当前多轮业务场景"
+        },
+        "selected_skill": null,
+        "tool_calls": [],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "submit_leave_request",
+            "row_count": 0,
+            "sample_rows": []
+          }
+        ],
+        "answer_summary": "请假申请已提交，申请编号 LR-1778314047220。 - 类型：年假 - 开始：明天 - 结束：同日下午6点 - 事由：家里有事"
+      }
+    }
+  ],
+  "active_skill": null
+}

@@ -1,0 +1,528 @@
+{
+  "id": "eval_org_004",
+  "active_intent": null,
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "role": "user",
+      "text": "我的上级是谁",
+      "at": "2026-05-09T05:25:04.324Z"
+    },
+    {
+      "role": "assistant",
+      "text": "查询到 1 名员工： - 唐若溪（finance_001）：财务 / 财务专员。直属上级：顾明远（门店管理层 / 门店总经理）。强垂直汇报：集团财务中心 / 集团财务总监；门店负责人：顾明远（门店管理层 / 门店总经理）。",
+      "at": "2026-05-09T05:25:04.324Z"
+    },
+    {
+      "role": "user",
+      "text": "我的上级是谁",
+      "at": "2026-05-09T05:27:04.612Z"
+    },
+    {
+      "role": "assistant",
+      "text": "查询到 1 名员工： - 唐若溪（finance_001）：财务 / 财务专员。直属上级：顾明远（门店管理层 / 门店总经理）。强垂直汇报：集团财务中心 / 集团财务总监；门店负责人：顾明远（门店管理层 / 门店总经理）。",
+      "at": "2026-05-09T05:27:04.612Z"
+    },
+    {
+      "role": "user",
+      "text": "我的上级是谁",
+      "at": "2026-05-09T05:30:11.346Z"
+    },
+    {
+      "role": "assistant",
+      "text": "查询到 1 名员工： - 唐若溪（finance_001）：财务 / 财务专员。直属上级：顾明远（门店管理层 / 门店总经理）。强垂直汇报：集团财务中心 / 集团财务总监；门店负责人：顾明远（门店管理层 / 门店总经理）。",
+      "at": "2026-05-09T05:30:11.346Z"
+    },
+    {
+      "id": "turn-1778313999738-user",
+      "role": "user",
+      "text": "我的上级是谁",
+      "at": "2026-05-09T08:06:39.738Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "org.employee_query",
+          "confidence": 0.88,
+          "reason": "当前消息是对上一轮任务的范围、时间或筛选条件补充。"
+        },
+        "selected_skill": "business-query",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "employees",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "userid",
+                  "op": "eq",
+                  "value": "__CURRENT_USER__"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "userid",
+                "name",
+                "department_name",
+                "position",
+                "role",
+                "direct_leader",
+                "reporting",
+                "main_department",
+                "department"
+              ],
+              "sort": [
+                {
+                  "field": "main_department",
+                  "direction": "asc"
+                },
+                {
+                  "field": "userid",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 1,
+              "display": {
+                "domain": "organization",
+                "target": "employees",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询员工个人组织、岗位或上级信息。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "employees",
+            "operation": "search",
+            "total": 1,
+            "row_count": 1,
+            "sample_rows": [
+              {
+                "userid": "finance_001",
+                "name": "唐若溪",
+                "department_name": "财务",
+                "position": "财务专员",
+                "role": "finance_specialist"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 1 名员工： - 唐若溪（finance_001）：财务 / 财务专员。直属上级：顾明远（门店管理层 / 门店总经理）。强垂直汇报：集团财务中心 / 集团财务总监；门店负责人：顾明远（门店管理层 / 门店总经理）。"
+      }
+    },
+    {
+      "id": "turn-1778313999738-assistant",
+      "role": "assistant",
+      "text": "查询到 1 名员工： - 唐若溪（finance_001）：财务 / 财务专员。直属上级：顾明远（门店管理层 / 门店总经理）。强垂直汇报：集团财务中心 / 集团财务总监；门店负责人：顾明远（门店管理层 / 门店总经理）。",
+      "at": "2026-05-09T08:06:39.738Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "org.employee_query",
+          "confidence": 0.88,
+          "reason": "当前消息是对上一轮任务的范围、时间或筛选条件补充。"
+        },
+        "selected_skill": "business-query",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "employees",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "userid",
+                  "op": "eq",
+                  "value": "__CURRENT_USER__"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "userid",
+                "name",
+                "department_name",
+                "position",
+                "role",
+                "direct_leader",
+                "reporting",
+                "main_department",
+                "department"
+              ],
+              "sort": [
+                {
+                  "field": "main_department",
+                  "direction": "asc"
+                },
+                {
+                  "field": "userid",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 1,
+              "display": {
+                "domain": "organization",
+                "target": "employees",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询员工个人组织、岗位或上级信息。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "employees",
+            "operation": "search",
+            "total": 1,
+            "row_count": 1,
+            "sample_rows": [
+              {
+                "userid": "finance_001",
+                "name": "唐若溪",
+                "department_name": "财务",
+                "position": "财务专员",
+                "role": "finance_specialist"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 1 名员工： - 唐若溪（finance_001）：财务 / 财务专员。直属上级：顾明远（门店管理层 / 门店总经理）。强垂直汇报：集团财务中心 / 集团财务总监；门店负责人：顾明远（门店管理层 / 门店总经理）。"
+      }
+    },
+    {
+      "id": "turn-1778314039058-user",
+      "role": "user",
+      "text": "我的上级是谁",
+      "at": "2026-05-09T08:07:19.058Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "org.employee_query",
+          "confidence": 0.88,
+          "reason": "当前消息是对上一轮任务的范围、时间或筛选条件补充。"
+        },
+        "selected_skill": "business-query",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "employees",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "userid",
+                  "op": "eq",
+                  "value": "__CURRENT_USER__"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "userid",
+                "name",
+                "department_name",
+                "position",
+                "role",
+                "direct_leader",
+                "reporting",
+                "main_department",
+                "department"
+              ],
+              "sort": [
+                {
+                  "field": "main_department",
+                  "direction": "asc"
+                },
+                {
+                  "field": "userid",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 1,
+              "display": {
+                "domain": "organization",
+                "target": "employees",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询员工个人组织、岗位或上级信息。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "employees",
+            "operation": "search",
+            "total": 1,
+            "row_count": 1,
+            "sample_rows": [
+              {
+                "userid": "finance_001",
+                "name": "唐若溪",
+                "department_name": "财务",
+                "position": "财务专员",
+                "role": "finance_specialist"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 1 名员工： - 唐若溪（finance_001）：财务 / 财务专员。直属上级：顾明远（门店管理层 / 门店总经理）。强垂直汇报：集团财务中心 / 集团财务总监；门店负责人：顾明远（门店管理层 / 门店总经理）。"
+      }
+    },
+    {
+      "id": "turn-1778314039058-assistant",
+      "role": "assistant",
+      "text": "查询到 1 名员工： - 唐若溪（finance_001）：财务 / 财务专员。直属上级：顾明远（门店管理层 / 门店总经理）。强垂直汇报：集团财务中心 / 集团财务总监；门店负责人：顾明远（门店管理层 / 门店总经理）。",
+      "at": "2026-05-09T08:07:19.058Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "org.employee_query",
+          "confidence": 0.88,
+          "reason": "当前消息是对上一轮任务的范围、时间或筛选条件补充。"
+        },
+        "selected_skill": "business-query",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "employees",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "userid",
+                  "op": "eq",
+                  "value": "__CURRENT_USER__"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "userid",
+                "name",
+                "department_name",
+                "position",
+                "role",
+                "direct_leader",
+                "reporting",
+                "main_department",
+                "department"
+              ],
+              "sort": [
+                {
+                  "field": "main_department",
+                  "direction": "asc"
+                },
+                {
+                  "field": "userid",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 1,
+              "display": {
+                "domain": "organization",
+                "target": "employees",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询员工个人组织、岗位或上级信息。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "employees",
+            "operation": "search",
+            "total": 1,
+            "row_count": 1,
+            "sample_rows": [
+              {
+                "userid": "finance_001",
+                "name": "唐若溪",
+                "department_name": "财务",
+                "position": "财务专员",
+                "role": "finance_specialist"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 1 名员工： - 唐若溪（finance_001）：财务 / 财务专员。直属上级：顾明远（门店管理层 / 门店总经理）。强垂直汇报：集团财务中心 / 集团财务总监；门店负责人：顾明远（门店管理层 / 门店总经理）。"
+      }
+    },
+    {
+      "id": "turn-1778314047383-user",
+      "role": "user",
+      "text": "我的上级是谁",
+      "at": "2026-05-09T08:07:27.383Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "org.employee_query",
+          "confidence": 0.88,
+          "reason": "当前消息是对上一轮任务的范围、时间或筛选条件补充。"
+        },
+        "selected_skill": "business-query",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "employees",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "userid",
+                  "op": "eq",
+                  "value": "__CURRENT_USER__"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "userid",
+                "name",
+                "department_name",
+                "position",
+                "role",
+                "direct_leader",
+                "reporting",
+                "main_department",
+                "department"
+              ],
+              "sort": [
+                {
+                  "field": "main_department",
+                  "direction": "asc"
+                },
+                {
+                  "field": "userid",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 1,
+              "display": {
+                "domain": "organization",
+                "target": "employees",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询员工个人组织、岗位或上级信息。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "employees",
+            "operation": "search",
+            "total": 1,
+            "row_count": 1,
+            "sample_rows": [
+              {
+                "userid": "finance_001",
+                "name": "唐若溪",
+                "department_name": "财务",
+                "position": "财务专员",
+                "role": "finance_specialist"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 1 名员工： - 唐若溪（finance_001）：财务 / 财务专员。直属上级：顾明远（门店管理层 / 门店总经理）。强垂直汇报：集团财务中心 / 集团财务总监；门店负责人：顾明远（门店管理层 / 门店总经理）。"
+      }
+    },
+    {
+      "id": "turn-1778314047383-assistant",
+      "role": "assistant",
+      "text": "查询到 1 名员工： - 唐若溪（finance_001）：财务 / 财务专员。直属上级：顾明远（门店管理层 / 门店总经理）。强垂直汇报：集团财务中心 / 集团财务总监；门店负责人：顾明远（门店管理层 / 门店总经理）。",
+      "at": "2026-05-09T08:07:27.383Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "org.employee_query",
+          "confidence": 0.88,
+          "reason": "当前消息是对上一轮任务的范围、时间或筛选条件补充。"
+        },
+        "selected_skill": "business-query",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "employees",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "userid",
+                  "op": "eq",
+                  "value": "__CURRENT_USER__"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "userid",
+                "name",
+                "department_name",
+                "position",
+                "role",
+                "direct_leader",
+                "reporting",
+                "main_department",
+                "department"
+              ],
+              "sort": [
+                {
+                  "field": "main_department",
+                  "direction": "asc"
+                },
+                {
+                  "field": "userid",
+                  "direction": "asc"
+                }
+              ],
+              "limit": 1,
+              "display": {
+                "domain": "organization",
+                "target": "employees",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询员工个人组织、岗位或上级信息。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "employees",
+            "operation": "search",
+            "total": 1,
+            "row_count": 1,
+            "sample_rows": [
+              {
+                "userid": "finance_001",
+                "name": "唐若溪",
+                "department_name": "财务",
+                "position": "财务专员",
+                "role": "finance_specialist"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 1 名员工： - 唐若溪（finance_001）：财务 / 财务专员。直属上级：顾明远（门店管理层 / 门店总经理）。强垂直汇报：集团财务中心 / 集团财务总监；门店负责人：顾明远（门店管理层 / 门店总经理）。"
+      }
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-09T02:22:13.437Z",
+  "updated_at": "2026-05-09T08:07:27.383Z",
+  "active_skill": "business-query"
+}

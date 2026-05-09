@@ -1,0 +1,67 @@
+[
+  {
+    "id": "DW-202605-001",
+    "resource_type": "discount_wallet",
+    "store_id": "ST-001",
+    "store_name": "比亚迪华东旗舰店",
+    "direction": "入账",
+    "category": "销售返利",
+    "amount": 180000,
+    "balance_after": 420000,
+    "related_order_id": null,
+    "occurred_at": "2026-05-03",
+    "status": "已入账"
+  },
+  {
+    "id": "DW-202605-002",
+    "resource_type": "discount_wallet",
+    "store_id": "ST-001",
+    "store_name": "比亚迪华东旗舰店",
+    "direction": "出账",
+    "category": "采购抵扣",
+    "amount": 168000,
+    "balance_after": 252000,
+    "related_order_id": "PB-202605-001",
+    "occurred_at": "2026-05-05",
+    "status": "已出账"
+  },
+  {
+    "id": "AP-202605-001",
+    "resource_type": "payable",
+    "store_id": "ST-002",
+    "store_name": "比亚迪华南标准店",
+    "direction": "应付",
+    "category": "整车采购",
+    "amount": 286000,
+    "balance_after": 286000,
+    "related_order_id": "PB-202605-002",
+    "occurred_at": "2026-05-06",
+    "status": "未结清"
+  },
+  {
+    "id": "RC-202605-001",
+    "resource_type": "receipt",
+    "store_id": "ST-001",
+    "store_name": "比亚迪华东旗舰店",
+    "direction": "收款",
+    "category": "客户首付",
+    "amount": 90000,
+    "balance_after": null,
+    "related_order_id": "SO-202605-001",
+    "occurred_at": "2026-05-04",
+    "status": "已到账"
+  },
+  {
+    "id": "RB-202605-001",
+    "resource_type": "rebate",
+    "store_id": "ST-001",
+    "store_name": "比亚迪华东旗舰店",
+    "direction": "应收返利",
+    "category": "月度销量返利",
+    "amount": 96000,
+    "balance_after": null,
+    "related_order_id": null,
+    "occurred_at": "2026-05-01",
+    "status": "待结算"
+  }
+]

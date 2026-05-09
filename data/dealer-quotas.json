@@ -1,0 +1,38 @@
+[
+  {
+    "id": "QP-202605-001",
+    "store_id": "ST-001",
+    "store_name": "比亚迪华东旗舰店",
+    "month": "2026-05",
+    "series": "宋L",
+    "model": "宋L Plus荣耀版 112KM",
+    "color": "雪域白",
+    "quota_total": 12,
+    "bound_inbound_count": 5,
+    "available_quota": 7
+  },
+  {
+    "id": "QP-202605-002",
+    "store_id": "ST-002",
+    "store_name": "比亚迪华南标准店",
+    "month": "2026-05",
+    "series": "汉",
+    "model": "汉EV荣耀版 715KM 旗舰型",
+    "color": "冰川蓝",
+    "quota_total": 4,
+    "bound_inbound_count": 4,
+    "available_quota": 0
+  },
+  {
+    "id": "QP-202605-003",
+    "store_id": "ST-001",
+    "store_name": "比亚迪华东旗舰店",
+    "month": "2026-05",
+    "series": "秦PLUS",
+    "model": "秦PLUS DM-i荣耀版 120KM",
+    "color": "时光灰",
+    "quota_total": 10,
+    "bound_inbound_count": 2,
+    "available_quota": 8
+  }
+]

@@ -1,0 +1,21 @@
+{
+  "id": "verify_intent_code_local_星河科技最近订单状态",
+  "active_intent": null,
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "role": "user",
+      "text": "星河科技最近订单状态",
+      "at": "2026-05-09T05:10:42.588Z"
+    },
+    {
+      "role": "assistant",
+      "text": "客户「星河科技」最近订单 O1001 当前状态为「待发货」，金额 86000 元。预计交付时间是 2026-05-12。",
+      "at": "2026-05-09T05:10:42.588Z"
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-09T05:10:42.579Z",
+  "updated_at": "2026-05-09T05:10:42.588Z"
+}

@@ -1,0 +1,20 @@
+[
+  { "id": 1, "name": "门店管理层", "parentid": 0, "order": 1, "leader_userid": "store_gm_001" },
+  { "id": 2, "name": "财务", "parentid": 1, "order": 2, "leader_userid": "finance_001", "vertical_relation": "strong", "vertical_department": "集团财务中心" },
+  { "id": 3, "name": "库管", "parentid": 1, "order": 3, "leader_userid": "warehouse_001", "vertical_relation": "weak", "vertical_department": "集团运营中心" },
+  { "id": 10, "name": "销售部", "parentid": 1, "order": 10, "leader_userid": "sales_manager_001" },
+  { "id": 11, "name": "展厅销售组", "parentid": 10, "order": 11, "leader_userid": "showroom_lead_001" },
+  { "id": 12, "name": "网销", "parentid": 10, "order": 12, "leader_userid": "online_sales_001" },
+  { "id": 13, "name": "销售金融", "parentid": 10, "order": 13, "leader_userid": "auto_finance_001" },
+  { "id": 14, "name": "试驾", "parentid": 10, "order": 14, "leader_userid": "test_drive_001" },
+  { "id": 15, "name": "交付", "parentid": 10, "order": 15, "leader_userid": "delivery_001" },
+  { "id": 16, "name": "前台接待", "parentid": 10, "order": 16, "leader_userid": "frontdesk_001" },
+  { "id": 17, "name": "水吧", "parentid": 16, "order": 17, "leader_userid": "waterbar_001", "relation": "coordination" },
+  { "id": 18, "name": "客服", "parentid": 10, "order": 18, "leader_userid": "customer_service_001" },
+  { "id": 20, "name": "市场与新媒体部", "parentid": 1, "order": 20, "leader_userid": "marketing_manager_001", "vertical_relation": "weak", "vertical_department": "集团市场部" },
+  { "id": 21, "name": "市场组", "parentid": 20, "order": 21, "leader_userid": "marketing_specialist_001" },
+  { "id": 22, "name": "新媒体组", "parentid": 20, "order": 22, "leader_userid": "new_media_001" },
+  { "id": 30, "name": "行政人事部", "parentid": 1, "order": 30, "leader_userid": "hr_admin_manager_001", "vertical_relation": "weak", "vertical_department": "集团HR中心" },
+  { "id": 31, "name": "培训", "parentid": 30, "order": 31, "leader_userid": "trainer_001", "vertical_relation": "weak", "vertical_department": "集团培训中心" },
+  { "id": 32, "name": "行政支持", "parentid": 30, "order": 32, "leader_userid": "cleaner_001" }
+]

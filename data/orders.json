@@ -1,0 +1,29 @@
+[
+  {
+    "id": "O1001",
+    "customer_id": "C001",
+    "customer_name": "星河科技",
+    "status": "待发货",
+    "amount": 86000,
+    "created_at": "2026-04-28",
+    "expected_delivery": "2026-05-12"
+  },
+  {
+    "id": "O1002",
+    "customer_id": "C002",
+    "customer_name": "青杉制造",
+    "status": "合同审批中",
+    "amount": 45000,
+    "created_at": "2026-04-30",
+    "expected_delivery": null
+  },
+  {
+    "id": "O1003",
+    "customer_id": "C003",
+    "customer_name": "南湾零售",
+    "status": "已完成",
+    "amount": 120000,
+    "created_at": "2026-04-18",
+    "expected_delivery": "2026-04-25"
+  }
+]

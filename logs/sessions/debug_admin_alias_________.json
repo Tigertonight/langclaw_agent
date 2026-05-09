@@ -1,0 +1,21 @@
+{
+  "id": "debug_admin_alias_行政部都有哪些人",
+  "active_intent": null,
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "role": "user",
+      "text": "行政部都有哪些人",
+      "at": "2026-05-09T03:59:09.710Z"
+    },
+    {
+      "role": "assistant",
+      "text": "我没有在可访问的数据或知识库中找到足够依据，暂时无法确认。",
+      "at": "2026-05-09T03:59:09.711Z"
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-09T03:59:09.701Z",
+  "updated_at": "2026-05-09T03:59:09.711Z"
+}

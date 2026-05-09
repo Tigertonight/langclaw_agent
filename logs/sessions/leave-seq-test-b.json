@@ -1,0 +1,32 @@
+{
+  "id": "leave-seq-test-b",
+  "active_intent": "leave_request",
+  "active_skill": "leave-request",
+  "scenario": "leave_request",
+  "state": {
+    "slots": {
+      "leave_type": "病假",
+      "start_time": "2026-05-08",
+      "end_time": "2026-05-08 全天",
+      "reason": "去看了医生",
+      "leave_duration": "一天"
+    },
+    "missing_slots": [],
+    "step": "awaiting_confirmation"
+  },
+  "history": [
+    {
+      "role": "user",
+      "text": "补昨天的假期 5.8号请假一天，病假。去看了医生",
+      "at": "2026-05-09T06:41:30.243Z"
+    },
+    {
+      "role": "assistant",
+      "text": "请确认是否提交这条请假申请： - 类型：病假 - 开始：2026-05-08 - 结束：2026-05-08 全天 - 事由：去看了医生 回复「确认」后我会提交；如果要修改，直接告诉我新的信息。",
+      "at": "2026-05-09T06:41:30.243Z"
+    }
+  ],
+  "status": "awaiting_confirmation",
+  "created_at": "2026-05-09T06:41:21.328Z",
+  "updated_at": "2026-05-09T06:41:30.243Z"
+}

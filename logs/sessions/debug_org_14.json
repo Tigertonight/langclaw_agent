@@ -1,0 +1,21 @@
+{
+  "id": "debug_org_14",
+  "active_intent": null,
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "role": "user",
+      "text": "林悦的上级和所属组织是什么？",
+      "at": "2026-05-08T14:55:07.685Z"
+    },
+    {
+      "role": "assistant",
+      "text": "你没有权限查询组织架构或人员汇报关系。",
+      "at": "2026-05-08T14:55:07.685Z"
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-08T14:55:07.678Z",
+  "updated_at": "2026-05-08T14:55:07.685Z"
+}

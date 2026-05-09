@@ -1,0 +1,21 @@
+{
+  "id": "verify_ir_final_华东销售部今年销售额和pipeline是多少",
+  "active_intent": null,
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "role": "user",
+      "text": "华东销售部今年销售额和pipeline是多少",
+      "at": "2026-05-09T03:46:16.464Z"
+    },
+    {
+      "role": "assistant",
+      "text": "你只能查看自己部门的销售报表。",
+      "at": "2026-05-09T03:46:16.464Z"
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-09T03:46:16.454Z",
+  "updated_at": "2026-05-09T03:46:16.464Z"
+}

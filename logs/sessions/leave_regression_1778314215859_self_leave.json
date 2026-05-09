@@ -1,0 +1,192 @@
+{
+  "id": "leave_regression_1778314215859_self_leave",
+  "active_intent": null,
+  "active_skill": "leave-records",
+  "scenario": null,
+  "state": {},
+  "history": [
+    {
+      "id": "turn-1778314215985-user",
+      "role": "user",
+      "text": "查一下我的请假记录",
+      "at": "2026-05-09T08:10:15.985Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "attendance.leave_query",
+          "confidence": 0.9,
+          "reason": "查询请假记录、请假统计或团队请假情况"
+        },
+        "selected_skill": "leave-records",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "leave_requests",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "applicant_user_id",
+                  "op": "eq",
+                  "value": "__CURRENT_USER__"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "applicant_name",
+                "leave_type",
+                "leave_duration",
+                "start_time",
+                "end_time",
+                "reason",
+                "status",
+                "submitted_at"
+              ],
+              "sort": [
+                {
+                  "field": "start_time",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "attendance",
+                "target": "leave_requests",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询本人请假记录。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "leave_requests",
+            "operation": "search",
+            "total": 2,
+            "row_count": 2,
+            "sample_rows": [
+              {
+                "id": "LR-20260503-001",
+                "applicant_name": "林悦",
+                "leave_type": "病假",
+                "leave_duration": "半天",
+                "start_time": "2026-05-08 13:00",
+                "end_time": "2026-05-08 18:00",
+                "status": "submitted",
+                "reason": "身体不舒服，去医院检查"
+              },
+              {
+                "id": "LR-20260501-001",
+                "applicant_name": "林悦",
+                "leave_type": "年假",
+                "leave_duration": "1天",
+                "start_time": "2026-05-06 09:00",
+                "end_time": "2026-05-06 18:00",
+                "status": "submitted",
+                "reason": "家里有事"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 2 条你的请假记录： - 病假，半天，2026-05-08 13:00 至 2026-05-08 18:00，事由：身体不舒服，去医院检查，状态：submitted。 - 年假，1天，2026-05-06 09:00 至 2026-05-06 18:00，事由：家里有事，状态：submitted。"
+      }
+    },
+    {
+      "id": "turn-1778314215985-assistant",
+      "role": "assistant",
+      "text": "查询到 2 条你的请假记录： - 病假，半天，2026-05-08 13:00 至 2026-05-08 18:00，事由：身体不舒服，去医院检查，状态：submitted。 - 年假，1天，2026-05-06 09:00 至 2026-05-06 18:00，事由：家里有事，状态：submitted。",
+      "at": "2026-05-09T08:10:15.985Z",
+      "metadata": {
+        "route": {
+          "intent": "data_query",
+          "intent_code": "attendance.leave_query",
+          "confidence": 0.9,
+          "reason": "查询请假记录、请假统计或团队请假情况"
+        },
+        "selected_skill": "leave-records",
+        "tool_calls": [
+          {
+            "name": "query_business_data",
+            "args": {
+              "resource": "leave_requests",
+              "operation": "search",
+              "filters": [
+                {
+                  "field": "applicant_user_id",
+                  "op": "eq",
+                  "value": "__CURRENT_USER__"
+                }
+              ],
+              "metrics": [],
+              "fields": [
+                "id",
+                "applicant_name",
+                "leave_type",
+                "leave_duration",
+                "start_time",
+                "end_time",
+                "reason",
+                "status",
+                "submitted_at"
+              ],
+              "sort": [
+                {
+                  "field": "start_time",
+                  "direction": "desc"
+                }
+              ],
+              "limit": 20,
+              "display": {
+                "domain": "attendance",
+                "target": "leave_requests",
+                "operation": "search",
+                "include_children": false,
+                "reason": "用户查询本人请假记录。"
+              }
+            }
+          }
+        ],
+        "tool_results": [
+          {
+            "ok": true,
+            "tool": "query_business_data",
+            "resource": "leave_requests",
+            "operation": "search",
+            "total": 2,
+            "row_count": 2,
+            "sample_rows": [
+              {
+                "id": "LR-20260503-001",
+                "applicant_name": "林悦",
+                "leave_type": "病假",
+                "leave_duration": "半天",
+                "start_time": "2026-05-08 13:00",
+                "end_time": "2026-05-08 18:00",
+                "status": "submitted",
+                "reason": "身体不舒服，去医院检查"
+              },
+              {
+                "id": "LR-20260501-001",
+                "applicant_name": "林悦",
+                "leave_type": "年假",
+                "leave_duration": "1天",
+                "start_time": "2026-05-06 09:00",
+                "end_time": "2026-05-06 18:00",
+                "status": "submitted",
+                "reason": "家里有事"
+              }
+            ]
+          }
+        ],
+        "answer_summary": "查询到 2 条你的请假记录： - 病假，半天，2026-05-08 13:00 至 2026-05-08 18:00，事由：身体不舒服，去医院检查，状态：submitted。 - 年假，1天，2026-05-06 09:00 至 2026-05-06 18:00，事由：家里有事，状态：submitted。"
+      }
+    }
+  ],
+  "status": "idle",
+  "created_at": "2026-05-09T08:10:15.977Z",
+  "updated_at": "2026-05-09T08:10:15.985Z"
+}

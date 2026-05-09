@@ -1,0 +1,15 @@
+{
+  "owner": "agent_admin",
+  "scope": "organization",
+  "readonly_for_users": true,
+  "items": [
+    {
+      "key": "default_runtime_policy",
+      "value": "Enterprise rules, permissions, tools, and shared knowledge are administrator managed."
+    },
+    {
+      "key": "mock_directory_mode",
+      "value": "Local demo currently uses mock WeCom organization data until real enterprise WeChat integration is enabled."
+    }
+  ]
+}
