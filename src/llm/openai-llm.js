@@ -810,11 +810,9 @@ function createAnswerContract(toolResults) {
 function shouldSkipRemoteFollowUpPlanning({ question, route, previousCalls = [], toolResults = [], agentState } = {}) {
   if (!previousCalls.length) return false;
   if (hasFailedToolResult(toolResults)) return true;
-  if (previousCalls.every((call) => ["safe_compute", "retrieve_knowledge"].includes(call.name))) return true;
-  if (agentState?.missing_facts?.length === 0 && agentState?.blockers?.length === 0) return true;
-  if (String(route?.intent_code ?? "").startsWith("dealer.") && toolResults.some((result) => result?.ok)) return true;
+  if (previousCalls.every((call) => call.name === "safe_compute")) return true;
   if (isDealerAnalysisQuestion(question) || String(route?.intent_code ?? "").startsWith("dealer.")) return false;
-  return previousCalls.some((call) => call.name === "query_business_data");
+  return false;
 }
 
 function createFastSmalltalkRoute(question) {
@@ -856,25 +854,17 @@ function splitFastAnswer(text) {
 function shouldUseDeterministicPlan(plan) {
   const calls = plan?.calls ?? [];
   if (!calls.length) return false;
-  if (calls.every((call) => ["safe_compute", "retrieve_knowledge"].includes(call.name))) return true;
-  if (calls.every((call) => call.name === "query_business_data" && call.args?.resource)) return true;
-  return calls.length === 1
-    && calls[0].name === "query_business_data"
-    && ["customers", "orders", "sales_reports", "employees", "departments", "leave_requests"].includes(calls[0].args?.resource);
+  return calls.every((call) => call.name === "safe_compute");
 }
 
 function shouldTrustLocalRecognition(input, fallback) {
   if (isSimpleComputeQuestion(input?.question)) return true;
   if (fallback?.intent === INTENTS.SMALLTALK && Number(fallback.confidence ?? 0) >= 0.9) return true;
-  if (fallback?.router === "local" && fallback?.intent === INTENTS.KNOWLEDGE_QA && Number(fallback.confidence ?? 0) >= 0.75) return true;
-  if (fallback?.router === "local" && fallback?.intent === INTENTS.DATA_QUERY && Number(fallback.confidence ?? 0) >= 0.85) return true;
   return false;
 }
 
 function shouldUseLocalAnswer({ route, docs = [], toolResults = [] } = {}) {
   if (hasFailedToolResult(toolResults)) return true;
-  if (route?.intent === INTENTS.KNOWLEDGE_QA && docs.length > 0) return true;
-  if (toolResults.some((result) => result?.tool === "retrieve_knowledge" && result?.ok)) return true;
   return false;
 }
 
