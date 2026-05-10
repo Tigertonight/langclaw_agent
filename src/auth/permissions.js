@@ -19,7 +19,14 @@ export async function checkToolPermission(user, toolCall) {
     return deny("unknown_user", "请先登录后再查询企业数据。");
   }
 
-  if (toolCall.name === "search_knowledge_base") {
+  if (toolCall.name === "search_knowledge_base" || toolCall.name === "retrieve_knowledge") {
+    if (hasPermission(user, "policy:read")) {
+      return allow();
+    }
+    return deny("missing_permission", "你没有权限检索企业知识资料。");
+  }
+
+  if (toolCall.name === "safe_compute") {
     return allow();
   }
 

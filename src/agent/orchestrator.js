@@ -140,7 +140,7 @@ export class SimpleWorkflowOrchestrator {
       await emit({ type: "thinking", text: thinkingText, delta: line + "\n", step });
     };
 
-    await pushStep(createAgentStep("identify_user", "确认员工身份", `当前以 ${user.name}（${user.department} / ${user.role}）的身份处理请求。`));
+    await pushStep(createAgentStep("classify_intent", "理解你的问题", "正在判断问题类型和需要的上下文。", { status: "running" }));
     let route = null;
 
     if (this.workflowRunner.canResume(session)) {

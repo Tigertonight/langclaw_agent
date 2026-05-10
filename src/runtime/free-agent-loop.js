@@ -4,20 +4,18 @@ import {
   executeToolsNode,
   generateAnswerNode,
   planFollowUpToolCallsNode,
-  planToolCallsNode,
-  retrieveKnowledgeNode
+  planToolCallsNode
 } from "../agent/nodes.js";
 import {
   createAgentStep,
-  createKnowledgeStep,
   createObservationStep,
   createPlanStep,
+  splitForStreaming,
   createToolSteps
 } from "./agent-events.js";
 import {
   createAgentState,
   decideContinuation,
-  recordKnowledgeObservation,
   recordPlan,
   recordToolRound,
   snapshotAgentState
@@ -33,14 +31,7 @@ export class FreeAgentLoop {
 
   async run({ user, message, route, history = [], skills = [], selectedSkill, enterpriseContext, conversationContext, agentSteps }) {
     const state = createAgentState({ user, message, route, history, skills, enterpriseContext });
-    const docs = await retrieveKnowledgeNode({
-      knowledgeBase: this.knowledgeBase,
-      user,
-      message,
-      route
-    });
-    recordKnowledgeObservation(state, docs);
-    agentSteps.push(createKnowledgeStep(docs));
+    let docs = [];
 
     const toolPlan = await planToolCallsNode({
       llm: this.llm,
@@ -77,6 +68,11 @@ export class FreeAgentLoop {
       recordToolRound(state, currentToolPlan, roundResults);
       agentSteps.push(...createToolSteps(currentToolPlan, roundResults));
       agentSteps.push(createObservationStep(state));
+
+      if (shouldStopAfterToolRound(currentToolPlan, toolResults)) {
+        decideContinuation(state, { calls: [] });
+        break;
+      }
 
       const evidenceFollowUpPlan = planDealerEvidenceFollowUp({
         message,
@@ -118,6 +114,14 @@ export class FreeAgentLoop {
       currentToolPlan = followUpPlan;
     }
 
+    docs = collectKnowledgeDocs(toolResults);
+
+    const directAnswer = createDirectAnswer({ toolResults, docs });
+    if (directAnswer) {
+      agentSteps.push(createAgentStep("final_answer", "生成最终答复", "已使用工具的确定性结果直接组织回答。"));
+      return { docs, toolPlan: { calls: previousCalls }, toolResults, answer: directAnswer.answer, artifacts: directAnswer.artifacts ?? [], agentSteps, agentState: snapshotAgentState(state) };
+    }
+
     const generated = await generateAnswerNode({
       llm: this.llm,
       user: summarizeUser(user),
@@ -135,21 +139,7 @@ export class FreeAgentLoop {
 
   async runStream({ user, message, route, history = [], skills = [], selectedSkill, enterpriseContext, conversationContext, agentSteps, emit, pushStep }) {
     const state = createAgentState({ user, message, route, history, skills, enterpriseContext });
-    const docs = await retrieveKnowledgeNode({
-      knowledgeBase: this.knowledgeBase,
-      user,
-      message,
-      route,
-      history
-    });
-    recordKnowledgeObservation(state, docs);
-    await pushStep(createKnowledgeStep(docs));
-    await emit({ type: "sources", sources: docs.map((doc) => ({
-      source: doc.metadata.source,
-      title: doc.metadata.title,
-      heading: doc.metadata.heading,
-      score: doc.score
-    })) });
+    let docs = [];
 
     const toolPlan = await planToolCallsNode({
       llm: this.llm,
@@ -188,6 +178,11 @@ export class FreeAgentLoop {
         await pushStep(step);
       }
       await pushStep(createObservationStep(state));
+
+      if (shouldStopAfterToolRound(currentToolPlan, toolResults)) {
+        decideContinuation(state, { calls: [] });
+        break;
+      }
 
       const evidenceFollowUpPlan = planDealerEvidenceFollowUp({
         message,
@@ -229,6 +224,37 @@ export class FreeAgentLoop {
       currentToolPlan = followUpPlan;
     }
 
+    docs = collectKnowledgeDocs(toolResults);
+    if (docs.length) {
+      await emit({ type: "sources", sources: docs.map((doc) => ({
+        source: doc.metadata.source,
+        title: doc.metadata.title,
+        heading: doc.metadata.heading,
+        score: doc.score
+      })) });
+    }
+
+    const directAnswer = createDirectAnswer({ toolResults, docs });
+    if (directAnswer) {
+      await pushStep(createAgentStep("final_answer", "生成最终答复", "已使用工具的确定性结果直接组织回答。"));
+      let streamed = "";
+      for (const token of splitForStreaming(directAnswer.answer)) {
+        streamed += token;
+        await emit({ type: "delta", text: token });
+        await new Promise((resolve) => setTimeout(resolve, 12));
+      }
+      return {
+        docs,
+        toolPlan: { calls: previousCalls },
+        toolResults,
+        answer: streamed || directAnswer.answer,
+        artifacts: directAnswer.artifacts ?? [],
+        agentSteps,
+        agentState: snapshotAgentState(state),
+        answerAlreadyStreamed: true
+      };
+    }
+
     await pushStep(createAgentStep("final_answer", "生成最终答复", "正在结合执行过程、工具结果和知识库内容组织回答。"));
 
     let answer = "";
@@ -244,6 +270,20 @@ export class FreeAgentLoop {
       onToken: async (token) => {
         answer += token;
         await emit({ type: "delta", text: token });
+      },
+      onThinking: async ({ delta, text }) => {
+        await emit({
+          type: "thinking",
+          model_thinking: true,
+          delta,
+          text,
+          step: {
+            phase: "model_thinking",
+            title: "思考中",
+            detail: text,
+            status: "running"
+          }
+        });
       }
     });
 
@@ -258,6 +298,150 @@ export class FreeAgentLoop {
       answerAlreadyStreamed: true
     };
   }
+}
+
+function collectKnowledgeDocs(toolResults = []) {
+  const docs = [];
+  const seen = new Set();
+  for (const result of toolResults) {
+    if (result.tool !== "retrieve_knowledge" || !result.ok) continue;
+    for (const doc of result.data?.docs ?? []) {
+      const key = [
+        doc.metadata?.source,
+        doc.metadata?.title,
+        doc.metadata?.heading,
+        doc.text
+      ].join("|");
+      if (seen.has(key)) continue;
+      seen.add(key);
+      docs.push(doc);
+    }
+  }
+  return docs;
+}
+
+function shouldStopAfterToolRound(toolPlan, toolResults) {
+  const calls = toolPlan?.calls ?? [];
+  if (!calls.length) return false;
+  if (!calls.every((call) => TERMINAL_TOOL_NAMES.has(call.name))) return false;
+  return calls.every((call) => toolResults.some((result) => result.tool === call.name && result.ok));
+}
+
+const TERMINAL_TOOL_NAMES = new Set([
+  "safe_compute",
+  "retrieve_knowledge"
+]);
+
+function createDirectAnswer({ toolResults = [], docs = [] }) {
+  if (docs.length) return null;
+  const successful = toolResults.filter((result) => result.ok);
+  if (!successful.length) return null;
+
+  if (successful.every((result) => result.tool === "safe_compute")) {
+    const values = successful.map((result) => formatComputeValue(result.data?.value));
+    return {
+      answer: values.length === 1
+        ? `计算结果：${values[0]}`
+        : `计算结果：\n${values.map((value, index) => `${index + 1}. ${value}`).join("\n")}`
+    };
+  }
+
+  if (successful.every((result) => result.tool === "query_business_data")) {
+    return { answer: formatBusinessDataAnswer(successful) };
+  }
+
+  return null;
+}
+
+function formatBusinessDataAnswer(results) {
+  return results.map((result) => formatBusinessDataResult(result.data)).filter(Boolean).join("\n\n");
+}
+
+function formatBusinessDataResult(data = {}) {
+  const resourceName = readableResourceName(data.resource);
+  if (data.operation === "aggregate") {
+    const metrics = data.metrics ?? {};
+    const entries = Object.entries(metrics);
+    if (!entries.length) return `${resourceName}没有返回可用统计结果。`;
+    return entries.map(([key, value]) => `${readableFieldName(data, key)}：${formatBusinessValue(value)}`).join("\n");
+  }
+
+  const rows = Array.isArray(data.rows) ? data.rows : [];
+  if (!rows.length) return `没有找到匹配的${resourceName}数据。`;
+
+  const lines = [`共找到 ${data.total ?? rows.length} 条${resourceName}数据：`];
+  for (const [index, row] of rows.slice(0, 12).entries()) {
+    lines.push(`${index + 1}. ${formatBusinessRow(data, row)}`);
+  }
+  if (rows.length > 12 || Number(data.total) > rows.length) {
+    lines.push(`还有更多结果，可继续缩小范围或说明你想查看的字段。`);
+  }
+  return lines.join("\n");
+}
+
+function formatBusinessRow(data, row) {
+  const fields = pickDisplayFields(data, row);
+  const parts = fields
+    .filter((field) => row[field] !== undefined && row[field] !== null && row[field] !== "")
+    .map((field) => `${readableFieldName(data, field)}：${formatBusinessValue(row[field])}`);
+  return parts.length ? parts.join("，") : JSON.stringify(row);
+}
+
+function pickDisplayFields(data, row) {
+  const preferred = {
+    customers: ["name", "tier", "industry", "deal_status", "follow_status", "annual_revenue", "next_follow_up_at"],
+    orders: ["customer_name", "status", "amount", "created_at", "expected_delivery"],
+    sales_reports: ["department", "period", "revenue", "pipeline"],
+    employees: ["name", "department_name", "position"],
+    departments: ["name", "parentid", "leader_userid"],
+    leave_requests: ["applicant_name", "leave_type", "leave_duration", "start_time", "end_time", "status"],
+    dealer_metrics: ["store_name", "category", "metric", "value", "unit", "severity", "summary", "recommendation"]
+  };
+  const fields = preferred[data.resource] ?? data.fields ?? Object.keys(row);
+  return fields.filter((field) => row[field] !== undefined).slice(0, 8);
+}
+
+function readableFieldName(data, field) {
+  const resourceLabels = {
+    employees: {
+      name: "姓名",
+      department_name: "所属组织",
+      position: "岗位",
+      direct_leader: "直属上级"
+    },
+    customers: {
+      name: "客户名"
+    }
+  };
+  if (resourceLabels[data.resource]?.[field]) return resourceLabels[data.resource][field];
+  return data.field_labels?.[field] ?? field;
+}
+
+function readableResourceName(resource) {
+  const names = {
+    customers: "客户",
+    orders: "订单",
+    sales_reports: "销售报表",
+    employees: "员工",
+    departments: "组织",
+    leave_requests: "请假记录",
+    dealer_metrics: "经营指标"
+  };
+  return names[resource] ?? "业务";
+}
+
+function formatBusinessValue(value) {
+  if (Array.isArray(value)) return value.join("、");
+  if (typeof value === "number") return Number.isInteger(value) ? String(value) : value.toFixed(2);
+  if (value && typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function formatComputeValue(value) {
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  if (typeof value === "string") return value;
+  if (value === null || value === undefined) return "无结果";
+  return JSON.stringify(value, null, 2);
 }
 
 function describeToolRound(round, toolPlan) {

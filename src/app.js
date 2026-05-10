@@ -18,6 +18,8 @@ import { ScenarioRouter } from "./scenarios/router.js";
 import { SkillRegistryStore } from "./skills/registry-store.js";
 import { SkillRuntime } from "./skills/runtime.js";
 import { createBusinessTools } from "./tools/business-tools.js";
+import { createKnowledgeTools } from "./tools/knowledge-tools.js";
+import { createSandboxTools } from "./tools/sandbox-tools.js";
 import { ToolRegistry } from "./tools/registry.js";
 
 loadEnvFile();
@@ -34,7 +36,11 @@ export function createApp() {
       })
     : new MockTencentDocsSource();
   const knowledgeBase = new LocalKnowledgeBase({ documentSource });
-  const toolRegistry = new ToolRegistry(createBusinessTools());
+  const toolRegistry = new ToolRegistry([
+    ...createBusinessTools(),
+    ...createKnowledgeTools({ knowledgeBase }),
+    ...createSandboxTools()
+  ]);
   const primitiveRegistry = new PrimitiveRegistry({ toolRegistry, knowledgeBase });
   const skillRegistry = new SkillRegistryStore();
   const skillLoader = new FileSystemSkillLoader({ registryStore: skillRegistry });

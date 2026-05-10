@@ -18,7 +18,7 @@ export async function retrieveKnowledgeNode({ knowledgeBase, user, message, rout
 }
 
 export async function planToolCallsNode({ llm, toolRegistry, user, message, route, history = [], skills = [], selectedSkill, enterpriseContext, conversationContext }) {
-  if (![INTENTS.DATA_QUERY, INTENTS.MIXED].includes(route.intent)) {
+  if (![INTENTS.DATA_QUERY, INTENTS.MIXED, INTENTS.KNOWLEDGE_QA].includes(route.intent)) {
     return { calls: [] };
   }
   const plan = await llm.planToolCalls({
@@ -30,13 +30,13 @@ export async function planToolCallsNode({ llm, toolRegistry, user, message, rout
     selectedSkill,
     enterpriseContext,
     conversationContext,
-    tools: toolRegistry.list({ user, intent: route.intent })
+    tools: listAgentTools(toolRegistry, { user, route })
   });
   return enforceSkillContracts(plan, { message, selectedSkill, enterpriseContext });
 }
 
 export async function planFollowUpToolCallsNode({ llm, toolRegistry, user, message, route, history = [], toolResults = [], previousCalls = [], agentState }) {
-  if (![INTENTS.DATA_QUERY, INTENTS.MIXED].includes(route.intent)) {
+  if (![INTENTS.DATA_QUERY, INTENTS.MIXED, INTENTS.KNOWLEDGE_QA].includes(route.intent)) {
     return { calls: [] };
   }
   if (typeof llm.planFollowUpToolCalls !== "function") {
@@ -49,8 +49,23 @@ export async function planFollowUpToolCallsNode({ llm, toolRegistry, user, messa
     toolResults,
     previousCalls,
     agentState,
-    tools: toolRegistry.list({ user, intent: route.intent })
+    tools: listAgentTools(toolRegistry, { user, route })
   });
+}
+
+function listAgentTools(toolRegistry, { user, route }) {
+  const intents = route.intent === INTENTS.KNOWLEDGE_QA
+    ? [INTENTS.KNOWLEDGE_QA, INTENTS.DATA_QUERY]
+    : route.intent === INTENTS.MIXED
+      ? [INTENTS.MIXED, INTENTS.DATA_QUERY, INTENTS.KNOWLEDGE_QA]
+      : [route.intent];
+  const byName = new Map();
+  for (const intent of intents) {
+    for (const tool of toolRegistry.list({ user, intent })) {
+      byName.set(tool.name, tool);
+    }
+  }
+  return [...byName.values()];
 }
 
 async function enforceSkillContracts(plan, { message, selectedSkill, enterpriseContext }) {

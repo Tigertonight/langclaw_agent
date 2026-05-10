@@ -3,9 +3,10 @@ import { createApp } from "../app.js";
 import { loadJson } from "../data/load-json.js";
 import { renderChatPage } from "./chat-page.js";
 
-const { agent, skillRegistry, skillLoader } = createApp();
+const { agent, skillRegistry, skillLoader, userContextResolver } = createApp();
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "0.0.0.0";
+const chatStreamTimeoutMs = readPositiveNumberEnv("CHAT_STREAM_TIMEOUT_MS", 60000);
 
 const server = http.createServer(async (req, res) => {
   setCors(res);
@@ -44,6 +45,23 @@ const server = http.createServer(async (req, res) => {
         reporting: user.reporting
       }))
     });
+    return;
+  }
+
+  if (req.method === "GET" && pathname === "/api/user-context") {
+    try {
+      const userId = url.searchParams.get("user_id") || undefined;
+      const wecomUserId = url.searchParams.get("wecom_userid") || userId;
+      const userContext = await userContextResolver.resolve({ userId, wecomUserId });
+      sendJson(res, 200, {
+        user_context: userContext
+      });
+    } catch (error) {
+      sendJson(res, 500, {
+        error: "resolve_user_context_failed",
+        message: error instanceof Error ? error.message : "unknown error"
+      });
+    }
     return;
   }
 
@@ -122,6 +140,7 @@ const server = http.createServer(async (req, res) => {
       }
       const result = await agent.run({
         userId: body.user_id,
+        userContext: body.user_context,
         wecomUserId: body.wecom_userid,
         message: body.message,
         sessionId: body.session_id,
@@ -138,6 +157,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === "POST" && pathname === "/api/chat/stream") {
+    let streamClosed = false;
     try {
       const body = await readJson(req);
       if (!body.user_id || !body.message) {
@@ -151,16 +171,21 @@ const server = http.createServer(async (req, res) => {
         Connection: "keep-alive"
       });
 
-      await agent.runStream({
+      await withTimeout(agent.runStream({
         userId: body.user_id,
+        userContext: body.user_context,
         wecomUserId: body.wecom_userid,
         message: body.message,
         sessionId: body.session_id,
         debug: body.debug === true,
-        onEvent: (event) => sendSse(res, event.type, event)
-      });
+        onEvent: (event) => {
+          if (!streamClosed && !res.destroyed) sendSse(res, event.type, event);
+        }
+      }), chatStreamTimeoutMs, "chat_stream_timeout");
+      streamClosed = true;
       res.end();
     } catch (error) {
+      streamClosed = true;
       if (!res.headersSent) {
         res.writeHead(200, {
           "Content-Type": "text/event-stream; charset=utf-8",
@@ -198,6 +223,20 @@ function sendJson(res, status, payload) {
 function sendSse(res, event, payload) {
   res.write(`event: ${event}\n`);
   res.write(`data: ${JSON.stringify(payload)}\n\n`);
+}
+
+function readPositiveNumberEnv(name, fallback) {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function withTimeout(promise, timeoutMs, code) {
+  if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return promise;
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(code)), timeoutMs);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
 async function readJson(req) {

@@ -4,2043 +4,1011 @@ export function renderChatPage() {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>企业助手</title>
+  <title>LangClaw Agent</title>
   <style>
     :root {
       color-scheme: light;
-      --bg: #f0f2f5;
-      --panel: #ffffff;
-      --surface: #f8fafc;
-      --text: #1e293b;
-      --text-2: #4a5568;
-      --muted: #94a3b8;
-      --border: #e2e8f0;
-      --border-2: #cbd5e1;
-      --accent: #2563eb;
-      --accent-hover: #1d4ed8;
-      --accent-soft: #eff6ff;
-      --accent-border: #bfdbfe;
-      --success: #16a34a;
-      --success-soft: #f0fdf4;
-      --danger: #dc2626;
-      --danger-soft: #fef2f2;
-      --warning: #d97706;
-      /* Radius scale — B2B sharp style */
-      --r-xs: 3px;
-      --r-sm: 4px;
-      --r-md: 6px;
-      --r-circle: 999px;
-      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei UI", "Microsoft YaHei", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 14px;
-      line-height: 1.6;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
+      --bg: #ffffff;
+      --sidebar: #f7f7f8;
+      --text: #111111;
+      --muted: #737373;
+      --faint: #9b9b9b;
+      --border: #e7e7e7;
+      --soft: #f4f4f5;
+      --hover: #eeeeef;
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
     }
     * { box-sizing: border-box; }
-    html, body { height: 100%; overflow: hidden; }
-    body { margin: 0; background: var(--bg); color: var(--text); }
-
-    /* ─── Topbar ─────────────────────────────────────── */
-    main { height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column; }
-
+    html, body { height: 100%; margin: 0; overflow: hidden; background: var(--bg); color: var(--text); }
+    body { font-size: 14px; }
+    main { height: 100%; min-height: 0; display: grid; grid-template-columns: 278px 1fr; }
+    .sidebar {
+      min-width: 0; height: 100%; display: grid; grid-template-rows: auto auto 1fr auto; gap: 12px;
+      padding: 12px; border-right: 1px solid var(--border); background: var(--sidebar);
+    }
+    .sidebar-backdrop { display: none; }
+    .side-head { display: flex; align-items: center; justify-content: space-between; min-height: 36px; gap: 10px; }
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 0; font-weight: 650; }
+    .brand span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .mark { width: 28px; height: 28px; flex: 0 0 auto; border-radius: 6px; background: #111; position: relative; overflow: hidden; }
+    .mark::before, .mark::after { content: ""; position: absolute; left: 8px; right: 8px; height: 2px; border-radius: 2px; background: #fff; transform: rotate(-24deg); }
+    .mark::before { top: 10px; }
+    .mark::after { top: 16px; opacity: .72; }
+    .side-actions { display: grid; gap: 8px; }
+    .new-chat-btn {
+      width: 100%; height: 38px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      border: 1px solid #dadada; background: #fff; color: #111; border-radius: 8px; padding: 0 11px;
+      font: inherit; font-weight: 500; cursor: pointer; transition: background .14s ease, border-color .14s ease;
+    }
+    .new-chat-btn:hover { background: var(--soft); border-color: #cfcfcf; }
+    .new-chat-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .session-search {
+      width: 100%; height: 36px; border: 1px solid transparent; background: #fff; border-radius: 8px;
+      padding: 0 10px; color: #111; font: inherit; outline: none;
+    }
+    .session-search { border-color: #ededed; }
+    .session-search:focus { border-color: #cfcfcf; }
+    .session-list { min-height: 0; overflow-y: auto; display: grid; align-content: start; gap: 2px; padding: 2px 0; }
+    .session-section-label { padding: 8px 8px 5px; color: var(--faint); font-size: 12px; }
+    .session-item {
+      width: 100%; min-height: 34px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 6px;
+      background: transparent; color: #333; border-radius: 8px; padding: 5px 6px; position: relative;
+    }
+    .session-item:hover { background: var(--hover); }
+    .session-item.active { background: #e9e9ea; color: #111; }
+    .session-open {
+      min-width: 0; min-height: 24px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px;
+      border: 0; background: transparent; color: inherit; padding: 0 2px; font: inherit; text-align: left; cursor: pointer;
+    }
+    .session-open:disabled { opacity: .55; cursor: not-allowed; }
+    .session-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+    .session-time { color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+    .session-actions { display: inline-flex; align-items: center; gap: 2px; opacity: 0; pointer-events: none; }
+    .session-item:hover .session-actions, .session-item.active .session-actions, .session-item:focus-within .session-actions { opacity: 1; pointer-events: auto; }
+    .session-item:hover .session-time, .session-item.active .session-time, .session-item:focus-within .session-time { display: none; }
+    .session-action {
+      width: 24px; height: 24px; display: grid; place-items: center; border: 0; border-radius: 5px;
+      background: transparent; color: #747474; cursor: pointer; padding: 0;
+    }
+    .session-action:hover { background: #dedede; color: #111; }
+    .session-action:disabled { opacity: .45; cursor: not-allowed; }
+    .session-rename {
+      width: 100%; min-width: 0; height: 24px; border: 1px solid #cfcfcf; border-radius: 5px;
+      padding: 0 6px; font: inherit; font-size: 13px; outline: none; background: #fff;
+    }
+    .empty-sessions { padding: 12px 8px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    .side-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-top: 1px solid var(--border); padding-top: 10px; }
+    .side-user { min-width: 0; color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .iconbtn {
+      height: 32px; border: 1px solid var(--border); background: #fff; border-radius: 6px; padding: 0 10px; color: #111;
+      font: inherit; cursor: pointer; transition: background .14s ease, border-color .14s ease;
+    }
+    .iconbtn:hover { background: var(--soft); border-color: #d4d4d4; }
+    .iconbtn:disabled { opacity: .45; cursor: not-allowed; }
+    .dangerbtn { color: var(--muted); }
+    .dangerbtn:hover { color: #111; }
+    .chat-shell { min-width: 0; min-height: 0; height: 100%; display: grid; grid-template-rows: 56px minmax(0, 1fr) auto; background: #fff; }
     .topbar {
-      height: 52px;
-      flex: 0 0 52px;
-      background: var(--panel);
-      border-bottom: 1px solid var(--border);
-      display: grid;
-      grid-template-columns: auto auto 1fr auto;
-      align-items: center;
-      padding: 0 12px 0 8px;
-      gap: 0;
-      position: relative;
-      z-index: 10;
+      display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 0 20px; border-bottom: 1px solid var(--border);
+      background: rgba(255,255,255,.92); backdrop-filter: blur(16px);
     }
-
-    .topbar-menu-btn {
-      width: 36px; height: 36px;
-      border-radius: var(--r-sm);
-      border: none;
-      background: transparent;
-      color: var(--text-2);
-      cursor: pointer;
-      display: grid; place-items: center;
-      flex-shrink: 0;
-      transition: background 0.12s, color 0.12s;
-      touch-action: manipulation;
+    .top-left { min-width: 0; display: flex; align-items: center; gap: 12px; flex: 1 1 auto; }
+    .top-controls { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+    .person-picker { position: relative; }
+    .person-trigger {
+      height: 36px; min-width: 156px; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 6px;
+      border: 1px solid var(--border); border-radius: 8px; background: #fff; color: #111; font: inherit;
+      cursor: pointer; transition: background .14s ease, border-color .14s ease;
     }
-    .topbar-menu-btn:hover { background: var(--surface); color: var(--text); }
-
-    .topbar-brand {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 0 14px 0 6px;
-      margin-right: 12px;
-      border-right: 1px solid var(--border);
-      height: 28px;
-      flex-shrink: 0;
+    .person-trigger:hover { background: var(--soft); border-color: #d4d4d4; }
+    .person-trigger:disabled { opacity: .55; cursor: not-allowed; }
+    .person-avatar {
+      width: 24px; height: 24px; border-radius: 99px; background: #111; color: #fff; display: grid; place-items: center;
+      font-size: 12px; font-weight: 650; flex: 0 0 auto;
     }
-    .brand-mark {
-      width: 22px; height: 22px;
-      background: var(--accent);
-      border-radius: var(--r-sm);
-      display: grid; place-items: center;
-      color: white;
-      font-size: 11px; font-weight: 800;
-      letter-spacing: -0.5px;
-      flex-shrink: 0;
+    .person-meta { min-width: 0; display: grid; line-height: 1.18; text-align: left; }
+    .person-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 550; }
+    .person-role { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 11px; }
+    .person-caret { margin-left: auto; color: var(--faint); font-size: 12px; }
+    .person-modal-backdrop {
+      display: none; position: fixed; inset: 0; z-index: 40; background: rgba(0,0,0,.22);
+      align-items: center; justify-content: center; padding: 24px;
     }
-    .brand-name {
-      font-size: 13px; font-weight: 600;
-      color: var(--text);
-      letter-spacing: -0.1px;
-      white-space: nowrap;
+    body.person-modal-open .person-modal-backdrop { display: flex; }
+    .person-modal {
+      width: min(520px, calc(100vw - 32px)); max-height: min(680px, calc(100vh - 48px));
+      display: grid; grid-template-rows: auto auto 1fr; background: #fff; border: 1px solid var(--border);
+      border-radius: 10px; box-shadow: 0 24px 70px rgba(0,0,0,.22); overflow: hidden;
     }
-
-    .session-title-inline {
-      min-width: 0;
-      display: grid;
-      gap: 1px;
-      padding: 0 8px;
+    .person-modal-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); }
+    .person-modal-title { font-weight: 650; font-size: 15px; }
+    .person-close { width: 30px; height: 30px; border: 1px solid var(--border); background: #fff; border-radius: 6px; cursor: pointer; }
+    .person-search-wrap { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .person-search {
+      width: 100%; height: 38px; border: 1px solid var(--border); border-radius: 8px; padding: 0 11px;
+      font: inherit; outline: none; background: #fff;
     }
-    .session-title-inline strong {
-      font-size: 13px; font-weight: 600;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-      color: var(--text);
+    .person-search:focus { border-color: #c8c8c8; }
+    .person-menu { min-height: 0; overflow-y: auto; padding: 6px; display: grid; align-content: start; gap: 2px; }
+    .person-option {
+      width: 100%; border: 0; background: transparent; border-radius: 6px; padding: 8px; display: flex; align-items: center; gap: 8px;
+      font: inherit; color: #111; text-align: left; cursor: pointer;
     }
-    .session-title-inline small {
-      color: var(--muted); font-size: 11px;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-      font-variant-numeric: tabular-nums;
+    .person-option:hover, .person-option.active { background: var(--soft); }
+    .person-option .person-avatar { width: 26px; height: 26px; }
+    .person-empty { padding: 18px 10px; color: var(--muted); font-size: 13px; text-align: center; }
+    .debug-toggle {
+      height: 32px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px;
+      border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--muted);
+      font-size: 13px; user-select: none; cursor: pointer;
     }
-
-    .topbar-actions {
-      display: flex; align-items: center; gap: 6px;
-      flex-shrink: 0;
-    }
-
-    .debug-control {
-      display: flex; align-items: center; gap: 5px;
-      color: var(--muted); font-size: 11px;
-      cursor: pointer;
-      padding: 4px 8px;
-      border-radius: var(--r-sm);
-      border: 1px solid var(--border);
-      background: var(--surface);
-      user-select: none;
-      transition: border-color 0.12s;
-      touch-action: manipulation;
-    }
-    .debug-control:hover { border-color: var(--border-2); color: var(--text-2); }
-    .debug-control input { width: 13px; height: 13px; margin: 0; cursor: pointer; accent-color: var(--accent); }
-
-    .topbar-action-btn {
-      width: 32px; height: 32px;
-      border-radius: var(--r-sm);
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text-2);
-      cursor: pointer;
-      display: grid; place-items: center;
-      font-size: 17px; line-height: 1;
-      transition: background 0.12s, border-color 0.12s, color 0.12s;
-      touch-action: manipulation;
-    }
-    .topbar-action-btn:hover {
-      background: var(--panel);
-      border-color: var(--border-2);
-      color: var(--text);
-    }
-    .topbar-action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-
-    /* User chip — square corners, not pill */
-    .user-chip {
-      display: flex; align-items: center; gap: 7px;
-      height: 32px; padding: 0 9px 0 4px;
-      border: 1px solid var(--border);
-      border-radius: var(--r-sm);
-      background: var(--surface);
-      color: var(--text);
-      cursor: pointer;
-      transition: background 0.12s, border-color 0.12s;
-      max-width: 200px;
-      touch-action: manipulation;
-    }
-    .user-chip:hover {
-      background: var(--panel);
-      border-color: var(--border-2);
-    }
-    .user-chip-avatar {
-      width: 22px; height: 22px;
-      border-radius: var(--r-circle);
-      background: var(--accent);
-      color: white;
-      font-size: 10px; font-weight: 700;
-      display: grid; place-items: center;
-      flex-shrink: 0;
-      line-height: 1;
-    }
-    .user-chip-info {
-      display: grid; gap: 0;
-      text-align: left; min-width: 0; overflow: hidden;
-    }
-    .user-chip-name {
-      display: block;
-      font-size: 12px; font-weight: 600;
-      color: var(--text); line-height: 1.25;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .user-chip-role {
-      display: block;
-      font-size: 10px; color: var(--muted);
-      line-height: 1.25; white-space: nowrap;
-      overflow: hidden; text-overflow: ellipsis;
-    }
-
-    /* ─── Messages ───────────────────────────────────── */
+    .debug-toggle input { width: 13px; height: 13px; margin: 0; accent-color: #111; }
+    .sidebar-toggle { display: none; }
+    .top-title { min-width: 0; display: grid; gap: 1px; }
+    .top-title strong { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .top-title span { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .messages {
-      flex: 1 1 auto; min-height: 0; overflow-y: auto;
-      padding: 20px 24px;
-      display: flex; flex-direction: column; gap: 12px;
-      scroll-behavior: smooth;
+      min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 28px 20px; display: flex; flex-direction: column; gap: 22px; align-items: center;
     }
-    .messages::-webkit-scrollbar { width: 5px; }
-    .messages::-webkit-scrollbar-track { background: transparent; }
-    .messages::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: var(--r-circle); }
-
-    .msg {
-      max-width: min(700px, 88vw);
-      line-height: 1.65;
-      font-size: 14px;
-    }
-
-    /* Flat rectangular bubbles — not chat-app bubbly */
-    .user {
-      align-self: flex-end;
-      background: var(--accent);
-      color: white;
-      padding: 9px 13px;
-      border-radius: var(--r-sm);
-      font-size: 14px;
-    }
-
-    .assistant {
-      align-self: flex-start;
-      background: var(--panel);
-      border: 1px solid var(--border);
-      padding: 12px 16px;
-      border-radius: var(--r-sm);
-      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-    }
-
-    .msg-text:empty::after { content: "正在生成..."; color: var(--muted); font-style: italic; }
-
-    /* ─── Markdown ───────────────────────────────────── */
-    .markdown { white-space: normal; }
-    .markdown > *:first-child { margin-top: 0; }
-    .markdown > *:last-child { margin-bottom: 0; }
-    .markdown h1, .markdown h2, .markdown h3 {
-      margin: 14px 0 6px;
-      line-height: 1.3; font-weight: 700;
-      color: var(--text);
-    }
-    .markdown h1 { font-size: 20px; }
-    .markdown h2 { font-size: 16px; border-bottom: 1px solid var(--border); padding-bottom: 4px; }
-    .markdown h3 { font-size: 14px; }
-    .markdown p { margin: 6px 0; }
-    .markdown ul, .markdown ol { margin: 6px 0; padding-left: 20px; }
-    .markdown li { margin: 3px 0; }
-    .markdown blockquote {
-      margin: 8px 0; padding: 8px 12px;
-      border-left: 3px solid var(--accent-border);
-      background: var(--accent-soft);
-      color: var(--text-2);
-      border-radius: 0;
-      font-size: 13px;
-    }
-    .markdown code {
-      padding: 1px 5px; border-radius: var(--r-xs);
-      background: #f1f4f8;
-      border: 1px solid var(--border);
-      font-family: "SF Mono", "Cascadia Code", ui-monospace, Menlo, Consolas, monospace;
-      font-size: 12px; color: #be185d;
-    }
-    .markdown pre {
-      overflow: auto; margin: 8px 0; padding: 11px 13px;
-      border-radius: var(--r-sm);
-      background: #0f172a;
-      color: #e2e8f0;
-      white-space: pre;
-      border: 1px solid #1e293b;
-    }
-    .markdown pre code {
-      padding: 0; background: transparent;
-      border: none; color: inherit; font-size: 12px;
-    }
-    .markdown table {
-      width: 100%; border-collapse: collapse;
-      margin: 10px 0; font-size: 13px;
-      display: block; overflow-x: auto;
-    }
-    .markdown th, .markdown td {
-      border: 1px solid var(--border);
-      padding: 6px 10px;
-      text-align: left; vertical-align: top;
-    }
-    .markdown th {
-      background: var(--surface);
-      font-weight: 600; color: var(--text-2);
-      font-size: 12px; white-space: nowrap;
-    }
-    .markdown tr:hover td { background: #fafbfd; }
-
-    /* ─── Composer ───────────────────────────────────── */
-    .composer {
-      flex: 0 0 auto;
-      padding: 10px 16px 14px;
-      background: var(--panel);
-      border-top: 1px solid var(--border);
-    }
+    .msg { width: min(820px, 100%); line-height: 1.72; font-size: 15px; }
+    .msg.user { display: flex; justify-content: flex-end; }
+    .bubble { max-width: min(640px, 100%); background: var(--soft); border: 1px solid #ededed; border-radius: 8px; padding: 11px 15px; }
+    .assistant-body { padding: 0 4px; }
+    .composer { flex: 0 0 auto; padding: 16px 20px 22px; background: linear-gradient(to top, #fff 80%, rgba(255,255,255,0)); }
     .composer-inner {
-      display: flex;
-      align-items: flex-end;
-      gap: 8px;
-      border: 1px solid var(--border-2);
-      border-radius: var(--r-sm);
-      padding: 6px 8px 6px 12px;
-      background: white;
-      transition: border-color 0.15s, box-shadow 0.15s;
-    }
-    .composer-inner:focus-within {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+      width: min(820px, 100%); margin: 0 auto; display: flex; gap: 10px; align-items: center;
+      border: 1px solid #d4d4d4; border-radius: 8px; padding: 9px 9px 9px 14px; background: #fff;
+      box-shadow: 0 16px 44px rgba(0,0,0,.09);
     }
     textarea {
-      flex: 1; border: none; outline: none;
-      background: transparent; color: var(--text);
-      resize: none; min-height: 38px; max-height: 160px;
-      padding: 6px 0; font: inherit; font-size: 14px; line-height: 1.6;
-      caret-color: var(--accent);
+      flex: 1; border: 0; outline: 0; resize: none; min-height: 36px; max-height: 180px;
+      font: inherit; line-height: 24px; padding: 6px 0; overflow-y: hidden;
     }
-    textarea::placeholder { color: var(--muted); }
-    .composer-send {
-      flex-shrink: 0; height: 32px; padding: 0 13px;
-      background: var(--accent); color: white;
-      border: none; border-radius: var(--r-xs);
-      font-family: inherit; font-size: 13px; font-weight: 600;
-      cursor: pointer;
-      transition: background 0.12s;
-      white-space: nowrap;
-      touch-action: manipulation;
-    }
-    .composer-send:hover:not(:disabled) { background: var(--accent-hover); }
-    .composer-send:disabled { opacity: 0.45; cursor: wait; }
-    .composer-hint {
-      text-align: right; font-size: 11px; color: var(--muted);
-      margin-top: 4px; user-select: none;
-    }
-
-    /* ─── Debug / Sources ────────────────────────────── */
-    .debug { margin-top: 8px; font-size: 12px; color: var(--muted); }
-    .raw-debug summary {
-      cursor: pointer; color: var(--muted); font-size: 12px;
-      padding: 4px 0; user-select: none;
-    }
-    .raw-debug summary:hover { color: var(--text-2); }
-    details pre {
-      overflow: auto; background: var(--surface);
-      border: 1px solid var(--border);
-      padding: 10px 12px; border-radius: var(--r-sm);
-      font-size: 12px; margin-top: 4px;
-      font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
-    }
-
-    /* ─── Run Panel ──────────────────────────────────── */
-    .run-panel {
-      margin-bottom: 10px;
-      border: 1px solid var(--border);
-      border-radius: var(--r-sm);
-      background: var(--surface);
-      overflow: hidden;
-      color: var(--text);
-    }
-    .run-panel[open] { background: var(--panel); }
+    .send { height: 36px; min-width: 72px; border: 0; border-radius: 6px; background: #111; color: #fff; font-weight: 600; cursor: pointer; }
+    .send:disabled { background: #cfcfcf; cursor: not-allowed; }
+    .hint { width: min(820px, calc(100vw - 40px)); margin: 7px auto 0; color: var(--faint); font-size: 12px; }
+    .run-panel { margin: 0 0 12px; border: 0; background: transparent; }
     .run-panel summary {
-      list-style: none; cursor: pointer;
-      padding: 8px 12px;
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 8px;
-      align-items: center;
-      transition: background 0.12s;
+      min-height: 28px; padding: 0 0 10px; display: flex; align-items: center; gap: 8px;
+      border-bottom: 1px solid #eeeeee; list-style: none; cursor: pointer; color: #8a8a8a;
     }
-    .run-panel summary:hover { background: var(--surface); }
     .run-panel summary::-webkit-details-marker { display: none; }
-    .run-title { display: flex; align-items: center; gap: 7px; min-width: 0; }
-    .run-title strong { font-size: 12px; font-weight: 600; color: var(--text-2); }
-    .run-subtitle {
-      grid-column: 1 / -1;
-      color: var(--muted); font-size: 11px;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-      margin-top: 1px;
+    .run-title { display: flex; align-items: center; gap: 6px; }
+    .run-title strong { font-size: 14px; font-weight: 400; color: #8a8a8a; }
+    .run-dot { width: 6px; height: 6px; border-radius: 99px; background: #c7c7c7; }
+    .run-dot.running { background: #111; animation: pulseDot 1.25s ease-in-out infinite; }
+    .run-panel:has(.run-dot.running) .run-title strong {
+      color: transparent;
+      background-image: linear-gradient(100deg, #737373 0%, #737373 35%, #111 50%, #737373 65%, #737373 100%);
+      background-size: 240% 100%; background-position: 120% 0; -webkit-background-clip: text; background-clip: text;
+      animation: runTextSweep 1.7s ease-in-out infinite;
     }
-    /* Badge — flat tag, not pill */
-    .run-badge {
-      display: inline-flex; align-items: center;
-      border: 1px solid var(--border);
-      background: var(--panel);
-      color: var(--text-2);
-      border-radius: var(--r-xs);
-      padding: 2px 6px;
-      font-size: 11px; white-space: nowrap;
-      font-variant-numeric: tabular-nums;
-    }
-    .run-dot {
-      width: 7px; height: 7px; border-radius: var(--r-circle);
-      background: var(--muted);
-      flex-shrink: 0;
-    }
-    .run-dot.running {
-      background: var(--accent);
-      animation: pulseDot 1.2s ease-in-out infinite;
-    }
-    .run-dot.completed { background: var(--success); }
-    .run-dot.error { background: var(--danger); }
-    @keyframes pulseDot {
-      0%, 100% { transform: scale(1); opacity: 0.8; }
-      50% { transform: scale(1.45); opacity: 1; }
-    }
-    .run-body {
-      border-top: 1px solid var(--border);
-      padding: 10px 12px 12px;
-      display: grid; gap: 10px;
-    }
-    .run-metadata { display: flex; flex-wrap: wrap; gap: 4px; }
-    .run-chip {
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text-2);
-      border-radius: var(--r-xs);
-      padding: 2px 6px;
-      font-size: 11px;
-      font-variant-numeric: tabular-nums;
-    }
-    .run-timeline { position: relative; display: grid; gap: 7px; }
-    .run-step { display: grid; grid-template-columns: 18px 1fr; gap: 8px; align-items: start; }
-    /* Step marker — keep circle for semantic meaning */
-    .run-step-marker {
-      width: 18px; height: 18px; border-radius: var(--r-circle);
-      display: grid; place-items: center;
-      margin-top: 2px;
-      background: var(--border);
-      color: var(--muted);
-      font-size: 9px; font-weight: 700;
-    }
-    .run-step.running .run-step-marker {
-      background: var(--accent-soft);
-      color: var(--accent);
-    }
-    .run-step.completed .run-step-marker { background: var(--success-soft); color: var(--success); }
-    .run-step.error .run-step-marker { background: var(--danger-soft); color: var(--danger); }
-    .run-step-card {
-      min-width: 0;
-      border: 1px solid var(--border);
-      background: var(--panel);
-      border-radius: var(--r-xs);
-      padding: 7px 10px;
-    }
-    .run-step-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-    .run-step-title { font-weight: 600; font-size: 12px; color: var(--text); }
-    .run-step-phase {
-      color: var(--muted); font-size: 10px;
-      text-transform: uppercase; letter-spacing: .04em; white-space: nowrap;
-    }
-    .run-step-detail { color: var(--text-2); font-size: 12px; line-height: 1.55; margin-top: 3px; white-space: pre-wrap; }
-    .run-extra { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
-    .run-extra code {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--text-2);
-      border-radius: var(--r-xs); padding: 1px 5px;
-      font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
-      font-size: 11px;
-    }
-
-    /* ─── Artifact Card ──────────────────────────────── */
-    .artifact-card {
-      margin-top: 10px;
-      border: 1px solid var(--border);
-      border-radius: var(--r-sm);
-      background: var(--panel);
-      overflow: hidden;
-    }
-    .artifact-head {
-      padding: 10px 14px;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
-      display: grid; gap: 2px;
-    }
-    .artifact-kicker {
-      color: var(--accent);
-      font-size: 10px; font-weight: 700;
-      letter-spacing: .06em; text-transform: uppercase;
-    }
-    .artifact-title { font-size: 14px; font-weight: 700; color: var(--text); }
-    .artifact-summary { color: var(--text-2); font-size: 12px; line-height: 1.5; }
-    .artifact-section { padding: 10px 14px; border-top: 1px solid var(--border); }
-    .artifact-section:first-of-type { border-top: 0; }
-    .artifact-section h4 { margin: 0 0 8px; font-size: 12px; color: var(--text-2); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
-    .artifact-table {
-      width: 100%; border-collapse: collapse;
-      font-size: 12px; display: block; overflow-x: auto;
-    }
-    .artifact-table th, .artifact-table td {
-      border-bottom: 1px solid var(--border);
-      padding: 6px 9px; text-align: left; vertical-align: top; white-space: nowrap;
-    }
-    .artifact-table th {
-      color: var(--muted); font-weight: 600;
-      background: var(--surface); font-size: 11px;
-      text-transform: uppercase; letter-spacing: .03em;
-    }
-    .artifact-table tr:last-child td { border-bottom: none; }
-
-    /* ─── Session Sidebar ────────────────────────────── */
-    .session-sidebar-layer, .modal-backdrop {
-      position: fixed; inset: 0; display: none; z-index: 40;
-    }
-    .session-sidebar-layer.open, .modal-backdrop.open { display: block; }
-
-    .session-sidebar-backdrop, .modal-dim {
-      position: absolute; inset: 0; border: 0; border-radius: 0;
-      background: rgba(15, 23, 42, 0.4);
-    }
-
-    .session-sidebar {
-      position: absolute; left: 0; top: 0; bottom: 0;
-      width: min(300px, 85vw);
-      background: var(--panel);
-      border-right: 1px solid var(--border);
-      box-shadow: 8px 0 32px rgba(15, 23, 42, 0.12);
-      display: flex; flex-direction: column;
-    }
-
-    .session-sidebar-head {
-      height: 52px;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 14px;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
-      flex-shrink: 0;
-    }
-    .session-sidebar-head strong { font-size: 13px; font-weight: 600; color: var(--text); }
-
-    .session-create-row {
-      margin: 10px 10px 4px;
-      padding: 7px 11px;
-      border: 1px solid var(--accent-border);
-      background: var(--accent-soft);
-      color: var(--accent);
-      text-align: left;
-      border-radius: var(--r-sm);
-      cursor: pointer;
-      font-family: inherit; font-size: 13px; font-weight: 600;
-      display: flex; align-items: center; gap: 6px;
-      transition: background 0.12s, border-color 0.12s;
-      touch-action: manipulation;
-    }
-    .session-create-row:hover {
-      background: #dbeafe; border-color: var(--accent);
-    }
-    .session-create-row:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .session-list { overflow-y: auto; padding: 4px 6px 12px; display: grid; gap: 1px; }
-    .session-list::-webkit-scrollbar { width: 4px; }
-    .session-list::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: var(--r-circle); }
-
-    .session-item {
-      display: grid;
-      grid-template-columns: 1fr auto;
-      gap: 6px; align-items: center;
-      padding: 7px 7px;
-      border-radius: var(--r-sm);
-      transition: background 0.1s;
-    }
-    .session-item:hover { background: var(--surface); }
-    .session-item.active { background: var(--accent-soft); }
-
-    .session-open {
-      border: 0; background: transparent;
-      color: var(--text); text-align: left; padding: 0;
-      min-width: 0; cursor: pointer; font: inherit;
-    }
-    .session-open strong, .session-open small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .session-open strong { font-size: 13px; font-weight: 600; color: var(--text); }
-    .session-open small { color: var(--muted); font-size: 11px; margin-top: 2px; }
-    .session-item.active .session-open strong { color: var(--accent); }
-
-    .session-actions { display: flex; gap: 2px; flex-shrink: 0; }
-    .session-icon-btn {
-      width: 26px; height: 26px;
-      border: none; background: transparent;
-      color: var(--muted); padding: 0;
-      border-radius: var(--r-xs); cursor: pointer;
-      display: grid; place-items: center;
-      transition: background 0.1s, color 0.1s;
-      touch-action: manipulation;
-    }
-    .session-icon-btn:hover { background: var(--border); color: var(--text-2); }
-    .session-icon-btn.danger:hover { background: var(--danger-soft); color: var(--danger); }
-
-    .session-rename-form { grid-column: 1 / -1; display: flex; gap: 6px; }
-    .session-rename-form input {
-      flex: 1; min-width: 0; padding: 6px 8px;
-      border: 1px solid var(--accent-border); border-radius: var(--r-xs);
-      font: inherit; font-size: 13px; outline: none;
-      background: white; color: var(--text);
-    }
-    .session-rename-form input:focus { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(37,99,235,0.1); }
-    .session-rename-form button {
-      padding: 6px 10px; border-radius: var(--r-xs);
-      background: var(--accent); color: white;
-      border: none; font: inherit; font-size: 12px; font-weight: 600;
-      cursor: pointer; touch-action: manipulation;
-    }
-
-    /* ─── Icon Button ──────────────────────────────────── */
-    .icon-button {
-      width: 30px; height: 30px; border-radius: var(--r-sm);
-      border: none; color: var(--muted); background: transparent;
-      line-height: 1; padding: 0; cursor: pointer;
-      display: grid; place-items: center;
-      transition: background 0.1s, color 0.1s;
-      touch-action: manipulation;
-    }
-    .icon-button:hover { background: var(--border); color: var(--text-2); }
-
-    /* ─── User Modal ─────────────────────────────────── */
-    .user-modal {
-      position: absolute;
-      left: 50%; top: 50%;
-      transform: translate(-50%, -50%);
-      width: min(460px, calc(100vw - 32px));
-      max-height: min(600px, calc(100vh - 64px));
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: var(--r-md);
-      overflow: hidden;
-      box-shadow: 0 16px 48px rgba(15, 23, 42, 0.2), 0 2px 8px rgba(15, 23, 42, 0.08);
-      display: flex; flex-direction: column;
-    }
-
-    .modal-head {
-      height: 48px;
-      display: grid; grid-template-columns: 32px 1fr 32px;
-      align-items: center; padding: 0 10px;
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
-      flex-shrink: 0;
-    }
-    .modal-head h2 {
-      margin: 0; text-align: center;
-      font-size: 14px; font-weight: 600; color: var(--text);
-    }
-
-    .search-row {
-      position: relative; padding: 10px 12px;
-      border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-    }
-    .search-row input {
-      width: 100%; height: 34px;
-      border: 1px solid var(--border); border-radius: var(--r-sm);
-      padding: 0 34px 0 10px;
-      font: inherit; font-size: 13px;
-      outline: none; background: white; color: var(--text);
-      transition: border-color 0.12s, box-shadow 0.12s;
-    }
-    .search-row input:focus {
-      border-color: var(--accent);
-      box-shadow: 0 0 0 2px rgba(37,99,235,0.1);
-    }
-    .search-row input::placeholder { color: var(--muted); }
-    .clear-search {
-      position: absolute; right: 18px; top: 50%;
-      transform: translateY(-50%);
-      width: 24px; height: 24px;
-      border: none; background: transparent;
-      color: var(--muted); font-size: 18px; padding: 0;
-      cursor: pointer; display: grid; place-items: center;
-      border-radius: var(--r-xs); transition: color 0.1s;
-    }
-    .clear-search:hover { color: var(--text-2); }
-
-    .user-list { overflow-y: auto; padding: 4px 8px 8px; flex: 1; min-height: 0; }
-    .user-list::-webkit-scrollbar { width: 4px; }
-    .user-list::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: var(--r-circle); }
-
-    .user-row {
-      width: 100%;
-      display: grid; grid-template-columns: 36px 1fr;
-      gap: 10px; align-items: center; min-height: 56px;
-      border: 0; border-radius: var(--r-sm);
-      background: transparent; color: var(--text);
-      text-align: left; padding: 7px 8px;
-      cursor: pointer; font: inherit;
-      transition: background 0.1s;
-      touch-action: manipulation;
-    }
-    .user-row:hover { background: var(--surface); }
-    .user-row.active { background: var(--accent-soft); }
-
-    /* Avatars keep circle — they're semantic */
-    .avatar {
-      width: 34px; height: 34px; border-radius: var(--r-circle);
-      display: grid; place-items: center;
-      background: #e2e8f0; color: var(--text-2);
-      font-weight: 700; font-size: 14px; flex-shrink: 0;
-    }
-    .user-row.active .avatar {
-      background: var(--accent); color: white;
-    }
-
-    .user-main { min-width: 0; }
-    .user-title { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
-    .user-title strong {
-      font-size: 13px; font-weight: 600;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-    .user-sub {
-      color: var(--muted); font-size: 12px; margin-top: 2px;
-      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    }
-    .selected-mark {
-      margin-left: auto; color: var(--accent);
-      font-size: 11px; font-weight: 600;
-      flex-shrink: 0; white-space: nowrap;
-      border: 1px solid var(--accent-border);
-      background: var(--accent-soft);
-      border-radius: var(--r-xs);
-      padding: 1px 5px;
-    }
-
-    .empty { color: var(--muted); padding: 32px 0; text-align: center; font-size: 13px; }
-
-    /* ─── Responsive: Tablet (≤768px) ───────────────── */
-    @media (max-width: 768px) {
-      .brand-name { display: none; }
-      .topbar-brand { padding-right: 10px; margin-right: 8px; }
-      .user-chip-info { display: none; }
-      .user-chip { padding: 0 6px; }
-      .messages { padding: 16px 16px; }
-      .msg { max-width: calc(100vw - 40px); }
-    }
-
-    /* ─── Responsive: Mobile (≤480px) ───────────────── */
-    @media (max-width: 480px) {
-      .topbar { padding: 0 6px; height: 48px; flex: 0 0 48px; }
-      .topbar-brand { display: none; }
-      .debug-control { display: none; }
-      .topbar-action-btn { width: 36px; height: 36px; }
-      .user-chip { height: 36px; width: 36px; padding: 0; justify-content: center; }
-      .user-chip-avatar { width: 26px; height: 26px; font-size: 12px; }
-
-      .messages { padding: 12px 12px; gap: 10px; }
-      .msg { max-width: calc(100vw - 24px); font-size: 15px; }
-      .user { padding: 10px 13px; }
-      .assistant { padding: 11px 13px; }
-
-      .composer { padding: 8px 10px 12px; }
-      .composer-inner { padding: 5px 6px 5px 10px; }
-      .composer-send { height: 38px; padding: 0 14px; font-size: 14px; }
-      textarea { min-height: 36px; font-size: 15px; }
-      .composer-hint { display: none; }
-
-      .session-sidebar { width: min(280px, 90vw); }
-
-      /* Modal slides up from bottom on mobile */
-      .user-modal {
-        top: auto; bottom: 0;
-        left: 0; right: 0;
-        transform: none;
-        width: 100%;
-        max-width: 100%;
-        max-height: 80vh;
-        border-radius: var(--r-md) var(--r-md) 0 0;
-        border-left: none; border-right: none; border-bottom: none;
+    @keyframes runTextSweep { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+    @keyframes pulseDot { 0%,100% { opacity:.65; transform:scale(1); } 50% { opacity:1; transform:scale(1.35); } }
+    .run-duration { color: #8a8a8a; font-size: 14px; font-variant-numeric: tabular-nums; }
+    .run-chevron { color: #9ca3af; transition: transform .16s ease; display: grid; place-items: center; }
+    .run-panel[open] .run-chevron { transform: rotate(90deg); }
+    .run-body { padding: 10px 0 2px; display: grid; gap: 10px; }
+    .thought { color: #303030; font-size: 15px; line-height: 1.72; white-space: pre-wrap; }
+    .tool-line { color: #8a8a8a; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+    .tool-icon { width: 14px; height: 14px; border: 1px solid #bdbdbd; border-radius: 3px; display: inline-grid; place-items: center; font-size: 10px; color: #8a8a8a; }
+    .sources { margin-top: 12px; color: var(--muted); font-size: 12px; }
+    .error { color: #dc2626; }
+    .markdown p { margin: 0 0 12px; }
+    .markdown h1, .markdown h2, .markdown h3 { margin: 16px 0 8px; line-height: 1.35; }
+    .markdown ul, .markdown ol { padding-left: 22px; }
+    .markdown code { background: var(--soft); padding: 2px 5px; border-radius: 4px; }
+    .markdown table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 14px; }
+    .markdown th, .markdown td { border: 1px solid var(--border); padding: 7px 9px; text-align: left; }
+    @media (max-width: 760px) {
+      main { grid-template-columns: 1fr; }
+      .sidebar {
+        position: fixed; inset: 0 auto 0 0; width: min(86vw, 312px); z-index: 20; transform: translateX(-100%);
+        transition: transform .18s ease; box-shadow: 18px 0 40px rgba(0,0,0,.12);
       }
-
-      .run-panel summary { padding: 8px 10px; }
-      .run-body { padding: 8px 10px 10px; }
-      .run-step-card { padding: 6px 8px; }
-    }
-
-    /* ─── Responsive: Very small (≤360px) ───────────── */
-    @media (max-width: 360px) {
-      .topbar-actions { gap: 4px; }
-      .topbar-action-btn { width: 32px; height: 32px; }
-      .messages { padding: 10px 10px; }
+      body.sidebar-open .sidebar { transform: translateX(0); }
+      .sidebar-backdrop { display: none; position: fixed; inset: 0; z-index: 10; background: rgba(0,0,0,.18); }
+      body.sidebar-open .sidebar-backdrop { display: block; }
+      .sidebar-toggle { display: inline-grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--border); background: #fff; border-radius: 6px; }
+      .chat-shell { grid-template-rows: 52px 1fr auto; }
+      .topbar { padding: 0 14px; }
+      .person-trigger { min-width: 132px; max-width: 154px; padding: 0 8px 0 6px; }
+      .person-trigger .person-role { display: none; }
+      .person-trigger .person-caret { display: inline; }
+      .person-modal-backdrop { padding: 14px; align-items: flex-start; }
+      .person-modal { margin-top: 42px; max-height: calc(100vh - 84px); }
+      .debug-toggle span { display: none; }
     }
   </style>
 </head>
 <body>
   <main>
-    <!-- Topbar -->
-    <div class="topbar">
-      <button id="openSessions" class="topbar-menu-btn" type="button" aria-label="会话管理">
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
-          <line x1="2" y1="4.5" x2="14" y2="4.5"/>
-          <line x1="2" y1="8" x2="14" y2="8"/>
-          <line x1="2" y1="11.5" x2="14" y2="11.5"/>
-        </svg>
-      </button>
-      <div class="topbar-brand">
-        <div class="brand-mark">A</div>
-        <span class="brand-name">Enterprise Agent</span>
+    <aside class="sidebar" aria-label="&#x4F1A;&#x8BDD;&#x7BA1;&#x7406;">
+      <div class="side-head">
+        <div class="brand"><div class="mark" aria-hidden="true"></div><span>LangClaw</span></div>
       </div>
-      <div class="session-title-inline">
-        <strong id="activeSessionTitle">新会话</strong>
-        <small id="activeSessionMeta">session</small>
+      <div class="side-actions">
+        <button id="newChat" class="new-chat-btn" type="button"><span>&#x65B0;&#x4F1A;&#x8BDD;</span><span aria-hidden="true">+</span></button>
+        <input id="sessionSearch" class="session-search" type="search" placeholder="&#x641C;&#x7D22;&#x4F1A;&#x8BDD;" autocomplete="off" />
       </div>
-      <div class="topbar-actions">
-        <label class="debug-control" title="开启后在回答下方显示调试信息">
-          <input id="debugMode" type="checkbox" checked />
-          <span>Debug</span>
-        </label>
-        <button id="newSessionTop" class="topbar-action-btn" type="button" aria-label="新建会话" title="新建会话">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <line x1="7" y1="1" x2="7" y2="13"/>
-            <line x1="1" y1="7" x2="13" y2="7"/>
-          </svg>
-        </button>
-        <button id="identityFab" class="user-chip" type="button" title="切换登录用户">
-          <span id="identityInitial" class="user-chip-avatar">员</span>
-          <div id="identityBadge" class="user-chip-info"></div>
-        </button>
+      <nav id="sessionList" class="session-list" aria-label="&#x5386;&#x53F2;&#x4F1A;&#x8BDD;"></nav>
+      <div class="side-foot">
+        <div id="sideUser" class="side-user"></div>
+        <button id="deleteChat" class="iconbtn dangerbtn" type="button">&#x5220;&#x9664;</button>
       </div>
-    </div>
-
-    <div id="messages" class="messages"></div>
-
-    <!-- Composer -->
-    <form id="form" class="composer">
-      <div class="composer-inner">
-        <textarea id="message" placeholder="输入问题或业务指令…" rows="1"></textarea>
-        <button id="send" class="composer-send" type="submit">发送</button>
-      </div>
-      <div class="composer-hint">Enter 发送 · Shift+Enter 换行</div>
-    </form>
-  </main>
-
-  <!-- Session Sidebar -->
-  <div id="sessionLayer" class="session-sidebar-layer" aria-hidden="true">
-    <button id="sessionBackdrop" class="session-sidebar-backdrop" type="button" aria-label="关闭会话面板"></button>
-    <aside class="session-sidebar" aria-label="会话管理">
-      <div class="session-sidebar-head">
-        <strong>会话记录</strong>
-        <button id="closeSessions" class="icon-button" type="button" aria-label="关闭">
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <line x1="1" y1="1" x2="13" y2="13"/><line x1="13" y1="1" x2="1" y2="13"/>
-          </svg>
-        </button>
-      </div>
-      <button id="createSession" class="session-create-row" type="button">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-          <line x1="6.5" y1="1" x2="6.5" y2="12"/><line x1="1" y1="6.5" x2="12" y2="6.5"/>
-        </svg>
-        新建会话
-      </button>
-      <div id="sessionList" class="session-list"></div>
     </aside>
-  </div>
-
-  <!-- User Modal -->
-  <div id="userModal" class="modal-backdrop" aria-hidden="true">
-    <button id="modalDim" class="modal-dim" type="button" aria-label="关闭"></button>
-    <div class="user-modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-      <div class="modal-head">
-        <span></span>
-        <h2 id="modalTitle">切换登录用户</h2>
-        <button id="closeModal" class="icon-button" type="button" aria-label="关闭">
-          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-            <line x1="1" y1="1" x2="12" y2="12"/><line x1="12" y1="1" x2="1" y2="12"/>
-          </svg>
-        </button>
+    <div id="sidebarBackdrop" class="sidebar-backdrop" aria-hidden="true"></div>
+    <section class="chat-shell">
+      <div class="topbar">
+        <div class="top-left">
+          <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="&#x6253;&#x5F00;&#x4F1A;&#x8BDD;&#x5217;&#x8868;">&#9776;</button>
+          <div class="top-title">
+            <strong id="chatTitle"></strong>
+            <span id="chatSubtitle"></span>
+          </div>
+        </div>
+        <div class="top-controls">
+          <div id="personPicker" class="person-picker">
+            <button id="personTrigger" class="person-trigger" type="button" aria-haspopup="dialog" aria-expanded="false">
+              <span id="personAvatar" class="person-avatar" aria-hidden="true"></span>
+              <span class="person-meta">
+                <span id="personName" class="person-name"></span>
+                <span id="personRole" class="person-role"></span>
+              </span>
+              <span class="person-caret" aria-hidden="true">⌄</span>
+            </button>
+          </div>
+          <label class="debug-toggle" title="Debug">
+            <input id="debugToggle" type="checkbox" checked />
+            <span>Debug</span>
+          </label>
+        </div>
       </div>
-      <div class="search-row">
-        <input id="userSearch" autocomplete="off" placeholder="搜索姓名、岗位、部门、userid…" />
-        <button id="clearSearch" class="clear-search" type="button" aria-label="清空搜索">×</button>
+      <div id="messages" class="messages"></div>
+      <form id="form" class="composer">
+        <div class="composer-inner">
+          <textarea id="input" rows="1" placeholder="&#x8F93;&#x5165;&#x95EE;&#x9898;&#x6216;&#x4E1A;&#x52A1;&#x6307;&#x4EE4;"></textarea>
+          <button id="send" class="send" type="submit">&#x53D1;&#x9001;</button>
+        </div>
+        <div class="hint">Enter &#x53D1;&#x9001; &#183; Shift+Enter &#x6362;&#x884C;</div>
+      </form>
+    </section>
+    <div id="personModalBackdrop" class="person-modal-backdrop" aria-hidden="true">
+      <div class="person-modal" role="dialog" aria-modal="true" aria-labelledby="personModalTitle">
+        <div class="person-modal-head">
+          <div id="personModalTitle" class="person-modal-title">&#x9009;&#x62E9;&#x4EBA;&#x5458;</div>
+          <button id="personClose" class="person-close" type="button" aria-label="&#x5173;&#x95ED;">×</button>
+        </div>
+        <div class="person-search-wrap">
+          <input id="personSearch" class="person-search" type="search" placeholder="&#x641C;&#x7D22;&#x59D3;&#x540D;&#x3001;&#x5C97;&#x4F4D;&#x6216;&#x90E8;&#x95E8;" autocomplete="off" />
+        </div>
+        <div id="personMenu" class="person-menu" role="listbox" aria-label="&#x9009;&#x62E9;&#x4EBA;&#x5458;"></div>
       </div>
-      <div id="userList" class="user-list"></div>
     </div>
-  </div>
-
+  </main>
   <script>
-    const STORAGE_KEY = "enterprise_agent_sessions_v2";
-    const LEGACY_STORAGE_KEY = "enterprise_agent_sessions_v1";
-    const INITIAL_MESSAGES = [{
-      id: createMessageId(),
-      role: "assistant",
-      text: "你好，我是企业 Agent，本地 demo 已接入 mock 企微通讯录。你可以切换员工身份后测试权限、知识库和业务场景。"
-    }];
-
-    const form = document.querySelector("#form");
-    const messages = document.querySelector("#messages");
-    const send = document.querySelector("#send");
-    const textarea = document.querySelector("#message");
-    const debugMode = document.querySelector("#debugMode");
-    const activeSessionTitle = document.querySelector("#activeSessionTitle");
-    const activeSessionMeta = document.querySelector("#activeSessionMeta");
-    const openSessions = document.querySelector("#openSessions");
-    const closeSessions = document.querySelector("#closeSessions");
-    const sessionBackdrop = document.querySelector("#sessionBackdrop");
-    const sessionLayer = document.querySelector("#sessionLayer");
-    const sessionList = document.querySelector("#sessionList");
-    const createSession = document.querySelector("#createSession");
-    const newSessionTop = document.querySelector("#newSessionTop");
-    const identityFab = document.querySelector("#identityFab");
-    const identityInitial = document.querySelector("#identityInitial");
-    const identityBadge = document.querySelector("#identityBadge");
-    const userModal = document.querySelector("#userModal");
-    const modalDim = document.querySelector("#modalDim");
-    const closeModal = document.querySelector("#closeModal");
-    const userSearch = document.querySelector("#userSearch");
-    const clearSearch = document.querySelector("#clearSearch");
-    const userList = document.querySelector("#userList");
-
-    let users = [];
-    let chatLoading = false;
-    let editingSessionId = null;
-    let editingSessionTitle = "";
-    let currentUser = {
-      userid: "sales_001",
-      name: "林悦",
-      department_name: "展厅销售组",
-      position: "销售顾问"
+    const STR = {
+      welcome: "\\u4f60\\u597d\\uff0c\\u6211\\u662f\\u4f01\\u4e1a Agent\\u3002\\u4f60\\u53ef\\u4ee5\\u8be2\\u95ee\\u4e1a\\u52a1\\u6570\\u636e\\u3001\\u77e5\\u8bc6\\u5e93\\u6216\\u9700\\u8981\\u5b89\\u5168\\u6c99\\u7bb1\\u5904\\u7406\\u7684\\u8ba1\\u7b97\\u4efb\\u52a1\\u3002",
+      running: "\\u6b63\\u5728\\u5904\\u7406",
+      done: "\\u5df2\\u5904\\u7406",
+      thinking: "\\u6211\\u5148\\u7406\\u89e3\\u4f60\\u7684\\u95ee\\u9898\\uff0c\\u518d\\u5224\\u65ad\\u9700\\u8981\\u54ea\\u4e9b\\u80fd\\u529b\\u6765\\u56de\\u7b54\\u3002",
+      failed: "\\u8bf7\\u6c42\\u5931\\u8d25\\uff1a",
+      requestTimeout: "\\u8bf7\\u6c42\\u8d85\\u65f6\\uff0c\\u5df2\\u7ec8\\u6b62\\u672c\\u6b21\\u751f\\u6210\\u3002",
+      untitled: "\\u65b0\\u4f1a\\u8bdd",
+      recent: "\\u6700\\u8fd1\\u4f1a\\u8bdd",
+      searchResults: "\\u641c\\u7d22\\u7ed3\\u679c",
+      noMatched: "\\u6ca1\\u6709\\u5339\\u914d\\u7684\\u4f1a\\u8bdd",
+      confirmDelete: "\\u5220\\u9664\\u5f53\\u524d\\u4f1a\\u8bdd\\uff1f",
+      confirmDeleteSession: "\\u5220\\u9664\\u8fd9\\u4e2a\\u4f1a\\u8bdd\\uff1f",
+      ranCommands: "\\u5df2\\u8fd0\\u884c",
+      loadingPeople: "\\u6b63\\u5728\\u8bfb\\u53d6\\u5458\\u5de5",
+      unknownRole: "\\u5458\\u5de5"
     };
-    let sessionState = loadSessionState(currentUser.userid);
+    const FALLBACK_USERS = [
+      { id: "sales_001", name: "\\u6797\\u60a6", role: "\\u9500\\u552e\\u987e\\u95ee" },
+      { id: "store_gm_001", name: "\\u987e\\u660e\\u8fdc", role: "\\u95e8\\u5e97\\u603b\\u7ecf\\u7406" },
+      { id: "sales_manager_001", name: "\\u5468\\u666f\\u884c", role: "\\u9500\\u552e\\u7ecf\\u7406" },
+      { id: "finance_001", name: "\\u5510\\u82e5\\u6eaa", role: "\\u8d22\\u52a1\\u4e13\\u5458" }
+    ];
+    let people = [...FALLBACK_USERS];
+    const STORAGE_KEY = "langclaw.web.sessions.v5";
+    const els = {
+      messages: document.querySelector("#messages"),
+      form: document.querySelector("#form"),
+      input: document.querySelector("#input"),
+      send: document.querySelector("#send"),
+      personPicker: document.querySelector("#personPicker"),
+      personTrigger: document.querySelector("#personTrigger"),
+      personAvatar: document.querySelector("#personAvatar"),
+      personName: document.querySelector("#personName"),
+      personRole: document.querySelector("#personRole"),
+      personModalBackdrop: document.querySelector("#personModalBackdrop"),
+      personClose: document.querySelector("#personClose"),
+      personSearch: document.querySelector("#personSearch"),
+      personMenu: document.querySelector("#personMenu"),
+      newChat: document.querySelector("#newChat"),
+      deleteChat: document.querySelector("#deleteChat"),
+      sessionList: document.querySelector("#sessionList"),
+      sessionSearch: document.querySelector("#sessionSearch"),
+      sideUser: document.querySelector("#sideUser"),
+      sidebarToggle: document.querySelector("#sidebarToggle"),
+      sidebarBackdrop: document.querySelector("#sidebarBackdrop"),
+      debug: document.querySelector("#debugToggle"),
+      chatTitle: document.querySelector("#chatTitle"),
+      chatSubtitle: document.querySelector("#chatSubtitle")
+    };
+    let sessions = loadSessions();
+    let activeSessionId = "";
+    let messages = [];
+    let userContextCache = new Map();
+    let currentUserId = people[0].id;
+    let loading = false;
+    let renamingSessionId = "";
 
-    loadUsers();
-    renderIdentity();
-    renderAll();
+    initUsers();
+    openInitialSession();
+    render();
+    loadPeople();
 
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      if (chatLoading) return;
-      const text = textarea.value.trim();
-      if (!text) return;
-
-      const userMessage = { id: createMessageId(), role: "user", text };
-      const assistantMessage = {
-        id: createMessageId(),
-        role: "assistant",
-        text: "",
-        thinkingText: "",
-        streaming: true
-      };
-      updateActiveSession((session) => {
-        const messages = session.messages.concat(userMessage, assistantMessage);
-        return {
-          ...session,
-          title: inferSessionTitle(session, messages),
-          messages,
-          updatedAt: Date.now()
-        };
+    function initUsers() {
+      renderPeopleList();
+    }
+    function renderPeopleList() {
+      const query = (els.personSearch?.value || "").trim().toLowerCase();
+      const shown = query
+        ? people.filter((user) => personSearchText(user).includes(query))
+        : people;
+      els.personMenu.innerHTML = "";
+      if (!shown.length) {
+        const empty = document.createElement("div");
+        empty.className = "person-empty";
+        empty.textContent = "\\u6ca1\\u6709\\u5339\\u914d\\u7684\\u5458\\u5de5";
+        els.personMenu.appendChild(empty);
+        return;
+      }
+      shown.forEach((user) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "person-option";
+        button.dataset.userId = user.id;
+        button.setAttribute("role", "option");
+        button.innerHTML = '<span class="person-avatar" aria-hidden="true">' + escapeHtml(user.name.slice(0, 1)) + '</span><span class="person-meta"><span class="person-name">' + escapeHtml(user.name) + '</span><span class="person-role">' + escapeHtml(userRoleLabel(user.id)) + '</span></span>';
+        button.addEventListener("click", () => selectUser(user.id));
+        els.personMenu.appendChild(button);
       });
-      textarea.value = "";
-      autoResizeTextarea();
-      setChatLoading(true);
-      renderAll();
-
+    }
+    function personSearchText(user) {
+      return [user.name, user.role, user.department, user.email, user.mobile].filter(Boolean).join(" ").toLowerCase();
+    }
+    async function loadPeople() {
       try {
-        const payload = {
-          user_id: currentUser.userid,
-          wecom_userid: currentUser.userid,
-          session_id: getActiveSession().id,
-          message: text,
-          debug: debugMode.checked
-        };
+        const res = await fetch("/api/wecom-users");
+        if (!res.ok) throw new Error("load_people_failed");
+        const data = await res.json();
+        const loaded = (data.users || []).map(normalizePerson).filter((user) => user.id && user.name);
+        if (!loaded.length) return;
+        people = loaded;
+        if (!people.some((user) => user.id === currentUserId)) currentUserId = people[0].id;
+        initUsers();
+        const active = latestSessionForUser(currentUserId) || createSession(currentUserId, false);
+        activeSessionId = active.id;
+        messages = active.messages;
+        saveSessions();
+        render();
+      } catch {
+        initUsers();
+        render();
+      }
+    }
+    function normalizePerson(user) {
+      return {
+        id: user.userid || user.id,
+        name: user.name || user.alias || user.userid || "",
+        role: user.position || user.department_name || STR.unknownRole,
+        department: user.department_name || "",
+        email: user.email || "",
+        mobile: user.mobile || ""
+      };
+    }
+    function openInitialSession() {
+      const preferred = localStorage.getItem("langclaw.web.activeUser") || people[0].id;
+      currentUserId = people.some((user) => user.id === preferred) ? preferred : people[0].id;
+      const active = latestSessionForUser(currentUserId) || createSession(currentUserId, false);
+      activeSessionId = active.id;
+      messages = active.messages;
+      saveSessions();
+      ensureUserContext(currentUserId).catch(() => {});
+    }
+    function createSession(userId, activate) {
+      const now = Date.now();
+      const session = {
+        id: userId + ":web-" + now + "-" + Math.random().toString(36).slice(2),
+        userId,
+        title: STR.untitled,
+        createdAt: now,
+        updatedAt: now,
+        messages: [createWelcomeMessage()]
+      };
+      sessions.unshift(session);
+      if (activate) {
+        activeSessionId = session.id;
+        messages = session.messages;
+      }
+      return session;
+    }
+    function createWelcomeMessage() {
+      return { id: id(), role: "assistant", text: STR.welcome, steps: [], sources: [] };
+    }
+    function loadSessions() {
+      try {
+        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+        if (!Array.isArray(parsed)) return [];
+        return parsed.filter((session) => session && session.id && session.userId && Array.isArray(session.messages)).slice(0, 80);
+      } catch {
+        return [];
+      }
+    }
+    function saveSessions() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions.slice(0, 80)));
+      localStorage.setItem("langclaw.web.activeUser", currentUserId);
+    }
+    function sessionsForUser(userId) {
+      return sessions.filter((session) => session.userId === userId).sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+    }
+    function latestSessionForUser(userId) {
+      return sessionsForUser(userId)[0];
+    }
+    function getActiveSession() {
+      return sessions.find((session) => session.id === activeSessionId);
+    }
+    function getCurrentUser() {
+      return people.find((user) => user.id === currentUserId) || FALLBACK_USERS.find((user) => user.id === currentUserId);
+    }
+    function touchActiveSession(firstUserText) {
+      const session = getActiveSession();
+      if (!session) return;
+      session.messages = messages;
+      session.updatedAt = Date.now();
+      if (firstUserText && session.title === STR.untitled) session.title = firstUserText.slice(0, 24);
+      saveSessions();
+    }
+    function openSession(sessionId) {
+      const session = sessions.find((item) => item.id === sessionId);
+      if (!session) return;
+      renamingSessionId = "";
+      activeSessionId = session.id;
+      currentUserId = session.userId;
+      messages = session.messages;
+      saveSessions();
+      render();
+    }
+    function selectUser(userId) {
+      if (loading || userId === currentUserId) {
+        closePersonModal();
+        return;
+      }
+      currentUserId = userId;
+      const next = latestSessionForUser(currentUserId) || createSession(currentUserId, false);
+      activeSessionId = next.id;
+      messages = next.messages;
+      closePersonModal();
+      saveSessions();
+      render();
+      ensureUserContext(currentUserId).catch(() => {});
+    }
+    function renameSession(sessionId, title) {
+      const session = sessions.find((item) => item.id === sessionId);
+      if (!session) return;
+      const nextTitle = clean(title).slice(0, 48);
+      session.title = nextTitle || STR.untitled;
+      session.updatedAt = Date.now();
+      renamingSessionId = "";
+      saveSessions();
+      render();
+    }
+    function deleteSession(sessionId) {
+      if (loading) return;
+      const session = sessions.find((item) => item.id === sessionId);
+      if (!session || !confirm(STR.confirmDeleteSession)) return;
+      const userId = session.userId;
+      sessions = sessions.filter((item) => item.id !== sessionId);
+      if (!sessionsForUser(userId).length) createSession(userId, false);
+      if (activeSessionId === sessionId) {
+        const next = latestSessionForUser(userId);
+        activeSessionId = next.id;
+        currentUserId = next.userId;
+        messages = next.messages;
+      }
+      renamingSessionId = "";
+      saveSessions();
+      render();
+    }
+
+    els.newChat.addEventListener("click", () => {
+      createSession(currentUserId, true);
+      saveSessions();
+      render();
+    });
+    els.deleteChat.addEventListener("click", () => {
+      if (loading || !activeSessionId) return;
+      if (sessionsForUser(currentUserId).length > 1 && !confirm(STR.confirmDelete)) return;
+      const userId = currentUserId;
+      sessions = sessions.filter((session) => session.id !== activeSessionId);
+      const next = latestSessionForUser(userId) || createSession(userId, false);
+      activeSessionId = next.id;
+      messages = next.messages;
+      saveSessions();
+      render();
+    });
+    els.personTrigger.addEventListener("click", () => openPersonModal());
+    els.personClose.addEventListener("click", () => closePersonModal());
+    els.personModalBackdrop.addEventListener("click", (event) => {
+      if (event.target === els.personModalBackdrop) closePersonModal();
+    });
+    els.personSearch.addEventListener("input", renderPeopleList);
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closePersonModal();
+    });
+    els.sessionSearch.addEventListener("input", render);
+    els.sessionList.addEventListener("click", (event) => {
+      const action = event.target.closest(".session-action");
+      if (!action) return;
+      event.preventDefault();
+      event.stopPropagation();
+      const sessionId = action.dataset.sessionId;
+      if (action.dataset.action === "rename") {
+        renamingSessionId = sessionId;
+        render();
+      }
+      if (action.dataset.action === "delete") {
+        deleteSession(sessionId);
+      }
+    });
+    els.sidebarToggle.addEventListener("click", () => document.body.classList.toggle("sidebar-open"));
+    els.sidebarBackdrop.addEventListener("click", () => document.body.classList.remove("sidebar-open"));
+    els.input.addEventListener("input", () => {
+      els.input.style.height = "auto";
+      els.input.style.height = Math.max(36, Math.min(180, els.input.scrollHeight)) + "px";
+    });
+    els.input.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" && !event.shiftKey) {
+        event.preventDefault();
+        els.form.requestSubmit();
+      }
+    });
+    els.form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const text = els.input.value.trim();
+      if (!text || loading) return;
+      els.input.value = "";
+      els.input.style.height = "auto";
+      const assistantId = id();
+      messages.push({ id: id(), role: "user", text });
+      messages.push({ id: assistantId, role: "assistant", text: "", steps: [], sources: [], streaming: true, thinking: true, startedAt: Date.now() });
+      touchActiveSession(text);
+      render();
+      await sendMessage(text, assistantId);
+    });
+
+    async function sendMessage(text, assistantId) {
+      loading = true;
+      setBusy(true);
+      const controller = new AbortController();
+      const timeout = window.setTimeout(() => controller.abort(), 70000);
+      try {
+        const userId = currentUserId;
+        const userContext = await ensureUserContext(userId);
         const response = await fetch("/api/chat/stream", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload)
+          signal: controller.signal,
+          body: JSON.stringify({
+            user_id: userId,
+            user_context: userContext,
+            message: text,
+            session_id: activeSessionId,
+            debug: els.debug.checked
+          })
         });
-        await readEventStream(response, assistantMessage.id);
+        await readSse(response, assistantId);
       } catch (error) {
-        patchMessage(assistantMessage.id, {
-          text: "请求失败：" + error.message,
-          error: true,
-          processStatus: "error",
-          streaming: false,
-          thinking: false
-        });
+        const message = error.name === "AbortError" ? STR.requestTimeout : STR.failed + (error.message || "unknown error");
+        patch(assistantId, { text: message, error: true, streaming: false, thinking: false });
+        touchActiveSession();
       } finally {
-        setChatLoading(false);
-        renderAll();
-        textarea.focus();
+        window.clearTimeout(timeout);
+        loading = false;
+        setBusy(false);
+        render();
       }
-    });
-
-    textarea.addEventListener("keydown", (event) => {
-      if (event.key !== "Enter" || event.shiftKey || event.isComposing) return;
-      event.preventDefault();
-      form.requestSubmit();
-    });
-
-    textarea.addEventListener("input", autoResizeTextarea);
-
-    function autoResizeTextarea() {
-      textarea.style.height = "auto";
-      textarea.style.height = Math.min(textarea.scrollHeight, 160) + "px";
     }
-
-    openSessions.addEventListener("click", openSessionSidebar);
-    closeSessions.addEventListener("click", closeSessionSidebar);
-    sessionBackdrop.addEventListener("click", closeSessionSidebar);
-    createSession.addEventListener("click", createNewSession);
-    newSessionTop.addEventListener("click", createNewSession);
-    identityFab.addEventListener("click", openUserModal);
-    closeModal.addEventListener("click", closeUserModal);
-    modalDim.addEventListener("click", closeUserModal);
-    userSearch.addEventListener("input", renderUserList);
-    clearSearch.addEventListener("click", () => {
-      userSearch.value = "";
-      renderUserList();
-      userSearch.focus();
-    });
-    window.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") {
-        closeUserModal();
-        closeSessionSidebar();
-      }
-    });
-
-    async function loadUsers() {
-      const response = await fetch("/api/wecom-users");
-      const payload = await response.json();
-      users = payload.users || [];
-      currentUser = users.find((user) => user.userid === currentUser.userid) || currentUser;
-      sessionState = loadSessionState(currentUser.userid);
-      renderIdentity();
-      renderUserList();
-      renderAll();
+    function setBusy(value) {
+      els.send.disabled = value;
+      els.personTrigger.disabled = value;
+      els.newChat.disabled = value;
+      els.deleteChat.disabled = value || sessionsForUser(currentUserId).length <= 1;
     }
-
-    async function readEventStream(response, assistantMessageId) {
-      if (!response.ok || !response.body) {
-        const payload = await response.json().catch(() => ({}));
-        throw new Error(payload.message || payload.error || "流式请求失败");
-      }
-
+    async function ensureUserContext(userId) {
+      if (userContextCache.has(userId)) return userContextCache.get(userId);
+      const res = await fetch("/api/user-context?user_id=" + encodeURIComponent(userId));
+      const data = await res.json();
+      const ctx = data.user_context;
+      userContextCache.set(userId, ctx);
+      return ctx;
+    }
+    async function readSse(response, assistantId) {
+      if (!response.ok || !response.body) throw new Error("stream failed");
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
       while (true) {
-        const chunk = await reader.read();
-        if (chunk.done) break;
-        buffer += decoder.decode(chunk.value, { stream: true });
-        let boundary = buffer.indexOf("\\n\\n");
-        while (boundary >= 0) {
-          const block = buffer.slice(0, boundary);
-          buffer = buffer.slice(boundary + 2);
-          handleStreamEvent(block, assistantMessageId);
-          boundary = buffer.indexOf("\\n\\n");
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        let index;
+        while ((index = buffer.indexOf("\\n\\n")) >= 0) {
+          const block = buffer.slice(0, index);
+          buffer = buffer.slice(index + 2);
+          handleEvent(block, assistantId);
         }
       }
-      if (buffer.trim()) handleStreamEvent(buffer, assistantMessageId);
+      if (buffer.trim()) handleEvent(buffer, assistantId);
     }
-
-    function handleStreamEvent(block, assistantMessageId) {
+    function handleEvent(block, assistantId) {
       const lines = block.split(/\\r?\\n/);
       let event = "message";
-      const dataLines = [];
+      const data = [];
       for (const line of lines) {
         if (line.startsWith("event:")) event = line.slice(6).trim();
-        if (line.startsWith("data:")) dataLines.push(line.slice(5).trim());
+        if (line.startsWith("data:")) data.push(line.slice(5).trim());
       }
-      if (!dataLines.length) return;
-      const payload = JSON.parse(dataLines.join("\\n"));
-
+      if (!data.length) return;
+      const payload = JSON.parse(data.join("\\n"));
       if (event === "thinking") {
-        appendProcessStep(assistantMessageId, payload.step, normalizeStreamText(payload.text || ""));
-        renderMessages();
-        return;
-      }
-      if (event === "delta") {
-        const delta = normalizeStreamText(payload.text || "");
-        appendMessageText(assistantMessageId, delta);
-        renderMessages();
-        return;
-      }
-      if (event === "done") {
-        const debugSteps = Array.isArray(payload.debug?.steps) ? payload.debug.steps : null;
-        patchMessage(assistantMessageId, {
-          text: payload.answer || getMessage(assistantMessageId)?.text || "",
+        if (payload.model_thinking) {
+          appendThinking(assistantId, payload.delta || "", payload.text || "");
+        } else {
+          addStep(assistantId, payload.step);
+        }
+      } else if (event === "delta") {
+        appendText(assistantId, payload.text || "");
+      } else if (event === "done") {
+        const msg = getMsg(assistantId);
+        patch(assistantId, {
+          text: payload.answer || msg.text,
+          steps: msg.steps.length ? msg.steps : (payload.debug?.steps || []),
           sources: payload.sources || [],
-          artifacts: payload.artifacts || [],
-          debug: payload.debug,
-          processSteps: debugSteps || getMessage(assistantMessageId)?.processSteps || [],
-          processStatus: "completed",
+          debug: payload.debug || {},
+          latency: payload.debug?.latency_ms,
           streaming: false,
           thinking: false,
           streamed: true
         });
-        updateActiveSession((session) => ({
-          ...session,
-          title: inferSessionTitle(session, session.messages),
-          updatedAt: Date.now()
-        }));
-        renderAll();
-        return;
+        touchActiveSession();
+      } else if (event === "error") {
+        patch(assistantId, { text: STR.failed + (payload.message || "unknown error"), error: true, streaming: false, thinking: false });
+        touchActiveSession();
       }
-      if (event === "error") {
-        patchMessage(assistantMessageId, {
-          text: "请求失败：" + (payload.message || "unknown error"),
-          error: true,
-          processStatus: "error",
-          streaming: false,
-          thinking: false
-        });
-        renderMessages();
-      }
+      render();
     }
-
-    function renderAll() {
-      renderSessionHeader();
+    function render() {
+      renderPersonPicker();
       renderSessionList();
-      renderMessages();
-      saveSessionState();
-    }
-
-    function renderSessionHeader() {
-      const session = getActiveSession();
-      activeSessionTitle.textContent = session.title || "新会话";
-      activeSessionMeta.textContent = session.id + " · " + formatTime(session.updatedAt);
-    }
-
-    function renderMessages() {
-      const session = getActiveSession();
-      messages.innerHTML = "";
-      for (const item of session.messages) {
-        const div = document.createElement("div");
-        div.className = "msg " + item.role;
-
-        if (item.role === "assistant" && shouldShowRunPanel(item)) {
-          div.appendChild(createRunPanel(item));
-        }
-
-        const text = document.createElement("div");
-        text.className = "msg-text" + (item.role === "assistant" ? " markdown" : "");
-        if (item.role === "assistant") {
-          text.innerHTML = renderMarkdown(item.text || "");
+      const active = getActiveSession();
+      const user = getCurrentUser();
+      els.chatTitle.textContent = active?.title || STR.untitled;
+      els.chatSubtitle.textContent = user?.name || "";
+      els.messages.innerHTML = "";
+      for (const msg of messages) {
+        const row = document.createElement("div");
+        row.className = "msg " + msg.role + (msg.error ? " error" : "");
+        if (msg.role === "user") {
+          const bubble = document.createElement("div");
+          bubble.className = "bubble";
+          bubble.textContent = msg.text;
+          row.appendChild(bubble);
         } else {
-          text.textContent = item.text || "";
-        }
-        div.appendChild(text);
-
-        if (item.artifacts?.length) {
-          for (const artifact of item.artifacts) {
-            div.appendChild(createArtifactCard(artifact));
+          const body = document.createElement("div");
+          body.className = "assistant-body";
+          if (shouldShowRun(msg)) body.appendChild(createRunPanel(msg));
+          const text = document.createElement("div");
+          text.className = "markdown";
+          text.innerHTML = renderMarkdown(msg.text || "");
+          body.appendChild(text);
+          if (msg.sources?.length) {
+            const sources = document.createElement("div");
+            sources.className = "sources";
+            sources.textContent = "\\u6765\\u6e90\\uff1a" + msg.sources.map((s) => clean(s.title + " / " + s.heading)).join("\\uff1b");
+            body.appendChild(sources);
           }
+          row.appendChild(body);
         }
-
-        if (item.sources?.length) {
-          const source = document.createElement("div");
-          source.className = "debug";
-          source.textContent = "来源：" + item.sources.map((s) => s.title + " / " + s.heading).join("；");
-          div.appendChild(source);
-        }
-        attachDebug(div, item);
-        messages.appendChild(div);
+        els.messages.appendChild(row);
       }
-      messages.scrollTop = messages.scrollHeight;
+      els.messages.scrollTop = els.messages.scrollHeight;
+      setBusy(loading);
     }
-
+    function renderPersonPicker() {
+      const user = getCurrentUser() || people[0];
+      els.personAvatar.textContent = user.name.slice(0, 1);
+      els.personName.textContent = user.name;
+      els.personRole.textContent = user.role || "";
+      for (const option of els.personMenu.querySelectorAll(".person-option")) {
+        const active = option.dataset.userId === currentUserId;
+        option.classList.toggle("active", active);
+        option.setAttribute("aria-selected", String(active));
+      }
+    }
+    function openPersonModal() {
+      if (loading) return;
+      document.body.classList.add("person-modal-open");
+      els.personTrigger.setAttribute("aria-expanded", "true");
+      els.personModalBackdrop.setAttribute("aria-hidden", "false");
+      els.personSearch.value = "";
+      renderPeopleList();
+      window.setTimeout(() => els.personSearch.focus(), 0);
+    }
+    function closePersonModal() {
+      document.body.classList.remove("person-modal-open");
+      els.personTrigger.setAttribute("aria-expanded", "false");
+      els.personModalBackdrop.setAttribute("aria-hidden", "true");
+    }
     function renderSessionList() {
-      const sorted = sessionState.sessions.slice().sort((a, b) => b.updatedAt - a.updatedAt);
-      sessionList.innerHTML = "";
-      for (const session of sorted) {
+      const all = sessionsForUser(currentUserId);
+      const query = (els.sessionSearch.value || "").trim().toLowerCase();
+      const shown = query ? all.filter((session) => (session.title || STR.untitled).toLowerCase().includes(query)) : all;
+      els.sideUser.textContent = getCurrentUser()?.name || "";
+      els.sessionList.innerHTML = "";
+      const label = document.createElement("div");
+      label.className = "session-section-label";
+      label.textContent = query ? STR.searchResults : STR.recent;
+      els.sessionList.appendChild(label);
+      if (!shown.length) {
+        const empty = document.createElement("div");
+        empty.className = "empty-sessions";
+        empty.textContent = STR.noMatched;
+        els.sessionList.appendChild(empty);
+      }
+      shown.forEach((session) => {
         const item = document.createElement("div");
-        item.className = "session-item" + (session.id === sessionState.activeSessionId ? " active" : "");
-
-        if (editingSessionId === session.id) {
-          const form = document.createElement("form");
-          form.className = "session-rename-form";
+        item.className = "session-item" + (session.id === activeSessionId ? " active" : "");
+        let mainControl;
+        if (renamingSessionId === session.id) {
           const input = document.createElement("input");
-          input.value = editingSessionTitle;
-          const save = document.createElement("button");
-          save.type = "submit";
-          save.textContent = "保存";
-          form.append(input, save);
-          form.addEventListener("submit", (event) => {
-            event.preventDefault();
-            commitRenamingSession(session.id, input.value);
+          input.className = "session-rename";
+          input.value = session.title || STR.untitled;
+          input.maxLength = 48;
+          input.addEventListener("click", (event) => event.stopPropagation());
+          input.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              renameSession(session.id, input.value);
+            }
+            if (event.key === "Escape") {
+              renamingSessionId = "";
+              render();
+            }
           });
-          item.appendChild(form);
-          sessionList.appendChild(item);
-          setTimeout(() => input.focus(), 0);
-          continue;
+          input.addEventListener("blur", () => renameSession(session.id, input.value));
+          mainControl = input;
+          queueMicrotask(() => {
+            input.focus();
+            input.select();
+          });
+        } else {
+          const open = document.createElement("button");
+          open.type = "button";
+          open.className = "session-open";
+          open.disabled = loading;
+          const title = document.createElement("span");
+          title.className = "session-title";
+          title.textContent = session.title || STR.untitled;
+          open.appendChild(title);
+          const time = document.createElement("span");
+          time.className = "session-time";
+          time.textContent = formatSessionTime(session.updatedAt);
+          open.appendChild(time);
+          open.addEventListener("click", () => {
+            openSession(session.id);
+            document.body.classList.remove("sidebar-open");
+          });
+          mainControl = open;
         }
-
-        const open = document.createElement("button");
-        open.className = "session-open";
-        open.type = "button";
-        open.disabled = chatLoading;
-        open.innerHTML = "<strong></strong><small></small>";
-        open.querySelector("strong").textContent = session.title || "新会话";
-        open.querySelector("small").textContent = formatTime(session.updatedAt) + " · " + session.messages.length + " 条";
-        open.addEventListener("click", () => applySession(session.id));
-
-        const actions = document.createElement("div");
+        const actions = document.createElement("span");
         actions.className = "session-actions";
         const rename = document.createElement("button");
-        rename.className = "session-icon-btn";
         rename.type = "button";
-        rename.title = "重命名";
-        rename.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8.5 1.5l2 2L4 10H2v-2L8.5 1.5z"/></svg>';
-        rename.disabled = chatLoading;
-        rename.addEventListener("click", () => startRenamingSession(session));
-        const del = document.createElement("button");
-        del.className = "session-icon-btn danger";
-        del.type = "button";
-        del.title = "删除会话";
-        del.innerHTML = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><polyline points="1,3 11,3"/><path d="M4 3V2h4v1"/><path d="M2 3l.8 7.2a1 1 0 001 .8h4.4a1 1 0 001-.8L10 3"/></svg>';
-        del.disabled = chatLoading;
-        del.addEventListener("click", () => deleteSession(session.id));
-        actions.append(rename, del);
-        item.append(open, actions);
-        sessionList.appendChild(item);
-      }
-    }
-
-    function openSessionSidebar() {
-      sessionLayer.classList.add("open");
-      sessionLayer.setAttribute("aria-hidden", "false");
-    }
-
-    function closeSessionSidebar() {
-      editingSessionId = null;
-      editingSessionTitle = "";
-      sessionLayer.classList.remove("open");
-      sessionLayer.setAttribute("aria-hidden", "true");
-      renderSessionList();
-    }
-
-    function createNewSession() {
-      if (chatLoading) return;
-      const session = createEmptySession();
-      sessionState.sessions = [session].concat(sessionState.sessions);
-      sessionState.activeSessionId = session.id;
-      closeSessionSidebar();
-      renderAll();
-      textarea.focus();
-    }
-
-    function applySession(sessionId) {
-      if (chatLoading) return;
-      const session = sessionState.sessions.find((item) => item.id === sessionId);
-      if (!session) return;
-      sessionState.activeSessionId = session.id;
-      closeSessionSidebar();
-      renderAll();
-    }
-
-    function startRenamingSession(session) {
-      if (chatLoading) return;
-      editingSessionId = session.id;
-      editingSessionTitle = session.title || "新会话";
-      renderSessionList();
-    }
-
-    function commitRenamingSession(sessionId, value) {
-      const title = value.trim();
-      if (!title) {
-        editingSessionId = null;
-        editingSessionTitle = "";
-        renderSessionList();
-        return;
-      }
-      sessionState.sessions = sessionState.sessions.map((session) => (
-        session.id === sessionId
-          ? { ...session, title: title.slice(0, 24), manualTitle: true, updatedAt: Date.now() }
-          : session
-      ));
-      editingSessionId = null;
-      editingSessionTitle = "";
-      renderAll();
-    }
-
-    function deleteSession(sessionId) {
-      if (chatLoading) return;
-      const session = sessionState.sessions.find((item) => item.id === sessionId);
-      if (!session) return;
-      const ok = window.confirm("删除会话「" + (session.title || "新会话") + "」？");
-      if (!ok) return;
-      const nextSessions = sessionState.sessions.filter((item) => item.id !== sessionId);
-      if (!nextSessions.length) {
-        const fallback = createEmptySession();
-        sessionState.sessions = [fallback];
-        sessionState.activeSessionId = fallback.id;
-      } else {
-        sessionState.sessions = nextSessions;
-        if (sessionState.activeSessionId === sessionId) {
-          sessionState.activeSessionId = nextSessions.slice().sort((a, b) => b.updatedAt - a.updatedAt)[0].id;
-        }
-      }
-      renderAll();
-    }
-
-    function openUserModal() {
-      userModal.classList.add("open");
-      userModal.setAttribute("aria-hidden", "false");
-      userSearch.value = "";
-      renderUserList();
-      setTimeout(() => userSearch.focus(), 0);
-    }
-
-    function closeUserModal() {
-      userModal.classList.remove("open");
-      userModal.setAttribute("aria-hidden", "true");
-      textarea.focus();
-    }
-
-    function selectUser(user) {
-      if (chatLoading) return;
-      currentUser = user;
-      sessionState = loadSessionState(currentUser.userid);
-      editingSessionId = null;
-      editingSessionTitle = "";
-      renderIdentity();
-      closeUserModal();
-      closeSessionSidebar();
-      renderAll();
-    }
-
-    function renderIdentity() {
-      identityInitial.textContent = currentUser.name?.slice(-1) || "员";
-      const name = escapeHtml(currentUser.name || currentUser.userid);
-      const dept = escapeHtml((currentUser.department_name || "未知部门") + " · " + (currentUser.position || "员工"));
-      identityBadge.innerHTML =
-        "<span class='user-chip-name'>" + name + "</span>" +
-        "<span class='user-chip-role'>" + dept + "</span>";
-    }
-
-    function renderUserList() {
-      const keyword = userSearch.value.trim().toLowerCase();
-      const filtered = users.filter((user) => {
-        const haystack = [
-          user.userid,
-          user.name,
-          user.alias,
-          user.department_name,
-          user.position,
-          user.mobile,
-          user.email
-        ].filter(Boolean).join(" ").toLowerCase();
-        return !keyword || haystack.includes(keyword);
+        rename.className = "session-action";
+        rename.dataset.action = "rename";
+        rename.dataset.sessionId = session.id;
+        rename.title = "\\u91cd\\u547d\\u540d";
+        rename.setAttribute("aria-label", "\\u91cd\\u547d\\u540d\\u4f1a\\u8bdd");
+        rename.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9.8 3.2l3 3L6 13H3v-3z"/><path d="M8.7 4.3l3 3"/></svg>';
+        rename.disabled = loading;
+        rename.onclick = (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          renamingSessionId = session.id;
+          render();
+        };
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "session-action";
+        remove.dataset.action = "delete";
+        remove.dataset.sessionId = session.id;
+        remove.title = "\\u5220\\u9664";
+        remove.setAttribute("aria-label", "\\u5220\\u9664\\u4f1a\\u8bdd");
+        remove.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4h10"/><path d="M6 4V2.8h4V4"/><path d="M5 6v7"/><path d="M8 6v7"/><path d="M11 6v7"/><path d="M4.5 4l.5 10h6l.5-10"/></svg>';
+        remove.disabled = loading;
+        remove.onclick = (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          deleteSession(session.id);
+        };
+        actions.append(rename, remove);
+        item.append(mainControl, actions);
+        els.sessionList.appendChild(item);
       });
-
-      userList.innerHTML = "";
-      if (!filtered.length) {
-        const empty = document.createElement("div");
-        empty.className = "empty";
-        empty.textContent = "没有匹配的员工";
-        userList.appendChild(empty);
-        return;
-      }
-
-      for (const user of filtered) {
-        const row = document.createElement("button");
-        row.type = "button";
-        row.className = "user-row" + (user.userid === currentUser.userid ? " active" : "");
-        row.addEventListener("click", () => selectUser(user));
-
-        const avatar = document.createElement("div");
-        avatar.className = "avatar";
-        avatar.textContent = user.name?.slice(-1) || "员";
-
-        const main = document.createElement("div");
-        main.className = "user-main";
-        const title = document.createElement("div");
-        title.className = "user-title";
-        const name = document.createElement("strong");
-        name.textContent = (user.name || user.userid) + "  " + (user.department_name || "未知部门");
-        title.append(name);
-        if (user.userid === currentUser.userid) {
-          const selected = document.createElement("span");
-          selected.className = "selected-mark";
-          selected.textContent = "当前";
-          title.appendChild(selected);
-        }
-
-        const sub = document.createElement("div");
-        sub.className = "user-sub";
-        sub.textContent = (user.position || "员工") + " · " + user.userid;
-        main.append(title, sub);
-        row.append(avatar, main);
-        userList.appendChild(row);
-      }
+      els.deleteChat.disabled = loading || all.length <= 1;
     }
-
-    function loadSessionState(userid = currentUser.userid) {
-      const store = loadSessionStore();
-      if (!store.users[userid]) {
-        store.users[userid] = createUserSessionState(userid);
-        saveSessionStore(store);
-      }
-      return store.users[userid];
+    function shouldShowRun(msg) {
+      return msg.streaming || msg.thinking || msg.steps?.length || msg.debug?.steps?.length;
     }
-
-    function loadSessionStore() {
-      try {
-        const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-        if (parsed?.version === 2 && parsed.users && typeof parsed.users === "object") {
-          return normalizeSessionStore(parsed);
-        }
-      } catch {}
-      return migrateLegacySessionStore();
-    }
-
-    function saveSessionState() {
-      const userid = currentUser.userid;
-      try {
-        const store = loadSessionStore();
-        store.users[userid] = normalizeUserSessionState(sessionState, userid);
-        saveSessionStore(store);
-      } catch {}
-    }
-
-    function saveSessionStore(store) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(normalizeSessionStore(store)));
-    }
-
-    function migrateLegacySessionStore() {
-      const store = { version: 2, users: {} };
-      try {
-        const legacy = JSON.parse(localStorage.getItem(LEGACY_STORAGE_KEY) || "null");
-        if (Array.isArray(legacy?.sessions) && legacy.sessions.length) {
-          store.users[currentUser.userid] = normalizeUserSessionState(legacy, currentUser.userid);
-          saveSessionStore(store);
-          return store;
-        }
-      } catch {}
-      return store;
-    }
-
-    function normalizeSessionStore(raw) {
-      const users = {};
-      for (const [userid, state] of Object.entries(raw?.users || {})) {
-        users[userid] = normalizeUserSessionState(state, userid);
-      }
-      return { version: 2, users };
-    }
-
-    function normalizeUserSessionState(raw, userid = currentUser.userid) {
-      const sessions = Array.isArray(raw?.sessions)
-        ? raw.sessions.map((session) => normalizeSession(session, userid))
-        : [];
-      if (!sessions.length) return createUserSessionState(userid);
-      const activeSessionId = sessions.some((session) => session.id === raw?.activeSessionId)
-        ? raw.activeSessionId
-        : sessions.slice().sort((a, b) => b.updatedAt - a.updatedAt)[0].id;
-      return { sessions, activeSessionId };
-    }
-
-    function createUserSessionState(userid = currentUser.userid) {
-      const initial = createEmptySession({}, userid);
-      return { sessions: [initial], activeSessionId: initial.id };
-    }
-
-    function createEmptySession(overrides, userid = currentUser.userid) {
-      const now = Date.now();
-      const id = createSessionId(userid);
-      return {
-        id,
-        ownerUserId: userid,
-        title: "新会话",
-        manualTitle: false,
-        createdAt: now,
-        updatedAt: now,
-        messages: INITIAL_MESSAGES.map((message) => ({ ...message, id: createMessageId() })),
-        ...(overrides || {})
-      };
-    }
-
-    function normalizeSession(raw, userid = currentUser.userid) {
-      const session = raw || {};
-      const normalized = createEmptySession({}, userid);
-      return {
-        ...normalized,
-        ...session,
-        id: normalizeSessionId(session.id, userid) || normalized.id,
-        ownerUserId: userid,
-        title: session.title || "新会话",
-        createdAt: Number(session.createdAt || session.updatedAt || Date.now()),
-        updatedAt: Number(session.updatedAt || Date.now()),
-        messages: Array.isArray(session.messages) ? session.messages : normalized.messages
-      };
-    }
-
-    function getActiveSession() {
-      let session = sessionState.sessions.find((item) => item.id === sessionState.activeSessionId);
-      if (!session) {
-        session = sessionState.sessions[0] || createEmptySession();
-        sessionState.activeSessionId = session.id;
-        if (!sessionState.sessions.length) sessionState.sessions = [session];
-      }
-      return session;
-    }
-
-    function updateActiveSession(updater) {
-      const activeId = sessionState.activeSessionId;
-      sessionState.sessions = sessionState.sessions.map((session) => (
-        session.id === activeId ? updater(session) : session
-      ));
-      saveSessionState();
-    }
-
-    function getMessage(messageId) {
-      return getActiveSession().messages.find((message) => message.id === messageId);
-    }
-
-    function patchMessage(messageId, patch) {
-      updateActiveSession((session) => ({
-        ...session,
-        messages: session.messages.map((message) => (
-          message.id === messageId ? { ...message, ...patch } : message
-        )),
-        updatedAt: Date.now()
-      }));
-    }
-
-    function appendMessageText(messageId, delta) {
-      updateActiveSession((session) => ({
-        ...session,
-        messages: session.messages.map((message) => (
-          message.id === messageId ? { ...message, text: (message.text || "") + delta } : message
-        )),
-        updatedAt: Date.now()
-      }));
-    }
-
-    function appendProcessStep(messageId, rawStep, thinkingText) {
-      updateActiveSession((session) => ({
-        ...session,
-        messages: session.messages.map((message) => {
-          if (message.id !== messageId) return message;
-          const nextSteps = Array.isArray(message.processSteps) ? message.processSteps.slice() : [];
-          if (rawStep && typeof rawStep === "object") {
-            const normalized = {
-              phase: rawStep.phase,
-              title: rawStep.title,
-              detail: rawStep.detail,
-              status: rawStep.status || "completed",
-              action: rawStep.action,
-              observation: rawStep.observation,
-              at: rawStep.at
-            };
-            const previous = nextSteps[nextSteps.length - 1];
-            if (!previous || previous.phase !== normalized.phase || previous.detail !== normalized.detail) {
-              nextSteps.push(normalized);
-            }
-          }
-          return {
-            ...message,
-            thinkingText,
-            thinking: true,
-            processStatus: "running",
-            processSteps: nextSteps
-          };
-        }),
-        updatedAt: Date.now()
-      }));
-    }
-
-    function inferSessionTitle(session, messages) {
-      if (session.manualTitle && session.title) return session.title;
-      const firstUser = (messages || []).find((message) => message.role === "user" && message.text);
-      if (firstUser?.text) return firstUser.text.replace(/\\s+/g, " ").trim().slice(0, 16) || "新会话";
-      return "新会话";
-    }
-
-    function setChatLoading(value) {
-      chatLoading = value;
-      send.disabled = value;
-      createSession.disabled = value;
-      newSessionTop.disabled = value;
-      openSessions.disabled = false;
-    }
-
-    function attachDebug(div, item) {
-      if (!item?.debug) return;
-      const details = document.createElement("details");
-      details.className = "debug raw-debug";
-      const summary = document.createElement("summary");
-      summary.textContent = "原始 debug 数据";
-      const pre = document.createElement("pre");
-      pre.textContent = JSON.stringify(item.debug, null, 2);
-      details.append(summary, pre);
-      div.appendChild(details);
-    }
-
-    function createArtifactCard(artifact) {
-      const card = document.createElement("section");
-      card.className = "artifact-card";
-
-      const head = document.createElement("div");
-      head.className = "artifact-head";
-      const kicker = document.createElement("div");
-      kicker.className = "artifact-kicker";
-      kicker.textContent = artifact.type === "dealer_report" ? "经营报告" : "结构化产物";
-      const title = document.createElement("div");
-      title.className = "artifact-title";
-      title.textContent = artifact.title || "结构化产物";
-      const summary = document.createElement("div");
-      summary.className = "artifact-summary";
-      summary.textContent = artifact.summary || "";
-      head.append(kicker, title, summary);
-      card.appendChild(head);
-
-      for (const section of artifact.sections || []) {
-        const block = document.createElement("div");
-        block.className = "artifact-section";
-        const heading = document.createElement("h4");
-        heading.textContent = section.title || "明细";
-        block.appendChild(heading);
-        block.appendChild(createArtifactTable(section.rows || []));
-        card.appendChild(block);
-      }
-      return card;
-    }
-
-    function createArtifactTable(rows) {
-      const table = document.createElement("table");
-      table.className = "artifact-table";
-      if (!rows.length) {
-        const tbody = document.createElement("tbody");
-        const tr = document.createElement("tr");
-        const td = document.createElement("td");
-        td.textContent = "暂无数据";
-        tr.appendChild(td);
-        tbody.appendChild(tr);
-        table.appendChild(tbody);
-        return table;
-      }
-
-      const columns = Object.keys(rows[0]);
-      const thead = document.createElement("thead");
-      const headRow = document.createElement("tr");
-      columns.forEach((column) => {
-        const th = document.createElement("th");
-        th.textContent = artifactColumnName(column);
-        headRow.appendChild(th);
-      });
-      thead.appendChild(headRow);
-
-      const tbody = document.createElement("tbody");
-      rows.forEach((row) => {
-        const tr = document.createElement("tr");
-        columns.forEach((column) => {
-          const td = document.createElement("td");
-          td.textContent = row[column] ?? "";
-          tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-      });
-      table.append(thead, tbody);
-      return table;
-    }
-
-    function artifactColumnName(column) {
-      return {
-        store_name: "门店",
-        critical: "严重",
-        warning: "警示",
-        score: "风险分",
-        top_risk: "首要风险",
-        item: "证据",
-        owner: "负责人",
-        action: "动作"
-      }[column] || column;
-    }
-
-    function shouldShowRunPanel(item) {
-      return Boolean(item.streaming || item.thinking || item.processSteps?.length || item.debug?.steps?.length || item.debug?.route || item.debug?.tool_calls?.length);
-    }
-
-    function createRunPanel(item) {
-      const steps = normalizeRunSteps(item);
+    function createRunPanel(msg) {
       const details = document.createElement("details");
       details.className = "run-panel";
-      details.open = item.streaming || item.thinking || !item.streamed;
-
+      details.open = Boolean(msg.streaming || msg.thinking);
       const summary = document.createElement("summary");
       const title = document.createElement("div");
       title.className = "run-title";
       const dot = document.createElement("span");
-      dot.className = "run-dot " + runStatusClass(item);
+      dot.className = "run-dot " + (msg.streaming || msg.thinking ? "running" : "completed");
       const label = document.createElement("strong");
-      label.textContent = item.streaming || item.thinking ? "正在执行任务" : "执行过程已完成";
+      label.textContent = msg.streaming || msg.thinking ? STR.running : STR.done;
       title.append(dot, label);
-
-      const badge = document.createElement("span");
-      badge.className = "run-badge";
-      badge.textContent = buildRunBadgeText(item, steps);
-      summary.append(title, badge);
-
-      const subtitle = document.createElement("div");
-      subtitle.className = "run-subtitle";
-      subtitle.textContent = buildRunSubtitle(item);
-      summary.appendChild(subtitle);
-
+      summary.appendChild(title);
+      if (!(msg.streaming || msg.thinking)) {
+        const duration = document.createElement("span");
+        duration.className = "run-duration";
+        duration.textContent = formatDuration(msg.latency || (Date.now() - (msg.startedAt || Date.now())));
+        summary.appendChild(duration);
+      }
+      const chevron = document.createElement("span");
+      chevron.className = "run-chevron";
+      chevron.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>';
+      summary.appendChild(chevron);
       const body = document.createElement("div");
       body.className = "run-body";
-      const metadata = createRunMetadata(item);
-      if (metadata) body.appendChild(metadata);
-
-      const timeline = document.createElement("div");
-      timeline.className = "run-timeline";
-      if (!steps.length) {
-        timeline.appendChild(createRunPlaceholder(item));
-      } else {
-        steps.forEach((step, index) => timeline.appendChild(createRunStep(step, index, item)));
+      body.appendChild(createThought(msg));
+      const toolCount = countToolSteps(msg);
+      if (toolCount) {
+        const toolLine = document.createElement("div");
+        toolLine.className = "tool-line";
+        toolLine.innerHTML = '<span class="tool-icon">></span><span>' + STR.ranCommands + " " + toolCount + " " + "\\u6761\\u547d\\u4ee4" + "</span>";
+        body.appendChild(toolLine);
       }
-      body.appendChild(timeline);
       details.append(summary, body);
       return details;
     }
-
-    function normalizeRunSteps(item) {
-      const source = item.processSteps?.length ? item.processSteps : item.debug?.steps || [];
-      return source.map((step, index) => ({
-        phase: step.phase || step.id || "step_" + (index + 1),
-        title: step.title || step.phase || "执行步骤",
-        detail: step.detail || step.text || "",
-        status: step.status || (item.streaming && index === source.length - 1 ? "running" : "completed"),
-        action: step.action,
-        observation: step.observation,
-        at: step.at
-      }));
-    }
-
-    function createRunMetadata(item) {
-      const debug = item.debug || {};
-      const chips = [];
-      if (debug.route?.intent_code) chips.push("意图 " + debug.route.intent_code);
-      if (debug.state?.task_mode) chips.push("模式 " + debug.state.task_mode);
-      if (Number.isFinite(Number(debug.state?.round)) && Number(debug.state.round) > 1) chips.push("Loop " + debug.state.round + " 轮");
-      if (debug.selected_skill) chips.push("Skill " + debug.selected_skill);
-      if (debug.selected_tools?.length) chips.push("工具 " + debug.selected_tools.join(", "));
-      if (debug.latency_ms) chips.push("耗时 " + formatDuration(debug.latency_ms));
-      if (!chips.length && item.processSteps?.length) chips.push("实时步骤 " + item.processSteps.length + " 步");
-      if (!chips.length) return null;
-      const row = document.createElement("div");
-      row.className = "run-metadata";
-      chips.forEach((text) => {
-        const chip = document.createElement("span");
-        chip.className = "run-chip";
-        chip.textContent = text;
-        row.appendChild(chip);
-      });
-      return row;
-    }
-
-    function createRunStep(step, index, item) {
-      const row = document.createElement("div");
-      const status = normalizeStepStatus(step, index, item);
-      row.className = "run-step " + status;
-
-      const marker = document.createElement("div");
-      marker.className = "run-step-marker";
-      marker.textContent = status === "completed" ? "✓" : status === "error" ? "!" : index + 1;
-
-      const card = document.createElement("div");
-      card.className = "run-step-card";
-
-      const head = document.createElement("div");
-      head.className = "run-step-head";
-      const title = document.createElement("div");
-      title.className = "run-step-title";
-      title.textContent = step.title;
-      const phase = document.createElement("div");
-      phase.className = "run-step-phase";
-      phase.textContent = phaseLabel(step.phase);
-      head.append(title, phase);
-
-      const detail = document.createElement("div");
-      detail.className = "run-step-detail";
-      detail.textContent = step.detail || "正在处理...";
-
-      card.append(head, detail);
-      const extra = createRunStepExtra(step);
-      if (extra) card.appendChild(extra);
-      row.append(marker, card);
-      return row;
-    }
-
-    function createRunStepExtra(step) {
-      const values = [];
-      if (step.action?.tool) values.push("tool: " + step.action.tool);
-      if (step.action?.tools?.length) values.push("tools: " + step.action.tools.join(", "));
-      if (step.action?.args?.resource) values.push("resource: " + step.action.args.resource);
-      if (step.action?.args?.operation) values.push("operation: " + step.action.args.operation);
-      if (step.observation?.resource) values.push("resource: " + step.observation.resource);
-      if (Number.isFinite(Number(step.observation?.row_count))) values.push("rows: " + step.observation.row_count);
-      if (Number.isFinite(Number(step.observation?.total))) values.push("total: " + step.observation.total);
-      if (!values.length) return null;
-      const extra = document.createElement("div");
-      extra.className = "run-extra";
-      values.slice(0, 6).forEach((value) => {
-        const code = document.createElement("code");
-        code.textContent = value;
-        extra.appendChild(code);
-      });
-      return extra;
-    }
-
-    function createRunPlaceholder(item) {
-      return createRunStep({
-        phase: "running",
-        title: item.streaming ? "等待执行事件" : "执行完成",
-        detail: item.thinkingText || "暂未收到结构化执行步骤。",
-        status: item.streaming ? "running" : "completed"
-      }, 0, item);
-    }
-
-    function runStatusClass(item) {
-      if (item.error) return "error";
-      if (item.streaming || item.thinking) return "running";
-      return "completed";
-    }
-
-    function normalizeStepStatus(step, index, item) {
-      if (step.status === "failed" || step.status === "error") return "error";
-      if ((item.streaming || item.thinking) && index === normalizeRunSteps(item).length - 1) return "running";
-      return step.status === "running" ? "running" : "completed";
-    }
-
-    function buildRunBadgeText(item, steps) {
-      if (item.streaming || item.thinking) return steps.length ? "第 " + steps.length + " 步" : "启动中";
-      const round = Number(item.debug?.state?.round);
-      if (Number.isFinite(round) && round > 1) return round + " 轮 Loop";
-      return steps.length ? steps.length + " 步完成" : "已完成";
-    }
-
-    function buildRunSubtitle(item) {
-      const debug = item.debug || {};
-      if (item.streaming || item.thinking) {
-        const steps = normalizeRunSteps(item);
-        const last = steps[steps.length - 1];
-        return last ? last.detail : "正在建立上下文、选择技能并执行工具。";
+    function createThought(msg) {
+      const thought = document.createElement("div");
+      thought.className = "thought";
+      if (msg.modelThinking) {
+        thought.textContent = msg.modelThinking;
+        return thought;
       }
-      if (debug.route?.reason) return debug.route.reason;
-      if (debug.state?.next_action?.reason) return debug.state.next_action.reason;
-      return "已完成上下文理解、技能选择、工具执行和答复生成。";
+      const steps = normalizeSteps(msg);
+      if (!steps.length) {
+        thought.textContent = STR.thinking;
+      } else {
+        thought.textContent = steps.slice(-3).map((step) => step.text).join("\\n\\n");
+      }
+      return thought;
     }
-
-    function phaseLabel(phase) {
-      const labels = {
-        identify_user: "identity",
-        classify_intent: "intent",
-        select_skill: "skill",
-        load_skill: "skill",
-        retrieve_knowledge: "retrieve",
-        plan_action: "plan",
-        tool_round: "loop round",
-        execute_tool: "tool",
-        observe_result: "observe",
-        plan_follow_up: "loop",
-        plan_evidence: "evidence loop",
-        final_answer: "answer",
-        ask_user: "clarify"
-      };
-      return labels[phase] || phase || "step";
+    function normalizeSteps(msg) {
+      const raw = msg.steps?.length ? msg.steps : msg.debug?.steps || [];
+      const mapped = [];
+      for (const step of raw) {
+        const phase = step.phase || "";
+        if (["identify_user", "select_skill", "load_skill"].includes(phase)) continue;
+        const text = stepToNaturalText(step);
+        if (text) mapped.push({ phase, text });
+      }
+      return dedupeByText(mapped);
     }
-
+    function stepToNaturalText(step) {
+      const phase = step.phase || "";
+      const detail = clean(step.detail || step.text || "");
+      if (phase === "classify_intent") return detail || "\\u6211\\u5728\\u5224\\u65ad\\u8fd9\\u662f\\u4ec0\\u4e48\\u7c7b\\u578b\\u7684\\u95ee\\u9898\\uff0c\\u4ee5\\u53ca\\u662f\\u5426\\u9700\\u8981\\u8c03\\u7528\\u5de5\\u5177\\u3002";
+      if (phase === "plan_action" || phase === "plan_follow_up" || phase === "plan_evidence") return detail || "\\u6211\\u5728\\u6839\\u636e\\u5f53\\u524d\\u7ebf\\u7d22\\u89c4\\u5212\\u4e0b\\u4e00\\u6b65\\uff0c\\u5fc5\\u8981\\u65f6\\u624d\\u4f1a\\u8c03\\u7528\\u8d44\\u6599\\u6216\\u5de5\\u5177\\u3002";
+      if (phase === "execute_tool" || phase === "tool_round") return detail || "\\u6211\\u5df2\\u7ecf\\u8c03\\u7528\\u4e86\\u548c\\u8fd9\\u4e2a\\u95ee\\u9898\\u76f8\\u5173\\u7684\\u80fd\\u529b\\uff0c\\u6b63\\u5728\\u6574\\u7406\\u7ed3\\u679c\\u3002";
+      if (phase === "observe_result") return detail || "\\u6211\\u5728\\u5224\\u65ad\\u5df2\\u83b7\\u5f97\\u7684\\u4fe1\\u606f\\u662f\\u5426\\u8db3\\u591f\\u76f4\\u63a5\\u56de\\u7b54\\u3002";
+      if (phase === "model_thinking") return detail;
+      if (phase === "final_answer") return detail || "\\u4fe1\\u606f\\u5df2\\u7ecf\\u8db3\\u591f\\uff0c\\u6211\\u5728\\u628a\\u7ed3\\u679c\\u7ec4\\u7ec7\\u6210\\u81ea\\u7136\\u8bed\\u8a00\\u3002";
+      return detail;
+    }
+    function countToolSteps(msg) {
+      const raw = msg.steps?.length ? msg.steps : msg.debug?.steps || [];
+      return raw.filter((step) => ["execute_tool", "tool_round"].includes(step.phase)).length;
+    }
+    function addStep(id, step) {
+      const msg = getMsg(id);
+      if (!msg || !step) return;
+      const last = msg.steps[msg.steps.length - 1];
+      if (!last || last.phase !== step.phase || last.detail !== step.detail) msg.steps.push(step);
+      msg.thinking = true;
+      touchActiveSession();
+    }
+    function appendText(id, text) {
+      const msg = getMsg(id);
+      if (msg) msg.text = (msg.text || "") + normalize(text);
+    }
+    function appendThinking(id, delta, fullText) {
+      const msg = getMsg(id);
+      if (!msg) return;
+      const next = fullText ? normalize(fullText) : (msg.modelThinking || "") + normalize(delta);
+      msg.modelThinking = cleanThinking(next).slice(-2400);
+      msg.thinking = true;
+      touchActiveSession();
+    }
+    function patch(id, data) { Object.assign(getMsg(id) || {}, data); }
+    function getMsg(id) { return messages.find((msg) => msg.id === id); }
+    function id() { return "m_" + Date.now() + "_" + Math.random().toString(36).slice(2); }
+    function clean(text) {
+      return String(text || "")
+        .replace(/\\b[a-z]+_[a-z0-9_]+\\b/gi, "")
+        .replace(/[<>]/g, "")
+        .replace(/\\s+/g, " ")
+        .trim();
+    }
+    function cleanThinking(text) {
+      return String(text || "")
+        .replace(/<\\/?think>/gi, "")
+        .replace(/\\n{3,}/g, "\\n\\n")
+        .trim();
+    }
+    function normalize(text) { return String(text || "").replace(/\\\\n/g, "\\n").replace(/\\\\t/g, "\\t").replace(/\\\\r/g, "\\r"); }
+    function dedupeByText(items) {
+      const seen = new Set();
+      return items.filter((item) => {
+        if (!item.text || seen.has(item.text)) return false;
+        seen.add(item.text);
+        return true;
+      });
+    }
+    function escapeHtml(text) {
+      return String(text || "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+    }
+    function renderMarkdown(text) {
+      const escaped = escapeHtml(text || "");
+      const tick = String.fromCharCode(96);
+      const inlineCode = new RegExp(tick + "([^" + tick + "]+)" + tick, "g");
+      return escaped
+        .replace(/^### (.*)$/gm, "<h3>$1</h3>")
+        .replace(/^## (.*)$/gm, "<h2>$1</h2>")
+        .replace(/^# (.*)$/gm, "<h1>$1</h1>")
+        .replace(/\\*\\*(.*?)\\*\\*/g, "<strong>$1</strong>")
+        .replace(inlineCode, "<code>$1</code>")
+        .split(/\\n{2,}/).map((block) => "<p>" + block.replace(/\\n/g, "<br>") + "</p>").join("");
+    }
     function formatDuration(ms) {
       const value = Number(ms);
-      if (!Number.isFinite(value)) return "";
+      if (!Number.isFinite(value) || value <= 0) return "";
       if (value < 1000) return value + "ms";
       return (value / 1000).toFixed(value > 10000 ? 0 : 1) + "s";
     }
-
-    function createSessionId(userid = currentUser.userid) {
-      return userid + ":session-" + Date.now() + "-" + Math.random().toString(36).slice(2);
-    }
-
-    function normalizeSessionId(id, userid = currentUser.userid) {
-      if (!id) return null;
-      const text = String(id);
-      return text.startsWith(userid + ":") ? text : userid + ":" + text;
-    }
-
-    function createMessageId() {
-      return "msg-" + Date.now() + "-" + Math.random().toString(36).slice(2);
-    }
-
-    function formatTime(value) {
-      const date = new Date(value || Date.now());
-      return date.toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
-    }
-
-    function normalizeStreamText(text) {
-      return String(text || "")
-        .replace(/\\\\n/g, "\\n")
-        .replace(/\\\\r/g, "\\r")
-        .replace(/\\\\t/g, "\\t")
-        .replace(/\\\\"/g, '"');
-    }
-
-    function renderMarkdown(source) {
-      const lines = String(source || "").replace(/\\r\\n/g, "\\n").split("\\n");
-      const html = [];
-      let paragraph = [];
-      let listType = null;
-      let listItems = [];
-      let inCode = false;
-      let codeLines = [];
-
-      const flushParagraph = () => {
-        if (!paragraph.length) return;
-        html.push("<p>" + renderInlineMarkdown(paragraph.join(" ")) + "</p>");
-        paragraph = [];
-      };
-      const flushList = () => {
-        if (!listType) return;
-        html.push("<" + listType + ">" + listItems.map((item) => "<li>" + renderInlineMarkdown(item) + "</li>").join("") + "</" + listType + ">");
-        listType = null;
-        listItems = [];
-      };
-      const flushCode = () => {
-        if (!inCode) return;
-        html.push("<pre><code>" + escapeHtml(codeLines.join("\\n")) + "</code></pre>");
-        inCode = false;
-        codeLines = [];
-      };
-      const fence = String.fromCharCode(96) + String.fromCharCode(96) + String.fromCharCode(96);
-
-      for (let index = 0; index < lines.length; index += 1) {
-        const line = lines[index];
-        const trimmed = line.trim();
-
-        if (trimmed.startsWith(fence)) {
-          if (inCode) {
-            flushCode();
-          } else {
-            flushParagraph();
-            flushList();
-            inCode = true;
-            codeLines = [];
-          }
-          continue;
-        }
-        if (inCode) {
-          codeLines.push(line);
-          continue;
-        }
-
-        if (!trimmed) {
-          flushParagraph();
-          flushList();
-          continue;
-        }
-
-        if (isTableStart(lines, index)) {
-          flushParagraph();
-          flushList();
-          const table = collectTable(lines, index);
-          html.push(renderTable(table.rows));
-          index = table.nextIndex - 1;
-          continue;
-        }
-
-        const heading = trimmed.match(/^(#{1,3})\\s+(.+)$/);
-        if (heading) {
-          flushParagraph();
-          flushList();
-          const level = heading[1].length;
-          html.push("<h" + level + ">" + renderInlineMarkdown(heading[2]) + "</h" + level + ">");
-          continue;
-        }
-
-        if (trimmed.startsWith(">")) {
-          flushParagraph();
-          flushList();
-          html.push("<blockquote>" + renderInlineMarkdown(trimmed.replace(/^>\\s?/, "")) + "</blockquote>");
-          continue;
-        }
-
-        const unordered = trimmed.match(/^[-*]\\s+(.+)$/);
-        const ordered = trimmed.match(/^\\d+[.)]\\s+(.+)$/);
-        if (unordered || ordered) {
-          flushParagraph();
-          const nextType = unordered ? "ul" : "ol";
-          if (listType && listType !== nextType) flushList();
-          listType = nextType;
-          listItems.push((unordered || ordered)[1]);
-          continue;
-        }
-
-        paragraph.push(trimmed);
+    function formatSessionTime(value) {
+      const date = new Date(Number(value) || Date.now());
+      const now = new Date();
+      if (date.toDateString() === now.toDateString()) {
+        return date.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
       }
-
-      flushCode();
-      flushParagraph();
-      flushList();
-      return html.join("");
+      return date.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit" });
     }
-
-    function renderInlineMarkdown(source) {
-      let output = escapeHtml(source);
-      const tick = String.fromCharCode(96);
-      const codePattern = new RegExp(tick + "([^" + tick + "]+)" + tick, "g");
-      output = output.replace(codePattern, "<code>$1</code>");
-      output = output.replace(/\\*\\*([^*]+)\\*\\*/g, "<strong>$1</strong>");
-      output = output.replace(/__([^_]+)__/g, "<strong>$1</strong>");
-      output = output.replace(/\\*([^*]+)\\*/g, "<em>$1</em>");
-      return output;
-    }
-
-    function isTableStart(lines, index) {
-      const current = lines[index]?.trim();
-      const next = lines[index + 1]?.trim();
-      return Boolean(current?.includes("|") && /^\\|?\\s*:?-{3,}:?\\s*(\\|\\s*:?-{3,}:?\\s*)+\\|?$/.test(next || ""));
-    }
-
-    function collectTable(lines, startIndex) {
-      const rows = [];
-      let index = startIndex;
-      while (index < lines.length && lines[index].trim().includes("|")) {
-        if (index !== startIndex + 1) rows.push(splitTableRow(lines[index]));
-        index += 1;
-      }
-      return { rows, nextIndex: index };
-    }
-
-    function splitTableRow(line) {
-      return line.trim().replace(/^\\|/, "").replace(/\\|$/, "").split("|").map((cell) => cell.trim());
-    }
-
-    function renderTable(rows) {
-      if (!rows.length) return "";
-      const head = rows[0];
-      const body = rows.slice(1);
-      return "<table><thead><tr>"
-        + head.map((cell) => "<th>" + renderInlineMarkdown(cell) + "</th>").join("")
-        + "</tr></thead><tbody>"
-        + body.map((row) => "<tr>" + row.map((cell) => "<td>" + renderInlineMarkdown(cell) + "</td>").join("") + "</tr>").join("")
-        + "</tbody></table>";
-    }
-
-    function escapeHtml(value) {
-      return String(value).replace(/[&<>"']/g, (char) => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;"
-      })[char]);
+    function userRoleLabel(userId) {
+      return people.find((user) => user.id === userId)?.role
+        || FALLBACK_USERS.find((user) => user.id === userId)?.role
+        || STR.unknownRole;
     }
   </script>
 </body>

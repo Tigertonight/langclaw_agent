@@ -43,6 +43,7 @@ export class LocalLLMClient {
     }
     const hasData = DATA_KEYWORDS.some((word) => question.includes(word)) || isDealerAnalysisQuestion(question) || await isBusinessDataQuestion(question);
     const hasKb = KB_KEYWORDS.some((word) => question.includes(word));
+    const hasCompute = isComputeQuestion(question);
     const hasLeave = isLeaveIntent(question);
     const asksLeaveRecords = isLeaveRecordQuestion(question);
     const risky = DANGEROUS_KEYWORDS.some((word) => question.includes(word));
@@ -67,6 +68,9 @@ export class LocalLLMClient {
     if (risky && !hasData && !hasKb) {
       return { intent: INTENTS.UNSUPPORTED, confidence: 0.85, reason: "可能涉及敏感或越权请求" };
     }
+    if (hasCompute && !hasKb) {
+      return { intent: INTENTS.DATA_QUERY, confidence: 0.88, reason: "需要使用受限计算沙箱完成确定性运算" };
+    }
     if ((hasData || hasOrgData) && hasKb) {
       return { intent: INTENTS.MIXED, confidence: 0.82, reason: "同时涉及业务数据和制度解释" };
     }
@@ -83,6 +87,23 @@ export class LocalLLMClient {
   }
 
   async planToolCalls({ user, question, history = [], route, conversationContext }) {
+    if (isComputeQuestion(question)) {
+      return {
+        calls: [{
+          name: "safe_compute",
+          args: buildSafeComputeArgs(question)
+        }]
+      };
+    }
+
+    if (isPersonalCustomerOverviewQuestion(question)) {
+      return buildPersonalCustomerOverviewPlan();
+    }
+
+    if (shouldRetrieveKnowledge({ question, route })) {
+      return buildKnowledgeRetrievalPlan(question);
+    }
+
     const dealerIRs = await planDealerMultiQuery({ question });
     if (dealerIRs?.length > 1) {
       const plans = await Promise.all(dealerIRs.map((queryIR) => compileBusinessQueryIR(queryIR, { question })));
@@ -179,6 +200,9 @@ export class LocalLLMClient {
       if (result.tool === "query_business_data") {
         lines.push(formatBusinessDataResult(result.data));
       }
+      if (result.tool === "safe_compute") {
+        lines.push(formatSafeComputeResult(result.data));
+      }
     }
 
     if (docs.length > 0) {
@@ -212,6 +236,145 @@ function isLeavePolicyQuestion(question) {
   const hasLeave = isLeaveIntent(question);
   if (!hasLeave) return false;
   return ["怎么", "如何", "制度", "政策", "流程", "规则", "标准", "说明", "问下", "了解"].some((word) => question.includes(word));
+}
+
+function isComputeQuestion(question) {
+  const text = String(question ?? "");
+  if (/(计算|算一下|求一下|运算|百分比|比例|平均|均值|总和|合计|四舍五入|保留\d+位|平方|开方|方差|标准差)/.test(text)) return true;
+  return /(\d+(?:\.\d+)?)\s*[-+*/%^]\s*(\d+(?:\.\d+)?)/.test(text);
+}
+
+function buildSafeComputeArgs(question) {
+  const expression = extractMathExpression(question);
+  if (expression) {
+    return {
+      mode: "expression",
+      code: expression,
+      timeout_ms: 1000
+    };
+  }
+
+  return {
+    mode: "script",
+    code: [
+      "const text = input.question;",
+      "const numbers = String(text).match(/-?\\d+(?:\\.\\d+)?/g)?.map(Number) ?? [];",
+      "result = { numbers, count: numbers.length, sum: numbers.reduce((a, b) => a + b, 0), average: numbers.length ? numbers.reduce((a, b) => a + b, 0) / numbers.length : null };"
+    ].join("\n"),
+    input: { question },
+    timeout_ms: 1000
+  };
+}
+
+function isPersonalCustomerOverviewQuestion(question) {
+  const text = String(question ?? "");
+  const mentionsOwnedCustomers = /(\u6211\u7684|\u540d\u4e0b|\u8d1f\u8d23|\u6211\u8d1f\u8d23).{0,10}\u5ba2\u6237/.test(text)
+    || /\u5ba2\u6237.{0,10}(\u6211\u7684|\u540d\u4e0b|\u8d1f\u8d23|\u6211\u8d1f\u8d23)/.test(text);
+  const asksForActionableReview = /(\u8ba2\u5355|\u8ddf\u8fdb|\u4f18\u5148|\u6700\u8fd1|\u60c5\u51b5|\u98ce\u9669|\u7eed\u7b7e|\u5f85\u8ddf\u8fdb|\u770b\u770b|\u68c0\u67e5|\u5206\u6790)/.test(text);
+  return mentionsOwnedCustomers && asksForActionableReview;
+}
+
+function buildPersonalCustomerOverviewPlan() {
+  return {
+    calls: [
+      {
+        name: "query_business_data",
+        args: {
+          resource: "customers",
+          operation: "search",
+          filters: [],
+          metrics: [],
+          fields: [
+            "id",
+            "name",
+            "tier",
+            "industry",
+            "industry_category",
+            "deal_status",
+            "follow_status",
+            "renewal_status",
+            "annual_revenue",
+            "last_contacted_at",
+            "next_follow_up_at",
+            "contract_expire_at"
+          ],
+          sort: [{ field: "next_follow_up_at", direction: "asc" }],
+          limit: 20,
+          display: {
+            domain: "sales",
+            target: "customers",
+            operation: "search",
+            reason: "\u5148\u67e5\u8be2\u5f53\u524d\u7528\u6237\u53ef\u8bbf\u95ee\u7684\u5ba2\u6237\uff0c\u518d\u7ed3\u5408\u8ba2\u5355\u5224\u65ad\u4f18\u5148\u8ddf\u8fdb\u9879\u3002"
+          }
+        }
+      },
+      {
+        name: "query_business_data",
+        args: {
+          resource: "orders",
+          operation: "search",
+          filters: [],
+          metrics: [],
+          fields: [
+            "id",
+            "customer_id",
+            "customer_name",
+            "status",
+            "amount",
+            "created_at",
+            "expected_delivery"
+          ],
+          sort: [{ field: "created_at", direction: "desc" }],
+          limit: 20,
+          display: {
+            domain: "sales",
+            target: "orders",
+            operation: "search",
+            reason: "\u7ee7\u7eed\u67e5\u8be2\u6388\u6743\u5ba2\u6237\u7684\u6700\u8fd1\u8ba2\u5355\uff0c\u7528\u4e8e\u52a8\u6001\u89c2\u5bdf\u548c\u56de\u7b54\u3002"
+          }
+        }
+      }
+    ],
+    reason: "\u8fd9\u662f\u5ba2\u6237\u7ecf\u8425\u7c7b\u7efc\u5408\u95ee\u9898\uff0c\u5148\u67e5\u53ef\u8bbf\u95ee\u5ba2\u6237\u548c\u6700\u8fd1\u8ba2\u5355\uff0c\u518d\u8fdb\u884c\u89c2\u5bdf\u4e0e\u5f52\u7eb3\u3002"
+  };
+}
+
+function shouldRetrieveKnowledge({ question, route }) {
+  if (String(route?.intent_code ?? "").startsWith("dealer.")) return false;
+  if (route?.intent === INTENTS.KNOWLEDGE_QA) return true;
+  if (route?.intent !== INTENTS.MIXED) return false;
+  return /(制度|政策|流程|标准|手册|报销|试用期|年假|病假|权限|审批|规则|依据|资料|文档)/.test(String(question ?? ""));
+}
+
+function buildKnowledgeRetrievalPlan(question) {
+  return {
+    calls: [{
+      name: "retrieve_knowledge",
+      args: {
+        query: question,
+        topK: 5
+      }
+    }],
+    reason: "用户问题需要资料依据，调用知识检索 skill 获取可引用片段。"
+  };
+}
+
+function extractMathExpression(question) {
+  const text = String(question ?? "")
+    .replace(/（/g, "(")
+    .replace(/）/g, ")")
+    .replace(/，/g, ",")
+    .replace(/×/g, "*")
+    .replace(/÷/g, "/")
+    .replace(/％/g, "%");
+  const candidates = text.match(/[0-9+\-*/%^().,\s]+/g)
+    ?.map((item) => item.trim())
+    .filter((item) => /\d/.test(item) && /[-+*/%^]/.test(item)) ?? [];
+  const candidate = candidates.sort((left, right) => right.length - left.length)[0];
+  if (!candidate) return null;
+  const safe = candidate.replace(/\^/g, "**");
+  if (!/^[0-9+\-*/%().,\s*]+$/.test(safe)) return null;
+  return safe;
 }
 
 function hasExplicitDataLookup(question) {
@@ -469,7 +632,7 @@ function formatBusinessDataResult(data) {
         ? formatEmployeeProfiles(row.direct_leader_profiles, row.direct_leader)
         : "无";
       const reportingText = formatReporting(row.reporting);
-      lines.push(`- ${row.name}（${row.userid}）：${row.department_name} / ${row.position}。直属上级：${leaderText}。${reportingText}`);
+      lines.push(`- ${row.name}：${row.department_name} / ${row.position}。直属上级：${leaderText}。${reportingText}`);
     }
     return lines.join("\n");
   }
@@ -481,8 +644,8 @@ function formatBusinessDataResult(data) {
         row.vertical_department ? `垂直归属：${row.vertical_department}` : null,
         row.relation ? `关系：${row.relation}` : null
       ].filter(Boolean).join("；");
-      const leader = row.leader_profile?.name ? `${row.leader_profile.name}（${row.leader_profile.position ?? row.leader_userid}）` : row.leader_userid;
-      lines.push(`- ${row.name}（ID ${row.id}）：上级部门ID ${row.parentid}，负责人 ${leader}${extras ? `，${extras}` : ""}。`);
+      const leader = row.leader_profile?.name ? `${row.leader_profile.name}（${row.leader_profile.position ?? "负责人"}）` : "暂未配置";
+      lines.push(`- ${row.name}：负责人 ${leader}${extras ? `，${extras}` : ""}。`);
     }
     return lines.join("\n");
   }
@@ -507,6 +670,18 @@ function formatBusinessDataResult(data) {
     lines.push(`- ${row.name}（${row.id}）：${row.tier} 类，${row.industry}，签单状态「${row.deal_status}」，跟进状态「${row.follow_status}」，续签状态「${row.renewal_status}」，年度成交额 ${row.annual_revenue} 元。`);
   }
   return lines.join("\n");
+}
+
+function formatSafeComputeResult(data) {
+  const value = data?.value;
+  const rendered = typeof value === "object"
+    ? JSON.stringify(value, null, 2)
+    : String(value);
+  const sandbox = data?.sandbox;
+  const suffix = sandbox
+    ? `\n\n已在用户独立安全沙箱 ${sandbox.dir} 中完成，超时限制 ${sandbox.timeout_ms}ms，未开放 shell、网络和文件系统 API。`
+    : "";
+  return `计算结果：${rendered}${suffix}`;
 }
 
 function formatDealerAnalysisAnswer({ question, route, toolResults }) {
@@ -861,7 +1036,7 @@ function formatEmployeeProfiles(profiles = [], fallbackUserIds = []) {
     .filter(Boolean)
     .map((profile) => formatEmployeeProfile(profile))
     .filter(Boolean);
-  return text.length ? text.join("、") : fallbackUserIds.join("、");
+  return text.length ? text.join("、") : "暂未配置";
 }
 
 function formatEmployeeProfile(profile) {
