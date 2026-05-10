@@ -5,6 +5,13 @@ import { INTENT_CODES, INTENTS } from "../agent/ports.js";
 import { isDealerAnalysisQuestion, isLeaveRecordQuestion } from "../query/query-parser.js";
 
 const ALLOWED_INTENTS = new Set(Object.values(INTENTS));
+const DEFAULT_LLM_REQUEST_TIMEOUT_MS = 15000;
+const DEFAULT_LLM_STREAM_TIMEOUT_MS = 25000;
+
+function readPositiveNumberEnv(name, fallback) {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
 
 export class OpenAILLMClient {
   constructor({
@@ -16,6 +23,8 @@ export class OpenAILLMClient {
     this.model = model;
     this.baseUrl = baseUrl.replace(/\/$/, "");
     this.local = new LocalLLMClient();
+    this.requestTimeoutMs = readPositiveNumberEnv("LLM_REQUEST_TIMEOUT_MS", DEFAULT_LLM_REQUEST_TIMEOUT_MS);
+    this.streamTimeoutMs = readPositiveNumberEnv("LLM_STREAM_TIMEOUT_MS", DEFAULT_LLM_STREAM_TIMEOUT_MS);
   }
 
   async classifyIntent(input) {
@@ -28,21 +37,38 @@ export class OpenAILLMClient {
   }
 
   async recognizeIntent(input) {
+    const fastSmalltalk = createFastSmalltalkRoute(input?.question);
+    if (fastSmalltalk) return fastSmalltalk;
     const fallback = await this.local.recognizeIntent(input);
     if (!this.apiKey) return fallback;
+    if (shouldTrustLocalRecognition(input, fallback)) return fallback;
     return this.recognizeWithOpenAI(input, fallback);
   }
 
   async planToolCalls(input) {
     const deterministicPlan = await this.local.planToolCalls(input);
+    if (shouldUseDeterministicPlan(deterministicPlan)) return deterministicPlan;
     const selectedSkill = pickQuerySkill(input.selectedSkill, input.skills);
     if (selectedSkill?.id === "dealer-analysis" && this.apiKey) {
       const planned = await this.planToolCallsWithSkill(input, selectedSkill);
+      if (planned?.calls?.length) return planned;
+      if (planned?.clarification && deterministicPlan.calls?.length) return deterministicPlan;
       if (planned) return planned;
     }
     if ((deterministicPlan.calls?.length ?? 0) > 1 || hasDealerMetricsCall(deterministicPlan)) return deterministicPlan;
     if (selectedSkill && this.apiKey) {
       const planned = await this.planToolCallsWithSkill(input, selectedSkill);
+      if (planned?.calls?.length) return planned;
+      if (planned?.clarification && deterministicPlan.calls?.length) return deterministicPlan;
+      if (planned?.clarification) {
+        const agentPlanned = await this.planToolCallsWithAgent(input, deterministicPlan);
+        if (agentPlanned?.calls?.length) return agentPlanned;
+      }
+      if (planned) return planned;
+    }
+    if (this.apiKey) {
+      const planned = await this.planToolCallsWithAgent(input, deterministicPlan);
+      if (planned?.clarification && deterministicPlan.calls?.length) return deterministicPlan;
       if (planned) return planned;
     }
     if (input.route?.query_ir) {
@@ -55,17 +81,100 @@ export class OpenAILLMClient {
   async planFollowUpToolCalls(input) {
     const fallback = await this.local.planFollowUpToolCalls(input);
     if (!this.apiKey) return fallback;
+    if (!fallback.calls?.length && shouldSkipRemoteFollowUpPlanning(input)) return fallback;
     return this.planFollowUpWithOpenAI(input, fallback);
   }
 
   async generateAnswer(input) {
+    const fastSmalltalkAnswer = createFastSmalltalkAnswer(input);
+    if (fastSmalltalkAnswer) return { answer: fastSmalltalkAnswer };
     if (!this.apiKey) return this.local.generateAnswer(input);
     return this.generateWithOpenAI(input);
   }
 
   async streamAnswer(input, { onToken, onThinking } = {}) {
+    const fastSmalltalkAnswer = createFastSmalltalkAnswer(input);
+    if (fastSmalltalkAnswer) {
+      for (const token of splitFastAnswer(fastSmalltalkAnswer)) {
+        await onToken?.(token);
+        await new Promise((resolve) => setTimeout(resolve, 12));
+      }
+      return { answer: fastSmalltalkAnswer };
+    }
     if (!this.apiKey) return this.local.streamAnswer(input, { onToken, onThinking });
     return this.streamWithOpenAI(input, { onToken, onThinking });
+  }
+
+  async planToolCallsWithAgent({ user, question, history = [], route, tools = [], skills = [], enterpriseContext, conversationContext }, fallback) {
+    let response;
+    try {
+      response = await fetch(`${this.baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.apiKey}`
+        },
+        signal: AbortSignal.timeout(this.requestTimeoutMs),
+        body: JSON.stringify({
+          model: this.model,
+          messages: [
+            {
+              role: "system",
+              content: createAgentPlanningSystemPrompt()
+            },
+            {
+              role: "user",
+              content: JSON.stringify({
+                runtime_context: enterpriseContext?.runtime ?? null,
+                conversation_context: conversationContext ?? null,
+                user,
+                route,
+                question,
+                history: normalizeHistory(history),
+                available_tools: summarizeToolsForPrompt(tools),
+                available_skills: skills.map(summarizeSkillForPrompt),
+                deterministic_plan: fallback,
+                output_schema: {
+                  clarification: "optional string",
+                  query_ir: {
+                    domain: "sales | organization | attendance | dealer | business",
+                    target: "customers | orders | sales_reports | employees | departments | leave_requests | dealer_stores | dealer_vehicles | dealer_inbounds | dealer_quotas | dealer_leads | dealer_sales_orders | dealer_finance | dealer_repair_orders | dealer_warranty_claims | dealer_metrics",
+                    operation: "search | aggregate",
+                    entity: "optional object",
+                    filters: "array",
+                    metrics: "array",
+                    fields: "array",
+                    sort: "array",
+                    limit: "number",
+                    needsClarification: "optional string",
+                    reason: "string"
+                  },
+                  query_irs: "optional array of query_ir for multi-resource tasks"
+                }
+              }, null, 2)
+            }
+          ],
+          temperature: 0,
+          stream: false
+        })
+      });
+    } catch {
+      return null;
+    }
+
+    if (!response.ok) return null;
+
+    try {
+      const json = await response.json();
+      const content = stripThinkBlock(json.choices?.[0]?.message?.content ?? "");
+      const parsed = parseJsonObject(content);
+      if (typeof parsed?.clarification === "string" && parsed.clarification.trim()) {
+        return { calls: [], clarification: parsed.clarification.trim() };
+      }
+      return compileQueryIRResponse(parsed, { route, question, local: this.local });
+    } catch {
+      return null;
+    }
   }
 
   async classifyWithOpenAI({ user, question, history = [], enterpriseContext, conversationContext }) {
@@ -79,7 +188,7 @@ export class OpenAILLMClient {
           "Content-Type": "application/json",
           Authorization: `Bearer ${this.apiKey}`
         },
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(this.requestTimeoutMs),
         body: JSON.stringify({
           model: this.model,
           messages: [
@@ -151,7 +260,7 @@ export class OpenAILLMClient {
           "Content-Type": "application/json",
           Authorization: `Bearer ${this.apiKey}`
         },
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(this.requestTimeoutMs),
         body: JSON.stringify({
           model: this.model,
           messages: [
@@ -212,6 +321,7 @@ export class OpenAILLMClient {
           "Content-Type": "application/json",
           Authorization: `Bearer ${this.apiKey}`
         },
+        signal: AbortSignal.timeout(this.requestTimeoutMs),
         body: JSON.stringify({
           model: this.model,
           messages: [
@@ -249,9 +359,7 @@ export class OpenAILLMClient {
     return { answer: answer || "模型没有返回有效回答。", artifacts: dealerReport?.artifacts ?? [] };
   }
 
-  async planFollowUpWithOpenAI({ user, question, history = [], toolResults = [], previousCalls = [], agentState }, fallback) {
-    if (!fallback.calls?.length) return fallback;
-
+  async planFollowUpWithOpenAI({ user, question, history = [], toolResults = [], previousCalls = [], agentState, tools = [] }, fallback) {
     let response;
     try {
       response = await fetch(`${this.baseUrl}/chat/completions`, {
@@ -260,18 +368,19 @@ export class OpenAILLMClient {
           "Content-Type": "application/json",
           Authorization: `Bearer ${this.apiKey}`
         },
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(this.requestTimeoutMs),
         body: JSON.stringify({
           model: this.model,
           messages: [
             {
               role: "system",
               content: [
-                "你是企业内部 Agent Loop 的观察与继续执行判断器，只输出 JSON。",
+                "你是企业内部 Agent Loop 的观察-计划节点，只输出 JSON。",
                 "你需要判断上一轮工具结果是否已经足够回答用户原问题。",
-                "如果仍缺少用户明确要求的事实，输出 should_continue=true。",
+                "如果仍缺少用户明确要求的事实，输出 should_continue=true，并给出 query_ir 或 query_irs 来补充查询。",
                 "如果已有事实足够，或继续查询只会重复/越权/无意义，输出 should_continue=false。",
-                "不要编造工具调用参数；可用的候选补查调用由 fallback_calls 提供。"
+                "不要直接编造 tool call；只输出结构化 query_ir，由系统编译、去重和鉴权。",
+                "不要重复 previous_calls 已经查询过的同一资源、同一过滤条件。"
               ].join("\n")
             },
             {
@@ -289,9 +398,21 @@ export class OpenAILLMClient {
                 previous_calls: previousCalls,
                 tool_results_summary: summarizeToolResultsForPrompt(toolResults),
                 fallback_calls: fallback.calls,
+                available_tools: summarizeToolsForPrompt(tools),
                 output_schema: {
                   should_continue: "boolean",
-                  reason: "short Chinese reason"
+                  reason: "short Chinese reason",
+                  query_ir: {
+                    target: "customers | orders | sales_reports | employees | departments | leave_requests | dealer_stores | dealer_vehicles | dealer_inbounds | dealer_quotas | dealer_leads | dealer_sales_orders | dealer_finance | dealer_repair_orders | dealer_warranty_claims | dealer_metrics",
+                    operation: "search | aggregate",
+                    filters: "array",
+                    metrics: "array",
+                    fields: "array",
+                    sort: "array",
+                    limit: "number",
+                    reason: "string"
+                  },
+                  query_irs: "optional array of query_ir"
                 }
               }, null, 2)
             }
@@ -311,13 +432,15 @@ export class OpenAILLMClient {
       const content = stripThinkBlock(json.choices?.[0]?.message?.content ?? "");
       const parsed = parseJsonObject(content);
       if (parsed?.should_continue === false) return { calls: [] };
+      const planned = await compileQueryIRResponse(parsed, { route: null, question, local: this.local });
+      if (planned?.calls?.length) return removePreviouslyCalled(planned, previousCalls);
       return fallback;
     } catch {
       return fallback;
     }
   }
 
-  async streamWithOpenAI({ user, question, route, docs, toolResults, enterpriseContext }, { onToken } = {}) {
+  async streamWithOpenAI({ user, question, route, docs, toolResults, enterpriseContext }, { onToken, onThinking } = {}) {
     const dealerReport = composeDealerReport({ question, route, toolResults: toolResults.filter((result) => result.ok) });
     let response;
     try {
@@ -327,6 +450,7 @@ export class OpenAILLMClient {
           "Content-Type": "application/json",
           Authorization: `Bearer ${this.apiKey}`
         },
+        signal: AbortSignal.timeout(this.streamTimeoutMs),
         body: JSON.stringify({
           model: this.model,
           messages: [
@@ -363,26 +487,35 @@ export class OpenAILLMClient {
     let buffer = "";
     let answer = "";
     const thinkFilter = createThinkStreamFilter();
-    for await (const chunk of response.body) {
-      buffer += decoder.decode(chunk, { stream: true });
-      const lines = buffer.split(/\r?\n/);
-      buffer = lines.pop() ?? "";
-      for (const line of lines) {
-        if (!line.startsWith("data:")) continue;
-        const data = line.slice(5).trim();
-        if (!data || data === "[DONE]") continue;
-        let json;
-        try {
-          json = JSON.parse(data);
-        } catch {
-          continue;
+    try {
+      for await (const chunk of response.body) {
+        buffer += decoder.decode(chunk, { stream: true });
+        const lines = buffer.split(/\r?\n/);
+        buffer = lines.pop() ?? "";
+        for (const line of lines) {
+          if (!line.startsWith("data:")) continue;
+          const data = line.slice(5).trim();
+          if (!data || data === "[DONE]") continue;
+          let json;
+          try {
+            json = JSON.parse(data);
+          } catch {
+            continue;
+          }
+          const token = json.choices?.[0]?.delta?.content ?? "";
+          if (!token) continue;
+          answer += token;
+          const { visible, thinkingDelta, thinkingText } = thinkFilter.push(token);
+          if (thinkingDelta) await onThinking?.({ delta: thinkingDelta, text: thinkingText });
+          if (visible) await onToken?.(visible);
         }
-        const token = json.choices?.[0]?.delta?.content ?? "";
-        if (!token) continue;
-        answer += token;
-        const { visible } = thinkFilter.push(token);
-        if (visible) await onToken?.(visible);
       }
+    } catch {
+      const cleaned = stripThinkBlock(answer);
+      if (cleaned || answer) {
+        return { answer: cleaned || answer, artifacts: dealerReport?.artifacts ?? [] };
+      }
+      return this.local.streamAnswer({ user, question, route, docs, toolResults, enterpriseContext }, { onToken });
     }
 
     const cleaned = stripThinkBlock(answer);
@@ -398,7 +531,7 @@ export class OpenAILLMClient {
           "Content-Type": "application/json",
           Authorization: `Bearer ${this.apiKey}`
         },
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(this.requestTimeoutMs),
         body: JSON.stringify({
           model: this.model,
           messages: [
@@ -579,6 +712,58 @@ function createSkillPlanningSystemPrompt(skill) {
   ].join("\n");
 }
 
+function createAgentPlanningSystemPrompt() {
+  return [
+    "你是企业 Agent 的动态计划器，工作方式参考 Claude Code / OpenClaw 的 observe-plan-act。",
+    "你的职责是把用户目标拆成可验证的查询意图，而不是死守一次性固定流程。",
+    "只输出 JSON，不要输出 Markdown。",
+    "不要直接输出 tool call；输出 query_ir 或 query_irs，由系统编译为受权限控制的工具调用。",
+    "如果任务需要多个资源才能回答，使用 query_irs 一次规划多条查询。",
+    "如果 deterministic_plan 已经足够，可以复用同等语义的 query_ir；如果它遗漏资源，你应该补齐。",
+    "如果信息不足以安全查询，输出 clarification。",
+    "filters 可以使用 __CURRENT_USER__、__CURRENT_USER_REPORTS__、__CURRENT_USER_SUBORDINATES__、__ALL_ORG_USERS__ 这类运行时占位符。",
+    "同一字段多个候选值必须使用 in，不要输出多个 eq 形成 AND 冲突。",
+    "经营分析、风险、日报、周报、复盘、优先级、最该关注什么，优先查询 dealer_metrics；必要时再补库存、线索、订单、财务、售后、三包等明细。",
+    "组织/员工/上下级/汇报关系属于 employees 或 departments，不属于知识库问答。"
+  ].join("\n");
+}
+
+async function compileQueryIRResponse(parsed, { route, question, local }) {
+  const queryIRs = Array.isArray(parsed?.query_irs) ? parsed.query_irs : [];
+  if (queryIRs.length) {
+    const normalizedIRs = queryIRs.map((item) => normalizeQueryIR(item, route?.intent_code)).filter(Boolean);
+    if (!normalizedIRs.length) return null;
+    const plans = await Promise.all(normalizedIRs.map((queryIR) => local.planToolCallsFromIR({ queryIR, question })));
+    return {
+      calls: plans.flatMap((plan) => plan.calls ?? []),
+      ir: normalizedIRs
+    };
+  }
+  const normalizedIR = normalizeQueryIR(parsed?.query_ir, route?.intent_code);
+  if (!normalizedIR) return null;
+  return local.planToolCallsFromIR({ queryIR: normalizedIR, question });
+}
+
+function removePreviouslyCalled(plan, previousCalls = []) {
+  const seen = new Set(previousCalls.map(callSignature));
+  return {
+    ...plan,
+    calls: (plan.calls ?? []).filter((call) => !seen.has(callSignature(call)))
+  };
+}
+
+function callSignature(call) {
+  return JSON.stringify({
+    name: call?.name,
+    resource: call?.args?.resource,
+    operation: call?.args?.operation,
+    filters: call?.args?.filters ?? [],
+    metrics: call?.args?.metrics ?? [],
+    fields: call?.args?.fields ?? [],
+    limit: call?.args?.limit
+  });
+}
+
 function createAnswerContract(toolResults) {
   const successful = Array.isArray(toolResults) ? toolResults.filter((result) => result?.ok) : [];
   const hasAggregate = successful.some((result) => result.tool === "query_business_data" && result.data?.operation === "aggregate");
@@ -620,6 +805,77 @@ function createAnswerContract(toolResults) {
   };
 }
 
+function shouldSkipRemoteFollowUpPlanning({ question, route, previousCalls = [], toolResults = [], agentState } = {}) {
+  if (!previousCalls.length) return false;
+  if (hasFailedToolResult(toolResults)) return true;
+  if (previousCalls.every((call) => ["safe_compute", "retrieve_knowledge"].includes(call.name))) return true;
+  if (agentState?.missing_facts?.length === 0 && agentState?.blockers?.length === 0) return true;
+  if (isDealerAnalysisQuestion(question) || String(route?.intent_code ?? "").startsWith("dealer.")) return false;
+  return previousCalls.some((call) => call.name === "query_business_data");
+}
+
+function createFastSmalltalkRoute(question) {
+  if (!isFastSmalltalkQuestion(question)) return null;
+  return {
+    intent: INTENTS.SMALLTALK,
+    confidence: 0.98,
+    reason: "\u95ee\u5019\u6216\u80fd\u529b\u4ecb\u7ecd\u7c7b\u95ee\u9898\uff0c\u4e0d\u9700\u8981\u8c03\u7528\u5de5\u5177\u6216\u8fdc\u7a0b\u6a21\u578b\u3002",
+    intent_code: "chat.smalltalk",
+    query_ir: null,
+    router: "local_fast"
+  };
+}
+
+function createFastSmalltalkAnswer({ question, user } = {}) {
+  if (!isFastSmalltalkQuestion(question)) return null;
+  const text = String(question ?? "").trim().toLowerCase();
+  const name = user?.name ? `${user.name}\uff0c` : "";
+  if (/(\u4f60\u662f\u8c01|\u4f60\u80fd\u505a\u4ec0\u4e48|\u80fd\u529b|\u4ecb\u7ecd\u4e00\u4e0b|who are you|what can you do|help)/i.test(text)) {
+    return [
+      `${name}\u6211\u662f\u4f01\u4e1a\u5185\u90e8 Agent\uff0c\u53ef\u4ee5\u5e2e\u4f60\u67e5\u8be2\u6743\u9650\u8303\u56f4\u5185\u7684\u4e1a\u52a1\u6570\u636e\u3001\u68c0\u7d22\u77e5\u8bc6\u5e93\uff0c\u4e5f\u53ef\u4ee5\u5728\u5b89\u5168\u6c99\u7bb1\u91cc\u5904\u7406\u786e\u5b9a\u6027\u8ba1\u7b97\u3002`,
+      "\u4f60\u53ef\u4ee5\u76f4\u63a5\u95ee\u6211\u7ecf\u8425\u5206\u6790\u3001\u5ba2\u6237\u548c\u8ba2\u5355\u3001\u5458\u5de5\u7ec4\u7ec7\u5173\u7cfb\u3001\u5236\u5ea6\u6d41\u7a0b\u6216\u9700\u8981\u8ba1\u7b97\u7684\u95ee\u9898\u3002"
+    ].join("\n");
+  }
+  return `${name}\u4f60\u597d\uff0c\u6211\u5728\u3002\u4f60\u53ef\u4ee5\u76f4\u63a5\u95ee\u6211\u4e1a\u52a1\u6570\u636e\u3001\u77e5\u8bc6\u5e93\u6216\u9700\u8981\u5b89\u5168\u6c99\u7bb1\u5904\u7406\u7684\u8ba1\u7b97\u4efb\u52a1\u3002`;
+}
+
+function isFastSmalltalkQuestion(question) {
+  const text = String(question ?? "").trim().toLowerCase();
+  if (!text || text.length > 40) return false;
+  return /^(hi|hello|hey|help|\u4f60\u597d|\u5728\u5417|\u5728\u4e0d\u5728|\u54c8\u55bd|\u55e8|hello[!.?]?)$/i.test(text)
+    || /(\u4f60\u662f\u8c01|\u4f60\u80fd\u505a\u4ec0\u4e48|\u4f60\u6709\u4ec0\u4e48\u80fd\u529b|\u4ecb\u7ecd\u4e00\u4e0b\u4f60\u81ea\u5df1|who are you|what can you do)/i.test(text);
+}
+
+function splitFastAnswer(text) {
+  return String(text ?? "").match(/.{1,8}/gs) ?? [];
+}
+
+function shouldUseDeterministicPlan(plan) {
+  const calls = plan?.calls ?? [];
+  if (!calls.length) return false;
+  if (calls.every((call) => call.name === "safe_compute")) return true;
+  return calls.length === 1
+    && calls[0].name === "query_business_data"
+    && ["customers", "orders", "sales_reports", "employees", "departments", "leave_requests"].includes(calls[0].args?.resource);
+}
+
+function shouldTrustLocalRecognition(input, fallback) {
+  if (isSimpleComputeQuestion(input?.question)) return true;
+  if (fallback?.intent === INTENTS.SMALLTALK && Number(fallback.confidence ?? 0) >= 0.9) return true;
+  if (fallback?.router === "local" && fallback?.intent === INTENTS.DATA_QUERY && Number(fallback.confidence ?? 0) >= 0.85) return true;
+  return false;
+}
+
+function isSimpleComputeQuestion(question) {
+  const text = String(question ?? "");
+  if (/(\d+(?:\.\d+)?)\s*[-+*/%^]\s*(\d+(?:\.\d+)?)/.test(text)) return true;
+  return /(计算|算一下|求一下|运算)/.test(text) && /\d/.test(text);
+}
+
+function hasFailedToolResult(toolResults = []) {
+  return toolResults.some((result) => result && result.ok === false);
+}
+
 function summarizeEnterpriseContextForPrompt(context) {
   if (!context) return null;
   return {
@@ -644,6 +900,14 @@ function summarizeSkillForPrompt(skill) {
     triggers: skill.triggers,
     instructions: skill.instructions
   };
+}
+
+function summarizeToolsForPrompt(tools = []) {
+  return tools.map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    schema: tool.schema ?? tool.parameters ?? null
+  }));
 }
 
 

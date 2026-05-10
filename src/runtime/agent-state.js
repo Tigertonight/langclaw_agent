@@ -204,6 +204,15 @@ function observeToolResults(toolResults) {
 }
 
 function extractFactsFromToolResult(result) {
+  if (result.tool === "retrieve_knowledge") {
+    const hits = result.data?.total ?? result.data?.docs?.length ?? 0;
+    if (!hits) return [];
+    const first = result.data?.docs?.[0];
+    const source = first?.metadata?.title && first?.metadata?.heading
+      ? `${first.metadata.title} / ${first.metadata.heading}`
+      : "可访问资料";
+    return [{ key: "knowledge_context", text: `知识资料命中 ${hits} 个片段，优先参考「${source}」。` }];
+  }
   if (result.tool !== "query_business_data") return [];
   const data = result.data ?? {};
   if (data.resource === "employees") return extractEmployeeFacts(data);
