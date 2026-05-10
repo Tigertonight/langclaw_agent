@@ -358,22 +358,25 @@ function formatBusinessDataAnswer(results) {
 }
 
 function formatBusinessDataResult(data = {}) {
-  const resourceName = readableResourceName(data.resource);
+  const resourceName = readableResourceName(data.resource, data);
   if (data.operation === "aggregate") {
     const metrics = data.metrics ?? {};
-    const entries = Object.entries(metrics);
+    const entries = Array.isArray(metrics)
+      ? metrics.map((metric) => [metric.as ?? metric.field ?? metric.type ?? "count", metric.value])
+      : Object.entries(metrics);
     if (!entries.length) return `${resourceName}没有返回可用统计结果。`;
-    return entries.map(([key, value]) => `${readableFieldName(data, key)}：${formatBusinessValue(value)}`).join("\n");
+    return entries.map(([key, value]) => `${readableFieldName(data, key)}：${formatAggregateValue(data, key, value)}`).join("\n");
   }
 
   const rows = Array.isArray(data.rows) ? data.rows : [];
   if (!rows.length) return `没有找到匹配的${resourceName}数据。`;
 
   const lines = [`共找到 ${data.total ?? rows.length} 条${resourceName}数据：`];
-  for (const [index, row] of rows.slice(0, 12).entries()) {
+  const displayLimit = data.resource === "departments" ? 100 : 12;
+  for (const [index, row] of rows.slice(0, displayLimit).entries()) {
     lines.push(`${index + 1}. ${formatBusinessRow(data, row)}`);
   }
-  if (rows.length > 12 || Number(data.total) > rows.length) {
+  if (rows.length > displayLimit || Number(data.total) > rows.length) {
     lines.push(`还有更多结果，可继续缩小范围或说明你想查看的字段。`);
   }
   return lines.join("\n");
@@ -384,6 +387,9 @@ function formatBusinessRow(data, row) {
   const parts = fields
     .filter((field) => row[field] !== undefined && row[field] !== null && row[field] !== "")
     .map((field) => `${readableFieldName(data, field)}：${formatBusinessValue(row[field])}`);
+  if (data.resource === "dealer_quotas" && row.available_quota !== undefined) {
+    parts.push(`剩余可承诺 ${formatBusinessValue(row.available_quota)}`);
+  }
   return parts.length ? parts.join("，") : JSON.stringify(row);
 }
 
@@ -392,9 +398,14 @@ function pickDisplayFields(data, row) {
     customers: ["name", "tier", "industry", "deal_status", "follow_status", "annual_revenue", "next_follow_up_at"],
     orders: ["customer_name", "status", "amount", "created_at", "expected_delivery"],
     sales_reports: ["department", "period", "revenue", "pipeline"],
-    employees: ["name", "department_name", "position"],
+    employees: ["name", "department_name", "position", "direct_leader_profiles", "reporting"],
     departments: ["name", "parentid", "leader_userid"],
     leave_requests: ["applicant_name", "leave_type", "leave_duration", "start_time", "end_time", "status"],
+    dealer_quotas: ["store_name", "month", "series", "model", "color", "quota_total", "bound_inbound_count", "available_quota"],
+    dealer_leads: ["customer_name", "source", "store_name", "owner_name", "interested_series", "intention_level", "status", "followup_count"],
+    dealer_sales_orders: ["id", "customer_name", "series", "model", "order_type", "order_status", "delivery_status", "expected_delivery_date"],
+    dealer_finance: ["resource_type", "store_name", "direction", "category", "amount", "balance_after", "related_order_id", "status"],
+    dealer_warranty_claims: ["id", "repair_order_id", "store_name", "customer_name", "vin", "series", "claim_status", "evidence_status"],
     dealer_metrics: ["store_name", "category", "metric", "value", "unit", "severity", "summary", "recommendation"]
   };
   const fields = preferred[data.resource] ?? data.fields ?? Object.keys(row);
@@ -407,7 +418,14 @@ function readableFieldName(data, field) {
       name: "姓名",
       department_name: "所属组织",
       position: "岗位",
-      direct_leader: "直属上级"
+      direct_leader: "直属上级",
+      direct_leader_profiles: "直属上级",
+      employee_count: "员工数"
+    },
+    departments: {
+      name: "组织节点",
+      parentid: "上级部门ID",
+      leader_userid: "部门负责人"
     },
     customers: {
       name: "客户名"
@@ -417,7 +435,7 @@ function readableFieldName(data, field) {
   return data.field_labels?.[field] ?? field;
 }
 
-function readableResourceName(resource) {
+function readableResourceName(resource, data = {}) {
   const names = {
     customers: "客户",
     orders: "订单",
@@ -425,16 +443,45 @@ function readableResourceName(resource) {
     employees: "员工",
     departments: "组织",
     leave_requests: "请假记录",
+    dealer_quotas: "配额",
+    dealer_leads: "销售线索",
+    dealer_sales_orders: hasDeliveryPendingFilter(data) ? "待交付销售订单" : "销售订单",
+    dealer_finance: "折让金和财务流水",
+    dealer_warranty_claims: "三包索赔",
     dealer_metrics: "经营指标"
   };
   return names[resource] ?? "业务";
 }
 
 function formatBusinessValue(value) {
-  if (Array.isArray(value)) return value.join("、");
+  if (Array.isArray(value)) {
+    return value.map((item) => (
+      item && typeof item === "object"
+        ? [item.name, item.position].filter(Boolean).join(" / ")
+        : String(item)
+    )).join("、");
+  }
   if (typeof value === "number") return Number.isInteger(value) ? String(value) : value.toFixed(2);
-  if (value && typeof value === "object") return JSON.stringify(value);
+  if (value && typeof value === "object") {
+    if (value.manager_profile?.name) return [value.manager_profile.name, value.manager_profile.position].filter(Boolean).join(" / ");
+    if (value.store_manager_profile?.name) return [value.store_manager_profile.name, value.store_manager_profile.position].filter(Boolean).join(" / ");
+    if (value.name) return [value.name, value.position].filter(Boolean).join(" / ");
+    return JSON.stringify(value);
+  }
+  if (value === "discount_wallet") return "折让金";
   return String(value);
+}
+
+function formatAggregateValue(data, key, value) {
+  if (data.resource === "employees" && key === "employee_count") return `${formatBusinessValue(value)} 人`;
+  return formatBusinessValue(value);
+}
+
+function hasDeliveryPendingFilter(data = {}) {
+  return (data.query?.filters ?? []).some((filter) => (
+    filter.field === "delivery_status"
+    && String(filter.value ?? "").includes("待")
+  ));
 }
 
 function formatComputeValue(value) {
