@@ -45,6 +45,7 @@ export async function planFollowUpToolCallsNode({ llm, toolRegistry, user, messa
   return llm.planFollowUpToolCalls({
     user,
     question: message,
+    route,
     history,
     toolResults,
     previousCalls,

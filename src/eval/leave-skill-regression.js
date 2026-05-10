@@ -58,7 +58,8 @@ await test("显式新问题不应被上一轮请假上下文黏住", async () =>
   const result = await run("store_gm_001", "差旅报销标准是什么", sessionId);
   expectEqual(result.debug.route?.intent, "knowledge_qa", "intent");
   expectEqual(result.debug.selected_skill, "knowledge-qa", "selected_skill");
-  expectEqual(result.debug.tool_calls?.length ?? 0, 0, "tool_calls");
+  expectEqual(result.debug.tool_calls?.length ?? 0, 1, "tool_calls");
+  expectEqual(result.debug.tool_calls?.[0]?.name, "retrieve_knowledge", "tool_call");
 });
 
 await test("compact debug 不应回退成大块原始执行上下文", async () => {
