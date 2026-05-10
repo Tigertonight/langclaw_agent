@@ -328,8 +328,7 @@ function shouldStopAfterToolRound(toolPlan, toolResults) {
 }
 
 const TERMINAL_TOOL_NAMES = new Set([
-  "safe_compute",
-  "retrieve_knowledge"
+  "safe_compute"
 ]);
 
 function createDirectAnswer({ toolResults = [], docs = [] }) {
@@ -344,10 +343,6 @@ function createDirectAnswer({ toolResults = [], docs = [] }) {
         ? `计算结果：${values[0]}`
         : `计算结果：\n${values.map((value, index) => `${index + 1}. ${value}`).join("\n")}`
     };
-  }
-
-  if (successful.every((result) => result.tool === "query_business_data")) {
-    return { answer: formatBusinessDataAnswer(successful) };
   }
 
   return null;
