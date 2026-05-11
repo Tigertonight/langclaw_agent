@@ -10,6 +10,7 @@
     "eval": "node src/eval/run-eval.js",
     "eval:dealer": "node src/eval/dealer-smoke.js",
     "smoke": "node src/eval/smoke.js",
+    "eval:router": "node src/eval/router-poc.js",
     "arch:smoke": "node src/eval/architecture-smoke.js",
     "session:smoke": "node src/eval/session-recovery.js",
     "config:check": "node src/eval/config-check.js"

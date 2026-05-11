@@ -9,6 +9,11 @@ import {
   WeComDirectory
 } from "./auth/user-context-resolver.js";
 import { OpenAILLMClient } from "./llm/openai-llm.js";
+import { LocalLLMClient } from "./llm/local-llm.js";
+import { IntentRegistry } from "./router/intent-registry.js";
+import { IntentRouter } from "./router/intent-router.js";
+import { IntentQueryHandler } from "./handlers/intent-query-handler.js";
+import { ChitchatHandler } from "./handlers/chitchat-handler.js";
 import { MockTencentDocsSource, TencentDocsSource } from "./rag/document-sources.js";
 import { LocalKnowledgeBase } from "./rag/local-knowledge-base.js";
 import { PrimitiveRegistry } from "./primitives/registry.js";
@@ -59,6 +64,11 @@ export function createApp() {
     directory,
     permissionProvider: new LocalPermissionProvider()
   });
+  const intentRegistry = new IntentRegistry({ dir: "data/intent-codes" });
+  const localLLM = new LocalLLMClient();
+  const intentRouter = new IntentRouter({ llm, registry: intentRegistry, localLLM });
+  const intentQueryHandler = new IntentQueryHandler({ llm, toolRegistry, registry: intentRegistry });
+  const chitchatHandler = new ChitchatHandler({ llm });
   const agent = new SimpleWorkflowOrchestrator({
     llm,
     knowledgeBase,
@@ -68,7 +78,10 @@ export function createApp() {
     scenarioRouter,
     userContextResolver,
     skillRuntime,
-    enterpriseContextProvider
+    enterpriseContextProvider,
+    intentRouter,
+    intentQueryHandler,
+    chitchatHandler
   });
-  return { agent, llm, integrations, documentSource, knowledgeBase, toolRegistry, primitiveRegistry, skillRegistry, skillLoader, skillRuntime, enterpriseContextProvider, sessionStore, scenarioRouter, userContextResolver };
+  return { agent, llm, integrations, documentSource, knowledgeBase, toolRegistry, primitiveRegistry, skillRegistry, skillLoader, skillRuntime, enterpriseContextProvider, sessionStore, scenarioRouter, userContextResolver, intentRegistry, intentRouter, intentQueryHandler, chitchatHandler };
 }

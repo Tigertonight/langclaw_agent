@@ -8,7 +8,7 @@ import { classifyIntentNode } from "./nodes.js";
 import { createDefaultSessionId } from "./session-store.js";
 
 export class SimpleWorkflowOrchestrator {
-  constructor({ llm, knowledgeBase, toolRegistry, primitiveRegistry, sessionStore, scenarioRouter, userContextResolver, skillRuntime, enterpriseContextProvider }) {
+  constructor({ llm, knowledgeBase, toolRegistry, primitiveRegistry, sessionStore, scenarioRouter, userContextResolver, skillRuntime, enterpriseContextProvider, intentRouter, intentQueryHandler, chitchatHandler }) {
     this.llm = llm;
     this.knowledgeBase = knowledgeBase;
     this.toolRegistry = toolRegistry;
@@ -18,6 +18,9 @@ export class SimpleWorkflowOrchestrator {
     this.userContextResolver = userContextResolver;
     this.skillRuntime = skillRuntime;
     this.enterpriseContextProvider = enterpriseContextProvider;
+    this.intentRouter = intentRouter ?? null;
+    this.intentQueryHandler = intentQueryHandler ?? null;
+    this.chitchatHandler = chitchatHandler ?? null;
     this.freeAgentLoop = new FreeAgentLoop({ llm, knowledgeBase, toolRegistry });
     this.workflowRunner = new WorkflowRunner({
       scenarioRouter,
@@ -34,6 +37,24 @@ export class SimpleWorkflowOrchestrator {
     const history = getSessionHistory(session);
     const conversationContext = buildConversationContext({ session, currentMessage: message, enterpriseContext });
     let route = null;
+
+    // v2 Intent Router 入口（默认关闭，env INTENT_ROUTER_V2=on 启用）
+    if (process.env.INTENT_ROUTER_V2 === "on" && this.intentRouter) {
+      const routerResult = await this.intentRouter.route({
+        message,
+        user_context: { user_id: user.id, name: user.name, department: user.department, role: user.role, permissions: user.permissions },
+        session_state: { active_intent_code: session?.active_intent_code, last_task: session?.last_task }
+      });
+      // 工作流场景的续轮仍然走原路径，让 workflow runner 接管
+      if (this.workflowRunner.canResume(session)) {
+        // fall through to legacy path
+      } else if (routerResult.handler_type === "intent_query" && this.intentQueryHandler) {
+        return this.runIntentQuery({ user, message, sessionId: resolvedSessionId, session, route: routerResult, enterpriseContext, conversationContext, debug, startedAt });
+      } else if (routerResult.handler_type === "chitchat" && this.chitchatHandler) {
+        return this.runChitchat({ user, message, sessionId: resolvedSessionId, session, route: routerResult, enterpriseContext, conversationContext, debug, startedAt });
+      }
+      // workflow / agentic / 兜底走下方原有路径
+    }
 
     if (this.workflowRunner.canResume(session)) {
       const activeIntent = session.active_intent;
@@ -246,6 +267,91 @@ export class SimpleWorkflowOrchestrator {
     });
   }
 
+  async runIntentQuery({ user, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt }) {
+    const handlerResult = await this.intentQueryHandler.execute({
+      user,
+      message,
+      intent_code: route.intent_code,
+      params: route.params ?? {},
+      route,
+      session
+    });
+    // 用 v1 的 intent 字符串保留兼容
+    const legacyRoute = {
+      intent: "data_query",
+      confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
+      reason: route.reasoning ?? "v2 intent router → intent_query",
+      intent_code: route.intent_code,
+      router: "v2",
+      router_source: route.source,
+      params: route.params,
+      handler_type: route.handler_type
+    };
+    if (session) {
+      session.last_task = { intent_code: route.intent_code, params: route.params ?? {} };
+      session.active_intent_code = route.intent_code;
+    }
+    const agentSteps = [
+      createAgentStep("identify_user", "确认员工身份", `当前以 ${user.name}（${user.department} / ${user.role}）的身份处理请求。`),
+      createAgentStep("classify_intent", "识别任务类型", `Router 判定为 ${route.intent_code}（confidence=${route.confidence}, source=${route.source}）。`),
+      createAgentStep("intent_query", "执行结构化查询", `命中 ${route.intent_code}，已调用 ${handlerResult.toolPlan.calls.map((call) => call.name).join(",")}，返回 ${handlerResult.debug.row_count} 条记录。`)
+    ];
+    return this.finish({
+      user,
+      sessionId,
+      message,
+      route: legacyRoute,
+      docs: [],
+      toolPlan: handlerResult.toolPlan,
+      toolResults: handlerResult.toolResults,
+      answer: handlerResult.answer,
+      artifacts: [],
+      agentSteps,
+      enterpriseContext,
+      conversationContext,
+      skills: [],
+      session,
+      debug,
+      startedAt
+    });
+  }
+
+  async runChitchat({ user, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt }) {
+    const handlerResult = await this.chitchatHandler.execute({ user, message });
+    const legacyRoute = {
+      intent: "smalltalk",
+      confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
+      reason: route.reasoning ?? "v2 intent router → chitchat",
+      intent_code: route.intent_code,
+      router: "v2",
+      router_source: route.source,
+      handler_type: route.handler_type
+    };
+    const agentSteps = [
+      createAgentStep("identify_user", "确认员工身份", `当前以 ${user.name}（${user.department} / ${user.role}）的身份处理请求。`),
+      createAgentStep("classify_intent", "识别任务类型", `Router 判定为 ${route.intent_code}（chitchat, source=${route.source}）。`),
+      createAgentStep("chitchat", "直接生成回答", "无需调用工具或检索知识库。")
+    ];
+    return this.finish({
+      user,
+      sessionId,
+      message,
+      route: legacyRoute,
+      docs: [],
+      toolPlan: { calls: [] },
+      toolResults: [],
+      answer: handlerResult.answer,
+      artifacts: [],
+      agentSteps,
+      enterpriseContext,
+      conversationContext,
+      skills: [],
+      session,
+      debug,
+      startedAt
+    });
+  }
+
   async selectSkill({ session, route, message, user }) {
     if (!this.skillRuntime) {
       return {
@@ -448,7 +554,10 @@ function summarizeRoute(route) {
     intent_code: route.intent_code,
     confidence: route.confidence,
     router: route.router ?? route.classifier,
-    reason: route.reason
+    reason: route.reason,
+    handler_type: route.handler_type,
+    router_source: route.router_source,
+    params: route.params
   };
 }
 
