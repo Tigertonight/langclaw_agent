@@ -1,0 +1,28 @@
+{
+  "intent_code": "dealer.query.repair_orders",
+  "handler_type": "intent_query",
+  "version": "1",
+  "description": "查询经销商售后维修工单（含状态、车系、逾期、时间、服务顾问等过滤）",
+  "params_schema": {
+    "store": { "type": "string", "required": false, "examples": ["华东旗舰店", "华南标准店"] },
+    "series": { "type": "string", "required": false, "examples": ["汉", "宋L", "海豹"] },
+    "status": { "type": "string", "required": false, "examples": ["待结算", "维修中", "已交付", "已取消"] },
+    "order_type": { "type": "string", "required": false, "examples": ["常规保养", "事故维修", "保修维修"] },
+    "service_advisor": { "type": "string", "required": false },
+    "time_range": { "type": "string", "required": false, "examples": ["近一个月", "本月", "Q2"] },
+    "overdue_only": { "type": "boolean", "required": false, "description": "true 时仅返回 promised_finish_at 已过且未交付的工单（逾期）" }
+  },
+  "examples": [
+    "查一下逾期未交付的维修工单",
+    "汉EV 这个月的售后工单",
+    "华南标准店事故维修单还有哪些没结算",
+    "小李最近接的常规保养工单"
+  ],
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "tool_binding": {
+    "tool_name": "query_business_data",
+    "resource": "dealer_repair_orders"
+  },
+  "required_permissions": ["after_sales:read"]
+}

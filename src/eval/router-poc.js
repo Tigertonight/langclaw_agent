@@ -78,6 +78,163 @@ const cases = [
     name: "（PoC deferred）连续轮 vehicle_model 修正",
     message: "把这个改成海豹",
     expect: () => ({ ok: true, deferred: true })
+  },
+  {
+    name: "财务-华东旗舰店应付未结清",
+    message: "查一下华东旗舰店应付里还没结清的款项",
+    expect: (r) => {
+      const intentCode = r.debug?.route?.intent_code;
+      if (intentCode !== "dealer.query.finance") {
+        return { ok: false, reason: `intent_code=${intentCode}` };
+      }
+      const params = r.debug?.route?.params ?? {};
+      const okStore = !params.store || /华东/.test(params.store);
+      const okType = !params.resource_type || params.resource_type === "payable";
+      if (!okStore || !okType) {
+        return { ok: false, reason: `params 不合理: ${JSON.stringify(params)}` };
+      }
+      return { ok: true };
+    }
+  },
+  {
+    name: "财务-返利待结算明细",
+    message: "返利还有哪些待结算的",
+    expect: (r) => {
+      const intentCode = r.debug?.route?.intent_code;
+      if (intentCode !== "dealer.query.finance") {
+        return { ok: false, reason: `intent_code=${intentCode}` };
+      }
+      const params = r.debug?.route?.params ?? {};
+      const okType = !params.resource_type || params.resource_type === "rebate";
+      if (!okType) {
+        return { ok: false, reason: `resource_type=${params.resource_type}` };
+      }
+      return { ok: true };
+    }
+  },
+  {
+    name: "财务-折让金最近的出账",
+    message: "折让金最近的出账记录",
+    expect: (r) => {
+      const intentCode = r.debug?.route?.intent_code;
+      if (intentCode !== "dealer.query.finance") {
+        return { ok: false, reason: `intent_code=${intentCode}` };
+      }
+      const params = r.debug?.route?.params ?? {};
+      const okType = !params.resource_type || params.resource_type === "discount_wallet";
+      const okDir = !params.direction || /出账/.test(params.direction);
+      if (!okType || !okDir) {
+        return { ok: false, reason: `params 不合理: ${JSON.stringify(params)}` };
+      }
+      return { ok: true };
+    }
+  },
+  {
+    name: "售后-逾期未交付维修工单",
+    message: "查一下哪些维修工单逾期还没交付",
+    expect: (r) => {
+      const intentCode = r.debug?.route?.intent_code;
+      if (intentCode !== "dealer.query.repair_orders") {
+        return { ok: false, reason: `intent_code=${intentCode}` };
+      }
+      const params = r.debug?.route?.params ?? {};
+      // overdue_only 为 true，或者 status 暗含未交付，都算理解到位
+      const ok = params.overdue_only === true || (params.status && params.status !== "已交付");
+      if (!ok) {
+        return { ok: false, reason: `params 没体现逾期未交付语义: ${JSON.stringify(params)}` };
+      }
+      return { ok: true };
+    }
+  },
+  {
+    name: "售后-厂家审核中的索赔",
+    message: "厂家审核中的保修索赔有哪些",
+    expect: (r) => {
+      const intentCode = r.debug?.route?.intent_code;
+      if (intentCode !== "dealer.query.warranty_claims") {
+        return { ok: false, reason: `intent_code=${intentCode}` };
+      }
+      const params = r.debug?.route?.params ?? {};
+      const ok = !params.claim_status || /厂家审核中|审核/.test(params.claim_status);
+      if (!ok) {
+        return { ok: false, reason: `claim_status=${params.claim_status}` };
+      }
+      return { ok: true };
+    }
+  },
+  {
+    name: "售后-三电故障索赔",
+    message: "三电故障的索赔单有几条",
+    expect: (r) => {
+      const intentCode = r.debug?.route?.intent_code;
+      if (intentCode !== "dealer.query.warranty_claims") {
+        return { ok: false, reason: `intent_code=${intentCode}` };
+      }
+      const params = r.debug?.route?.params ?? {};
+      const ok = !params.fault_category || /三电|电池|动力/.test(params.fault_category);
+      if (!ok) {
+        return { ok: false, reason: `fault_category=${params.fault_category}` };
+      }
+      return { ok: true };
+    }
+  },
+  {
+    name: "销售-未交付订单",
+    message: "未交付的订单还有哪些",
+    expect: (r) => {
+      const intentCode = r.debug?.route?.intent_code;
+      if (intentCode !== "dealer.query.sales_orders") {
+        return { ok: false, reason: `intent_code=${intentCode}` };
+      }
+      const params = r.debug?.route?.params ?? {};
+      // 未交付可能体现在 order_status 或 delivery_status，不强制
+      const ok = !params.order_status || /待交付|未交付/.test(params.order_status)
+        || !params.delivery_status || /待整备|整备中|未交付/.test(params.delivery_status);
+      if (!ok) {
+        return { ok: false, reason: `params 不合理: ${JSON.stringify(params)}` };
+      }
+      return { ok: true };
+    }
+  },
+  {
+    name: "销售-本月华东旗舰店成交",
+    message: "本月华东旗舰店成交了哪些订单",
+    expect: (r) => {
+      const intentCode = r.debug?.route?.intent_code;
+      if (intentCode !== "dealer.query.sales_orders") {
+        return { ok: false, reason: `intent_code=${intentCode}` };
+      }
+      const params = r.debug?.route?.params ?? {};
+      const okStore = !params.store || /华东/.test(params.store);
+      if (!okStore) return { ok: false, reason: `store=${params.store}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "线索-高意向客户",
+    message: "高意向的客户线索还有哪些没成交",
+    expect: (r) => {
+      const intentCode = r.debug?.route?.intent_code;
+      if (intentCode !== "dealer.query.leads") {
+        return { ok: false, reason: `intent_code=${intentCode}` };
+      }
+      const params = r.debug?.route?.params ?? {};
+      // 高意向可能映射为 H 或留 null 让 LLM 不强制（不强校验）
+      const ok = !params.intention_level || params.intention_level === "H" || /高/.test(params.intention_level);
+      if (!ok) return { ok: false, reason: `intention_level=${params.intention_level}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "线索-本月新进",
+    message: "本月新进的销售线索",
+    expect: (r) => {
+      const intentCode = r.debug?.route?.intent_code;
+      if (intentCode !== "dealer.query.leads") {
+        return { ok: false, reason: `intent_code=${intentCode}` };
+      }
+      return { ok: true };
+    }
   }
 ];
 
