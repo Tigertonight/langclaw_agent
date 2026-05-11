@@ -29,7 +29,7 @@ export function inferIntentCode({ intent, queryIR, message = "" }) {
   if (/(折让金|应付|应收|付款|返利|财务|余额|到账|抵扣|单车毛利)/.test(message)) return INTENT_CODES.DEALER_FINANCE_QUERY;
   if (/(售后|维修|保养|工单|接待|质检|结算|服务顾问)/.test(message)) return INTENT_CODES.DEALER_AFTER_SALES_QUERY;
   if (/(三包|质保|索赔|厂家审核|核准金额|故障码|旧件)/.test(message)) return INTENT_CODES.DEALER_WARRANTY_QUERY;
-  if (/(组织|部门|上级|下级|下属|员工|人员|岗位|汇报)/.test(message)) return INTENT_CODES.ORG_EMPLOYEE_QUERY;
+  if (/(组织|部门|上级|下级|下属|员工|人员|岗位|汇报|负责人|主管|领导|我们店|门店)/.test(message)) return INTENT_CODES.ORG_EMPLOYEE_QUERY;
   if (/(请假记录|请假历史|请假情况|请假数据|请假统计|休假记录|休假历史|休假情况|休假数据|休假统计|多少次假|我的请假|最近请假的同学|谁请假了|团队请假|部门请假)/.test(message)) return INTENT_CODES.ATTENDANCE_LEAVE_QUERY;
   if (/(订单|发货|交付)/.test(message)) return INTENT_CODES.BUSINESS_ORDER_QUERY;
   if (/(销售额|成交额|报表|pipeline|业绩)/i.test(message)) return INTENT_CODES.BUSINESS_SALES_REPORT_QUERY;
@@ -40,6 +40,7 @@ export function inferIntentCode({ intent, queryIR, message = "" }) {
 
 function isDealerAnalysisMessage(message) {
   const text = String(message ?? "");
+  if (/(谁|哪位).{0,8}(负责人|主管|经理|总经理)|(?:负责人|主管|经理|总经理).{0,8}(是谁|哪位|谁)/.test(text)) return false;
   const hasAnalysisView = /(经营|分析|日报|周报|复盘|最该关注|优先级|看板|总览|汇总|建议|总经理|体系|晨会|行动项|经营计划|负责人|管理动作|协调问题)/.test(text);
   const hasRiskReview = /风险/.test(text) && /(经营|总览|复盘|分析|有哪些|哪里|最该关注|优先级)/.test(text);
   const hasManagementTask = /(晨会|行动项|经营计划|管理动作|协调问题|负责人|总经理视角|经销商体系)/.test(text);

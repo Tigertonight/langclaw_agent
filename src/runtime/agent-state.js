@@ -162,7 +162,7 @@ export function inferTaskMode(message, route) {
   const text = String(message ?? "");
   if (/(报告|日报|周报|月报|材料|汇报稿|经营复盘|晨会)/.test(text)) return "report";
   if (/(看板|仪表盘|红黄绿|健康度|监控)/.test(text)) return "dashboard";
-  if (/(计划|行动项|管理动作|负责人|下周|推进|落地|整改)/.test(text)) return "action_plan";
+  if (/(计划|行动项|管理动作|下周|推进|落地|整改)/.test(text)) return "action_plan";
   if (/(分析|复盘|原因|风险|优先级|对比|承压|最该关注|为什么|诊断)/.test(text)) return "analysis";
   if (String(route?.intent_code ?? "").startsWith("dealer.") && route?.intent_code === "dealer.analysis_query") return "analysis";
   return "lookup";

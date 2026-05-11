@@ -9,10 +9,6 @@ export async function parseBusinessQuery({ user, question, history = [], convers
     return parseLeaveRecordQuery({ user, question, operation, entities });
   }
 
-  if (isDealerQuestion(question)) {
-    return parseDealerQuery({ question, operation });
-  }
-
   if (isSalesReportQuestion(question) && !entities.customer) {
     return createQueryIR({
       domain: "sales",
@@ -49,7 +45,11 @@ export async function parseBusinessQuery({ user, question, history = [], convers
   }
 
   if (entities.department || isOrgQuestion(question)) {
-    return parseOrganizationQuery({ question, entities, operation });
+    return parseOrganizationQuery({ user, question, entities, operation });
+  }
+
+  if (isDealerQuestion(question)) {
+    return parseDealerQuery({ question, operation });
   }
 
   if (isCustomerQuestion(question) || entities.customer || operation === "aggregate") {
@@ -237,6 +237,7 @@ function extractRepairOrderId(question) {
 
 export function isDealerAnalysisQuestion(question) {
   const text = String(question ?? "");
+  if (isSimpleOwnerLookup(text)) return false;
   const hasAnalysisView = /(经营|分析|日报|周报|复盘|最该关注|优先级|看板|总览|汇总|建议|总经理|体系|晨会|行动项|经营计划|负责人|管理动作|协调问题)/.test(text);
   const hasRiskReview = /风险/.test(text) && /(经营|总览|复盘|分析|有哪些|哪里|最该关注|优先级)/.test(text);
   const hasManagementTask = /(晨会|行动项|经营计划|管理动作|协调问题|负责人|总经理视角|经销商体系)/.test(text);
@@ -244,7 +245,23 @@ export function isDealerAnalysisQuestion(question) {
     && (hasManagementTask || /(经销商|门店|销售订单|库存|线索|售后|财务|三包|折让金|华东旗舰店|华南标准店|华北卫星店)/.test(text));
 }
 
-function parseOrganizationQuery({ question, entities, operation }) {
+function isSimpleOwnerLookup(text) {
+  return /(谁|哪位).{0,8}(负责人|主管|经理|总经理)|(?:负责人|主管|经理|总经理).{0,8}(是谁|哪位|谁)/.test(String(text ?? ""));
+}
+
+function parseOrganizationQuery({ user, question, entities, operation }) {
+  if (isStoreLeaderQuestion(question)) {
+    return createQueryIR({
+      domain: "organization",
+      target: "departments",
+      operation: "search",
+      entity: { type: "department", id: 1, name: "门店管理层" },
+      filters: [{ field: "id", op: "eq", value: 1 }],
+      limit: 1,
+      reason: "用户查询当前门店负责人。"
+    });
+  }
+
   if (entities.department && isDepartmentLeaderQuestion(question)) {
     return createQueryIR({
       domain: "organization",
@@ -254,6 +271,30 @@ function parseOrganizationQuery({ question, entities, operation }) {
       filters: [{ field: "id", op: "eq", value: entities.department.id }],
       limit: 1,
       reason: "用户查询部门负责人。"
+    });
+  }
+
+  const currentDepartmentId = user?.main_department ?? user?.department_id ?? user?.wecom?.main_department ?? user?.wecom?.department?.[0];
+  if (isCurrentDepartmentLeaderQuestion(question) && currentDepartmentId) {
+    return createQueryIR({
+      domain: "organization",
+      target: "departments",
+      operation: "search",
+      entity: { type: "department", id: currentDepartmentId, name: user.department },
+      filters: [{ field: "id", op: "eq", value: currentDepartmentId }],
+      limit: 1,
+      reason: "用户查询当前所在部门负责人。"
+    });
+  }
+
+  if (isFirstLevelDepartmentQuestion(question)) {
+    return createQueryIR({
+      domain: "organization",
+      target: "departments",
+      operation: "search",
+      filters: [{ field: "parentid", op: "eq", value: 1 }],
+      limit: 100,
+      reason: "用户查询门店一级部门。"
     });
   }
 
@@ -436,11 +477,13 @@ export function isOrderQuestion(question) {
 }
 
 export function isCustomerQuestion(question) {
-  return ["客户", "等级", "行业", "签单", "续签", "跟进", "负责", "名下"].some((word) => question.includes(word));
+  const text = String(question ?? "");
+  return ["客户", "等级", "行业", "签单", "续签", "跟进", "名下"].some((word) => text.includes(word))
+    || /(我|自己).{0,4}负责/.test(text);
 }
 
 export function isOrgQuestion(question) {
-  return ["组织", "组织架构", "部门", "部有", "上级", "下级", "下属", "下辖", "下面", "团队", "同学", "汇报", "直属", "领导", "主管", "岗位", "员工", "人员", "多少人"].some((word) => question.includes(word));
+  return ["组织", "组织架构", "部门", "部有", "上级", "下级", "下属", "下辖", "下面", "团队", "同学", "汇报", "直属", "领导", "主管", "岗位", "员工", "人员", "多少人", "负责人", "我们店", "门店"].some((word) => question.includes(word));
 }
 
 export function isLeaveRecordQuestion(question) {
@@ -457,6 +500,18 @@ function isDepartmentListQuestion(question) {
 
 function isDepartmentLeaderQuestion(question) {
   return /(负责人|主管|经理|leader|谁负责)/i.test(question);
+}
+
+function isStoreLeaderQuestion(question) {
+  return /(我们店|门店|店里|店).{0,8}(负责人|主管|经理|总经理|谁负责|谁管)|(?:负责人|主管|经理|总经理).{0,8}(我们店|门店|店里|店)/i.test(String(question ?? ""));
+}
+
+function isCurrentDepartmentLeaderQuestion(question) {
+  return /(我们|咱们|本|当前|我所在|我的).{0,4}部门.{0,8}(负责人|主管|经理|谁负责|谁管)|(?:负责人|主管|经理).{0,8}(我们|咱们|本|当前|我所在|我的).{0,4}部门/i.test(String(question ?? ""));
+}
+
+function isFirstLevelDepartmentQuestion(question) {
+  return /(1级|一级|一层|第一层).{0,6}(部门|组织)|(?:部门|组织).{0,6}(1级|一级|一层|第一层)/i.test(String(question ?? ""));
 }
 
 function isDepartmentPeopleQuestion(question) {

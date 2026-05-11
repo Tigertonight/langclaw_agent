@@ -528,13 +528,23 @@ function summarizeState(state) {
   if (!state) return null;
   return {
     goal: state.goal,
-    task_mode: state.task_mode,
+    task_mode: state.task_mode ?? state.task_type,
     status: state.status,
     round: state.round,
+    iteration: state.iteration,
+    plan: state.plan,
+    current_step: state.current_step,
+    stop_reason: state.stop_reason,
     required_facts: state.required_facts,
     known_fact_keys: state.known_facts?.map((fact) => fact.key).filter(Boolean) ?? [],
     missing_facts: state.missing_facts,
     next_action: state.next_action,
+    decisions: state.decisions?.map((decision) => ({
+      iteration: decision.iteration,
+      source: decision.source,
+      fallback_reason: decision.fallback_reason,
+      action: decision.action
+    })),
     blockers: state.blockers
   };
 }

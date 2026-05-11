@@ -22,8 +22,22 @@ export class OpenAILLMClient {
     this.apiKey = apiKey;
     this.model = model;
     this.baseUrl = baseUrl.replace(/\/$/, "");
+    this.decisionApiKey = process.env.LLM_DECISION_API_KEY ?? apiKey;
+    this.decisionModel = process.env.LLM_DECISION_MODEL ?? model;
+    this.decisionBaseUrl = (process.env.LLM_DECISION_BASE_URL ?? baseUrl).replace(/\/$/, "");
+    this.answerApiKey = process.env.LLM_ANSWER_API_KEY ?? apiKey;
+    this.answerModel = process.env.LLM_ANSWER_MODEL ?? model;
+    this.answerBaseUrl = (process.env.LLM_ANSWER_BASE_URL ?? baseUrl).replace(/\/$/, "");
+    this.fastAnswerApiKey = process.env.LLM_FAST_ANSWER_API_KEY ?? this.decisionApiKey ?? this.answerApiKey;
+    this.fastAnswerModel = process.env.LLM_FAST_ANSWER_MODEL ?? this.decisionModel ?? this.answerModel;
+    this.fastAnswerBaseUrl = (process.env.LLM_FAST_ANSWER_BASE_URL ?? this.decisionBaseUrl ?? this.answerBaseUrl).replace(/\/$/, "");
+    this.streamApiKey = process.env.LLM_STREAM_API_KEY ?? this.answerApiKey;
+    this.streamModel = process.env.LLM_STREAM_MODEL ?? this.answerModel;
+    this.streamBaseUrl = (process.env.LLM_STREAM_BASE_URL ?? this.answerBaseUrl).replace(/\/$/, "");
     this.local = new LocalLLMClient();
     this.requestTimeoutMs = readPositiveNumberEnv("LLM_REQUEST_TIMEOUT_MS", DEFAULT_LLM_REQUEST_TIMEOUT_MS);
+    this.decisionTimeoutMs = readPositiveNumberEnv("LLM_DECISION_TIMEOUT_MS", this.requestTimeoutMs);
+    this.fastAnswerTimeoutMs = readPositiveNumberEnv("LLM_FAST_ANSWER_TIMEOUT_MS", 8000);
     this.streamTimeoutMs = readPositiveNumberEnv("LLM_STREAM_TIMEOUT_MS", DEFAULT_LLM_STREAM_TIMEOUT_MS);
   }
 
@@ -47,19 +61,18 @@ export class OpenAILLMClient {
 
   async planToolCalls(input) {
     const deterministicPlan = await this.local.planToolCalls(input);
-    if (shouldUseDeterministicPlan(deterministicPlan)) return deterministicPlan;
+    if (!this.apiKey) return deterministicPlan;
+
     const selectedSkill = pickQuerySkill(input.selectedSkill, input.skills);
     if (selectedSkill?.id === "dealer-analysis" && this.apiKey) {
       const planned = await this.planToolCallsWithSkill(input, selectedSkill);
       if (planned?.calls?.length) return planned;
-      if (planned?.clarification && deterministicPlan.calls?.length) return deterministicPlan;
       if (planned) return planned;
     }
-    if ((deterministicPlan.calls?.length ?? 0) > 1 || hasDealerMetricsCall(deterministicPlan)) return deterministicPlan;
+
     if (selectedSkill && this.apiKey) {
       const planned = await this.planToolCallsWithSkill(input, selectedSkill);
       if (planned?.calls?.length) return planned;
-      if (planned?.clarification && deterministicPlan.calls?.length) return deterministicPlan;
       if (planned?.clarification) {
         const agentPlanned = await this.planToolCallsWithAgent(input, deterministicPlan);
         if (agentPlanned?.calls?.length) return agentPlanned;
@@ -68,29 +81,56 @@ export class OpenAILLMClient {
     }
     if (this.apiKey) {
       const planned = await this.planToolCallsWithAgent(input, deterministicPlan);
-      if (planned?.clarification && deterministicPlan.calls?.length) return deterministicPlan;
       if (planned) return planned;
     }
     if (input.route?.query_ir) {
       return this.local.planToolCallsFromIR({ queryIR: input.route.query_ir, question: input.question });
     }
-    if (!this.apiKey) return this.local.planToolCalls(input);
-    return this.local.planToolCalls(input);
+    return deterministicPlan;
   }
 
   async planFollowUpToolCalls(input) {
     const fallback = await this.local.planFollowUpToolCalls(input);
     if (!this.apiKey) return fallback;
-    if (!fallback.calls?.length && shouldSkipRemoteFollowUpPlanning(input)) return fallback;
     return this.planFollowUpWithOpenAI(input, fallback);
+  }
+
+  async decideNextAction(input) {
+    const fastSmalltalkAnswer = createFastSmalltalkAnswer({ question: input?.message ?? input?.question, user: input?.user });
+    if (fastSmalltalkAnswer) {
+      return {
+        decision_source: "local_fast",
+        thought_summary: "这是问候或能力介绍类消息，可以直接回应。",
+        reason: "问候类问题保留轻量路径。",
+        action: {
+          type: "answer",
+          answer: fastSmalltalkAnswer
+        }
+      };
+    }
+
+    const fallback = await this.local.decideNextAction(input);
+    if (!this.decisionApiKey) return { ...fallback, decision_source: fallback.decision_source ?? "local_no_api_key" };
+    return this.decideNextActionWithOpenAI(input, fallback);
   }
 
   async generateAnswer(input) {
     const fastSmalltalkAnswer = createFastSmalltalkAnswer(input);
     if (fastSmalltalkAnswer) return { answer: fastSmalltalkAnswer };
-    if (shouldUseLocalAnswer(input)) return this.local.generateAnswer(input);
-    if (!this.apiKey) return this.local.generateAnswer(input);
+    if (!this.answerApiKey) return this.local.generateAnswer(input);
     return this.generateWithOpenAI(input);
+  }
+
+  async generateFastGroundedAnswer(input) {
+    const fastSmalltalkAnswer = createFastSmalltalkAnswer(input);
+    if (fastSmalltalkAnswer) return { answer: fastSmalltalkAnswer };
+    if (!this.fastAnswerApiKey) return this.local.generateAnswer(input);
+    return this.generateWithModel(input, {
+      apiKey: this.fastAnswerApiKey,
+      baseUrl: this.fastAnswerBaseUrl,
+      model: this.fastAnswerModel,
+      timeoutMs: this.fastAnswerTimeoutMs
+    });
   }
 
   async streamAnswer(input, { onToken, onThinking } = {}) {
@@ -102,23 +142,22 @@ export class OpenAILLMClient {
       }
       return { answer: fastSmalltalkAnswer };
     }
-    if (shouldUseLocalAnswer(input)) return this.local.streamAnswer(input, { onToken, onThinking });
-    if (!this.apiKey) return this.local.streamAnswer(input, { onToken, onThinking });
+    if (!this.streamApiKey) return this.local.streamAnswer(input, { onToken, onThinking });
     return this.streamWithOpenAI(input, { onToken, onThinking });
   }
 
   async planToolCallsWithAgent({ user, question, history = [], route, tools = [], skills = [], enterpriseContext, conversationContext }, fallback) {
     let response;
     try {
-      response = await fetch(`${this.baseUrl}/chat/completions`, {
+      response = await fetch(`${this.decisionBaseUrl}/chat/completions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${this.apiKey}`
+          Authorization: `Bearer ${this.decisionApiKey}`
         },
-        signal: AbortSignal.timeout(this.requestTimeoutMs),
+        signal: AbortSignal.timeout(this.decisionTimeoutMs),
         body: JSON.stringify({
-          model: this.model,
+          model: this.decisionModel,
           messages: [
             {
               role: "system",
@@ -176,6 +215,115 @@ export class OpenAILLMClient {
       return compileQueryIRResponse(parsed, { route, question, local: this.local });
     } catch {
       return null;
+    }
+  }
+
+  async decideNextActionWithOpenAI({
+    user,
+    message,
+    question = message,
+    route,
+    history = [],
+    skills = [],
+    selectedSkill,
+    enterpriseContext,
+    conversationContext,
+    state,
+    toolResults = [],
+    previousCalls = [],
+    availableTools = []
+  }, fallback) {
+    let response;
+    try {
+      response = await fetch(`${this.decisionBaseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${this.decisionApiKey}`
+        },
+        signal: AbortSignal.timeout(this.decisionTimeoutMs),
+        body: JSON.stringify({
+          model: this.decisionModel,
+          messages: [
+            {
+              role: "system",
+              content: createAgenticDecisionSystemPrompt()
+            },
+            {
+              role: "user",
+              content: JSON.stringify({
+                user: user ? {
+                  id: user.id,
+                  name: user.name,
+                  role: user.role,
+                  department: user.department
+                } : null,
+                question,
+                route,
+                task_state: summarizeTaskStateForDecision(state),
+                conversation_context: summarizeConversationForDecision(conversationContext),
+                conversation_history: normalizeHistory(history),
+                candidate_skills: skills.map(summarizeSkillForDecision),
+                selected_skill: summarizeSkillForDecision(selectedSkill),
+                previous_calls: summarizeCallsForDecision(previousCalls),
+                tool_results_summary: summarizeToolResultsForPrompt(toolResults),
+                available_tools: summarizeToolsForPrompt(availableTools),
+                fallback_decision: fallback,
+                output_schema: {
+                  thought_summary: "short Chinese summary of what you observed and why",
+                  reason: "short Chinese reason",
+                  plan_update: "optional array of short plan steps",
+                  action: {
+                    type: "tool_call | ask_user | answer | finish",
+                    tool: "optional single tool name",
+                    args: "optional single tool args",
+                    tools: "optional array of {name,args}",
+                    question: "required when ask_user",
+                    answer: "do not fill this; final answer is generated by a separate answer model"
+                  },
+                  query_ir: "optional query_ir when tool_call should be compiled by the runtime",
+                  query_irs: "optional array of query_ir"
+                }
+              }, null, 2)
+            }
+          ],
+          temperature: 0,
+          max_tokens: 1800,
+          stream: false
+        })
+      });
+    } catch (error) {
+      return {
+        ...fallback,
+        decision_source: "local_fallback",
+        fallback_reason: error instanceof Error ? error.message : "remote_decision_failed"
+      };
+    }
+
+    if (!response.ok) {
+      return {
+        ...fallback,
+        decision_source: "local_fallback",
+        fallback_reason: `remote_decision_http_${response.status}`
+      };
+    }
+
+    let content = "";
+    try {
+      const json = await response.json();
+      content = stripThinkBlock(json.choices?.[0]?.message?.content ?? "");
+      const parsed = parseJsonObject(content);
+      const decision = await normalizeAgenticDecision(parsed, { route, question, local: this.local, previousCalls, fallback });
+      return {
+        ...decision,
+        decision_source: decision.decision_source ?? "remote_model"
+      };
+    } catch (error) {
+      return {
+        ...fallback,
+        decision_source: "local_fallback",
+        fallback_reason: `${error instanceof Error ? error.message : "remote_decision_parse_failed"}; raw=${content.slice(0, 800)}`
+      };
     }
   }
 
@@ -313,19 +461,28 @@ export class OpenAILLMClient {
     }
   }
 
-  async generateWithOpenAI({ user, question, route, docs, toolResults, enterpriseContext, conversationContext }) {
+  async generateWithOpenAI({ user, question, route, docs, toolResults, enterpriseContext, conversationContext, agentState }) {
+    return this.generateWithModel({ user, question, route, docs, toolResults, enterpriseContext, conversationContext, agentState }, {
+      apiKey: this.answerApiKey,
+      baseUrl: this.answerBaseUrl,
+      model: this.answerModel,
+      timeoutMs: this.requestTimeoutMs
+    });
+  }
+
+  async generateWithModel({ user, question, route, docs, toolResults, enterpriseContext, conversationContext, agentState }, { apiKey, baseUrl, model, timeoutMs }) {
     const dealerReport = composeDealerReport({ question, route, toolResults: toolResults.filter((result) => result.ok) });
     let response;
     try {
-      response = await fetch(`${this.baseUrl}/chat/completions`, {
+      response = await fetch(`${baseUrl}/chat/completions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${this.apiKey}`
+          Authorization: `Bearer ${apiKey}`
         },
-        signal: AbortSignal.timeout(this.requestTimeoutMs),
+        signal: AbortSignal.timeout(timeoutMs),
         body: JSON.stringify({
-          model: this.model,
+          model,
           messages: [
             {
               role: "system",
@@ -338,6 +495,7 @@ export class OpenAILLMClient {
                 question,
                 route,
                 conversationContext,
+                agentState,
                 docs,
                 toolResults,
                 enterpriseContext: summarizeEnterpriseContextForPrompt(enterpriseContext),
@@ -446,15 +604,15 @@ export class OpenAILLMClient {
     const dealerReport = composeDealerReport({ question, route, toolResults: toolResults.filter((result) => result.ok) });
     let response;
     try {
-      response = await fetch(`${this.baseUrl}/chat/completions`, {
+      response = await fetch(`${this.streamBaseUrl}/chat/completions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${this.apiKey}`
+          Authorization: `Bearer ${this.streamApiKey}`
         },
         signal: AbortSignal.timeout(this.streamTimeoutMs),
         body: JSON.stringify({
-          model: this.model,
+          model: this.streamModel,
           messages: [
             {
               role: "system",
@@ -618,10 +776,6 @@ function normalizeHistory(history) {
   }));
 }
 
-function hasDealerMetricsCall(plan) {
-  return Array.isArray(plan?.calls) && plan.calls.some((call) => call.args?.resource === "dealer_metrics");
-}
-
 function createIntentUserPrompt({ history = [], question, runtimeContext = null, conversationContext = null }) {
   const normalized = normalizeHistory(history);
   const lines = [
@@ -665,7 +819,43 @@ function summarizeToolResultsForPrompt(toolResults) {
         operation: result.data?.operation,
         total: result.data?.total,
         returned: result.data?.rows?.length,
-        metrics: result.data?.metrics
+        metrics: result.data?.metrics,
+        sample_rows: summarizeRowsForDecision(result.data?.rows, 8)
+      };
+    }
+    if (result.tool === "retrieve_knowledge") {
+      return {
+        ok: true,
+        tool: result.tool,
+        total: result.data?.total,
+        docs: (result.data?.docs ?? []).slice(0, 5).map((doc) => ({
+          title: doc.metadata?.title,
+          heading: doc.metadata?.heading,
+          source: doc.metadata?.source,
+          text: String(doc.text ?? "").slice(0, 500)
+        }))
+      };
+    }
+    if (result.tool === "list_my_customers") {
+      return {
+        ok: true,
+        tool: result.tool,
+        customers: summarizeRowsForDecision(result.data?.customers, 12)
+      };
+    }
+    if (result.tool === "query_customer" || result.tool === "query_order" || result.tool === "query_sales_report") {
+      return {
+        ok: true,
+        tool: result.tool,
+        data: summarizeRowsForDecision([result.data], 1)[0] ?? null
+      };
+    }
+    if (result.tool === "safe_compute") {
+      return {
+        ok: true,
+        tool: result.tool,
+        value: result.data?.value,
+        logs: result.data?.logs
       };
     }
     return {
@@ -675,9 +865,20 @@ function summarizeToolResultsForPrompt(toolResults) {
   });
 }
 
+function summarizeRowsForDecision(rows = [], limit = 8) {
+  if (!Array.isArray(rows)) return [];
+  return rows.slice(0, limit).map((row) => {
+    const entries = Object.entries(row)
+      .filter(([, value]) => value !== undefined && value !== null && value !== "")
+      .slice(0, 18);
+    return Object.fromEntries(entries);
+  });
+}
+
 function createAnswerSystemPrompt() {
   return [
     "你是企业内部助手。只能根据提供的工具结果和知识库片段回答。",
+    "直接回答用户问题，不要无故寒暄、不要说“根据查询结果”这类过程性套话。",
     "权限不足时只解释权限结果，不要猜测数据。",
     "绝对不要根据用户身份、历史上下文或字段名补造工具结果里没有的明细。",
     "如果工具结果是 aggregate，只能回答统计指标和筛选口径；不要输出明细表、名单、用户ID、姓名、岗位或部门，除非 rows 里明确提供了这些字段。",
@@ -728,6 +929,112 @@ function createAgentPlanningSystemPrompt() {
     "经营分析、风险、日报、周报、复盘、优先级、最该关注什么，优先查询 dealer_metrics；必要时再补库存、线索、订单、财务、售后、三包等明细。",
     "组织/员工/上下级/汇报关系属于 employees 或 departments，不属于知识库问答。"
   ].join("\n");
+}
+
+function createAgenticDecisionSystemPrompt() {
+  return [
+    "你是企业 Agent 的循环决策器，工作方式参考 Claude Code / OpenClaw 的 observe-plan-act。",
+    "你不是一次性规划器。你每次只基于当前 task_state、工具结果和可用工具决定下一步最小动作。",
+    "你必须只输出 JSON，不要输出 Markdown。",
+    "可选 action.type 只能是 tool_call、ask_user、answer、finish。",
+    "如果还缺事实，优先选择 tool_call；如果缺用户输入，选择 ask_user；如果已经足够，选择 answer 或 finish。",
+    "当 action.type 是 answer 或 finish 时，不要写正式答复正文，不要填 action.answer，只输出简短 reason。最终回答会由独立回答模型生成。",
+    "工具调用可以直接输出 action.tools=[{name,args}]，也可以输出 query_ir/query_irs 让系统编译为受权限控制的工具调用。",
+    "优先输出 query_ir 或 query_irs，不要在 action.tools 中展开完整 fields、sort、display 等冗长参数，除非工具 schema 没有对应的 query_ir 表达方式。",
+    "如果确实直接输出 action.tools，args 只保留必要字段，例如 resource、operation、filters、metrics、limit。",
+    "不要重复 previous_calls 中已经查过的同一资源、同一过滤条件，除非明确需要换字段或换范围。",
+    "不要编造工具结果。回答必须留到已有工具结果足够时再做。",
+    "skill 是候选能力说明，不是硬性路线；你可以参考它，但要根据当前观察动态决定下一步。",
+    "权限、数据范围和工具 schema 必须遵守，不能要求绕过权限。"
+  ].join("\n");
+}
+
+async function normalizeAgenticDecision(parsed, { route, question, local, previousCalls = [], fallback }) {
+  const action = parsed?.action ?? {};
+  const actionType = normalizeActionType(action.type);
+
+  if (actionType === "tool_call") {
+    const directCalls = normalizeDirectToolCalls(action);
+    if (directCalls.length) {
+      return {
+        decision_source: "remote_model",
+        thought_summary: parsed?.thought_summary,
+        reason: parsed?.reason,
+        plan_update: parsed?.plan_update,
+        action: {
+          type: "tool_call",
+          tools: removeDuplicateCalls(directCalls, previousCalls)
+        }
+      };
+    }
+
+    const planned = await compileQueryIRResponse(parsed, { route, question, local });
+    const calls = removePreviouslyCalled(planned ?? { calls: [] }, previousCalls).calls ?? [];
+    if (calls.length) {
+      return {
+        decision_source: "remote_model",
+        thought_summary: parsed?.thought_summary,
+        reason: parsed?.reason,
+        plan_update: parsed?.plan_update,
+        action: {
+          type: "tool_call",
+          tools: calls
+        }
+      };
+    }
+  }
+
+  if (actionType === "ask_user") {
+    return {
+      decision_source: "remote_model",
+      thought_summary: parsed?.thought_summary,
+      reason: parsed?.reason,
+      plan_update: parsed?.plan_update,
+      action: {
+        type: "ask_user",
+        question: action.question || parsed?.question || parsed?.reason || "还需要补充信息后才能继续。"
+      }
+    };
+  }
+
+  if (actionType === "answer" || actionType === "finish") {
+    return {
+      decision_source: "remote_model",
+      thought_summary: parsed?.thought_summary,
+      reason: parsed?.reason,
+      plan_update: parsed?.plan_update,
+      action: {
+        type: actionType,
+        answer: action.answer
+      }
+    };
+  }
+
+  return fallback;
+}
+
+function normalizeActionType(value) {
+  const type = String(value ?? "").trim();
+  if (type === "final_answer") return "answer";
+  if (["tool_call", "ask_user", "answer", "finish"].includes(type)) return type;
+  return "";
+}
+
+function normalizeDirectToolCalls(action = {}) {
+  const calls = Array.isArray(action.tools)
+    ? action.tools
+    : action.tool
+      ? [{ name: action.tool, args: action.args ?? {} }]
+      : [];
+  return calls.map((call) => ({
+    name: call.name ?? call.tool,
+    args: call.args ?? {}
+  })).filter((call) => call.name);
+}
+
+function removeDuplicateCalls(calls = [], previousCalls = []) {
+  const seen = new Set(previousCalls.map(callSignature));
+  return calls.filter((call) => !seen.has(callSignature(call)));
 }
 
 async function compileQueryIRResponse(parsed, { route, question, local }) {
@@ -807,14 +1114,6 @@ function createAnswerContract(toolResults) {
   };
 }
 
-function shouldSkipRemoteFollowUpPlanning({ question, route, previousCalls = [], toolResults = [], agentState } = {}) {
-  if (!previousCalls.length) return false;
-  if (hasFailedToolResult(toolResults)) return true;
-  if (previousCalls.every((call) => call.name === "safe_compute")) return true;
-  if (isDealerAnalysisQuestion(question) || String(route?.intent_code ?? "").startsWith("dealer.")) return false;
-  return false;
-}
-
 function createFastSmalltalkRoute(question) {
   if (!isFastSmalltalkQuestion(question)) return null;
   return {
@@ -851,31 +1150,18 @@ function splitFastAnswer(text) {
   return String(text ?? "").match(/.{1,8}/gs) ?? [];
 }
 
-function shouldUseDeterministicPlan(plan) {
-  const calls = plan?.calls ?? [];
-  if (!calls.length) return false;
-  return calls.every((call) => call.name === "safe_compute");
-}
-
 function shouldTrustLocalRecognition(input, fallback) {
-  if (isSimpleComputeQuestion(input?.question)) return true;
   if (fallback?.intent === INTENTS.SMALLTALK && Number(fallback.confidence ?? 0) >= 0.9) return true;
+  if (isClearlyAgenticQuestion(input?.question, fallback)) return false;
+  if (Number(fallback?.confidence ?? 0) >= 0.82) return true;
   return false;
 }
 
-function shouldUseLocalAnswer({ route, docs = [], toolResults = [] } = {}) {
-  if (hasFailedToolResult(toolResults)) return true;
-  return false;
-}
-
-function isSimpleComputeQuestion(question) {
+function isClearlyAgenticQuestion(question, fallback) {
   const text = String(question ?? "");
-  if (/(\d+(?:\.\d+)?)\s*[-+*/%^]\s*(\d+(?:\.\d+)?)/.test(text)) return true;
-  return /(计算|算一下|求一下|运算)/.test(text) && /\d/.test(text);
-}
-
-function hasFailedToolResult(toolResults = []) {
-  return toolResults.some((result) => result && result.ok === false);
+  if (fallback?.intent === INTENTS.MIXED) return true;
+  if (String(fallback?.intent_code ?? "").startsWith("dealer.") && fallback?.intent_code === INTENT_CODES.DEALER_ANALYSIS_QUERY) return true;
+  return /(分析|复盘|原因|风险|优先级|对比|承压|最该关注|为什么|诊断|报告|日报|周报|月报|材料|汇报稿|经营复盘|晨会|看板|仪表盘|红黄绿|健康度|监控|计划|行动项|管理动作|下周|推进|落地|整改)/.test(text);
 }
 
 function summarizeEnterpriseContextForPrompt(context) {
@@ -890,6 +1176,7 @@ function summarizeEnterpriseContextForPrompt(context) {
 }
 
 function summarizeSkillForPrompt(skill) {
+  if (!skill) return null;
   return {
     id: skill.id,
     name: skill.name,
@@ -902,6 +1189,63 @@ function summarizeSkillForPrompt(skill) {
     triggers: skill.triggers,
     instructions: skill.instructions
   };
+}
+
+function summarizeSkillForDecision(skill) {
+  if (!skill) return null;
+  return {
+    id: skill.id,
+    name: skill.name,
+    description: String(skill.description ?? "").slice(0, 240),
+    planning_style: skill.planning_style ?? skill.metadata?.planning_style,
+    intent_codes: skill.intent_codes,
+    intents: skill.intents,
+    triggers: skill.triggers?.slice(0, 12)
+  };
+}
+
+function summarizeTaskStateForDecision(state = {}) {
+  return {
+    goal: state.goal,
+    task_type: state.task_type ?? state.task_mode,
+    status: state.status,
+    iteration: state.iteration,
+    plan: state.plan,
+    current_step: state.current_step,
+    observations: state.observations?.slice(-4),
+    decisions: state.decisions?.slice(-3),
+    required_facts: state.required_facts,
+    known_facts: state.known_facts,
+    missing_facts: state.missing_facts,
+    blockers: state.blockers,
+    next_action: state.next_action
+  };
+}
+
+function summarizeConversationForDecision(context = {}) {
+  if (!context) return null;
+  return {
+    current_message: context.current_message,
+    continuation: context.continuation,
+    last_task: context.last_task ? {
+      intent: context.last_task.intent,
+      intent_code: context.last_task.intent_code,
+      selected_skill: context.last_task.selected_skill,
+      target: context.last_task.target,
+      operation: context.last_task.operation,
+      filters: context.last_task.filters
+    } : null
+  };
+}
+
+function summarizeCallsForDecision(calls = []) {
+  return calls.map((call) => ({
+    name: call.name,
+    resource: call.args?.resource,
+    operation: call.args?.operation,
+    filters: call.args?.filters,
+    limit: call.args?.limit
+  }));
 }
 
 function summarizeToolsForPrompt(tools = []) {
