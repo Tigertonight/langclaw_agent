@@ -132,7 +132,7 @@ function inferTaskFromText(text) {
 
 function analyzeCurrentMessage(message, lastTask) {
   const text = String(message ?? "").trim();
-  const hasStandaloneTask = /(请假|休假|客户|订单|成交额|pipeline|报表|组织架构|员工|知识库|制度|政策|流程|规则|标准|手册|报销|试用期)/.test(text);
+  const hasStandaloneTask = /(请假|休假|客户|订单|成交额|pipeline|报表|组织架构|组织|员工|部门|负责人|主管|领导|我们店|门店|知识库|制度|政策|流程|规则|标准|手册|报销|试用期)/.test(text);
   const hasRefinementSignal = /(全公司|整个公司|公司全员|所有|全部|最近|近\d+|近[一二两三四五六七八九十]+|本月|上月|今天|昨天|明天|这个月|三个月|半年|一年|按|只看|筛选|换成|改成|范围|时间)/.test(text);
   const isShort = text.length > 0 && text.length <= 24;
   const isLikelyContinuation = Boolean(lastTask) && !hasStandaloneTask && (hasRefinementSignal || isShort);

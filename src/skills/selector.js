@@ -50,6 +50,7 @@ function scoreSkill({ route, message, skill }) {
   let score = 0;
   if (route?.intent && skill.intents.includes(route.intent)) score += 10;
   if (route?.intent_code && skill.intent_codes?.includes(route.intent_code)) score += 8;
+  if (skill.id === "business-query" && /^(business|org)\./.test(String(route?.intent_code ?? ""))) score += 8;
   for (const trigger of skill.triggers ?? []) {
     if (String(message ?? "").includes(trigger)) score += 1;
   }

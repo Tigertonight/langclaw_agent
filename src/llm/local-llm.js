@@ -149,7 +149,58 @@ export class LocalLLMClient {
     return { calls };
   }
 
-  async generateAnswer({ question, route, docs, toolResults }) {
+  async decideNextAction({ question, route, history = [], conversationContext, user, state, toolResults = [], previousCalls = [] }) {
+    if (!previousCalls.length && !toolResults.length) {
+      const plan = await this.planToolCalls({ user, question, history, route, conversationContext });
+      if (plan.clarification && !plan.calls?.length) {
+        return {
+          decision_source: "local",
+          thought_summary: "当前信息不足，需要先向用户追问。",
+          reason: plan.clarification,
+          action: {
+            type: "ask_user",
+            question: plan.clarification
+          }
+        };
+      }
+      if (plan.calls?.length) {
+        return {
+          decision_source: "local",
+          thought_summary: "先调用工具获取回答所需的事实依据。",
+          reason: plan.reason ?? "本地规划判断需要补充工具结果。",
+          action: {
+            type: "tool_call",
+            tools: plan.calls
+          },
+          plan_update: plan.ir ? [`查询 ${Array.isArray(plan.ir) ? plan.ir.length : 1} 组结构化数据`] : undefined
+        };
+      }
+    }
+
+    const followUp = await this.planFollowUpToolCalls({ question, previousCalls, toolResults, route, agentState: state });
+    if (followUp.calls?.length) {
+      return {
+        decision_source: "local",
+        thought_summary: "观察上一轮结果后，仍需要补充查询。",
+        reason: followUp.reason ?? "上一轮结果还不足以完整回答。",
+        action: {
+          type: "tool_call",
+          tools: followUp.calls
+        }
+      };
+    }
+
+    return {
+      decision_source: "local",
+      thought_summary: "已有信息可以进入回答阶段。",
+      reason: "没有发现新的必要工具动作。",
+      action: {
+        type: "answer"
+      }
+    };
+  }
+
+  async generateAnswer({ question, route, docs, toolResults, agentState }) {
     if (route.intent === INTENTS.SMALLTALK) {
       return { answer: "你好，我可以帮你查询权限范围内的企业数据，也可以回答知识库里的制度和流程问题。" };
     }
@@ -170,6 +221,8 @@ export class LocalLLMClient {
     if (dealerAnalysisAnswer) {
       return dealerAnalysisAnswer;
     }
+    const customerOrderRiskAnswer = composeCustomerOrderRiskAnswer({ question, toolResults: successfulTools, agentState });
+    if (customerOrderRiskAnswer) return customerOrderRiskAnswer;
     for (const result of successfulTools) {
       if (result.tool === "query_order") {
         const order = result.data;
@@ -626,6 +679,14 @@ function formatBusinessDataResult(data) {
   }
 
   if (data.resource === "employees") {
+    if (isCurrentUserLeaderLookup(data)) {
+      const row = rows[0];
+      const leader = Array.isArray(row.direct_leader_profiles) ? row.direct_leader_profiles[0] : null;
+      const reportingText = formatReporting(row.reporting);
+      return leader?.name
+        ? `你的直属上级是 ${formatEmployeeProfile(leader)}。${reportingText}`
+        : `${row.name} 当前没有配置直属上级。${reportingText}`;
+    }
     const lines = [`查询到 ${rows.length} 名员工：`];
     for (const row of rows) {
       const leaderText = Array.isArray(row.direct_leader) && row.direct_leader.length
@@ -638,6 +699,11 @@ function formatBusinessDataResult(data) {
   }
 
   if (data.resource === "departments") {
+    if (rows.length === 1 && data.query?.display?.reason?.includes("负责人")) {
+      const row = rows[0];
+      const leader = row.leader_profile?.name ? formatEmployeeProfile(row.leader_profile) : "暂未配置";
+      return `${row.name}的负责人是 ${leader}。`;
+    }
     const lines = [`查询到 ${rows.length} 个组织节点：`];
     for (const row of rows) {
       const extras = [
@@ -670,6 +736,13 @@ function formatBusinessDataResult(data) {
     lines.push(`- ${row.name}（${row.id}）：${row.tier} 类，${row.industry}，签单状态「${row.deal_status}」，跟进状态「${row.follow_status}」，续签状态「${row.renewal_status}」，年度成交额 ${row.annual_revenue} 元。`);
   }
   return lines.join("\n");
+}
+
+function isCurrentUserLeaderLookup(data) {
+  const filters = data.query?.filters ?? [];
+  return data.resource === "employees"
+    && data.rows?.length === 1
+    && filters.some((filter) => filter.field === "userid" && filter.value === "__CURRENT_USER__");
 }
 
 function formatSafeComputeResult(data) {
@@ -1085,6 +1158,90 @@ function extractPeriod(question) {
   if (question.includes("今年") || question.includes("本年")) return "2026Q2";
   if (question.includes("Q2") || question.includes("二季度")) return "2026Q2";
   return null;
+}
+
+function composeCustomerOrderRiskAnswer({ question, toolResults, agentState }) {
+  const wantsRiskAnalysis = /(分析|风险|诊断|复盘|优先级|建议|行动)/.test(question)
+    || ["analysis", "report", "action_plan"].includes(agentState?.task_type);
+  if (!wantsRiskAnalysis) return null;
+
+  const customers = new Map();
+  const orders = [];
+  for (const result of toolResults) {
+    if (result.tool === "list_my_customers") {
+      for (const customer of result.data?.customers ?? []) {
+        if (customer?.id || customer?.name) customers.set(customer.id ?? customer.name, customer);
+      }
+    }
+    if (result.tool === "query_customer" && result.data) {
+      customers.set(result.data.id ?? result.data.name, result.data);
+    }
+    if (result.tool === "query_order" && result.data) {
+      orders.push(result.data);
+    }
+    if (result.tool === "query_business_data" && result.data?.resource === "customers") {
+      for (const customer of result.data.rows ?? []) {
+        if (customer?.id || customer?.name) customers.set(customer.id ?? customer.name, customer);
+      }
+    }
+    if (result.tool === "query_business_data" && result.data?.resource === "orders") {
+      orders.push(...(result.data.rows ?? []));
+    }
+  }
+
+  if (!customers.size && !orders.length) return null;
+
+  const riskLines = [];
+  const actionLines = [];
+  for (const order of orders) {
+    const name = order.customer_name ?? order.customerName ?? "未知客户";
+    const status = order.status ?? order.order_status ?? "未知状态";
+    const amount = formatAmount(order.amount);
+    if (/(合同|审批)/.test(status)) {
+      riskLines.push(`${name} 的订单仍在「${status}」，金额${amount}，主要风险是合同或审批节点阻塞，影响签约确认和收入落地。`);
+      actionLines.push(`推进 ${name} 的合同审批，明确卡点、负责人和预计完成时间。`);
+    } else if (/(待发货|待交付|整备|发货)/.test(status)) {
+      riskLines.push(`${name} 的订单处于「${status}」，金额${amount}，主要风险是交付节点延迟，可能影响客户体验和回款节奏。`);
+      actionLines.push(`跟进 ${name} 的交付排期和发货准备，确认 ${order.expected_delivery ? `${order.expected_delivery} 前` : ""}是否能完成。`);
+    } else {
+      riskLines.push(`${name} 的订单状态为「${status}」，金额${amount}，需要继续跟踪状态变化。`);
+    }
+  }
+
+  for (const customer of customers.values()) {
+    if (customer.tier === "B" || /未签单|跟进中|待续签/.test(`${customer.sign_status ?? ""}${customer.follow_status ?? ""}${customer.renewal_status ?? ""}`)) {
+      const name = customer.name ?? customer.id ?? "未知客户";
+      const tags = [customer.tier ? `${customer.tier} 类` : null, customer.industry, customer.sign_status, customer.follow_status, customer.renewal_status]
+        .filter(Boolean)
+        .join(" / ");
+      riskLines.push(`${name}（${tags}）仍需要经营推进，风险在于转化或续签不确定。`);
+      actionLines.push(`为 ${name} 设定下一次跟进目标，优先确认决策人、预算、审批进度和续签意向。`);
+    }
+  }
+
+  const dedupedRisks = uniqueLines(riskLines);
+  const dedupedActions = uniqueLines(actionLines);
+  if (!dedupedRisks.length) return null;
+
+  return {
+    answer: [
+      `结论：你当前可访问 ${customers.size || "若干"} 个客户，已查到 ${orders.length} 条相关订单；主要风险集中在订单审批/交付推进和客户转化/续签不确定性。`,
+      "",
+      "关键风险：",
+      ...dedupedRisks.map((line) => `- ${line}`),
+      "",
+      "建议动作：",
+      ...dedupedActions.slice(0, 5).map((line) => `- ${line}`)
+    ].join("\n")
+  };
+}
+
+function formatAmount(value) {
+  return value === undefined || value === null || value === "" ? "未提供" : `${value} 元`;
+}
+
+function uniqueLines(lines) {
+  return Array.from(new Set(lines.filter(Boolean)));
 }
 
 function summarizeChunk(text, question) {

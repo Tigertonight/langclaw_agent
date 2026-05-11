@@ -69,7 +69,7 @@ function listAgentTools(toolRegistry, { user, route }) {
   return [...byName.values()];
 }
 
-async function enforceSkillContracts(plan, { message, selectedSkill, enterpriseContext }) {
+export async function enforceSkillContracts(plan, { message, selectedSkill, enterpriseContext }) {
   if (!plan?.calls?.length) return plan;
   if (!isLeaveRecordsSkill(selectedSkill)) return plan;
   const department = await resolveDepartmentScope(message);
