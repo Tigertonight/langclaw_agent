@@ -1,0 +1,56 @@
+/**
+ * Router prompt 构建器：把 IntentRegistry 注入 system prompt 与 few-shot。
+ */
+
+export function buildSystemPrompt(registry) {
+  const codes = registry.listCodes();
+  const codeLines = codes.map((manifest) => {
+    const params = Object.entries(manifest.params_schema ?? {})
+      .map(([key, schema]) => {
+        if (schema?.type === "enum" && Array.isArray(schema.values)) {
+          return `${key}(enum:${schema.values.join("|")})`;
+        }
+        return `${key}(${schema?.type ?? "string"})`;
+      })
+      .join(", ");
+    const paramsText = params ? `；参数: ${params}` : "";
+    return `- ${manifest.intent_code} [${manifest.handler_type}]: ${manifest.description ?? ""}${paramsText}`;
+  }).join("\n");
+
+  const examples = registry.getAllExamples().slice(0, 8);
+  const exampleLines = examples.map((item) => `用户: ${item.example}\n输出: {"intent_code":"${item.intent_code}", ...}`).join("\n");
+
+  return [
+    "你是一个企业 agent 的意图路由器。",
+    "你的任务是判断用户消息属于哪一个 intent_code，并把消息中明确提到的参数抽取出来。",
+    "",
+    "可选的 intent_code 列表：",
+    codeLines,
+    "",
+    "输出严格 JSON，schema 如下（不要输出任何额外文字、不要 markdown 包裹）：",
+    `{
+  "intent_code": "<上述列表中的一个；不确定时填 'general'>",
+  "handler_type": "<chitchat|intent_query|workflow|agentic，与 intent_code 的 handler_type 对齐>",
+  "params": { "字段名": "值或 null" },
+  "confidence": "<high|medium|low>",
+  "reasoning": "<一句话理由>"
+}`,
+    "",
+    "几条硬规则：",
+    "1. 用户没明确提到的字段，params 中填 null，禁止猜测、禁止用「未知」「无」等占位词。",
+    "2. confidence 只能是 high / medium / low 三个枚举值。",
+    "3. 不确定属于哪个 intent_code 时，输出 intent_code = \"general\"，handler_type = \"agentic\"。",
+    "4. 抽参时严格按用户原文，比如「汉EV」就是「汉EV」，不要简化为「汉」。",
+    "",
+    "few-shot 例子：",
+    exampleLines
+  ].join("\n");
+}
+
+export function buildUserPrompt({ message, user_context, session_state }) {
+  return JSON.stringify({
+    message,
+    user_context: user_context ?? null,
+    session_state: session_state ?? null
+  }, null, 2);
+}
