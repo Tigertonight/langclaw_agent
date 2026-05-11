@@ -1,0 +1,17 @@
+{
+  "intent_code": "system.smalltalk",
+  "handler_type": "chitchat",
+  "version": "1",
+  "description": "问候、寒暄、能力介绍等不需要调用工具或知识库的轻量交互。",
+  "params_schema": {},
+  "examples": [
+    "你好",
+    "你能干嘛",
+    "谢谢",
+    "再见"
+  ],
+  "confidence_threshold": "low",
+  "sub_tools_available": false,
+  "tool_binding": null,
+  "required_permissions": []
+}
