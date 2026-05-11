@@ -1,0 +1,33 @@
+{
+  "intent_code": "dealer.query.sales_orders",
+  "handler_type": "intent_query",
+  "version": "1",
+  "description": "查询经销商整车销售订单明细（含 VIN、车系、车型、门店、订单/付款/交付状态、价格、销售顾问）。仅适用于个人车主的整车订单（C 端），不适用于公司客户/B 端订单（如「星河科技订单」「南湾零售订单」这类应走通用客户订单查询，回到 general/agentic）。",
+  "params_schema": {
+    "store": { "type": "string", "required": false, "examples": ["华东旗舰店", "华南标准店"] },
+    "series": { "type": "string", "required": false, "examples": ["汉", "宋L", "海豹"] },
+    "model": { "type": "string", "required": false, "examples": ["汉EV", "宋L Plus荣耀版"] },
+    "owner": { "type": "string", "required": false, "description": "销售顾问姓名" },
+    "order_type": { "type": "string", "required": false, "examples": ["全款", "按揭", "置换"] },
+    "order_status": { "type": "string", "required": false, "examples": ["待交付", "已交付", "已取消"] },
+    "payment_status": { "type": "string", "required": false, "examples": ["未收款", "部分收款", "已结清"] },
+    "delivery_status": { "type": "string", "required": false, "examples": ["待整备", "整备中", "已交付"] },
+    "time_range": { "type": "string", "required": false, "examples": ["近一个月", "本月", "Q2"] },
+    "price_min": { "type": "number", "required": false },
+    "price_max": { "type": "number", "required": false }
+  },
+  "examples": [
+    "未交付的订单还有哪些",
+    "本月华东旗舰店成交了哪些订单",
+    "林悦近一个月的按揭订单",
+    "汉EV 这个月卖了哪几单",
+    "已交付但还没结清的订单"
+  ],
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "tool_binding": {
+    "tool_name": "query_business_data",
+    "resource": "dealer_sales_orders"
+  },
+  "required_permissions": ["order:read"]
+}

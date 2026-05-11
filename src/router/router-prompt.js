@@ -17,7 +17,14 @@ export function buildSystemPrompt(registry) {
     return `- ${manifest.intent_code} [${manifest.handler_type}]: ${manifest.description ?? ""}${paramsText}`;
   }).join("\n");
 
-  const examples = registry.getAllExamples().slice(0, 8);
+  // 每个 intent_code 最多取 2 条 example，保证 prompt 里所有意图都被 few-shot 覆盖
+  const perCode = new Map();
+  for (const item of registry.getAllExamples()) {
+    const list = perCode.get(item.intent_code) ?? [];
+    if (list.length < 2) list.push(item);
+    perCode.set(item.intent_code, list);
+  }
+  const examples = Array.from(perCode.values()).flat();
   const exampleLines = examples.map((item) => `用户: ${item.example}\n输出: {"intent_code":"${item.intent_code}", ...}`).join("\n");
 
   return [
