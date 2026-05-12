@@ -42,8 +42,13 @@ export class SimpleWorkflowOrchestrator {
     if (process.env.INTENT_ROUTER_V2 === "on" && this.intentRouter) {
       const routerResult = await this.intentRouter.route({
         message,
+        now: new Date().toISOString(),
         user_context: { user_id: user.id, name: user.name, department: user.department, role: user.role, permissions: user.permissions },
-        session_state: { active_intent_code: session?.active_intent_code, last_task: session?.last_task }
+        session_state: {
+          active_intent_code: session?.active_intent_code,
+          last_route: session?.last_route ?? null,
+          last_query_route: session?.last_query_route ?? null
+        }
       });
       // 工作流场景的续轮仍然走原路径，让 workflow runner 接管
       if (this.workflowRunner.canResume(session)) {
@@ -288,8 +293,12 @@ export class SimpleWorkflowOrchestrator {
       handler_type: route.handler_type
     };
     if (session) {
+      const ts = new Date().toISOString();
+      const snapshot = { intent_code: route.intent_code, params: route.params ?? {}, ts };
       session.last_task = { intent_code: route.intent_code, params: route.params ?? {} };
       session.active_intent_code = route.intent_code;
+      session.last_route = snapshot;
+      session.last_query_route = snapshot;
     }
     const agentSteps = [
       createAgentStep("identify_user", "确认员工身份", `当前以 ${user.name}（${user.department} / ${user.role}）的身份处理请求。`),
@@ -318,6 +327,10 @@ export class SimpleWorkflowOrchestrator {
 
   async runChitchat({ user, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt }) {
     const handlerResult = await this.chitchatHandler.execute({ user, message });
+    if (session) {
+      session.last_route = { intent_code: route.intent_code, params: route.params ?? {}, ts: new Date().toISOString() };
+      // 寒暄不更新 last_query_route，下一轮"那华南呢"还能继承上次的查询
+    }
     const legacyRoute = {
       intent: "smalltalk",
       confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,

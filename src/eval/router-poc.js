@@ -331,6 +331,74 @@ const cases = [
     }
   },
   {
+    name: "多轮修参-改成海豹",
+    turns: [
+      { message: "查一下华东旗舰店汉EV最近一个月的库龄" },
+      {
+        message: "改成海豹",
+        expect: (r) => {
+          const intentCode = r.debug?.route?.intent_code;
+          if (intentCode !== "dealer.query.inventory") {
+            return { ok: false, reason: `intent_code=${intentCode}` };
+          }
+          const params = r.debug?.route?.params ?? {};
+          if (params.vehicle_model !== "海豹") {
+            return { ok: false, reason: `vehicle_model=${params.vehicle_model}（应为 海豹）` };
+          }
+          // store / time_range 应继承上一轮
+          if (params.store && !/华东/.test(params.store)) {
+            return { ok: false, reason: `store=${params.store}（应继承 华东）` };
+          }
+          return { ok: true };
+        }
+      }
+    ]
+  },
+  {
+    name: "多轮修参-那华南呢",
+    turns: [
+      { message: "查一下华东旗舰店汉EV最近一个月的库龄" },
+      {
+        message: "那华南标准店呢",
+        expect: (r) => {
+          const intentCode = r.debug?.route?.intent_code;
+          if (intentCode !== "dealer.query.inventory") {
+            return { ok: false, reason: `intent_code=${intentCode}` };
+          }
+          const params = r.debug?.route?.params ?? {};
+          if (params.store && !/华南/.test(params.store)) {
+            return { ok: false, reason: `store=${params.store}（应为 华南）` };
+          }
+          if (params.vehicle_model && !/汉EV/.test(params.vehicle_model)) {
+            return { ok: false, reason: `vehicle_model=${params.vehicle_model}（应继承 汉EV）` };
+          }
+          return { ok: true };
+        }
+      }
+    ]
+  },
+  {
+    name: "多轮修参-寒暄不污染 last_query_route",
+    turns: [
+      { message: "查一下华东旗舰店汉EV最近一个月的库龄" },
+      { message: "你好" },
+      {
+        message: "改成海豹",
+        expect: (r) => {
+          const intentCode = r.debug?.route?.intent_code;
+          if (intentCode !== "dealer.query.inventory") {
+            return { ok: false, reason: `寒暄后仍应继承 inventory，但 intent_code=${intentCode}` };
+          }
+          const params = r.debug?.route?.params ?? {};
+          if (params.vehicle_model !== "海豹") {
+            return { ok: false, reason: `vehicle_model=${params.vehicle_model}` };
+          }
+          return { ok: true };
+        }
+      }
+    ]
+  },
+  {
     name: "聚合-本月转化率",
     message: "本月线索转化率是多少",
     expect: (r) => {
@@ -353,15 +421,29 @@ const failures = [];
 
 for (const [index, c] of cases.entries()) {
   total += 1;
+  const sessionId = `router_poc_${index}`;
   let result;
+  let verdict;
   try {
-    result = await agent.run({ userId: USER_ID, message: c.message, sessionId: `router_poc_${index}`, debug: true });
+    if (Array.isArray(c.turns)) {
+      // 多轮：依次跑，最后一轮的 expect 决定 verdict（中间轮没 expect 也不强校验）
+      for (const [turnIdx, turn] of c.turns.entries()) {
+        result = await agent.run({ userId: USER_ID, message: turn.message, sessionId, debug: true });
+        if (turn.expect) verdict = turn.expect(result);
+        if (turnIdx < c.turns.length - 1) {
+          console.log(`      turn${turnIdx + 1}: msg=${truncate(turn.message)} → intent=${result.debug?.route?.intent_code}`);
+        }
+      }
+      verdict ??= { ok: true };
+    } else {
+      result = await agent.run({ userId: USER_ID, message: c.message, sessionId, debug: true });
+      verdict = c.expect(result);
+    }
   } catch (err) {
     failures.push({ name: c.name, reason: `agent.run 抛错: ${err.message}` });
     console.log(`FAIL  ${c.name}  ← agent.run 抛错: ${err.message}`);
     continue;
   }
-  const verdict = c.expect(result);
   const tag = verdict.deferred ? "DEFER" : verdict.ok ? "PASS" : "FAIL";
   if (verdict.ok) passed += 1;
   else failures.push({ name: c.name, reason: verdict.reason, route: result.debug?.route });
