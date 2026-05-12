@@ -378,6 +378,53 @@ const cases = [
     ]
   },
   {
+    name: "滑窗-跨意图修参（库存→寒暄→库龄）",
+    turns: [
+      { message: "查一下华东旗舰店汉EV库存怎么样" },
+      { message: "你好" },
+      {
+        message: "看一下库龄",
+        expect: (r) => {
+          const intentCode = r.debug?.route?.intent_code;
+          if (intentCode !== "dealer.query.inventory") {
+            return { ok: false, reason: `intent_code=${intentCode}（应继承 inventory）` };
+          }
+          const params = r.debug?.route?.params ?? {};
+          // 应继承 store=华东 / vehicle_model=汉EV
+          if (params.store && !/华东/.test(params.store)) {
+            return { ok: false, reason: `store=${params.store}（应继承 华东）` };
+          }
+          return { ok: true };
+        }
+      }
+    ]
+  },
+  {
+    name: "滑窗-连续两次查询不互相干扰",
+    turns: [
+      { message: "查一下华东旗舰店汉EV库存" },
+      { message: "查一下华南标准店海豹库存" },
+      {
+        message: "再看看库龄",
+        expect: (r) => {
+          const intentCode = r.debug?.route?.intent_code;
+          if (intentCode !== "dealer.query.inventory") {
+            return { ok: false, reason: `intent_code=${intentCode}` };
+          }
+          const params = r.debug?.route?.params ?? {};
+          // 应继承最近一次：华南/海豹，而不是更早的华东/汉EV
+          if (params.store && !/华南/.test(params.store)) {
+            return { ok: false, reason: `store=${params.store}（应继承最近一次的 华南）` };
+          }
+          if (params.vehicle_model && !/海豹/.test(params.vehicle_model)) {
+            return { ok: false, reason: `vehicle_model=${params.vehicle_model}（应继承 海豹）` };
+          }
+          return { ok: true };
+        }
+      }
+    ]
+  },
+  {
     name: "多轮修参-寒暄不污染 last_query_route",
     turns: [
       { message: "查一下华东旗舰店汉EV最近一个月的库龄" },

@@ -1,5 +1,29 @@
 import { summarizeUser } from "../auth/users.js";
 import { appendAuditEvent, appendConversationLog } from "../logs/logger.js";
+
+const RECENT_MESSAGES_LIMIT = 5;
+const RECENT_ROUTES_LIMIT = 3;
+const RECENT_TTL_MS = 30 * 60 * 1000; // 30 分钟
+
+function pruneByTtl(list, now) {
+  if (!Array.isArray(list)) return [];
+  return list.filter((item) => {
+    const ts = Date.parse(item?.ts ?? "");
+    return Number.isFinite(ts) && now - ts <= RECENT_TTL_MS;
+  });
+}
+
+function pushRecentMessage(session, message, now) {
+  const list = pruneByTtl(session?.recent_messages, now.getTime());
+  list.push({ message, ts: now.toISOString() });
+  return list.slice(-RECENT_MESSAGES_LIMIT);
+}
+
+function pushRecentRoute(session, route, now) {
+  const list = pruneByTtl(session?.recent_routes, now.getTime());
+  list.push({ intent_code: route.intent_code, params: route.params ?? {}, ts: now.toISOString() });
+  return list.slice(-RECENT_ROUTES_LIMIT);
+}
 import { createAgentStep, createSkillStep, createSources, splitForStreaming } from "../runtime/agent-events.js";
 import { buildConversationContext, summarizeConversationContext } from "../runtime/conversation-context.js";
 import { FreeAgentLoop } from "../runtime/free-agent-loop.js";
@@ -40,16 +64,23 @@ export class SimpleWorkflowOrchestrator {
 
     // v2 Intent Router 入口（默认关闭，env INTENT_ROUTER_V2=on 启用）
     if (process.env.INTENT_ROUTER_V2 === "on" && this.intentRouter) {
+      const nowDate = new Date();
+      const recentMessages = pruneByTtl(session?.recent_messages, nowDate.getTime());
+      const recentRoutes = pruneByTtl(session?.recent_routes, nowDate.getTime());
       const routerResult = await this.intentRouter.route({
         message,
-        now: new Date().toISOString(),
+        now: nowDate.toISOString(),
         user_context: { user_id: user.id, name: user.name, department: user.department, role: user.role, permissions: user.permissions },
         session_state: {
           active_intent_code: session?.active_intent_code,
           last_route: session?.last_route ?? null,
-          last_query_route: session?.last_query_route ?? null
+          last_query_route: session?.last_query_route ?? null,
+          recent_messages: recentMessages,
+          recent_routes: recentRoutes
         }
       });
+      // 不论 handler 路径如何，都把这一轮用户原话压入滑窗
+      if (session) session.recent_messages = pushRecentMessage(session, message, nowDate);
       // 工作流场景的续轮仍然走原路径，让 workflow runner 接管
       if (this.workflowRunner.canResume(session)) {
         // fall through to legacy path
@@ -293,12 +324,13 @@ export class SimpleWorkflowOrchestrator {
       handler_type: route.handler_type
     };
     if (session) {
-      const ts = new Date().toISOString();
-      const snapshot = { intent_code: route.intent_code, params: route.params ?? {}, ts };
+      const nowDate = new Date();
+      const snapshot = { intent_code: route.intent_code, params: route.params ?? {}, ts: nowDate.toISOString() };
       session.last_task = { intent_code: route.intent_code, params: route.params ?? {} };
       session.active_intent_code = route.intent_code;
       session.last_route = snapshot;
       session.last_query_route = snapshot;
+      session.recent_routes = pushRecentRoute(session, route, nowDate);
     }
     const agentSteps = [
       createAgentStep("identify_user", "确认员工身份", `当前以 ${user.name}（${user.department} / ${user.role}）的身份处理请求。`),
