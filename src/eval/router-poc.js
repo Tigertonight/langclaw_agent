@@ -490,6 +490,63 @@ const cases = [
     }
   },
   {
+    name: "agentic-对比两家门店库存压力",
+    message: "对比华东旗舰店和华南标准店哪家库存压力更大",
+    expect: (r) => {
+      const handler = r.debug?.route?.handler_type;
+      if (handler !== "agentic" && r.debug?.route?.intent_code !== "general") {
+        return { ok: false, reason: `handler=${handler}/intent=${r.debug?.route?.intent_code}（应走 agentic）` };
+      }
+      // agentic 应至少调一次 intent.* 工具
+      const calls = r.debug?.tool_calls ?? [];
+      const hasIntentCall = calls.some((c) => /^intent\./.test(c.name ?? ""));
+      if (!hasIntentCall) {
+        return { ok: false, reason: `agentic 未调用任何 intent.* 工具，calls=${JSON.stringify(calls.map((c) => c.name))}` };
+      }
+      // answer 应该有内容（不是兜底"无法直接给出"）
+      if (!r.answer || /暂时无法直接给出/.test(r.answer)) {
+        return { ok: false, reason: `agentic 兜底了：${truncate(r.answer)}` };
+      }
+      return { ok: true };
+    }
+  },
+  {
+    // 这个 case 是 agentic / 单 aggregate 边界：可以一次聚合 group_by=series + metric=total_profit
+    // 解，也可以拆成两步走 agentic。两种解法都接受，但要有有效答案、不能兜底。
+    name: "agentic-毛利率归因到车系",
+    message: "本月毛利率怎么样，最赚钱的车系是哪个",
+    expect: (r) => {
+      const handler = r.debug?.route?.handler_type;
+      const intentCode = r.debug?.route?.intent_code;
+      const acceptable =
+        handler === "agentic" ||
+        intentCode === "dealer.aggregate.sales_orders";
+      if (!acceptable) {
+        return { ok: false, reason: `handler=${handler}/intent=${intentCode}` };
+      }
+      if (!r.answer || /暂时无法直接给出/.test(r.answer)) {
+        return { ok: false, reason: `兜底了：${truncate(r.answer)}` };
+      }
+      return { ok: true };
+    }
+  },
+  {
+    name: "agentic-反例：单意图不应越权 agentic",
+    message: "查华东旗舰店汉EV库存",
+    expect: (r) => {
+      // 这个明显是单 intent_query，不应走 agentic
+      const handler = r.debug?.route?.handler_type;
+      if (handler === "agentic") {
+        return { ok: false, reason: `单 intent 被错判为 agentic` };
+      }
+      const intentCode = r.debug?.route?.intent_code;
+      if (intentCode !== "dealer.query.inventory") {
+        return { ok: false, reason: `intent_code=${intentCode}` };
+      }
+      return { ok: true };
+    }
+  },
+  {
     name: "聚合-本月转化率",
     message: "本月线索转化率是多少",
     expect: (r) => {
