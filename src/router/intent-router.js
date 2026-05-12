@@ -21,14 +21,15 @@ export class IntentRouter {
     this.timeoutMs = timeoutMs;
   }
 
-  async route({ message, user_context, session_state } = {}) {
+  async route({ message, now, user_context, session_state } = {}) {
     const startedAt = Date.now();
     const apiKey = process.env.LLM_DECISION_API_KEY ?? process.env.LLM_API_KEY ?? process.env.OPENAI_API_KEY;
+    const nowIso = now ?? new Date().toISOString();
     let result;
     let llmError = null;
     if (apiKey) {
       try {
-        result = await this.callLLM({ message, user_context, session_state, apiKey });
+        result = await this.callLLM({ message, now: nowIso, user_context, session_state, apiKey });
       } catch (err) {
         llmError = err?.message || String(err);
         result = null;
@@ -91,11 +92,11 @@ export class IntentRouter {
     return result;
   }
 
-  async callLLM({ message, user_context, session_state, apiKey }) {
+  async callLLM({ message, now, user_context, session_state, apiKey }) {
     const baseUrl = (process.env.LLM_DECISION_BASE_URL ?? process.env.LLM_BASE_URL ?? process.env.OPENAI_BASE_URL ?? "https://api.minimaxi.com/v1").replace(/\/$/, "");
     const model = process.env.LLM_DECISION_MODEL ?? process.env.LLM_MODEL ?? process.env.OPENAI_MODEL ?? "MiniMax-M2.7";
     const systemPrompt = buildSystemPrompt(this.registry);
-    const userPrompt = buildUserPrompt({ message, user_context, session_state });
+    const userPrompt = buildUserPrompt({ message, now, user_context, session_state });
 
     const body = {
       model,
