@@ -32,7 +32,7 @@ import { classifyIntentNode } from "./nodes.js";
 import { createDefaultSessionId } from "./session-store.js";
 
 export class SimpleWorkflowOrchestrator {
-  constructor({ llm, knowledgeBase, toolRegistry, primitiveRegistry, sessionStore, scenarioRouter, userContextResolver, skillRuntime, enterpriseContextProvider, intentRouter, intentQueryHandler, chitchatHandler }) {
+  constructor({ llm, knowledgeBase, toolRegistry, primitiveRegistry, sessionStore, scenarioRouter, userContextResolver, skillRuntime, enterpriseContextProvider, intentRouter, intentQueryHandler, chitchatHandler, agenticHandler }) {
     this.llm = llm;
     this.knowledgeBase = knowledgeBase;
     this.toolRegistry = toolRegistry;
@@ -45,6 +45,7 @@ export class SimpleWorkflowOrchestrator {
     this.intentRouter = intentRouter ?? null;
     this.intentQueryHandler = intentQueryHandler ?? null;
     this.chitchatHandler = chitchatHandler ?? null;
+    this.agenticHandler = agenticHandler ?? null;
     this.freeAgentLoop = new FreeAgentLoop({ llm, knowledgeBase, toolRegistry });
     this.workflowRunner = new WorkflowRunner({
       scenarioRouter,
@@ -88,8 +89,10 @@ export class SimpleWorkflowOrchestrator {
         return this.runIntentQuery({ user, message, sessionId: resolvedSessionId, session, route: routerResult, enterpriseContext, conversationContext, debug, startedAt });
       } else if (routerResult.handler_type === "chitchat" && this.chitchatHandler) {
         return this.runChitchat({ user, message, sessionId: resolvedSessionId, session, route: routerResult, enterpriseContext, conversationContext, debug, startedAt });
+      } else if (routerResult.handler_type === "agentic" && this.agenticHandler) {
+        return this.runAgentic({ user, message, sessionId: resolvedSessionId, session, route: routerResult, enterpriseContext, conversationContext, debug, startedAt });
       }
-      // workflow / agentic / 兜底走下方原有路径
+      // workflow / 兜底走下方原有路径
     }
 
     if (this.workflowRunner.canResume(session)) {
@@ -385,6 +388,48 @@ export class SimpleWorkflowOrchestrator {
       docs: [],
       toolPlan: { calls: [] },
       toolResults: [],
+      answer: handlerResult.answer,
+      artifacts: [],
+      agentSteps,
+      enterpriseContext,
+      conversationContext,
+      skills: [],
+      session,
+      debug,
+      startedAt
+    });
+  }
+
+  async runAgentic({ user, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt }) {
+    const handlerResult = await this.agenticHandler.execute({ user, message, route, session });
+    if (session) {
+      // agentic 走完不更新 last_query_route——它可能跨多个 intent，没有单一"这一次的查询"
+      session.last_route = { intent_code: route.intent_code, params: route.params ?? {}, ts: new Date().toISOString() };
+    }
+    const legacyRoute = {
+      intent: "data_query",
+      confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
+      reason: route.reasoning ?? "v2 intent router → agentic",
+      intent_code: route.intent_code,
+      router: "v2",
+      router_source: route.source,
+      handler_type: route.handler_type,
+      params: route.params
+    };
+    const traces = handlerResult.debug?.traces ?? [];
+    const agentSteps = [
+      createAgentStep("identify_user", "确认员工身份", `当前以 ${user.name}（${user.department} / ${user.role}）的身份处理请求。`),
+      createAgentStep("classify_intent", "识别任务类型", `Router 判定为 agentic（${route.intent_code}, source=${route.source}）。`),
+      createAgentStep("agentic", "跨意图规划", `执行 ${traces.length} 步：${traces.map((t) => t.tool ?? t.type).join(" → ")}`)
+    ];
+    return this.finish({
+      user,
+      sessionId,
+      message,
+      route: legacyRoute,
+      docs: [],
+      toolPlan: handlerResult.toolPlan ?? { calls: [] },
+      toolResults: handlerResult.toolResults ?? [],
       answer: handlerResult.answer,
       artifacts: [],
       agentSteps,

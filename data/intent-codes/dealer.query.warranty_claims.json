@@ -2,7 +2,7 @@
   "intent_code": "dealer.query.warranty_claims",
   "handler_type": "intent_query",
   "version": "1",
-  "description": "查询经销商保修索赔单（含状态、故障类别、差额、提交时间等过滤）",
+  "description": "查询经销商保修索赔单（含状态、故障类别、差额、提交时间等过滤）。同时支持『有几条/多少单/列一下』这类计数和列表诉求——直接走这个 intent，不需要单独的 warranty 聚合 intent。",
   "params_schema": {
     "store": { "type": "string", "required": false, "examples": ["华东旗舰店", "华南标准店"] },
     "series": { "type": "string", "required": false, "examples": ["汉", "宋L", "海豹"] },

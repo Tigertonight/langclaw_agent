@@ -14,6 +14,7 @@ import { IntentRegistry } from "./router/intent-registry.js";
 import { IntentRouter } from "./router/intent-router.js";
 import { IntentQueryHandler } from "./handlers/intent-query-handler.js";
 import { ChitchatHandler } from "./handlers/chitchat-handler.js";
+import { AgenticHandler } from "./handlers/agentic-handler.js";
 import { MockTencentDocsSource, TencentDocsSource } from "./rag/document-sources.js";
 import { LocalKnowledgeBase } from "./rag/local-knowledge-base.js";
 import { PrimitiveRegistry } from "./primitives/registry.js";
@@ -69,6 +70,12 @@ export function createApp() {
   const intentRouter = new IntentRouter({ llm, registry: intentRegistry, localLLM });
   const intentQueryHandler = new IntentQueryHandler({ llm, toolRegistry, registry: intentRegistry });
   const chitchatHandler = new ChitchatHandler({ llm });
+  const agenticHandler = new AgenticHandler({
+    intentRegistry,
+    intentQueryHandler,
+    skillRegistry: null, // v2 接入
+    toolRegistry: null   // v2 接入（需要 expose_to_agentic 标记）
+  });
   const agent = new SimpleWorkflowOrchestrator({
     llm,
     knowledgeBase,
@@ -81,7 +88,8 @@ export function createApp() {
     enterpriseContextProvider,
     intentRouter,
     intentQueryHandler,
-    chitchatHandler
+    chitchatHandler,
+    agenticHandler
   });
-  return { agent, llm, integrations, documentSource, knowledgeBase, toolRegistry, primitiveRegistry, skillRegistry, skillLoader, skillRuntime, enterpriseContextProvider, sessionStore, scenarioRouter, userContextResolver, intentRegistry, intentRouter, intentQueryHandler, chitchatHandler };
+  return { agent, llm, integrations, documentSource, knowledgeBase, toolRegistry, primitiveRegistry, skillRegistry, skillLoader, skillRuntime, enterpriseContextProvider, sessionStore, scenarioRouter, userContextResolver, intentRegistry, intentRouter, intentQueryHandler, chitchatHandler, agenticHandler };
 }
