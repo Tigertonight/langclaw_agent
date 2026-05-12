@@ -27,6 +27,7 @@ export class UserContextResolver {
       email: identity.email,
       alias: identity.alias,
       wecom: identity.wecom,
+      default_store: identity.default_store ?? null,
       accessible_customer_ids: access.accessible_customer_ids ?? [],
       permissions: access.permissions ?? []
     };

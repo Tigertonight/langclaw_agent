@@ -37,8 +37,11 @@ export class IntentQueryHandler {
       };
     }
 
+    const { params: effectiveParams, defaultsApplied } = this.applyDefaults({ manifest, params, user });
+    params = effectiveParams;
+
     if (binding.operation === "aggregate") {
-      return this.executeAggregate({ user, message, manifest, params, binding });
+      return this.executeAggregate({ user, message, manifest, params, binding, defaultsApplied });
     }
 
     const filters = this.buildFilters({ intent_code, resource: binding.resource, params });
@@ -65,13 +68,17 @@ export class IntentQueryHandler {
     } else {
       answer = await this.summarize({ message, rows, intent_code, resource: binding.resource });
     }
+    if (defaultsApplied?.length) {
+      answer = `${answer}\n\n※ 已自动套用：${defaultsApplied.map((d) => `${d.field}=${d.value}（${d.reason}）`).join("，")}`;
+    }
 
     const debug = {
       intent_code,
       params,
       filters,
       tool_call: toolCall,
-      row_count: rows.length
+      row_count: rows.length,
+      defaults_applied: defaultsApplied ?? []
     };
     return {
       answer,
@@ -82,7 +89,7 @@ export class IntentQueryHandler {
     };
   }
 
-  async executeAggregate({ user, message, manifest, params, binding }) {
+  async executeAggregate({ user, message, manifest, params, binding, defaultsApplied = [] }) {
     const intent_code = manifest.intent_code;
     const metric = params?.metric;
     const groupBy = params?.group_by;
@@ -129,13 +136,17 @@ export class IntentQueryHandler {
         params
       });
     }
+    if (defaultsApplied?.length) {
+      answer = `${answer}\n※ 已自动套用：${defaultsApplied.map((d) => `${d.field}=${d.value}（${d.reason}）`).join("，")}`;
+    }
 
     const debug = {
       intent_code,
       params,
       filters,
       tool_call: toolCall,
-      operation: "aggregate"
+      operation: "aggregate",
+      defaults_applied: defaultsApplied ?? []
     };
     return {
       answer,
@@ -144,6 +155,18 @@ export class IntentQueryHandler {
       toolPlan,
       toolResults
     };
+  }
+
+  applyDefaults({ manifest, params, user }) {
+    const next = { ...(params ?? {}) };
+    const applied = [];
+    const schema = manifest.params_schema ?? {};
+    // store 默认值：用户在 users.json 里有 default_store，且当前 manifest 接受 store 字段、用户没显式提
+    if (schema.store && (next.store == null || next.store === "") && user?.default_store) {
+      next.store = user.default_store;
+      applied.push({ field: "store", value: user.default_store, reason: "默认门店" });
+    }
+    return { params: next, defaultsApplied: applied };
   }
 
   buildFilters({ intent_code, resource, params }) {

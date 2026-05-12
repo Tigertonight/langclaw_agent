@@ -446,6 +446,50 @@ const cases = [
     ]
   },
   {
+    name: "默认门店-店总省略 store 自动套用",
+    message: "汉EV 库存怎么样",
+    expect: (r) => {
+      const intentCode = r.debug?.route?.intent_code;
+      if (intentCode !== "dealer.query.inventory") {
+        return { ok: false, reason: `intent_code=${intentCode}` };
+      }
+      // handler 层落在 toolPlan 的 filters 里——store_name contains 比亚迪华东旗舰店
+      const calls = r.debug?.tool_calls ?? [];
+      const filters = calls[0]?.filters ?? [];
+      const hasStoreFilter = filters.some((f) => f.field === "store_name" && /华东/.test(f.value ?? ""));
+      if (!hasStoreFilter) {
+        return { ok: false, reason: `filters 中未注入默认 store: ${JSON.stringify(filters)}` };
+      }
+      // answer 应该带「已自动套用」标注
+      if (!/已自动套用|默认门店/.test(r.answer ?? "")) {
+        return { ok: false, reason: `answer 未标注默认门店: ${truncate(r.answer)}` };
+      }
+      return { ok: true };
+    }
+  },
+  {
+    name: "默认门店-用户显式指定门店时不覆盖",
+    message: "查华南标准店海豹库存",
+    expect: (r) => {
+      const intentCode = r.debug?.route?.intent_code;
+      if (intentCode !== "dealer.query.inventory") {
+        return { ok: false, reason: `intent_code=${intentCode}` };
+      }
+      const calls = r.debug?.tool_calls ?? [];
+      const filters = calls[0]?.filters ?? [];
+      const hasNanFilter = filters.some((f) => f.field === "store_name" && /华南/.test(f.value ?? ""));
+      const hasDongFilter = filters.some((f) => f.field === "store_name" && /华东/.test(f.value ?? ""));
+      if (!hasNanFilter || hasDongFilter) {
+        return { ok: false, reason: `应只用 华南，filters=${JSON.stringify(filters)}` };
+      }
+      // answer 不应该有「已自动套用」
+      if (/已自动套用/.test(r.answer ?? "")) {
+        return { ok: false, reason: `不应有自动套用标注` };
+      }
+      return { ok: true };
+    }
+  },
+  {
     name: "聚合-本月转化率",
     message: "本月线索转化率是多少",
     expect: (r) => {
