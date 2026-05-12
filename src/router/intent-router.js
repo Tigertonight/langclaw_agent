@@ -4,7 +4,7 @@ import { buildSystemPrompt, buildUserPrompt } from "./router-prompt.js";
 import { INTENTS } from "../agent/ports.js";
 
 const ROUTER_LOG_PATH = "logs/router.jsonl";
-const DEFAULT_TIMEOUT_MS = 12000;
+const DEFAULT_TIMEOUT_MS = 20000;
 
 /**
  * IntentRouter：v2 入口路由。
