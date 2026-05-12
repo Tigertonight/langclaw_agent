@@ -37,6 +37,10 @@ export class IntentQueryHandler {
       };
     }
 
+    if (binding.operation === "aggregate") {
+      return this.executeAggregate({ user, message, manifest, params, binding });
+    }
+
     const filters = this.buildFilters({ intent_code, resource: binding.resource, params });
     const toolCall = {
       name: binding.tool_name,
@@ -72,6 +76,70 @@ export class IntentQueryHandler {
     return {
       answer,
       table: { rows, fields: toolResult?.data?.fields ?? [] },
+      debug,
+      toolPlan,
+      toolResults
+    };
+  }
+
+  async executeAggregate({ user, message, manifest, params, binding }) {
+    const intent_code = manifest.intent_code;
+    const metric = params?.metric;
+    const groupBy = params?.group_by;
+    const definitions = manifest.metric_definitions ?? {};
+    const def = metric ? definitions[metric] : null;
+    if (!def) {
+      return {
+        answer: `没有理解要算的指标，请明确『总额/数量/平均/最高/最低/占比』之类。可选指标：${Object.keys(definitions).join("、") || "（manifest 未定义）"}。`,
+        table: { rows: [], fields: [] },
+        debug: { intent_code, params, error: "unknown_metric" },
+        toolPlan: { calls: [] },
+        toolResults: []
+      };
+    }
+
+    const baseFilters = this.buildFilters({ intent_code, resource: binding.resource, params });
+    const filterAddon = Array.isArray(def.filter_addon) ? def.filter_addon : [];
+    const filters = [...baseFilters, ...filterAddon];
+
+    const toolCall = {
+      name: binding.tool_name,
+      args: {
+        resource: binding.resource,
+        operation: "aggregate",
+        filters,
+        aggregations: def.aggregations ?? [],
+        derived: def.derived ?? [],
+        ...(typeof groupBy === "string" && groupBy.trim() ? { group_by: groupBy.trim() } : {})
+      }
+    };
+    const toolPlan = { calls: [toolCall] };
+    const toolResult = await this.toolRegistry.execute(toolCall, { user });
+    const toolResults = [toolResult];
+
+    let answer;
+    if (toolResult?.ok === false) {
+      answer = `查询未成功：${toolResult?.message ?? toolResult?.error ?? "未知错误"}。`;
+    } else {
+      answer = formatAggregateAnswer({
+        metric,
+        metricDef: def,
+        groupBy: toolCall.args.group_by ?? null,
+        toolData: toolResult?.data,
+        params
+      });
+    }
+
+    const debug = {
+      intent_code,
+      params,
+      filters,
+      tool_call: toolCall,
+      operation: "aggregate"
+    };
+    return {
+      answer,
+      table: { rows: [], fields: [] },
       debug,
       toolPlan,
       toolResults
@@ -335,6 +403,112 @@ function translateTimeRangeToIso(text) {
     return new Date(now.getFullYear(), startMonth, 1).toISOString().slice(0, 10);
   }
   return null;
+}
+
+function formatAggregateAnswer({ metric, metricDef, groupBy, toolData, params }) {
+  const definition = metricDef?.definition ?? metric;
+  const fmt = (value) => formatMetricValue(metric, value);
+  const lines = [];
+
+  if (groupBy && Array.isArray(toolData?.groups)) {
+    const groups = toolData.groups;
+    if (groups.length === 0) {
+      lines.push("没有查到符合条件的记录。");
+    } else {
+      // 选用作为"主指标"的那个 as：取 metric_definitions 里第一个非 _ 开头的 derived，否则第一个 aggregations 的 as
+      const primaryAs = pickPrimaryAs(metricDef, metric);
+      lines.push(`按 ${labelOfField(groupBy)} 分组的「${labelOfMetric(metric)}」：`);
+      for (const g of groups) {
+        const groupValue = Object.values(g.group ?? {})[0] ?? "(空)";
+        const value = g.aggregates?.[primaryAs];
+        lines.push(`- ${groupValue}：${fmt(value)}（${g.row_count} 条记录）`);
+      }
+    }
+  } else {
+    const aggregates = toolData?.aggregates ?? {};
+    const primaryAs = pickPrimaryAs(metricDef, metric);
+    const value = aggregates[primaryAs];
+    if (value === null || value === undefined) {
+      lines.push(`没有查到符合条件的记录，无法计算${labelOfMetric(metric)}。`);
+    } else {
+      lines.push(`${labelOfMetric(metric)}：**${fmt(value)}**（基于 ${toolData?.total ?? 0} 条记录）`);
+    }
+  }
+
+  lines.push(`※ 口径：${definition}`);
+  return lines.join("\n");
+}
+
+function pickPrimaryAs(metricDef, metric) {
+  // 主指标优先用 derived 里最后一个非内部（不以 _ 开头）的 as
+  const derived = metricDef?.derived ?? [];
+  for (let i = derived.length - 1; i >= 0; i -= 1) {
+    if (derived[i].as && !derived[i].as.startsWith("_")) return derived[i].as;
+  }
+  const aggregations = metricDef?.aggregations ?? [];
+  for (let i = 0; i < aggregations.length; i += 1) {
+    if (aggregations[i].as && !aggregations[i].as.startsWith("_")) return aggregations[i].as;
+  }
+  return metric;
+}
+
+function labelOfMetric(metric) {
+  const map = {
+    total_revenue: "总成交额",
+    order_count: "订单数",
+    avg_price: "平均成交价",
+    total_profit: "总毛利",
+    gross_margin: "毛利率(%)",
+    max_price: "最高成交价",
+    min_price: "最低成交价",
+    total_amount: "总金额",
+    unsettled_amount: "未结清金额",
+    record_count: "记录数",
+    avg_amount: "平均金额",
+    total_receivable: "应收合计",
+    avg_labor: "平均工时费",
+    max_receivable: "最高应收",
+    total_labor: "工时费合计",
+    lead_count: "线索数",
+    converted_count: "成交线索数",
+    conversion_rate: "转化率(%)",
+    lost_count: "战败线索数",
+    avg_followup: "平均跟进次数"
+  };
+  return map[metric] ?? metric;
+}
+
+function labelOfField(field) {
+  const map = {
+    store_name: "门店",
+    series: "车系",
+    order_status: "订单状态",
+    payment_status: "付款状态",
+    delivery_status: "交付状态",
+    owner_name: "销售顾问",
+    order_type: "订单类型",
+    resource_type: "款项类型",
+    direction: "方向",
+    category: "类别",
+    status: "状态",
+    intention_level: "意向等级",
+    source: "来源",
+    interested_series: "意向车系",
+    service_advisor_name: "服务顾问"
+  };
+  return map[field] ?? field;
+}
+
+function formatMetricValue(metric, value) {
+  if (value === null || value === undefined) return "暂无数据";
+  if (typeof value !== "number") return String(value);
+  // 百分比/率：保留 2 位小数
+  if (/_pct|rate|margin/.test(metric)) return `${value.toFixed(2)}%`;
+  // 计数类：整数
+  if (/count/.test(metric)) return Math.round(value).toString();
+  // 金额：千分位
+  if (Math.abs(value) >= 1000) return value.toLocaleString("zh-CN");
+  return value.toString();
 }
 
 function formatRowsTemplate({ rows, total, resource }) {

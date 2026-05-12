@@ -235,6 +235,115 @@ const cases = [
       }
       return { ok: true };
     }
+  },
+  {
+    name: "聚合-本月成交总额",
+    message: "本月华东旗舰店成交总额是多少",
+    expect: (r) => {
+      const intentCode = r.debug?.route?.intent_code;
+      if (intentCode !== "dealer.aggregate.sales_orders") {
+        return { ok: false, reason: `intent_code=${intentCode}` };
+      }
+      const params = r.debug?.route?.params ?? {};
+      if (params.metric && params.metric !== "total_revenue") {
+        return { ok: false, reason: `metric=${params.metric}` };
+      }
+      // answer 里应有数字（口径行也应有 ※）
+      if (!/\d/.test(r.answer ?? "") || !/口径/.test(r.answer ?? "")) {
+        return { ok: false, reason: "answer 缺数字或口径行" };
+      }
+      return { ok: true };
+    }
+  },
+  {
+    name: "聚合-毛利率",
+    message: "整体毛利率是多少",
+    expect: (r) => {
+      const intentCode = r.debug?.route?.intent_code;
+      if (intentCode !== "dealer.aggregate.sales_orders") {
+        return { ok: false, reason: `intent_code=${intentCode}` };
+      }
+      const params = r.debug?.route?.params ?? {};
+      if (params.metric && params.metric !== "gross_margin") {
+        return { ok: false, reason: `metric=${params.metric}` };
+      }
+      return { ok: true };
+    }
+  },
+  {
+    name: "聚合-各门店订单数",
+    message: "各门店本月各成交了多少单",
+    expect: (r) => {
+      const intentCode = r.debug?.route?.intent_code;
+      if (intentCode !== "dealer.aggregate.sales_orders") {
+        return { ok: false, reason: `intent_code=${intentCode}` };
+      }
+      const params = r.debug?.route?.params ?? {};
+      const okMetric = !params.metric || params.metric === "order_count";
+      const okGroup = params.group_by === "store_name";
+      if (!okMetric || !okGroup) {
+        return { ok: false, reason: `metric=${params.metric} group_by=${params.group_by}` };
+      }
+      return { ok: true };
+    }
+  },
+  {
+    name: "聚合-财务应付未结清合计",
+    message: "应付未结清的款项合计多少钱",
+    expect: (r) => {
+      const intentCode = r.debug?.route?.intent_code;
+      if (intentCode !== "dealer.aggregate.finance") {
+        return { ok: false, reason: `intent_code=${intentCode}` };
+      }
+      const params = r.debug?.route?.params ?? {};
+      // 接受 unsettled_amount 或 total_amount + filter
+      const ok = !params.metric || ["unsettled_amount", "total_amount"].includes(params.metric);
+      if (!ok) return { ok: false, reason: `metric=${params.metric}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "聚合-本月工单数",
+    message: "本月维修工单总共多少个",
+    expect: (r) => {
+      const intentCode = r.debug?.route?.intent_code;
+      if (intentCode !== "dealer.aggregate.repair_orders") {
+        return { ok: false, reason: `intent_code=${intentCode}` };
+      }
+      const params = r.debug?.route?.params ?? {};
+      const ok = !params.metric || params.metric === "order_count";
+      if (!ok) return { ok: false, reason: `metric=${params.metric}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "聚合-各意向等级线索数",
+    message: "各个意向等级各有多少线索",
+    expect: (r) => {
+      const intentCode = r.debug?.route?.intent_code;
+      if (intentCode !== "dealer.aggregate.leads") {
+        return { ok: false, reason: `intent_code=${intentCode}` };
+      }
+      const params = r.debug?.route?.params ?? {};
+      const okGroup = params.group_by === "intention_level";
+      if (!okGroup) return { ok: false, reason: `group_by=${params.group_by}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "聚合-本月转化率",
+    message: "本月线索转化率是多少",
+    expect: (r) => {
+      const intentCode = r.debug?.route?.intent_code;
+      if (intentCode !== "dealer.aggregate.leads") {
+        return { ok: false, reason: `intent_code=${intentCode}` };
+      }
+      const params = r.debug?.route?.params ?? {};
+      if (params.metric && params.metric !== "conversion_rate") {
+        return { ok: false, reason: `metric=${params.metric}` };
+      }
+      return { ok: true };
+    }
   }
 ];
 

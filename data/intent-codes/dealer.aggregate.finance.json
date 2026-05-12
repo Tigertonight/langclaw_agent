@@ -1,0 +1,62 @@
+{
+  "intent_code": "dealer.aggregate.finance",
+  "handler_type": "intent_query",
+  "version": "1",
+  "description": "对经销商财务流水做合计/平均/最高等聚合。当用户问『应付总额、未结清合计、返利总金额、各门店应付分布』时使用；问明细列表时改用 dealer.query.finance。",
+  "params_schema": {
+    "metric": {
+      "type": "enum",
+      "values": ["total_amount", "unsettled_amount", "record_count", "avg_amount"],
+      "required": true
+    },
+    "group_by": {
+      "type": "enum",
+      "values": ["store_name", "resource_type", "direction", "category", "status"],
+      "required": false
+    },
+    "resource_type": {
+      "type": "enum",
+      "values": ["discount_wallet", "payable", "receivable", "receipt", "rebate"],
+      "required": false
+    },
+    "store": { "type": "string", "required": false },
+    "direction": { "type": "string", "required": false },
+    "status": { "type": "string", "required": false },
+    "time_range": { "type": "string", "required": false }
+  },
+  "metric_definitions": {
+    "total_amount": {
+      "definition": "总金额 = sum(amount)",
+      "filter_addon": [],
+      "aggregations": [{ "type": "sum", "field": "amount", "as": "total_amount" }]
+    },
+    "unsettled_amount": {
+      "definition": "未结清金额 = sum(amount) where status != 已结清/已入账/已出账/已到账",
+      "filter_addon": [{ "field": "status", "op": "in", "value": ["未结清", "待结算"] }],
+      "aggregations": [{ "type": "sum", "field": "amount", "as": "unsettled_amount" }]
+    },
+    "record_count": {
+      "definition": "记录数 = count(*)",
+      "filter_addon": [],
+      "aggregations": [{ "type": "count", "field": "id", "as": "record_count" }]
+    },
+    "avg_amount": {
+      "definition": "平均金额 = avg(amount)",
+      "filter_addon": [],
+      "aggregations": [{ "type": "avg", "field": "amount", "as": "avg_amount" }]
+    }
+  },
+  "examples": [
+    "本月华东旗舰店应付总额",
+    "返利还有多少没结算",
+    "各门店应付未结清合计",
+    "折让金平均每笔多少钱"
+  ],
+  "confidence_threshold": "medium",
+  "tool_binding": {
+    "tool_name": "query_business_data",
+    "resource": "dealer_finance",
+    "operation": "aggregate"
+  },
+  "required_permissions": ["finance:read"]
+}

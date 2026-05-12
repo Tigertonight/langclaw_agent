@@ -1,0 +1,63 @@
+{
+  "intent_code": "dealer.aggregate.repair_orders",
+  "handler_type": "intent_query",
+  "version": "1",
+  "description": "对售后维修工单做合计/平均/计数等聚合。当用户问『工单数、平均工时费、应收合计、各门店分布』时使用；问明细时改用 dealer.query.repair_orders。",
+  "params_schema": {
+    "metric": {
+      "type": "enum",
+      "values": ["order_count", "total_receivable", "avg_labor", "max_receivable", "total_labor"],
+      "required": true
+    },
+    "group_by": {
+      "type": "enum",
+      "values": ["store_name", "status", "order_type", "service_advisor_name", "series"],
+      "required": false
+    },
+    "store": { "type": "string", "required": false },
+    "series": { "type": "string", "required": false },
+    "status": { "type": "string", "required": false },
+    "order_type": { "type": "string", "required": false },
+    "time_range": { "type": "string", "required": false }
+  },
+  "metric_definitions": {
+    "order_count": {
+      "definition": "工单数 = count(*)",
+      "filter_addon": [],
+      "aggregations": [{ "type": "count", "field": "id", "as": "order_count" }]
+    },
+    "total_receivable": {
+      "definition": "应收合计 = sum(receivable_amount)",
+      "filter_addon": [],
+      "aggregations": [{ "type": "sum", "field": "receivable_amount", "as": "total_receivable" }]
+    },
+    "avg_labor": {
+      "definition": "平均工时费 = avg(labor_amount)",
+      "filter_addon": [],
+      "aggregations": [{ "type": "avg", "field": "labor_amount", "as": "avg_labor" }]
+    },
+    "max_receivable": {
+      "definition": "最高应收 = max(receivable_amount)",
+      "filter_addon": [],
+      "aggregations": [{ "type": "max", "field": "receivable_amount", "as": "max_receivable" }]
+    },
+    "total_labor": {
+      "definition": "工时费合计 = sum(labor_amount)",
+      "filter_addon": [],
+      "aggregations": [{ "type": "sum", "field": "labor_amount", "as": "total_labor" }]
+    }
+  },
+  "examples": [
+    "本月华东旗舰店总共多少工单",
+    "各门店维修单数量",
+    "事故维修平均工时费",
+    "本月应收合计"
+  ],
+  "confidence_threshold": "medium",
+  "tool_binding": {
+    "tool_name": "query_business_data",
+    "resource": "dealer_repair_orders",
+    "operation": "aggregate"
+  },
+  "required_permissions": ["after_sales:read"]
+}
