@@ -307,6 +307,57 @@ async function executeBusinessDataQuery(args, context) {
   }
 
   if (operation === "aggregate") {
+    const aggregations = Array.isArray(args.aggregations) && args.aggregations.length
+      ? args.aggregations
+      : (Array.isArray(args.metrics) && args.metrics.length ? args.metrics : [{ type: "count", field: "id", as: "count" }]);
+    const groupByField = typeof args.group_by === "string" ? args.group_by
+      : (Array.isArray(args.group_by) && args.group_by.length === 1 ? args.group_by[0] : null);
+    const derived = Array.isArray(args.derived) ? args.derived : [];
+
+    if (groupByField && !config.fields.includes(groupByField)) {
+      return {
+        ok: false,
+        tool: "query_business_data",
+        error: "invalid_group_by",
+        message: `group_by 字段 ${groupByField} 不在允许字段集内。`
+      };
+    }
+
+    if (groupByField) {
+      const buckets = new Map();
+      for (const row of rows) {
+        const key = row[groupByField];
+        const list = buckets.get(key) ?? [];
+        list.push(row);
+        buckets.set(key, list);
+      }
+      const groups = [];
+      for (const [key, bucketRows] of buckets.entries()) {
+        const aggregateValues = computeAggregations(bucketRows, aggregations, config.fields);
+        const derivedValues = computeDerived(aggregateValues, derived);
+        groups.push({
+          group: { [groupByField]: key },
+          row_count: bucketRows.length,
+          aggregates: { ...aggregateValues, ...derivedValues }
+        });
+      }
+      groups.sort((a, b) => b.row_count - a.row_count);
+      return {
+        ok: true,
+        tool: "query_business_data",
+        data: {
+          resource: args.resource,
+          operation,
+          total,
+          group_by: groupByField,
+          groups,
+          query: sanitizeQuery(args)
+        }
+      };
+    }
+
+    const aggregateValues = computeAggregations(rows, aggregations, config.fields);
+    const derivedValues = computeDerived(aggregateValues, derived);
     return {
       ok: true,
       tool: "query_business_data",
@@ -314,7 +365,9 @@ async function executeBusinessDataQuery(args, context) {
         resource: args.resource,
         operation,
         total,
-        metrics: computeMetrics(rows, args.metrics ?? [{ type: "count", field: "id", as: "count" }], config.fields),
+        aggregates: { ...aggregateValues, ...derivedValues },
+        // 兼容老调用方
+        metrics: Object.entries(aggregateValues).map(([as, value]) => ({ as, value })),
         query: sanitizeQuery(args)
       }
     };
@@ -522,6 +575,93 @@ function computeMetrics(rows, metrics, allowedFields) {
     }
     return { as, type, field, value: null };
   });
+}
+
+function computeAggregations(rows, aggregations, allowedFields) {
+  const result = {};
+  for (const item of aggregations) {
+    const type = item.type ?? "count";
+    const field = item.field ?? "id";
+    const as = item.as ?? `${type}_${field}`;
+    if (type === "count") {
+      result[as] = rows.length;
+      continue;
+    }
+    if (!allowedFields.includes(field)) {
+      result[as] = null;
+      continue;
+    }
+    if (type === "distinct_count") {
+      const set = new Set();
+      for (const row of rows) {
+        const value = row[field];
+        if (value !== null && value !== undefined && value !== "") set.add(String(value));
+      }
+      result[as] = set.size;
+      continue;
+    }
+    const numbers = rows.map((row) => Number(row[field])).filter(Number.isFinite);
+    if (numbers.length === 0) {
+      result[as] = null;
+      continue;
+    }
+    if (type === "sum") {
+      result[as] = numbers.reduce((acc, n) => acc + n, 0);
+    } else if (type === "avg") {
+      const sum = numbers.reduce((acc, n) => acc + n, 0);
+      result[as] = Math.round((sum / numbers.length) * 100) / 100;
+    } else if (type === "max") {
+      result[as] = Math.max(...numbers);
+    } else if (type === "min") {
+      result[as] = Math.min(...numbers);
+    } else {
+      result[as] = null;
+    }
+  }
+  return result;
+}
+
+function computeDerived(aggregates, derived) {
+  const result = {};
+  // 顺序计算：后续 derived 可以引用前面 derived 的 as
+  const context = { ...aggregates };
+  for (const item of derived ?? []) {
+    if (!item || !item.as) continue;
+    const value = evalExpr(item, context);
+    result[item.as] = value;
+    context[item.as] = value;
+  }
+  return result;
+}
+
+function evalExpr(expr, aggregates, depth = 0) {
+  if (depth > 5) return null;
+  if (expr === null || expr === undefined) return null;
+  if (typeof expr !== "object") return null;
+  if ("const" in expr) {
+    const value = Number(expr.const);
+    return Number.isFinite(value) ? value : null;
+  }
+  if ("ref" in expr) {
+    const value = aggregates[expr.ref];
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  }
+  if (expr.op && "left" in expr && "right" in expr) {
+    const left = evalExpr(expr.left, aggregates, depth + 1);
+    const right = evalExpr(expr.right, aggregates, depth + 1);
+    if (left === null || right === null) return null;
+    if (expr.op === "+") return roundN(left + right);
+    if (expr.op === "-") return roundN(left - right);
+    if (expr.op === "*") return roundN(left * right);
+    if (expr.op === "/") return right === 0 ? null : roundN(left / right);
+    return null;
+  }
+  return null;
+}
+
+function roundN(value) {
+  if (!Number.isFinite(value)) return null;
+  return Math.round(value * 10000) / 10000;
 }
 
 function normalizeFields(fields, allowedFields) {

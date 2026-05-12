@@ -14,7 +14,14 @@ export function buildSystemPrompt(registry) {
       })
       .join(", ");
     const paramsText = params ? `；参数: ${params}` : "";
-    return `- ${manifest.intent_code} [${manifest.handler_type}]: ${manifest.description ?? ""}${paramsText}`;
+    let extra = "";
+    if (manifest.metric_definitions) {
+      const metricLines = Object.entries(manifest.metric_definitions)
+        .map(([name, def]) => `    · ${name}：${def?.definition ?? name}`)
+        .join("\n");
+      extra = `\n  指标说明（从中选 metric）：\n${metricLines}`;
+    }
+    return `- ${manifest.intent_code} [${manifest.handler_type}]: ${manifest.description ?? ""}${paramsText}${extra}`;
   }).join("\n");
 
   // 每个 intent_code 最多取 2 条 example，保证 prompt 里所有意图都被 few-shot 覆盖
@@ -48,6 +55,8 @@ export function buildSystemPrompt(registry) {
     "2. confidence 只能是 high / medium / low 三个枚举值。",
     "3. 不确定属于哪个 intent_code 时，输出 intent_code = \"general\"，handler_type = \"agentic\"。",
     "4. 抽参时严格按用户原文，比如「汉EV」就是「汉EV」，不要简化为「汉」。",
+    "5. **明细 vs 聚合**：用户问「有哪些 / 列表 / 明细 / 哪几单 / 哪几条」时选 dealer.query.* 类（明细查询）；问「总额 / 合计 / 平均 / 最高 / 最低 / 占比 / 率 / 多少条 / 多少笔 / 各门店多少」时选 dealer.aggregate.* 类（聚合）。",
+    "6. 聚合类必须填 metric（指标名），可选 group_by（用户说「各门店」「按车系」时填，否则 null）。",
     "",
     "few-shot 例子：",
     exampleLines
