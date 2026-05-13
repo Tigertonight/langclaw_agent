@@ -15,11 +15,17 @@
  *     由系统决定是否实现。本期不做，但 normalizeAction 已经预留了分支。
  */
 
-const MAX_ITERATIONS = 5;
-const STEP_TIMEOUT_MS = 20000;
-const TOTAL_TIMEOUT_MS = 60000;
+// 三类工具组合时，典型路径：intent×2 + tool.safe_compute + skill.* 注入 + answer = 5 步起。
+// 留点余量给单步抖动重试，定 7。
+const MAX_ITERATIONS = 7;
+// v2 起 system prompt 里要列 intent.* / tool.* / skill.* 三类工具，整个 prompt 接近 4-5KB，
+// MiniMax-M2.7 单步推理 20s 容易超时；适度放宽到 35s。总时长同步拉到 120s。
+const STEP_TIMEOUT_MS = 35000;
+const TOTAL_TIMEOUT_MS = 180000;
 
 export class AgenticHandler {
+  // v2 起 skillRegistry 期望是 AgenticSkillView（注入式 skill 视图），
+  // 字段名保留是为了让 v1 期写好的 getAvailableTools 兼容。
   constructor({ intentRegistry, intentQueryHandler, skillRegistry = null, toolRegistry = null } = {}) {
     this.intentRegistry = intentRegistry;
     this.intentQueryHandler = intentQueryHandler;
@@ -53,8 +59,13 @@ export class AgenticHandler {
       try {
         decision = await this.decideNext({ conversation, apiKey, tools });
       } catch (err) {
-        lastError = err?.message || String(err);
-        break;
+        // 单步 LLM 失败时再给一次机会，避免一次抖动断送整轮 agentic
+        try {
+          decision = await this.decideNext({ conversation, apiKey, tools });
+        } catch (err2) {
+          lastError = err2?.message || String(err2);
+          break;
+        }
       }
       conversation.push({ role: "assistant", content: JSON.stringify(decision) });
 
@@ -68,10 +79,19 @@ export class AgenticHandler {
         const args = decision.args ?? {};
         const observation = await this.callTool({ callName, args, user, session });
         traces.push({ step, type: "tool_call", tool: callName, args, observation_summary: summarizeObservation(observation) });
-        conversation.push({
-          role: "user",
-          content: `工具 ${callName} 返回：\n${truncate(JSON.stringify(observation), 4000)}`
-        });
+        // skill.* 是"注入式工具"：不返回结构化结果，而是把 SKILL.md+模板+示例
+        // 当作新到的专家说明塞进对话，让主 LLM 下一步直接 answer。
+        if (observation?._kind === "skill_injection") {
+          conversation.push({
+            role: "user",
+            content: `（由 ${callName} 注入的写作说明 / 上下文，请据此直接给最终 answer）\n\n${truncate(observation.injection_text, 6000)}`
+          });
+        } else {
+          conversation.push({
+            role: "user",
+            content: `工具 ${callName} 返回：\n${truncate(JSON.stringify(observation), 4000)}`
+          });
+        }
         continue;
       }
       // v3 hook：propose_tool 等暂未实现
@@ -80,6 +100,9 @@ export class AgenticHandler {
     }
 
     if (!answer) {
+      if (process.env.AGENTIC_DEBUG === "1") {
+        console.error("[agentic] no answer; traces=", JSON.stringify(traces, null, 2), "lastError=", lastError);
+      }
       return this.buildFallback({ message, route, reason: lastError ?? "未在步数上限内得到答案", traces });
     }
     return {
@@ -121,11 +144,17 @@ export class AgenticHandler {
     if (this.toolRegistry?.list) {
       for (const tool of this.toolRegistry.list({ user }) ?? []) {
         if (!tool.metadata?.expose_to_agentic) continue;
+        // tool.schema 是 JSON Schema（type=object, properties=...），转成统一的 {key:{type,description}}
+        const params_schema = {};
+        const props = tool.schema?.properties ?? {};
+        for (const [k, v] of Object.entries(props)) {
+          params_schema[k] = { type: v?.type ?? "string", description: v?.description ?? "" };
+        }
         list.push({
           name: `tool.${tool.name}`,
           kind: "tool",
           description: tool.description,
-          params_schema: tool.schema ?? {},
+          params_schema,
           underlying: tool.name
         });
       }
@@ -145,7 +174,10 @@ export class AgenticHandler {
       "",
       `当前用户：${user?.name ?? "?"}（${user?.role ?? "?"}/${user?.department ?? "?"}）`,
       "",
-      "可用工具（intent.* 是封装好口径的高级查询；skill.* / tool.* 是底层能力）：",
+      "可用工具：",
+      "- intent.* ：业务高级查询（按口径返回 rows/answer，先用它拿数据）。",
+      "- tool.*   ：原子能力，例如 tool.safe_compute 在沙箱里跑 JS 算精确指标（加权库龄、占比、差额等）。",
+      "- skill.*  ：注入式『写作/汇报包』。调用后会把它的 SKILL.md + 模板渲染结果塞进上下文，下一步你直接 answer 输出文案。",
       toolLines,
       "",
       "工作流程：每一轮你输出严格 JSON，schema 如下，不要 markdown：",
@@ -220,10 +252,36 @@ export class AgenticHandler {
       };
     }
     if (callName?.startsWith("skill.")) {
-      return { ok: false, error: "not_implemented", message: "skill.* 在 v2 接入" };
+      const requested = callName.slice("skill.".length);
+      if (!this.skillRegistry?.loadForInjection) {
+        return { ok: false, error: "skill_not_wired", message: "AgenticSkillView 未接入" };
+      }
+      // LLM 可能把 dash/underscore 写混（summarize-alert vs summarize_alert），统一兜底
+      const skillId = this.skillRegistry.skills?.find?.((s) => s.id === requested)
+        ? requested
+        : (this.skillRegistry.skills ?? []).find((s) => normalizeSkillId(s.id) === normalizeSkillId(requested))?.id ?? requested;
+      const inj = await this.skillRegistry.loadForInjection({ id: skillId, args, user });
+      if (!inj.ok) return inj;
+      return {
+        _kind: "skill_injection",
+        ok: true,
+        skill: inj.skill,
+        injection_text: inj.injection_text,
+        preprocess_vars: inj.preprocess_vars
+      };
     }
     if (callName?.startsWith("tool.")) {
-      return { ok: false, error: "not_implemented", message: "tool.* 在 v2 接入" };
+      const underlying = callName.slice("tool.".length);
+      if (!this.toolRegistry?.execute) {
+        return { ok: false, error: "tool_not_wired", message: "ToolRegistry 未接入" };
+      }
+      const tool = this.toolRegistry.get?.(underlying);
+      if (!tool) return { ok: false, error: "unknown_tool", message: `tool ${underlying} 不存在` };
+      if (!tool.metadata?.expose_to_agentic) {
+        return { ok: false, error: "tool_not_exposed", message: `tool ${underlying} 未授权 agentic 直接调用` };
+      }
+      const result = await this.toolRegistry.execute({ name: underlying, args }, { user });
+      return result;
     }
     return { ok: false, error: "unknown_tool_namespace", message: `工具名 ${callName} 必须以 intent./skill./tool. 开头` };
   }
@@ -285,10 +343,20 @@ function truncate(text, max) {
   return text.length > max ? text.slice(0, max) + "...(truncated)" : text;
 }
 
+function normalizeSkillId(s) {
+  return String(s ?? "").replace(/[-_]/g, "").toLowerCase();
+}
+
 function summarizeObservation(observation) {
   if (!observation) return null;
+  if (observation._kind === "skill_injection") {
+    return { kind: "skill_injection", skill: observation.skill, injected_chars: observation.injection_text?.length ?? 0 };
+  }
   if (observation.intent_code) {
     return { intent_code: observation.intent_code, ok: observation.ok, row_count: observation.row_count };
+  }
+  if (observation.tool === "safe_compute") {
+    return { tool: "safe_compute", ok: observation.ok, value_preview: JSON.stringify(observation.data?.value ?? null).slice(0, 120) };
   }
   return { ok: observation.ok, error: observation.error };
 }

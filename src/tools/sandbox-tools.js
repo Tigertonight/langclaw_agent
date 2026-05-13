@@ -15,12 +15,14 @@ export function createSandboxTools() {
   return [
     {
       name: "safe_compute",
-      description: "Run deterministic calculations in an isolated per-user sandbox. Supports JavaScript expressions or scripts with a final result variable. No shell, filesystem, process, imports, require, or network APIs are exposed.",
+      description: "Run deterministic calculations in an isolated per-user sandbox. expression 模式只支持纯数字表达式（+-*/%）。script 模式：『result』已经被运行时声明为 let，你的代码需要用 result = ... 赋值，而不是 const result = ... / let result = ... / var result = ...。最后一行不需要返回。No shell, filesystem, process, imports, require, or network APIs are exposed.",
       metadata: {
         required_permissions: [],
         risk_level: "sandboxed_compute",
         requires_confirmation: false,
         intents: ["data_query", "mixed"],
+        // v2: 允许 agentic 跨意图规划器把它当成"算数底座"调用
+        expose_to_agentic: true,
         sandbox: {
           per_user: true,
           shell: false,
@@ -37,7 +39,7 @@ export function createSandboxTools() {
         properties: {
           code: {
             type: "string",
-            description: "JavaScript expression, or script when mode is script. Script mode returns the variable named result."
+            description: "expression 模式：纯数字表达式（如 (98+21+37+8)/4）。script 模式：多步 JS，最后把答案赋值给 result（**不要再写 const/let/var result**，运行时已声明）。"
           },
           mode: {
             type: "string",

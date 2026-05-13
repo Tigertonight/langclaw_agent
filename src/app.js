@@ -23,6 +23,7 @@ import { FileSystemSkillLoader } from "./runtime/skill-loader.js";
 import { ScenarioRouter } from "./scenarios/router.js";
 import { SkillRegistryStore } from "./skills/registry-store.js";
 import { SkillRuntime } from "./skills/runtime.js";
+import { AgenticSkillView } from "./skills/agentic-skill-view.js";
 import { createBusinessTools } from "./tools/business-tools.js";
 import { createKnowledgeTools } from "./tools/knowledge-tools.js";
 import { createSandboxTools } from "./tools/sandbox-tools.js";
@@ -70,11 +71,13 @@ export function createApp() {
   const intentRouter = new IntentRouter({ llm, registry: intentRegistry, localLLM });
   const intentQueryHandler = new IntentQueryHandler({ llm, toolRegistry, registry: intentRegistry });
   const chitchatHandler = new ChitchatHandler({ llm });
+  // v2: 给 agentic 单独的 skill 视图（注入式包），与 v1 workflow 的 SkillRegistryStore 解耦
+  const agenticSkillView = new AgenticSkillView();
   const agenticHandler = new AgenticHandler({
     intentRegistry,
     intentQueryHandler,
-    skillRegistry: null, // v2 接入
-    toolRegistry: null   // v2 接入（需要 expose_to_agentic 标记）
+    skillRegistry: agenticSkillView, // 提供 listForAgent / loadForInjection
+    toolRegistry                      // 通过 expose_to_agentic 元数据筛掉非授权的工具
   });
   const agent = new SimpleWorkflowOrchestrator({
     llm,
@@ -91,5 +94,5 @@ export function createApp() {
     chitchatHandler,
     agenticHandler
   });
-  return { agent, llm, integrations, documentSource, knowledgeBase, toolRegistry, primitiveRegistry, skillRegistry, skillLoader, skillRuntime, enterpriseContextProvider, sessionStore, scenarioRouter, userContextResolver, intentRegistry, intentRouter, intentQueryHandler, chitchatHandler, agenticHandler };
+  return { agent, llm, integrations, documentSource, knowledgeBase, toolRegistry, primitiveRegistry, skillRegistry, skillLoader, skillRuntime, agenticSkillView, enterpriseContextProvider, sessionStore, scenarioRouter, userContextResolver, intentRegistry, intentRouter, intentQueryHandler, chitchatHandler, agenticHandler };
 }
