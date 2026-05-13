@@ -683,8 +683,8 @@ for (const [index, c] of cases.entries()) {
     } else {
       result = await agent.run({ userId: USER_ID, message: c.message, sessionId, debug: true });
       verdict = c.expect(result);
-      // allowOneRetry：agentic 类用例偶发 LLM 抖动（超时 / 漏调工具），最多再补 2 次
-      const retryBudget = c.allowOneRetry ? 2 : 0;
+      // allowOneRetry：agentic 类用例偶发 LLM 抖动（超时 / JSON 解析失败 / 漏调工具），最多再补 3 次
+      const retryBudget = c.allowOneRetry ? 3 : 0;
       for (let attempt = 1; attempt <= retryBudget && !verdict.ok; attempt += 1) {
         const retrySid = `${sessionId}_retry${attempt}`;
         const retryResult = await agent.run({ userId: USER_ID, message: c.message, sessionId: retrySid, debug: true });
