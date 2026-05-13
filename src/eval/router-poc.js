@@ -605,6 +605,48 @@ const cases = [
       if (!hasSummarize) return { ok: false, reason: "skill.summarize-alert 未列出" };
       return { ok: true };
     }
+  },
+  {
+    // v3 thin：propose_tool 静态用例。我们 stub decideNext 给出一轮 propose_tool + 一轮 answer，
+    // 验证 AgenticHandler 把提议写进 traces、不报错、流程能继续到 answer。
+    // 这样 LLM 真要 propose 时（我们暂不强制触发），代码路径已经安全。
+    name: "v3-propose_tool 被记录、不打断主循环（静态）",
+    message: "（probe，不会真发给 LLM）",
+    skipRun: true,
+    expectStatic: async ({ agenticHandler }) => {
+      const stubbed = Object.create(agenticHandler);
+      let call = 0;
+      const decisions = [
+        { action: "propose_tool", proposed_tool: { name: "tool.gross_margin_decompose", what_it_does: "把毛利率拆到车系×渠道", why_needed: "现有 intent.* 只到车系级", sample_args: { dim: ["model", "channel"] } }, reason: "缺一个分解工具" },
+        { action: "answer", answer: "（stub）已记录提议；用现有工具回答即可。", reason: "stub" }
+      ];
+      stubbed.decideNext = async () => {
+        const d = decisions[call] ?? decisions[decisions.length - 1];
+        call += 1;
+        return d;
+      };
+      // 注入 LLM_API_KEY，避开真实 fetch（decideNext 已被 stub）
+      const prevKey = process.env.LLM_API_KEY;
+      process.env.LLM_API_KEY = "stub";
+      let result;
+      try {
+        result = await stubbed.execute({
+          user: { id: "store_gm_001", role: "store_general_manager", permissions: ["dealer:read"] },
+          message: "需要一个能把毛利率按车系×渠道拆开的能力",
+          route: { intent_code: "general" },
+          session: { id: "v3_static" }
+        });
+      } finally {
+        if (prevKey === undefined) delete process.env.LLM_API_KEY;
+        else process.env.LLM_API_KEY = prevKey;
+      }
+      const traces = result?.debug?.traces ?? [];
+      const proposalEntry = traces.find((t) => t.type === "propose_tool");
+      if (!proposalEntry) return { ok: false, reason: `traces 未记录 propose_tool（实际：${traces.map((t) => t.type).join(",")}）` };
+      if (!proposalEntry.proposal?.name) return { ok: false, reason: "proposal.name 未保留" };
+      if (!result.answer || /暂时无法直接给出/.test(result.answer)) return { ok: false, reason: `propose_tool 后没走到 answer：${truncate(result.answer)}` };
+      return { ok: true };
+    }
   }
 ];
 
@@ -619,8 +661,8 @@ for (const [index, c] of cases.entries()) {
   let verdict;
   try {
     if (c.skipRun) {
-      // 静态用例：不跑 agent，只对 app 子组件做断言
-      verdict = c.expectStatic(app);
+      // 静态用例：不跑 agent，只对 app 子组件做断言（允许 expectStatic 是 async）
+      verdict = await c.expectStatic(app);
       const tag = verdict.ok ? "PASS" : "FAIL";
       if (verdict.ok) passed += 1;
       else failures.push({ name: c.name, reason: verdict.reason });

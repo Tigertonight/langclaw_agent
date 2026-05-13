@@ -94,7 +94,17 @@ export class AgenticHandler {
         }
         continue;
       }
-      // v3 hook：propose_tool 等暂未实现
+      // v3 thin：propose_tool 只观察、不真造工具；写进 traces 后给 LLM 推回 stub
+      // 让它改用现有 intent.* / tool.* / skill.* 或直接 answer。计入步数，避免反复刷。
+      if (decision.action === "propose_tool") {
+        const proposal = normalizeProposal(decision.proposed_tool ?? decision.proposal ?? {});
+        traces.push({ step, type: "propose_tool", proposal, reason: decision.reason });
+        conversation.push({
+          role: "user",
+          content: `已记录你的工具提议「${proposal.name ?? "(unnamed)"}」（仅作后续设计参考，本期不会动态创建工具）。请用现有 intent.* / tool.* / skill.* 完成任务，或直接 answer。`
+        });
+        continue;
+      }
       lastError = `agentic 未识别的 action：${decision.action}`;
       break;
     }
@@ -182,10 +192,16 @@ export class AgenticHandler {
       "",
       "工作流程：每一轮你输出严格 JSON，schema 如下，不要 markdown：",
       `{
-  "action": "tool_call" | "answer",
+  "action": "tool_call" | "answer" | "propose_tool",
   "tool_name": "<当 action=tool_call 时填工具名>",
   "args": { ... },
   "answer": "<当 action=answer 时填最终回答>",
+  "proposed_tool": {
+    "name": "<提议的工具名，用 namespace.snake 风格>",
+    "what_it_does": "<这个工具该做什么>",
+    "why_needed": "<为什么现有 intent.*/tool.*/skill.* 不够>",
+    "sample_args": { }
+  },
   "reason": "<一句话理由>"
 }`,
       "",
@@ -195,7 +211,8 @@ export class AgenticHandler {
       "3. 步数上限 5。能用 1-2 步搞定就别用 3 步。",
       "4. 用户没明确给出的字段填 null；不要瞎猜门店/车系。",
       "5. 有充分信息就直接 action=answer 给最终回答，回答里把『我做了什么、看到了什么、结论』讲清楚。",
-      "6. 如果跨意图任务其实只需要单个 intent，仍然走单个 tool_call → answer 两步。"
+      "6. 如果跨意图任务其实只需要单个 intent，仍然走单个 tool_call → answer 两步。",
+      "7. 当你强烈感到需要某个列表里不存在的能力（且确实无法用现有工具组合实现）时，可以输出 action=propose_tool 描述它。注意：这只会被记录用于后续设计，不会被立刻执行；下一轮你仍要用现有工具或直接 answer。"
     ].join("\n");
   }
 
@@ -345,6 +362,16 @@ function truncate(text, max) {
 
 function normalizeSkillId(s) {
   return String(s ?? "").replace(/[-_]/g, "").toLowerCase();
+}
+
+function normalizeProposal(raw) {
+  if (!raw || typeof raw !== "object") return { name: null, what_it_does: null, why_needed: null, sample_args: null };
+  return {
+    name: typeof raw.name === "string" ? raw.name.slice(0, 120) : null,
+    what_it_does: typeof raw.what_it_does === "string" ? raw.what_it_does.slice(0, 600) : null,
+    why_needed: typeof raw.why_needed === "string" ? raw.why_needed.slice(0, 600) : null,
+    sample_args: raw.sample_args ?? null
+  };
 }
 
 function summarizeObservation(observation) {
