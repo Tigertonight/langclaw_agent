@@ -55,17 +55,22 @@ export class AgenticHandler {
         lastError = "agentic 总时长超时";
         break;
       }
+      // 单步 LLM 失败时最多重试 3 次（共 4 次），覆盖 MiniMax 偶发空 content / 非 JSON / 超时
       let decision;
-      try {
-        decision = await this.decideNext({ conversation, apiKey, tools });
-      } catch (err) {
-        // 单步 LLM 失败时再给一次机会，避免一次抖动断送整轮 agentic
+      let stepErr = null;
+      for (let attempt = 0; attempt < 4; attempt += 1) {
         try {
           decision = await this.decideNext({ conversation, apiKey, tools });
-        } catch (err2) {
-          lastError = err2?.message || String(err2);
+          stepErr = null;
           break;
+        } catch (err) {
+          stepErr = err;
+          if (attempt < 3) await new Promise((r) => setTimeout(r, 400));
         }
+      }
+      if (stepErr) {
+        lastError = stepErr?.message || String(stepErr);
+        break;
       }
       conversation.push({ role: "assistant", content: JSON.stringify(decision) });
 
@@ -192,16 +197,10 @@ export class AgenticHandler {
       "",
       "工作流程：每一轮你输出严格 JSON，schema 如下，不要 markdown：",
       `{
-  "action": "tool_call" | "answer" | "propose_tool",
+  "action": "tool_call" | "answer",
   "tool_name": "<当 action=tool_call 时填工具名>",
   "args": { ... },
   "answer": "<当 action=answer 时填最终回答>",
-  "proposed_tool": {
-    "name": "<提议的工具名，用 namespace.snake 风格>",
-    "what_it_does": "<这个工具该做什么>",
-    "why_needed": "<为什么现有 intent.*/tool.*/skill.* 不够>",
-    "sample_args": { }
-  },
   "reason": "<一句话理由>"
 }`,
       "",
@@ -212,7 +211,7 @@ export class AgenticHandler {
       "4. 用户没明确给出的字段填 null；不要瞎猜门店/车系。",
       "5. 有充分信息就直接 action=answer 给最终回答，回答里把『我做了什么、看到了什么、结论』讲清楚。",
       "6. 如果跨意图任务其实只需要单个 intent，仍然走单个 tool_call → answer 两步。",
-      "7. 当你强烈感到需要某个列表里不存在的能力（且确实无法用现有工具组合实现）时，可以输出 action=propose_tool 描述它。注意：这只会被记录用于后续设计，不会被立刻执行；下一轮你仍要用现有工具或直接 answer。"
+      "7. 罕见情况：如果你强烈认为现有工具列表完全不够、需要某个全新能力，可以把 action 设为 propose_tool 并附 proposed_tool: {name, what_it_does, why_needed}（仅做记录，本期不会真执行；下一步你还得用现有工具或 answer）。绝大多数任务都不该走这条。"
     ].join("\n");
   }
 
@@ -322,9 +321,18 @@ export class AgenticHandler {
 
 function parseDecision(json) {
   const raw = json?.choices?.[0]?.message?.content ?? "";
+  if (!raw || !raw.trim()) {
+    if (process.env.AGENTIC_DEBUG === "1") {
+      console.error("[agentic] LLM 返回空 content（finish_reason=", json?.choices?.[0]?.finish_reason, "）");
+    }
+    throw new Error("agentic LLM 返回空 content");
+  }
   const cleaned = stripCodeFence(raw);
   const parsed = tryParseJSON(cleaned);
   if (!parsed || typeof parsed !== "object") {
+    if (process.env.AGENTIC_DEBUG === "1") {
+      console.error("[agentic] JSON parse failed; raw content (first 600 chars):", String(raw).slice(0, 600));
+    }
     throw new Error("agentic LLM 输出无法解析为 JSON");
   }
   return parsed;

@@ -4,9 +4,16 @@
  * 它和 SkillRegistryStore（v1 的 workflow skill 体系）是完全独立的——后者管"安装/启用/版本"，
  * 这里只管"把 skills/agentic/<id>/ 目录下的提示词包，按 Claude Code Skill 的形态读出来"。
  *
+ * 协议：与 openclaw / Claude Code Skill 对齐，frontmatter 仅 name + description（超集兼容）：
+ *   - name: hyphen-case 标识符，必须等于文件夹名（也是工具名后缀：skill.<name>）
+ *   - description: 一句话说清"做什么 + 何时调用"
+ *   旧字段（id / when_to_use / io）仍兼容读取，但建议挪到 body 章节：
+ *     ## When to use     → bullet list 解析为 when_to_use[]
+ *     ## Inputs          → bullet list 解析为 io.args（"`name` (type, 必填)：description" 形式）
+ *
  * 一个 skill 包的形态：
- *   skills/agentic/<id>/
- *     SKILL.md           # frontmatter（id/name/description/when_to_use/io）+ 主体说明
+ *   skills/agentic/<name>/
+ *     SKILL.md           # frontmatter（name/description）+ 主体（含 ## When to use / ## Inputs）
  *     template.md        # 提示词模板，可含 {{var}} 占位
  *     examples/*.md      # （可选）few-shot 例子
  *     scripts/preprocess.js  # （可选）默认导出的纯函数，把 args 预处理成模板变量
@@ -35,21 +42,29 @@ export class AgenticSkillView {
   scan() {
     if (!existsSync(this.rootDir)) return [];
     const out = [];
-    for (const name of readdirSync(this.rootDir)) {
-      const dir = path.join(this.rootDir, name);
+    for (const folder of readdirSync(this.rootDir)) {
+      const dir = path.join(this.rootDir, folder);
       if (!statSync(dir).isDirectory()) continue;
       const skillFile = path.join(dir, "SKILL.md");
       if (!existsSync(skillFile)) continue;
       const raw = readFileSync(skillFile, "utf8");
       const { meta, body } = parseFrontmatter(raw);
-      const id = meta.id ?? name;
+      // id 解析优先级：frontmatter.name（openclaw 协议）→ 旧的 frontmatter.id → 文件夹名
+      const id = meta.name ?? meta.id ?? folder;
+      // when_to_use / io 优先 frontmatter（旧格式向后兼容），缺则从 body 章节软解析（新协议）
+      const when_to_use = Array.isArray(meta.when_to_use) && meta.when_to_use.length
+        ? meta.when_to_use
+        : extractBulletSection(body, ["When to use", "When to Use", "when_to_use"]);
+      const io = (meta.io && Object.keys(meta.io).length)
+        ? meta.io
+        : { args: extractInputsSection(body) };
       out.push({
         id,
         dir,
-        name: meta.name ?? id,
+        name: id,
         description: meta.description ?? "",
-        when_to_use: meta.when_to_use ?? [],
-        io: meta.io ?? {},
+        when_to_use,
+        io,
         skill_md_body: body
       });
     }
@@ -102,6 +117,51 @@ export class AgenticSkillView {
       preprocess_vars: vars
     };
   }
+}
+
+// 从 markdown body 抽出某个 H2 章节里的 "- xxx" bullet list（用于 ## When to use）
+function extractBulletSection(body, headingAliases) {
+  if (typeof body !== "string") return [];
+  for (const heading of headingAliases) {
+    const re = new RegExp(`^##\\s+${escapeRegex(heading)}\\s*$([\\s\\S]*?)(?=^##\\s+|\\Z)`, "im");
+    const m = body.match(re);
+    if (!m) continue;
+    const items = [];
+    for (const line of m[1].split("\n")) {
+      const t = line.trim();
+      if (t.startsWith("- ")) items.push(t.slice(2).trim());
+    }
+    if (items.length) return items;
+  }
+  return [];
+}
+
+// 从 ## Inputs 章节里把 "- `name` (type, 必填|选填)：description" 形式的行解析成 args schema
+function extractInputsSection(body) {
+  if (typeof body !== "string") return {};
+  const re = /^##\s+Inputs\s*$([\s\S]*?)(?=^##\s+|\Z)/im;
+  const m = body.match(re);
+  if (!m) return {};
+  const args = {};
+  // 兼容全角/半角冒号、括号
+  const lineRe = /^-\s*`([^`]+)`\s*[（(]\s*([^,，)）]+?)\s*(?:[,，]\s*(必填|选填|required|optional))?\s*[)）]\s*[:：]\s*(.+)$/i;
+  for (const line of m[1].split("\n")) {
+    const t = line.trim();
+    if (!t.startsWith("- ")) continue;
+    const lm = t.match(lineRe);
+    if (!lm) continue;
+    const [, name, type, req, desc] = lm;
+    args[name] = {
+      type: type.trim().toLowerCase(),
+      required: /^(必填|required)$/i.test(req ?? ""),
+      description: desc.trim()
+    };
+  }
+  return args;
+}
+
+function escapeRegex(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function parseFrontmatter(raw) {
