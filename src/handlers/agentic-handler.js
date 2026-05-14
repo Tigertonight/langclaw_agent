@@ -36,13 +36,25 @@ export class AgenticHandler {
   async execute({ user, message, route, session } = {}) {
     const startedAt = Date.now();
     const tools = this.getAvailableTools({ user });
-    const traces = [];
+    // 三流 traces（参考 openclaw agent loop）：
+    //   - lifecycle：步骤级里程碑（start / decided / step_failed / answered / total_timeout / fallback）
+    //   - assistant：LLM 侧事件（每一轮决策、propose_tool 提议）
+    //   - tool     ：工具调用 + 观察摘要
+    // 同时输出一份合并后的 flat traces 供旧消费者使用（orchestrator 步骤摘要、router-poc 断言）。
+    const streams = { lifecycle: [], assistant: [], tool: [] };
+    const pushLifecycle = (event, extra) => streams.lifecycle.push({ ts: Date.now() - startedAt, event, ...extra });
+    const pushAssistant = (entry) => streams.assistant.push({ ts: Date.now() - startedAt, ...entry });
+    const pushTool = (entry) => streams.tool.push({ ts: Date.now() - startedAt, ...entry });
+
+    pushLifecycle("start", { message_preview: typeof message === "string" ? message.slice(0, 80) : null, tools_count: tools.length });
+
     let answer = null;
     let lastError = null;
 
     const apiKey = process.env.LLM_DECISION_API_KEY ?? process.env.LLM_API_KEY ?? process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return this.buildFallback({ message, route, reason: "未配置 LLM_API_KEY，agentic 直接兜底返回。", traces });
+      pushLifecycle("fallback", { reason: "no_api_key" });
+      return this.buildFallback({ message, route, reason: "未配置 LLM_API_KEY，agentic 直接兜底返回。", streams });
     }
 
     const conversation = [
@@ -53,12 +65,15 @@ export class AgenticHandler {
     for (let step = 0; step < MAX_ITERATIONS; step += 1) {
       if (Date.now() - startedAt > TOTAL_TIMEOUT_MS) {
         lastError = "agentic 总时长超时";
+        pushLifecycle("total_timeout", { step });
         break;
       }
       // 单步 LLM 失败时最多重试 3 次（共 4 次），覆盖 MiniMax 偶发空 content / 非 JSON / 超时
       let decision;
       let stepErr = null;
+      let attemptsUsed = 0;
       for (let attempt = 0; attempt < 4; attempt += 1) {
+        attemptsUsed = attempt + 1;
         try {
           decision = await this.decideNext({ conversation, apiKey, tools });
           stepErr = null;
@@ -70,20 +85,24 @@ export class AgenticHandler {
       }
       if (stepErr) {
         lastError = stepErr?.message || String(stepErr);
+        pushLifecycle("step_failed", { step, error: lastError, attempts: attemptsUsed });
         break;
       }
+      pushLifecycle("decided", { step, action: decision.action, attempts: attemptsUsed });
+      pushAssistant({ step, type: "decision", action: decision.action, reason: decision.reason });
       conversation.push({ role: "assistant", content: JSON.stringify(decision) });
 
       if (decision.action === "answer") {
         answer = decision.answer ?? "";
-        traces.push({ step, type: "answer", reason: decision.reason });
+        pushAssistant({ step, type: "answer", reason: decision.reason, answer_chars: typeof answer === "string" ? answer.length : 0 });
+        pushLifecycle("answered", { step });
         break;
       }
       if (decision.action === "tool_call") {
         const callName = decision.tool_name;
         const args = decision.args ?? {};
         const observation = await this.callTool({ callName, args, user, session });
-        traces.push({ step, type: "tool_call", tool: callName, args, observation_summary: summarizeObservation(observation) });
+        pushTool({ step, type: "tool_call", tool: callName, args, observation_summary: summarizeObservation(observation) });
         // skill.* 是"注入式工具"：不返回结构化结果，而是把 SKILL.md+模板+示例
         // 当作新到的专家说明塞进对话，让主 LLM 下一步直接 answer。
         if (observation?._kind === "skill_injection") {
@@ -103,7 +122,7 @@ export class AgenticHandler {
       // 让它改用现有 intent.* / tool.* / skill.* 或直接 answer。计入步数，避免反复刷。
       if (decision.action === "propose_tool") {
         const proposal = normalizeProposal(decision.proposed_tool ?? decision.proposal ?? {});
-        traces.push({ step, type: "propose_tool", proposal, reason: decision.reason });
+        pushAssistant({ step, type: "propose_tool", proposal, reason: decision.reason });
         conversation.push({
           role: "user",
           content: `已记录你的工具提议「${proposal.name ?? "(unnamed)"}」（仅作后续设计参考，本期不会动态创建工具）。请用现有 intent.* / tool.* / skill.* 完成任务，或直接 answer。`
@@ -111,26 +130,30 @@ export class AgenticHandler {
         continue;
       }
       lastError = `agentic 未识别的 action：${decision.action}`;
+      pushLifecycle("unknown_action", { step, action: decision.action });
       break;
     }
 
     if (!answer) {
       if (process.env.AGENTIC_DEBUG === "1") {
-        console.error("[agentic] no answer; traces=", JSON.stringify(traces, null, 2), "lastError=", lastError);
+        console.error("[agentic] no answer; streams=", JSON.stringify(streams, null, 2), "lastError=", lastError);
       }
-      return this.buildFallback({ message, route, reason: lastError ?? "未在步数上限内得到答案", traces });
+      pushLifecycle("fallback", { reason: lastError ?? "no_answer_in_max_steps" });
+      return this.buildFallback({ message, route, reason: lastError ?? "未在步数上限内得到答案", streams });
     }
+    const flatTraces = mergeStreams(streams);
     return {
       answer,
       table: { rows: [], fields: [] },
       debug: {
         intent_code: route.intent_code,
         agentic: true,
-        iterations: traces.length,
-        traces,
+        iterations: flatTraces.length,
+        traces: flatTraces,
+        streams,
         latency_ms: Date.now() - startedAt
       },
-      toolPlan: { calls: traces.filter((t) => t.type === "tool_call").map((t) => ({ name: t.tool, args: t.args })) },
+      toolPlan: { calls: streams.tool.filter((t) => t.type === "tool_call").map((t) => ({ name: t.tool, args: t.args })) },
       toolResults: []
     };
   }
@@ -302,7 +325,8 @@ export class AgenticHandler {
     return { ok: false, error: "unknown_tool_namespace", message: `工具名 ${callName} 必须以 intent./skill./tool. 开头` };
   }
 
-  buildFallback({ message, route, reason, traces }) {
+  buildFallback({ message, route, reason, streams }) {
+    const safeStreams = streams ?? { lifecycle: [], assistant: [], tool: [] };
     return {
       answer: `这个问题暂时无法直接给出答案（${reason}）。建议拆成更具体的查询再问一次。`,
       table: { rows: [], fields: [] },
@@ -311,7 +335,8 @@ export class AgenticHandler {
         agentic: true,
         fallback: true,
         reason,
-        traces
+        traces: mergeStreams(safeStreams),
+        streams: safeStreams
       },
       toolPlan: { calls: [] },
       toolResults: []
@@ -380,6 +405,21 @@ function normalizeProposal(raw) {
     why_needed: typeof raw.why_needed === "string" ? raw.why_needed.slice(0, 600) : null,
     sample_args: raw.sample_args ?? null
   };
+}
+
+// 合并 tool + assistant(只挑用户可见动作) 为按时间排序的 flat traces，
+// 字段与改造前一致，这样 orchestrator 步骤摘要 / router-poc 里
+// `traces.find(t => t.type === "propose_tool")` 这类断言无须改动。
+// lifecycle 事件不进 flat，留在 streams.lifecycle 单独看。
+function mergeStreams(streams) {
+  const all = [];
+  for (const t of streams.tool ?? []) all.push(t); // type:"tool_call"
+  for (const a of streams.assistant ?? []) {
+    if (a.type === "decision") continue; // decision 是过程态，flat 只暴露最终 action
+    all.push(a); // type:"answer" | "propose_tool"
+  }
+  all.sort((a, b) => (a.ts ?? 0) - (b.ts ?? 0));
+  return all;
 }
 
 function summarizeObservation(observation) {
