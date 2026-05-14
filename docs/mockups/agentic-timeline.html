@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Agentic Timeline · Mockup</title>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root {
+    --bg: #ffffff;
+    --panel: #fafafa;
+    --text: #111111;
+    --muted: #6b6b6b;
+    --faint: #9b9b9b;
+    --border: #e7e7e7;
+    --soft: #f4f4f5;
+    --hover: #efefef;
+    --intent: #2563eb;
+    --tool: #7c3aed;
+    --skill: #059669;
+    --propose: #b45309;
+    --ok: #16a34a;
+    --running: #2563eb;
+    --fail: #dc2626;
+    color-scheme: light;
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 28px 0 60px; background: #f0f0f1; color: var(--text); font-size: 14px; }
+  .page { max-width: 760px; margin: 0 auto; padding: 0 24px; }
+
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #fff; border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 16px; margin-bottom: 16px;
+  }
+  .topbar h1 { font-size: 15px; font-weight: 600; margin: 0; }
+  .debug-toggle {
+    display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+    color: var(--muted); font-size: 13px; user-select: none;
+  }
+  .debug-toggle input { width: 0; height: 0; opacity: 0; position: absolute; }
+  .switch {
+    width: 32px; height: 18px; border-radius: 999px; background: #d4d4d8;
+    position: relative; transition: background .15s ease;
+  }
+  .switch::after {
+    content: ""; position: absolute; left: 2px; top: 2px;
+    width: 14px; height: 14px; border-radius: 50%; background: #fff;
+    transition: transform .15s ease;
+  }
+  .debug-toggle input:checked + .switch { background: #111; }
+  .debug-toggle input:checked + .switch::after { transform: translateX(14px); }
+
+  .sub { color: var(--muted); margin: 0 0 18px; font-size: 13px; }
+
+  .case { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 18px 22px; margin-bottom: 18px; }
+  .case-title { font-weight: 600; font-size: 13px; color: var(--muted); margin: 0 0 4px; }
+  .user-msg { font-size: 14px; color: var(--text); margin: 0 0 14px; padding-left: 10px; border-left: 3px solid var(--border); }
+
+  /* ===== 业务模式（默认）—— 仿 GPT 段落叙述 ===== */
+  .biz {
+    /* 不要边框、不要竖线、不要色块 */
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.75;
+  }
+  .biz-head {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--faint); font-size: 13px; cursor: pointer; user-select: none;
+    margin-bottom: 8px;
+  }
+  .biz-head:hover { color: var(--muted); }
+  .biz-head .arrow { transition: transform .22s ease; display: inline-block; font-size: 11px; }
+  .biz.collapsed .biz-head .arrow { transform: rotate(-90deg); }
+  .biz-body {
+    overflow: hidden;
+    transition: max-height .28s ease, opacity .22s ease, margin-top .22s ease;
+    opacity: 1;
+  }
+  .biz.collapsed .biz-body {
+    max-height: 0 !important;
+    opacity: 0;
+    margin-top: 0;
+  }
+  .biz-running .biz-head { color: var(--running); }
+  .biz-failed .biz-head { color: #b91c1c; }
+  .biz-failed .biz-head:hover { color: #991b1b; }
+  .biz-failed .failmark {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 14px; height: 14px;
+  }
+  .biz-failed .failmark svg { width: 14px; height: 14px; stroke-width: 1.8; }
+  .biz-running .dotanim {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor; animation: blink 1.2s ease-in-out infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+
+  .biz-body { display: block; }
+  /* 顺序：summary 先（动作量化）→ narrative 后（这步看到的解读）
+     对内紧：summary 跟它下面那段 narrative 是同一件事，贴近
+     对间松：narrative 收尾后留更大间距，进入下一对 */
+  .biz-summary-line {
+    color: var(--faint); font-size: 13px; margin: 0 0 4px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .biz-narrative { margin: 0 0 14px; color: var(--text); }
+  .biz-narrative:last-child, .biz-summary-line:last-child { margin-bottom: 0; }
+  .biz-summary-line .glyph {
+    width: 14px; height: 14px; opacity: 0.7;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex: 0 0 auto;
+  }
+  .biz-summary-line .glyph svg { width: 14px; height: 14px; stroke-width: 1.6; }
+  .biz-summary-line + .biz-narrative { margin-top: 6px; }
+
+  /* fallback 行：仍然偏淡，但用红字提示 */
+  .biz-fallback {
+    color: #b91c1c; font-size: 13px; margin: 4px 0 0;
+  }
+
+  /* ===== Debug 模式 ===== */
+  .legend { display: flex; gap: 14px; margin: 0 0 12px; font-size: 12px; color: var(--muted); flex-wrap: wrap; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+  .run { border: 1px solid var(--border); border-radius: 10px; background: var(--panel); overflow: hidden; }
+  .run.failed { border-color: #fecaca; background: #fff7f7; }
+  .run-summary {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    cursor: pointer; user-select: none; background: transparent;
+  }
+  .run-summary:hover { background: var(--hover); }
+  .run-status {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border-radius: 50%; flex: 0 0 auto;
+  }
+  .run-status .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
+  .run.running .run-status .dot { background: var(--running); animation: pulse 1.4s ease-in-out infinite; }
+  .run.failed .run-status .dot { background: var(--fail); }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.6); opacity: 0.5; }
+  }
+  .run-title { font-weight: 550; flex: 1 1 auto; }
+  .run-meta { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .run-chevron { color: var(--faint); transition: transform .22s ease; }
+  .run.open .run-chevron { transform: rotate(90deg); }
+  .run-body {
+    overflow: hidden; max-height: 0;
+    border-top: 1px solid transparent;
+    transition: max-height .3s ease, border-color .3s ease, padding .3s ease, opacity .22s ease;
+    padding: 0 14px;
+    opacity: 0;
+  }
+  .run.open .run-body {
+    border-top-color: var(--border);
+    padding: 4px 14px 14px;
+    opacity: 1;
+  }
+
+  .err-banner {
+    margin: 10px 0 0; padding: 8px 12px; border-radius: 6px;
+    background: #fef2f2; color: #991b1b; font-size: 13px;
+    display: flex; gap: 8px; align-items: flex-start;
+  }
+  .err-banner strong { font-weight: 600; }
+
+  .steps { display: grid; gap: 2px; padding: 8px 0 0; }
+  .step {
+    display: grid; grid-template-columns: 18px 1fr auto;
+    column-gap: 10px; padding: 6px 4px; border-radius: 6px;
+    align-items: start;
+  }
+  .step:hover { background: var(--soft); }
+  .step-status { width: 14px; height: 14px; margin-top: 4px; display: inline-flex; align-items: center; justify-content: center; }
+  .step-status .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
+  .step.running .step-status { position: relative; }
+  .step.running .step-status .dot { display: none; }
+  .step.running .step-status::after {
+    content: ""; position: absolute; width: 14px; height: 14px;
+    border: 1.5px solid var(--running); border-right-color: transparent;
+    border-radius: 50%; animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .step.failed .step-status .dot { background: var(--fail); }
+  .step.propose .step-status .dot { background: var(--propose); }
+
+  .step-main { min-width: 0; }
+  .step-head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .tool-kind { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; font-weight: 600; }
+  .kind-intent .tool-kind { color: var(--intent); }
+  .kind-tool .tool-kind { color: var(--tool); }
+  .kind-skill .tool-kind { color: var(--skill); }
+  .kind-propose .tool-kind { color: var(--propose); }
+  .kind-thinking .tool-kind { color: var(--muted); font-style: italic; font-weight: 500; }
+  .step-hint { color: var(--muted); font-size: 12.5px; }
+  .step-detail {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px; color: var(--muted); margin-top: 2px;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 720px;
+  }
+  .step-output {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12px; color: #404040; margin-top: 2px;
+  }
+  .step-output b { color: var(--ok); font-weight: 600; }
+  .step.failed .step-output b { color: var(--fail); }
+  .step-time { color: var(--faint); font-size: 11.5px; font-variant-numeric: tabular-nums; padding-top: 4px; }
+
+  .propose-box {
+    margin-top: 4px; padding: 6px 10px; border-radius: 6px;
+    background: #fffbeb; border: 1px solid #fde68a; font-size: 12.5px;
+  }
+  .propose-box .pl { color: var(--propose); font-weight: 600; margin-right: 4px; }
+
+  .answer {
+    margin-top: 14px; padding: 14px 16px; background: #fff;
+    border: 1px solid var(--border); border-radius: 10px; line-height: 1.6;
+  }
+  .answer h3 { margin: 0 0 8px; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .answer p { margin: 0 0 8px; }
+  .answer p:last-child { margin: 0; }
+
+  body:not(.debug-on) .debug-only { display: none; }
+  body.debug-on .biz-only { display: none; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="topbar">
+    <h1>LangClaw Agent · 处理过程展示</h1>
+    <label class="debug-toggle">
+      <input type="checkbox" id="dbg" />
+      <span class="switch"></span>
+      <span>Debug</span>
+    </label>
+  </div>
+
+  <p class="sub biz-only">业务视角：段落式叙述"我在做什么 / 看到了什么"，配一行轻量摘要。打开右上角 Debug 看技术细节。</p>
+  <p class="sub debug-only">Debug 视角：完整 agentic 三流（lifecycle / tool / assistant），含工具名、参数、观测值、耗时、失败重试。</p>
+
+  <div class="legend debug-only">
+    <span><i style="background:var(--intent)"></i>intent.* 业务查询</span>
+    <span><i style="background:var(--tool)"></i>tool.* 原子能力</span>
+    <span><i style="background:var(--skill)"></i>skill.* 写作注入</span>
+    <span><i style="background:var(--propose)"></i>propose_tool 提议</span>
+    <span><i style="background:var(--running)"></i>running</span>
+    <span><i style="background:var(--ok)"></i>ok</span>
+    <span><i style="background:var(--fail)"></i>failed</span>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- CASE 1: 跑步中                                                -->
+  <!-- ============================================================ -->
+  <section class="case">
+    <p class="case-title">CASE ① — 正在执行</p>
+    <p class="user-msg">汉EV 卖得还行但毛利好像不太行，看下原因</p>
+
+    <!-- 业务视角：段落叙述 -->
+    <div class="biz biz-only biz-running">
+      <div class="biz-head" data-biz-toggle>
+        <span class="dotanim"></span>
+        <span>处理中… 6.2s</span>
+      </div>
+      <div class="biz-body">
+        <p class="biz-summary-line">
+          <span class="glyph"><i data-lucide="database"></i></span>
+          查了 23 条成交订单
+        </p>
+        <p class="biz-narrative">汉EV 本月共 23 单，分布以 H 级线索成交为主，折扣单占比明显偏高。</p>
+        <p class="biz-summary-line">
+          <span class="glyph"><i data-lucide="bar-chart-3"></i></span>
+          按车系算了 5 个分组毛利率
+        </p>
+        <p class="biz-narrative">横向对比 5 个车系，确实只有汉EV 这一系明显低于均值。</p>
+        <p class="biz-summary-line">
+          <span class="glyph"><i data-lucide="calculator"></i></span>
+          运行了 1 次精确计算
+        </p>
+        <p class="biz-narrative">汉EV 跟同店均值差 -3.7 个百分点，差距主要不在售价，落在折让和整备费上。</p>
+        <p class="biz-summary-line">
+          <span class="glyph"><i data-lucide="file-text"></i></span>
+          正在套用 1 个写作模板
+        </p>
+        <p class="biz-narrative">套了「毛利率归因分析」模板，把订单结构、折让占比、整备成本拆开看哪个是主因…</p>
+      </div>
+    </div>
+
+    <!-- Debug 视角 -->
+    <div class="run open running debug-only">
+      <div class="run-summary" data-toggle>
+        <span class="run-status"><span class="dot"></span></span>
+        <span class="run-title">规划中…</span>
+        <span class="run-meta">step 4 / 7 · 6.2s</span>
+        <span class="run-chevron">›</span>
+      </div>
+      <div class="run-body">
+        <div class="steps">
+          <div class="step kind-intent"><span class="step-status"><span class="dot"></span></span>
+            <div class="step-main">
+              <div class="step-head"><span class="tool-kind">intent.dealer.query.sales_orders</span><span class="step-hint">拉汉EV 本月成交订单</span></div>
+              <div class="step-detail">args: {"series":"汉EV","month":"current"}</div>
+              <div class="step-output">→ <b>23 rows</b> · ok</div>
+            </div><span class="step-time">1.4s</span>
+          </div>
+          <div class="step kind-intent"><span class="step-status"><span class="dot"></span></span>
+            <div class="step-main">
+              <div class="step-head"><span class="tool-kind">intent.dealer.aggregate.sales_orders</span><span class="step-hint">按车系算毛利率</span></div>
+              <div class="step-detail">args: {"metric":"gross_margin","group_by":"series"}</div>
+              <div class="step-output">→ <b>5 rows</b> · ok</div>
+            </div><span class="step-time">1.1s</span>
+          </div>
+          <div class="step kind-tool"><span class="step-status"><span class="dot"></span></span>
+            <div class="step-main">
+              <div class="step-head"><span class="tool-kind">tool.safe_compute</span><span class="step-hint">汉EV vs 同店均值差额</span></div>
+              <div class="step-detail">args: {"expr":"hanev.gm - avg_gm","scope":"hanev"}</div>
+              <div class="step-output">→ <b>value: -3.7%</b> · ok</div>
+            </div><span class="step-time">0.6s</span>
+          </div>
+          <div class="step kind-skill running"><span class="step-status"><span class="dot"></span></span>
+            <div class="step-main">
+              <div class="step-head"><span class="tool-kind">skill.gross-margin-attribution</span><span class="step-hint">注入归因分析模板…</span></div>
+              <div class="step-detail">args: {"series":"汉EV","gap":-3.7}</div>
+            </div><span class="step-time">2.1s</span>
+          </div>
+          <div class="step kind-thinking"><span class="step-status"><span class="dot"></span></span>
+            <div class="step-main"><div class="step-head"><span class="tool-kind">Thinking…</span></div></div>
+            <span class="step-time"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- CASE 2: 完成                                                  -->
+  <!-- ============================================================ -->
+  <section class="case">
+    <p class="case-title">CASE ② — 完成（默认折叠）</p>
+    <p class="user-msg">本月华东旗舰店海豹的库存压力怎么样</p>
+
+    <!-- 业务视角 -->
+    <div class="biz biz-only collapsed">
+      <div class="biz-head" data-biz-toggle>
+        <span>已处理 4.2s</span>
+        <span class="arrow">⌄</span>
+      </div>
+      <div class="biz-body">
+        <p class="biz-summary-line">
+          <span class="glyph"><i data-lucide="database"></i></span>
+          查了 18 台库存车
+        </p>
+        <p class="biz-narrative">华东旗舰店海豹在库 18 台，重点看库龄和预警等级——偏高的库龄占比明显抬头。</p>
+        <p class="biz-summary-line">
+          <span class="glyph"><i data-lucide="calculator"></i></span>
+          运行了 1 次精确计算
+        </p>
+        <p class="biz-narrative">加权库龄 47 天，库龄超 60 天的占 22%——属于"压力偏紧但还没到爆"的区间。</p>
+        <p class="biz-summary-line">
+          <span class="glyph"><i data-lucide="file-text"></i></span>
+          套用了 1 个写作模板
+        </p>
+        <p class="biz-narrative">套了「库存压力简报」模板，把数字组织成你能直接转发用的话术。</p>
+      </div>
+    </div>
+
+    <!-- Debug 视角 -->
+    <div class="run debug-only">
+      <div class="run-summary" data-toggle>
+        <span class="run-status"><span class="dot"></span></span>
+        <span class="run-title">已完成</span>
+        <span class="run-meta">3 步 · 1 skill 注入 · 4.2s</span>
+        <span class="run-chevron">›</span>
+      </div>
+      <div class="run-body">
+        <div class="steps">
+          <div class="step kind-intent"><span class="step-status"><span class="dot"></span></span>
+            <div class="step-main">
+              <div class="step-head"><span class="tool-kind">intent.dealer.query.inventory</span><span class="step-hint">拉海豹库存</span></div>
+              <div class="step-detail">args: {"store":"华东旗舰店","vehicle_model":"海豹"}</div>
+              <div class="step-output">→ <b>18 rows</b> · ok</div>
+            </div><span class="step-time">1.3s</span>
+          </div>
+          <div class="step kind-tool"><span class="step-status"><span class="dot"></span></span>
+            <div class="step-main">
+              <div class="step-head"><span class="tool-kind">tool.safe_compute</span><span class="step-hint">加权库龄 + 占比</span></div>
+              <div class="step-detail">args: {"expr":"weighted_age(rows)","scope":"inventory"}</div>
+              <div class="step-output">→ <b>value: {avg_age: 47, gt60_ratio: 0.22}</b> · ok</div>
+            </div><span class="step-time">0.4s</span>
+          </div>
+          <div class="step kind-skill"><span class="step-status"><span class="dot"></span></span>
+            <div class="step-main">
+              <div class="step-head"><span class="tool-kind">skill.summarize-alert</span><span class="step-hint">写库存压力简报</span></div>
+              <div class="step-detail">args: {"focus":"inventory","store":"华东旗舰店"}</div>
+              <div class="step-output">→ <b>injected 4823 chars</b> · ok</div>
+            </div><span class="step-time">2.1s</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="answer">
+      <h3>回答</h3>
+      <p>华东旗舰店海豹本月库存 18 台，加权库龄 <b>47 天</b>，库龄 60+ 占比 <b>22%</b>，整体偏紧张。</p>
+      <p>建议：紧急预警的 4 台优先调拨、关注级 7 台跟现有 H 级线索做精准匹配。</p>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <!-- CASE 3: 失败                                                  -->
+  <!-- ============================================================ -->
+  <section class="case">
+    <p class="case-title">CASE ③ — 失败兜底</p>
+    <p class="user-msg">这个月毛利率掉得有点厉害，按车系帮我分析下原因</p>
+
+    <!-- 业务视角 -->
+    <div class="biz biz-only biz-failed">
+      <div class="biz-head" data-biz-toggle>
+        <span class="failmark"><i data-lucide="alert-circle"></i></span>
+        <span>未能完成 · 38.4s</span>
+        <span class="arrow">⌄</span>
+      </div>
+      <div class="biz-body">
+        <p class="biz-summary-line">
+          <span class="glyph"><i data-lucide="bar-chart-3"></i></span>
+          按车系算了 5 个分组毛利率
+        </p>
+        <p class="biz-narrative">本月各车系毛利率拉了一遍，确认了哪些车系拉低了大盘。</p>
+        <p class="biz-narrative">接下来想做的是「环比对比」——把本月各车系跟上月放在一起看降幅，但目前还不具备这个能力，已经把这个需求记下来留给后续迭代。</p>
+        <p class="biz-fallback">这一步没能继续推进下去，所以这次只能给到现状数据，没法直接告诉你"为什么掉"。建议把问题问得更具体一点，比如「本月各车系毛利率分别多少」「汉EV 毛利率比上月低多少」。</p>
+      </div>
+    </div>
+
+    <!-- Debug 视角 -->
+    <div class="run open failed debug-only">
+      <div class="run-summary" data-toggle>
+        <span class="run-status"><span class="dot"></span></span>
+        <span class="run-title">执行失败 · 已兜底</span>
+        <span class="run-meta">2 步 · 1 propose · 38.4s</span>
+        <span class="run-chevron">›</span>
+      </div>
+      <div class="run-body">
+        <div class="err-banner"><strong>fallback:</strong><span>agentic LLM 返回空 content（attempts=4）。已用兜底答案回复用户。</span></div>
+        <div class="steps">
+          <div class="step kind-intent"><span class="step-status"><span class="dot"></span></span>
+            <div class="step-main">
+              <div class="step-head"><span class="tool-kind">intent.dealer.aggregate.sales_orders</span><span class="step-hint">按车系算毛利率</span></div>
+              <div class="step-detail">args: {"metric":"gross_margin","group_by":"series","month":"current"}</div>
+              <div class="step-output">→ <b>5 rows</b> · ok</div>
+            </div><span class="step-time">1.2s</span>
+          </div>
+          <div class="step kind-propose propose"><span class="step-status"><span class="dot"></span></span>
+            <div class="step-main">
+              <div class="step-head"><span class="tool-kind">△ propose_tool</span><span class="step-hint">LLM 提议未实现的工具</span></div>
+              <div class="propose-box">
+                <span class="pl">name:</span>tool.compare_period<br>
+                <span class="pl">what:</span>对比两个时段的同维度聚合差异<br>
+                <span class="pl">why:</span>用户要"掉得厉害"——需要环比；现有 intent 不直接给环比
+              </div>
+              <div class="step-output" style="color:var(--muted)">→ 仅记录，未执行（v3 thin）</div>
+            </div><span class="step-time">3.0s</span>
+          </div>
+          <div class="step kind-intent failed"><span class="step-status"><span class="dot"></span></span>
+            <div class="step-main">
+              <div class="step-head"><span class="tool-kind">decide step 3</span><span class="step-hint">LLM 返回空 content</span></div>
+              <div class="step-output">retry 1 · retry 2 · retry 3 · retry 4 → <b>step_failed</b></div>
+            </div><span class="step-time">34.2s</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script>
+  // 平滑展开收起：在切换前读取目标元素的 scrollHeight，先把 max-height 显式设上，
+  // 再切 class 让 CSS 过渡接管；过渡结束再清掉 inline max-height，避免限制后续内容增长。
+  function smoothToggle(panel, body, collapsedClass) {
+    if (!body) return;
+    const isCollapsed = panel.classList.contains(collapsedClass);
+    if (isCollapsed) {
+      // 即将展开：先 set 0 → 切 class → set scrollHeight → 过渡完清空
+      body.style.maxHeight = "0px";
+      panel.classList.remove(collapsedClass);
+      const target = body.scrollHeight;
+      requestAnimationFrame(() => { body.style.maxHeight = target + "px"; });
+      const onEnd = (e) => {
+        if (e.propertyName !== "max-height") return;
+        body.style.maxHeight = "";
+        body.removeEventListener("transitionend", onEnd);
+      };
+      body.addEventListener("transitionend", onEnd);
+    } else {
+      // 即将收起：先把当前实际高度写死，下一帧切 class 让 CSS 收到 0
+      body.style.maxHeight = body.scrollHeight + "px";
+      requestAnimationFrame(() => {
+        panel.classList.add(collapsedClass);
+        body.style.maxHeight = "";
+      });
+    }
+  }
+
+  // Debug 视角：.run / .run.open + .run-body
+  document.querySelectorAll("[data-toggle]").forEach((el) => {
+    el.addEventListener("click", () => {
+      const panel = el.parentElement;
+      const body = panel.querySelector(".run-body");
+      // 这里是反向：默认无 .open 视为"已收起"，加 .open 视为"已展开"
+      const isOpen = panel.classList.contains("open");
+      if (isOpen) {
+        body.style.maxHeight = body.scrollHeight + "px";
+        requestAnimationFrame(() => {
+          panel.classList.remove("open");
+          body.style.maxHeight = "";
+        });
+      } else {
+        body.style.maxHeight = "0px";
+        panel.classList.add("open");
+        const target = body.scrollHeight;
+        requestAnimationFrame(() => { body.style.maxHeight = target + "px"; });
+        const onEnd = (e) => {
+          if (e.propertyName !== "max-height") return;
+          body.style.maxHeight = "";
+          body.removeEventListener("transitionend", onEnd);
+        };
+        body.addEventListener("transitionend", onEnd);
+      }
+    });
+  });
+
+  // 业务视角：.biz / .biz.collapsed + .biz-body
+  document.querySelectorAll("[data-biz-toggle]").forEach((el) => {
+    el.addEventListener("click", () => {
+      const panel = el.closest(".biz");
+      const body = panel.querySelector(".biz-body");
+      smoothToggle(panel, body, "collapsed");
+    });
+  });
+  const dbg = document.getElementById("dbg");
+  dbg.addEventListener("change", () => {
+    document.body.classList.toggle("debug-on", dbg.checked);
+  });
+  // Lucide：把 <i data-lucide="xxx"> 替换成实际 SVG
+  if (window.lucide) lucide.createIcons();
+</script>
+</body>
+</html>
