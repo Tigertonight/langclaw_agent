@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>体感对比 · 现状 vs 新方案</title>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root {
+    --bg: #ffffff;
+    --text: #111111;
+    --muted: #6b6b6b;
+    --faint: #9b9b9b;
+    --border: #e7e7e7;
+    --soft: #f4f4f5;
+    --running: #2563eb;
+    --ok: #16a34a;
+    --fail: #dc2626;
+    color-scheme: light;
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 28px 0 60px; background: #f0f0f1; color: var(--text); font-size: 14px; }
+  .page { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #fff; border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 18px; margin-bottom: 12px;
+  }
+  .topbar h1 { font-size: 15px; font-weight: 600; margin: 0; }
+  .toolbar { display: flex; gap: 10px; align-items: center; }
+  .btn {
+    border: 1px solid var(--border); background: #fff; padding: 6px 14px;
+    border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer; color: var(--text);
+  }
+  .btn:hover { background: var(--soft); }
+  .btn.primary { background: #111; color: #fff; border-color: #111; }
+  .btn.primary:hover { background: #2a2a2a; }
+
+  .sub { color: var(--muted); margin: 0 0 16px; font-size: 13px; line-height: 1.6; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .col {
+    background: #fff; border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 18px 18px; min-height: 540px;
+  }
+  .col-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin: 0 0 4px;
+  }
+  .col-head h3 { margin: 0; font-size: 14px; font-weight: 600; }
+  .col-head .tag {
+    font-size: 11px; padding: 2px 8px; border-radius: 999px;
+    background: var(--soft); color: var(--muted); font-weight: 500;
+  }
+  .col-head .tag.bad { background: #fef2f2; color: #b91c1c; }
+  .col-head .tag.good { background: #ecfdf5; color: #166534; }
+  .col-sub { color: var(--muted); font-size: 12.5px; margin: 0 0 14px; line-height: 1.55; }
+  .pain { color: #b45309; }
+
+  .user-msg {
+    font-size: 13px; color: var(--text); margin: 0 0 14px;
+    padding: 8px 10px; background: var(--soft); border-radius: 6px;
+  }
+
+  /* ============ 现状（左）：仿当前 chat-page.js 的 run-panel ============ */
+  /* 一个折叠面板 + 最近 3 条 step.text 拼起来 + "运行了 N 条命令" */
+  .run-panel {
+    border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
+    background: #fafafa;
+  }
+  .run-summary {
+    display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;
+  }
+  .run-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--ok); flex: 0 0 auto;
+  }
+  .run-panel.running .run-dot { background: var(--running); animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.6);opacity:.5} }
+  .run-title { font-weight: 550; flex: 1; font-size: 13px; }
+  .run-duration { color: var(--muted); font-size: 12px; }
+  .run-body { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .run-thought {
+    color: var(--muted); font-size: 13px; line-height: 1.6;
+    white-space: pre-wrap; min-height: 40px;
+  }
+  .run-tool-line {
+    color: var(--faint); font-size: 12px; margin-top: 8px;
+    display: flex; gap: 6px; align-items: center;
+  }
+  .run-tool-line .icon { font-family: ui-monospace, Menlo, monospace; }
+
+  /* ============ 新方案（右）：业务视角 C 模式 ============ */
+  .biz {
+    color: var(--muted); font-size: 13.5px; line-height: 1.65;
+  }
+  .biz-head {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--faint); font-size: 12.5px; user-select: none; margin-bottom: 6px;
+  }
+  .biz-running .biz-head { color: var(--running); }
+  .biz-running .dotanim {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor; animation: blink 1.2s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:.3} 50%{opacity:1} }
+  /* 方案1：先 summary 后 narrative。对内紧（4px）、对间松（14px）*/
+  .biz-summary-line {
+    color: var(--faint); font-size: 12.5px; margin: 0 0 4px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .biz-narrative { margin: 0 0 14px; color: var(--text); }
+  .biz-narrative:last-child { margin-bottom: 0; }
+  .biz-summary-line:last-child { margin-bottom: 0; }
+  .biz-summary-line .glyph {
+    width: 13px; height: 13px; opacity: 0.7; flex: 0 0 auto;
+  }
+  .biz-summary-line .glyph svg { width: 13px; height: 13px; stroke-width: 1.6; }
+  .fadein { animation: fadein .28s ease both; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* 通用 answer */
+  .answer {
+    margin-top: 14px; padding: 12px 14px; background: #fafafa;
+    border: 1px solid var(--border); border-radius: 8px; line-height: 1.6;
+    font-size: 13.5px;
+  }
+  .answer h3 { margin: 0 0 6px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .answer p { margin: 0; }
+
+  /* 用户体感清单 */
+  .takeaway {
+    margin-top: 18px; background: #fff; border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 20px;
+  }
+  .takeaway h2 { font-size: 14px; font-weight: 600; margin: 0 0 12px; }
+  .takeaway table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .takeaway th, .takeaway td {
+    padding: 9px 10px; text-align: left; vertical-align: top;
+    border-bottom: 1px solid var(--border);
+  }
+  .takeaway th { font-weight: 600; color: var(--muted); font-size: 12.5px; background: var(--soft); }
+  .takeaway td.label { width: 26%; color: var(--muted); font-weight: 500; }
+  .takeaway td.bad { color: #b45309; }
+  .takeaway td.good { color: #166534; }
+  .takeaway tr:last-child td { border-bottom: 0; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="topbar">
+    <h1>用户体感对比 · 现状 vs 新方案</h1>
+    <div class="toolbar">
+      <button class="btn primary" id="run">▶ 同时开始</button>
+      <button class="btn" id="reset">↻ 重置</button>
+    </div>
+  </div>
+  <p class="sub">同一个问题、同一段处理过程，左边是<b>现状</b>（你当前 chat-page.js 跑出来的样子），右边是<b>新方案</b>（C 模式业务视角）。点"同时开始"对比体感。</p>
+
+  <div class="grid">
+
+    <!-- ============ 左：现状 ============ -->
+    <div class="col">
+      <div class="col-head">
+        <h3>现状（chat-page.js · run-panel）</h3>
+        <span class="tag bad">用户看到的</span>
+      </div>
+      <p class="col-sub">折叠面板 + 顶部圆点 + "Thinking…" 占位 + 完成后显示"运行了 N 条命令"。<br><span class="pain">痛点：N 条命令是什么？为什么要做？做出什么结果了？看不到。</span></p>
+
+      <p class="user-msg">汉EV 卖得还行但毛利好像不太行，看下原因</p>
+
+      <div class="run-panel running" id="runOld">
+        <div class="run-summary">
+          <span class="run-dot"></span>
+          <span class="run-title" id="oldTitle">Running…</span>
+          <span class="run-duration" id="oldDur"></span>
+        </div>
+        <div class="run-body">
+          <div class="run-thought" id="oldThought">Thinking…</div>
+          <div class="run-tool-line" id="oldTool" style="display:none">
+            <span class="icon">›</span>
+            <span id="oldToolText">运行了 0 条命令</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="answer" id="oldAns" style="display:none">
+        <h3>回答</h3>
+        <p id="oldAnsText"></p>
+      </div>
+    </div>
+
+    <!-- ============ 右：新方案 ============ -->
+    <div class="col">
+      <div class="col-head">
+        <h3>新方案（C 模式 · 业务视角）</h3>
+        <span class="tag good">用户看到的</span>
+      </div>
+      <p class="col-sub">顶部时间一直在跳"在动" + 段落叙述"我做了什么" + 灰字摘要"动作量化"。失败/兜底也写人话。</p>
+
+      <p class="user-msg">汉EV 卖得还行但毛利好像不太行，看下原因</p>
+
+      <div class="biz biz-running" id="bizNew">
+        <div class="biz-head">
+          <span class="dotanim"></span>
+          <span id="newTime">处理中… 0.0s</span>
+        </div>
+        <div class="biz-body" id="newBody"></div>
+      </div>
+
+      <div class="answer" id="newAns" style="display:none">
+        <h3>回答</h3>
+        <p id="newAnsText"></p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 体感对比表 -->
+  <div class="takeaway">
+    <h2>用户视角的差别（看完动效再看这表更直观）</h2>
+    <table>
+      <thead>
+        <tr><th>场景 / 用户问号</th><th>现状给到的</th><th>新方案给到的</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="label">"它现在在干啥？"<br><span style="color:var(--faint);font-size:11.5px">跑步中</span></td>
+          <td class="bad">Thinking… + 转圈。<br>不知道是真在思考、卡了、还是已经在拉数据</td>
+          <td class="good">"先把汉EV这个月的成交订单拉出来看了一遍"<br>每完成一步出一段，知道走到哪了</td>
+        </tr>
+        <tr>
+          <td class="label">"它都干了哪些事？"<br><span style="color:var(--faint);font-size:11.5px">跑完后</span></td>
+          <td class="bad">"运行了 4 条命令"<br>4 条命令是查库存还是查订单？谁也不知道</td>
+          <td class="good">"查了 23 条成交订单 / 算了 5 个分组毛利率 / 运行了 1 次精确计算 / 套用了 1 个写作模板"<br>每件事都能对得上</td>
+        </tr>
+        <tr>
+          <td class="label">"它为什么要这么做？"<br><span style="color:var(--faint);font-size:11.5px">用户怀疑结论时</span></td>
+          <td class="bad">没有解释。结论好像凭空出来的</td>
+          <td class="good">叙述里自带因果链："为了不靠感觉，让沙箱精确算了…"。结论可信度高</td>
+        </tr>
+        <tr>
+          <td class="label">"卡了还是在跑？"<br><span style="color:var(--faint);font-size:11.5px">10 秒空窗</span></td>
+          <td class="bad">圆点闪、Thinking…，但"我感觉它好像死了"</td>
+          <td class="good">顶部时间 100ms 跳一次：5.7 → 5.8 → 5.9…。一眼知道还活着</td>
+        </tr>
+        <tr>
+          <td class="label">"出问题了吗？"<br><span style="color:var(--faint);font-size:11.5px">失败兜底</span></td>
+          <td class="bad">现状基本"装作没事"——直接给一段兜底文案，看不出哪步失败</td>
+          <td class="good">顶部红字"未能完成 · 38.4s"，下面写明白"想做环比对比但目前还不支持"</td>
+        </tr>
+        <tr>
+          <td class="label">"我是研发，要排查"<br><span style="color:var(--faint);font-size:11.5px">Debug 场景</span></td>
+          <td class="bad">点开 details 看到一堆 phase=execute_tool / observe_result，没有 args 没有结果</td>
+          <td class="good">右上角 Debug 切换：完整时间轴含工具名/参数/返回行数/重试次数</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+  // ======== 同一组事件，喂给两边（方案1：每步先 summary 后 narrative）========
+  const events = [
+    { ts: 1400, kind: "step", icon: "database",
+      summary: "查了 23 条成交订单",
+      narrative: "汉EV 本月共 23 单，分布以 H 级线索成交为主，折扣单占比明显偏高。",
+      oldSteps: [
+        { phase: "classify_intent", text: "我在判断这是什么类型的问题，以及是否需要调用工具。" },
+        { phase: "execute_tool",    text: "我已经调用了和这个问题相关的能力，正在整理结果。" }
+      ] },
+    { ts: 2500, kind: "step", icon: "bar-chart-3",
+      summary: "按车系算了 5 个分组毛利率",
+      narrative: "横向对比 5 个车系，确实只有汉EV 这一系明显低于均值。",
+      oldSteps: [
+        { phase: "plan_action",  text: "我在根据当前线索规划下一步，必要时才会调用资料或工具。" },
+        { phase: "execute_tool", text: "我已经调用了和这个问题相关的能力，正在整理结果。" }
+      ] },
+    { ts: 3100, kind: "step", icon: "calculator",
+      summary: "运行了 1 次精确计算",
+      narrative: "算下来汉EV 跟同店均值差 -3.7 个百分点，差距主要不在售价，落在折让和整备费上。",
+      oldSteps: [
+        { phase: "execute_tool", text: "我已经调用了和这个问题相关的能力，正在整理结果。" }
+      ] },
+    { ts: 5200, kind: "step", icon: "file-text",
+      summary: "套用了 1 个写作模板",
+      narrative: "套了「毛利率归因分析」模板，把订单结构、折让占比、整备成本拆开。",
+      oldSteps: [
+        { phase: "observe_result", text: "我在判断已获得的信息是否足够直接回答。" },
+        { phase: "execute_tool",   text: "我已经调用了和这个问题相关的能力，正在整理结果。" }
+      ] },
+    { ts: 6200, kind: "answer",
+      text: "汉EV 本月毛利率 12.3%，比同店均值低 3.7 个百分点。主因不是售价（基本持平），而是折让占比偏高（占成交 6.2%，同店平均 4.1%）+ 整备费分摊偏高。建议：缩窄汉EV 折让上限、整备项目按车系做成本归集。" }
+  ];
+  const TOTAL = 6200;
+
+  // ======== 状态 ========
+  let timers = [];
+  function reset() {
+    timers.forEach(clearTimeout); timers.forEach(clearInterval); timers = [];
+    document.getElementById("oldThought").textContent = "Thinking…";
+    document.getElementById("oldTool").style.display = "none";
+    document.getElementById("oldToolText").textContent = "运行了 0 条命令";
+    document.getElementById("oldTitle").textContent = "Running…";
+    document.getElementById("oldDur").textContent = "";
+    document.getElementById("runOld").classList.add("running");
+    document.getElementById("oldAns").style.display = "none";
+    document.getElementById("oldAnsText").textContent = "";
+
+    document.getElementById("newBody").innerHTML = "";
+    document.getElementById("newTime").textContent = "处理中… 0.0s";
+    document.getElementById("bizNew").classList.add("biz-running");
+    document.getElementById("newAns").style.display = "none";
+    document.getElementById("newAnsText").textContent = "";
+  }
+
+  function makeNarrative(text) {
+    const p = document.createElement("p");
+    p.className = "biz-narrative fadein";
+    p.textContent = text;
+    return p;
+  }
+  function makeSummary(icon, text) {
+    const p = document.createElement("p");
+    p.className = "biz-summary-line fadein";
+    p.innerHTML = `<span class="glyph"><i data-lucide="${icon}"></i></span><span></span>`;
+    p.querySelector("span:last-child").textContent = text;
+    return p;
+  }
+
+  function run() {
+    reset();
+    const start = Date.now();
+
+    // 现状：顶部时间不跳；只在 step.phase 来时刷"最近 3 条 step.text"；底部"运行了 N 条命令"
+    let oldSteps = [];
+    let oldToolCount = 0;
+
+    // 新方案：顶部时间 100ms 跳；narrative/summary 整段 fade-in；answer 出
+    const newTimeEl = document.getElementById("newTime");
+    const tickTimer = setInterval(() => {
+      const dt = (Date.now() - start) / 1000;
+      newTimeEl.textContent = `处理中… ${dt.toFixed(1)}s`;
+    }, 100);
+    timers.push(tickTimer);
+
+    events.forEach((ev) => {
+      const t = setTimeout(() => {
+        // ---- 左：现状（按 step 推就刷 thought + tool count） ----
+        if (ev.oldSteps) {
+          ev.oldSteps.forEach((s) => {
+            oldSteps.push(s);
+            if (s.phase === "execute_tool") {
+              oldToolCount++;
+            }
+          });
+          const last3 = oldSteps.slice(-3).map((s) => s.text).join("\n\n");
+          document.getElementById("oldThought").textContent = last3;
+          if (oldToolCount > 0) {
+            const tool = document.getElementById("oldTool");
+            tool.style.display = "flex";
+            document.getElementById("oldToolText").textContent = `运行了 ${oldToolCount} 条命令`;
+          }
+        }
+
+        // ---- 右：新方案（方案1：先 summary 再 narrative）----
+        const body = document.getElementById("newBody");
+        if (ev.kind === "step") {
+          body.appendChild(makeSummary(ev.icon, ev.summary));
+          body.appendChild(makeNarrative(ev.narrative));
+          if (window.lucide) lucide.createIcons();
+        } else if (ev.kind === "answer") {
+          // 收尾两边
+          clearInterval(tickTimer);
+          const dt = (ev.ts / 1000).toFixed(1);
+
+          document.getElementById("runOld").classList.remove("running");
+          document.getElementById("oldTitle").textContent = "Done";
+          document.getElementById("oldDur").textContent = dt + "s";
+          document.getElementById("oldAns").style.display = "block";
+          document.getElementById("oldAnsText").textContent = ev.text;
+
+          newTimeEl.textContent = `已处理 ${dt}s`;
+          document.getElementById("bizNew").classList.remove("biz-running");
+          document.getElementById("newAns").style.display = "block";
+          document.getElementById("newAnsText").textContent = ev.text;
+        }
+      }, ev.ts);
+      timers.push(t);
+    });
+  }
+
+  document.getElementById("run").addEventListener("click", run);
+  document.getElementById("reset").addEventListener("click", reset);
+  if (window.lucide) lucide.createIcons();
+</script>
+</body>
+</html>
