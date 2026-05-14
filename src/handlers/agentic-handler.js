@@ -33,7 +33,7 @@ export class AgenticHandler {
     this.toolRegistry = toolRegistry;
   }
 
-  async execute({ user, message, route, session } = {}) {
+  async execute({ user, message, route, session, onEmit } = {}) {
     const startedAt = Date.now();
     const tools = this.getAvailableTools({ user });
     // 三流 traces（参考 openclaw agent loop）：
@@ -42,9 +42,23 @@ export class AgenticHandler {
     //   - tool     ：工具调用 + 观察摘要
     // 同时输出一份合并后的 flat traces 供旧消费者使用（orchestrator 步骤摘要、router-poc 断言）。
     const streams = { lifecycle: [], assistant: [], tool: [] };
-    const pushLifecycle = (event, extra) => streams.lifecycle.push({ ts: Date.now() - startedAt, event, ...extra });
-    const pushAssistant = (entry) => streams.assistant.push({ ts: Date.now() - startedAt, ...entry });
-    const pushTool = (entry) => streams.tool.push({ ts: Date.now() - startedAt, ...entry });
+    // onEmit 是流式回调：runStream 路径下每个事件实时推到 SSE。非流式（router-poc / run）传空就跳过。
+    const safeEmit = typeof onEmit === "function" ? async (ev) => { try { await onEmit(ev); } catch {} } : null;
+    const pushLifecycle = (event, extra) => {
+      const entry = { ts: Date.now() - startedAt, event, ...extra };
+      streams.lifecycle.push(entry);
+      if (safeEmit) safeEmit({ kind: "agentic_lifecycle", ...entry });
+    };
+    const pushAssistant = (entry) => {
+      const full = { ts: Date.now() - startedAt, ...entry };
+      streams.assistant.push(full);
+      if (safeEmit) safeEmit({ kind: "agentic_assistant", ...full });
+    };
+    const pushTool = (entry) => {
+      const full = { ts: Date.now() - startedAt, ...entry };
+      streams.tool.push(full);
+      if (safeEmit) safeEmit({ kind: "agentic_tool", ...full });
+    };
 
     pushLifecycle("start", { message_preview: typeof message === "string" ? message.slice(0, 80) : null, tools_count: tools.length });
 
