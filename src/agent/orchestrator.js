@@ -203,6 +203,34 @@ export class SimpleWorkflowOrchestrator {
     await pushStep(createAgentStep("classify_intent", "理解你的问题", "正在判断问题类型和需要的上下文。", { status: "running" }));
     let route = null;
 
+    // v2 Intent Router 入口（默认关闭，env INTENT_ROUTER_V2=on 启用）
+    // 与非流式 run() 中的分支保持镜像；workflow 续轮仍 fall through 到下方原路径。
+    if (process.env.INTENT_ROUTER_V2 === "on" && this.intentRouter && !this.workflowRunner.canResume(session)) {
+      const nowDate = new Date();
+      const recentMessages = pruneByTtl(session?.recent_messages, nowDate.getTime());
+      const recentRoutes = pruneByTtl(session?.recent_routes, nowDate.getTime());
+      const routerResult = await this.intentRouter.route({
+        message,
+        now: nowDate.toISOString(),
+        user_context: { user_id: user.id, name: user.name, department: user.department, role: user.role, permissions: user.permissions },
+        session_state: {
+          active_intent_code: session?.active_intent_code,
+          last_route: session?.last_route ?? null,
+          last_query_route: session?.last_query_route ?? null,
+          recent_messages: recentMessages,
+          recent_routes: recentRoutes
+        }
+      });
+      if (session) session.recent_messages = pushRecentMessage(session, message, nowDate);
+      if (routerResult.handler_type === "agentic" && this.agenticHandler) {
+        return this.runAgenticStream({
+          user, message, sessionId: resolvedSessionId, session, route: routerResult,
+          enterpriseContext, conversationContext, debug, startedAt, emit, pushStep, visibleSteps
+        });
+      }
+      // intent_query / chitchat 仍然走下面的旧 stream 路径——它们没流式 handler，也没必要专门接
+    }
+
     if (this.workflowRunner.canResume(session)) {
       const activeIntent = session.active_intent;
       route = await classifyIntentNode({ llm: this.llm, user, message, history, enterpriseContext, conversationContext });
@@ -443,6 +471,59 @@ export class SimpleWorkflowOrchestrator {
     });
   }
 
+  // 流式版本的 agentic：与 runAgentic 等价，但把 handler 内部的三流事件实时推到 SSE，
+  // 同时也保留 pushStep 的兼容流（旧 chat-page.js 是按 pushStep 渲染的）。
+  async runAgenticStream({ user, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, emit, pushStep, visibleSteps }) {
+    await pushStep(createAgentStep("classify_intent", "识别任务类型", `Router 判定为 agentic（${route.intent_code}, source=${route.source}）。`));
+    await emit({ type: "route", route });
+
+    // 把 handler 三流事件透传给前端：
+    //   - tool 流的 tool_call 事件 -> SSE 'agentic_tool'（带 tool/args/observation_summary）
+    //   - lifecycle 的 decided/answered 等 -> 同时也走 pushStep 兼容旧 UI
+    const onEmit = async (ev) => {
+      await emit({ type: "agentic_event", event: ev });
+      if (ev.kind === "agentic_tool" && ev.type === "tool_call") {
+        await pushStep(createAgentStep("execute_tool", "调用工具", `调用 ${ev.tool}`, { tool: ev.tool, args: ev.args, observation_summary: ev.observation_summary }));
+      }
+    };
+
+    const handlerResult = await this.agenticHandler.execute({ user, message, route, session, onEmit });
+    if (session) {
+      session.last_route = { intent_code: route.intent_code, params: route.params ?? {}, ts: new Date().toISOString() };
+    }
+    const legacyRoute = {
+      intent: "data_query",
+      confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
+      reason: route.reasoning ?? "v2 intent router → agentic",
+      intent_code: route.intent_code,
+      router: "v2",
+      router_source: route.source,
+      handler_type: route.handler_type,
+      params: route.params
+    };
+
+    return this.finishStream({
+      user,
+      sessionId,
+      message,
+      route: legacyRoute,
+      docs: [],
+      toolPlan: handlerResult.toolPlan ?? { calls: [] },
+      toolResults: handlerResult.toolResults ?? [],
+      answer: handlerResult.answer,
+      artifacts: [],
+      agentSteps: visibleSteps,
+      enterpriseContext,
+      conversationContext,
+      skills: [],
+      session,
+      debug,
+      startedAt,
+      emit,
+      agenticDebug: handlerResult.debug
+    });
+  }
+
   async selectSkill({ session, route, message, user }) {
     if (!this.skillRuntime) {
       return {
@@ -565,6 +646,7 @@ export class SimpleWorkflowOrchestrator {
     debug,
     startedAt,
     emit,
+    agenticDebug,
     answerAlreadyStreamed = false
   }) {
     if (!answerAlreadyStreamed) {
@@ -593,7 +675,8 @@ export class SimpleWorkflowOrchestrator {
       selectedSkill,
       session,
       debug,
-      startedAt
+      startedAt,
+      agenticDebug
     });
 
     await emit({ type: "done", ...output });
