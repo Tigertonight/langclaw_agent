@@ -600,9 +600,44 @@ const cases = [
       const missing = ["intent", "tool", "skill"].filter((k) => !kinds.has(k));
       if (missing.length) return { ok: false, reason: `缺少 kind: ${missing.join(", ")}` };
       const hasSafeCompute = tools.some((t) => t.name === "tool.safe_compute");
-      const hasSummarize = tools.some((t) => /^skill\.summarize/.test(t.name));
+      const hasSummarize = tools.some((t) => t.name === "skill.summarize-alert");
+      const hasMargin = tools.some((t) => t.name === "skill.gross-margin-attribution");
       if (!hasSafeCompute) return { ok: false, reason: "tool.safe_compute 未列出" };
       if (!hasSummarize) return { ok: false, reason: "skill.summarize-alert 未列出" };
+      if (!hasMargin) return { ok: false, reason: "skill.gross-margin-attribution 未列出" };
+      return { ok: true };
+    }
+  },
+  {
+    // 静态断言：gross-margin-attribution 的 preprocess + 模板渲染产出应满足
+    //   - 渲染后包含整体毛利率数字
+    //   - 主维度分组按毛利率从高到低排好（最赚的排第一）
+    //   - 副维度（compare）章节也被注入
+    // 不依赖 LLM，确保数据准备路径稳定。
+    name: "v2-gross-margin-attribution skill 渲染正确（静态）",
+    message: "（probe，不会真发给 LLM）",
+    skipRun: true,
+    expectStatic: async ({ agenticSkillView }) => {
+      const inj = await agenticSkillView.loadForInjection({
+        id: "gross-margin-attribution",
+        args: {
+          rows: [
+            { series: "秦PLUS", channel: "直营", final_price: 144000, gross_profit: 7800 },
+            { series: "秦PLUS", channel: "加盟", final_price: 144000, gross_profit: 7800 },
+            { series: "宋L",    channel: "直营", final_price: 170000, gross_profit: 5400 },
+            { series: "唐",     channel: "加盟", final_price: 143300, gross_profit: 4400 }
+          ],
+          dim: "series",
+          compare: "channel",
+          period_label: "本月"
+        }
+      });
+      if (!inj?.ok) return { ok: false, reason: `loadForInjection 失败：${inj?.error ?? "?"}` };
+      const text = inj.injection_text ?? "";
+      if (!/整体毛利率\s+\d/.test(text)) return { ok: false, reason: "整体毛利率行未渲染" };
+      // 主维度第一项应为最赚的（秦PLUS 5.42%）
+      if (!/1\.\s*秦PLUS/.test(text)) return { ok: false, reason: "主维度排序错（秦PLUS 应排第一）" };
+      if (!/副维度分组（渠道）/.test(text)) return { ok: false, reason: "副维度章节缺失" };
       return { ok: true };
     }
   },
