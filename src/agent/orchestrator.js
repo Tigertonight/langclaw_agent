@@ -438,7 +438,8 @@ export class SimpleWorkflowOrchestrator {
       skills: [],
       session,
       debug,
-      startedAt
+      startedAt,
+      agenticDebug: handlerResult.debug
     });
   }
 
@@ -473,7 +474,7 @@ export class SimpleWorkflowOrchestrator {
     });
   }
 
-  async finish({ user, sessionId, message, route, docs, toolPlan, toolResults, answer, artifacts = [], scenarioDebug, agentSteps = [], agentState, enterpriseContext, conversationContext, skills = [], selectedSkill, session, debug, startedAt }) {
+  async finish({ user, sessionId, message, route, docs, toolPlan, toolResults, answer, artifacts = [], scenarioDebug, agentSteps = [], agentState, enterpriseContext, conversationContext, skills = [], selectedSkill, session, debug, startedAt, agenticDebug }) {
     const memoryUpdate = await this.maybeWriteUserMemory({ user, message });
     const output = {
       session_id: sessionId,
@@ -512,7 +513,9 @@ export class SimpleWorkflowOrchestrator {
       agent_steps: agentSteps,
       agent_state: agentState,
       scenario: scenarioDebug,
-      latency_ms: Date.now() - startedAt
+      latency_ms: Date.now() - startedAt,
+      // 仅 agentic 分支会有；包含 streams（lifecycle/assistant/tool）+ flat traces
+      agentic: agenticDebug ?? null
     };
     const debugInfo = createCompactDebugInfo(rawDebugInfo);
 
