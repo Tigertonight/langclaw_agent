@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>顺序对比 · 旧 / 方案1 / 方案2</title>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root {
+    --text: #111111;
+    --muted: #6b6b6b;
+    --faint: #9b9b9b;
+    --border: #e7e7e7;
+    --soft: #f4f4f5;
+    --running: #2563eb;
+    color-scheme: light;
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 28px 0 60px; background: #f0f0f1; color: var(--text); font-size: 14px; }
+  .page { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #fff; border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 18px; margin-bottom: 12px;
+  }
+  .topbar h1 { font-size: 15px; font-weight: 600; margin: 0; }
+  .toolbar { display: flex; gap: 10px; align-items: center; }
+  .btn {
+    border: 1px solid var(--border); background: #fff; padding: 6px 14px;
+    border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer; color: var(--text);
+  }
+  .btn:hover { background: var(--soft); }
+  .btn.primary { background: #111; color: #fff; border-color: #111; }
+  .btn.primary:hover { background: #2a2a2a; }
+
+  .sub { color: var(--muted); margin: 0 0 16px; font-size: 13px; }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .col {
+    background: #fff; border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 18px 18px; min-height: 460px;
+  }
+  .col-head h3 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+  .col-sub { color: var(--muted); font-size: 12px; margin: 0 0 12px; line-height: 1.55; min-height: 36px; }
+  .col-sub b { color: var(--text); font-weight: 600; }
+
+  .user-msg {
+    font-size: 13px; color: var(--text); margin: 0 0 14px;
+    padding: 8px 10px; background: var(--soft); border-radius: 6px;
+  }
+
+  /* 公共：业务面板 */
+  .biz {
+    color: var(--muted); font-size: 13.5px; line-height: 1.65;
+  }
+  .biz-head {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--faint); font-size: 12.5px; user-select: none; margin-bottom: 6px;
+  }
+  .biz-running .biz-head { color: var(--running); }
+  .biz-running .dotanim {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor; animation: blink 1.2s ease-in-out infinite;
+  }
+  @keyframes blink { 0%,100%{opacity:.3} 50%{opacity:1} }
+
+  .biz-narrative { margin: 0; color: var(--text); }
+  .biz-summary-line {
+    color: var(--faint); font-size: 12.5px; margin: 0;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .biz-summary-line .glyph {
+    width: 13px; height: 13px; opacity: 0.7; flex: 0 0 auto;
+  }
+  .biz-summary-line .glyph svg { width: 13px; height: 13px; stroke-width: 1.6; }
+
+  /* 旧：叙述 → summary，对内 4px、组间 14px */
+  .mode-old .biz-narrative { margin-bottom: 4px; }
+  .mode-old .biz-summary-line { margin-bottom: 14px; }
+  .mode-old .biz-narrative:last-child,
+  .mode-old .biz-summary-line:last-child { margin-bottom: 0; }
+
+  /* 方案1：summary → 叙述，对内 4px、组间 14px */
+  .mode-new .biz-summary-line { margin-bottom: 4px; }
+  .mode-new .biz-narrative { margin-bottom: 14px; }
+  .mode-new .biz-narrative:last-child,
+  .mode-new .biz-summary-line:last-child { margin-bottom: 0; }
+
+  /* 方案2：只有 summary 行，组间 8px */
+  .mode-min .biz-summary-line { margin-bottom: 8px; }
+  .mode-min .biz-summary-line:last-child { margin-bottom: 0; }
+
+  .fadein { animation: fadein .28s ease both; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+
+  .answer {
+    margin-top: 14px; padding: 10px 12px; background: #fafafa;
+    border: 1px solid var(--border); border-radius: 8px; line-height: 1.55;
+    font-size: 13px;
+  }
+  .answer h3 { margin: 0 0 6px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .answer p { margin: 0; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="topbar">
+    <h1>顺序对比 · 旧 / 方案1 / 方案2</h1>
+    <div class="toolbar">
+      <button class="btn primary" id="run">▶ 同时开始三个</button>
+      <button class="btn" id="reset">↻ 重置</button>
+    </div>
+  </div>
+  <p class="sub">同一组事件，三种"叙述 + 量化摘要"的呈现顺序。点开始看体感。</p>
+
+  <div class="grid">
+
+    <!-- 旧：叙述 → summary -->
+    <div class="col">
+      <div class="col-head">
+        <h3>旧（叙述先、量化后）</h3>
+        <p class="col-sub">"我做了什么…" → 然后下面挂一行<b> 🗄 查了 23 条订单</b></p>
+      </div>
+      <p class="user-msg">汉EV 卖得还行但毛利好像不太行，看下原因</p>
+      <div class="biz biz-running mode-old" id="modeOld">
+        <div class="biz-head"><span class="dotanim"></span><span id="old-time">处理中… 0.0s</span></div>
+        <div class="biz-body" id="old-body"></div>
+      </div>
+      <div class="answer" id="old-ans" style="display:none">
+        <h3>回答</h3><p id="old-ans-text"></p>
+      </div>
+    </div>
+
+    <!-- 方案1：summary → 叙述（推荐） -->
+    <div class="col">
+      <div class="col-head">
+        <h3>方案 1（量化先、叙述后）<span style="color:#16a34a;font-size:11px;font-weight:500;margin-left:6px">推荐</span></h3>
+        <p class="col-sub"><b>🗄 查了 23 条订单</b> → 然后下面写一句结论"汉EV 这个月共 23 单，折扣单偏多"</p>
+      </div>
+      <p class="user-msg">汉EV 卖得还行但毛利好像不太行，看下原因</p>
+      <div class="biz biz-running mode-new" id="modeNew">
+        <div class="biz-head"><span class="dotanim"></span><span id="new-time">处理中… 0.0s</span></div>
+        <div class="biz-body" id="new-body"></div>
+      </div>
+      <div class="answer" id="new-ans" style="display:none">
+        <h3>回答</h3><p id="new-ans-text"></p>
+      </div>
+    </div>
+
+    <!-- 方案2：极简，只有 summary -->
+    <div class="col">
+      <div class="col-head">
+        <h3>方案 2（极简，只有量化）</h3>
+        <p class="col-sub">每行只有 <b>🗄 查了 23 条订单</b>，不写叙述。最干净，但牺牲解读</p>
+      </div>
+      <p class="user-msg">汉EV 卖得还行但毛利好像不太行，看下原因</p>
+      <div class="biz biz-running mode-min" id="modeMin">
+        <div class="biz-head"><span class="dotanim"></span><span id="min-time">处理中… 0.0s</span></div>
+        <div class="biz-body" id="min-body"></div>
+      </div>
+      <div class="answer" id="min-ans" style="display:none">
+        <h3>回答</h3><p id="min-ans-text"></p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ts 是该步骤"完成"的时刻
+  // 每个步骤产生一对：summary（量化动作）+ narrative（这步的解读）
+  const events = [
+    {
+      ts: 1400, icon: "database",
+      summary: "查了 23 条成交订单",
+      narrative: "汉EV 本月共 23 单，分布以 H 级线索成交为主，折扣单占比明显偏高。"
+    },
+    {
+      ts: 2500, icon: "bar-chart-3",
+      summary: "按车系算了 5 个分组毛利率",
+      narrative: "横向对比 5 个车系，确实只有汉EV 这一系明显低于均值。"
+    },
+    {
+      ts: 3100, icon: "calculator",
+      summary: "运行了 1 次精确计算",
+      narrative: "算下来汉EV 跟同店均值差 -3.7 个百分点，差距主要不在售价，落在折让和整备费上。"
+    },
+    {
+      ts: 5200, icon: "file-text",
+      summary: "套用了 1 个写作模板",
+      narrative: "套了「毛利率归因分析」模板，把订单结构、折让占比、整备成本拆开。"
+    }
+  ];
+  const FINAL_TS = 6200;
+  const FINAL_ANSWER = "汉EV 本月毛利率 12.3%，比同店均值低 3.7 个百分点。主因不是售价（基本持平），而是折让占比偏高（占成交 6.2%，同店平均 4.1%）+ 整备费分摊偏高。建议：缩窄汉EV 折让上限、整备项目按车系做成本归集。";
+
+  function makeNarrative(text) {
+    const p = document.createElement("p");
+    p.className = "biz-narrative fadein";
+    p.textContent = text;
+    return p;
+  }
+  function makeSummary(icon, text) {
+    const p = document.createElement("p");
+    p.className = "biz-summary-line fadein";
+    p.innerHTML = `<span class="glyph"><i data-lucide="${icon}"></i></span><span></span>`;
+    p.querySelector("span:last-child").textContent = text;
+    return p;
+  }
+
+  let timers = [];
+  function reset() {
+    timers.forEach((x) => { clearTimeout(x); clearInterval(x); }); timers = [];
+    ["old", "new", "min"].forEach((k) => {
+      document.getElementById(k + "-body").innerHTML = "";
+      document.getElementById(k + "-ans").style.display = "none";
+      document.getElementById(k + "-ans-text").textContent = "";
+      document.getElementById(k + "-time").textContent = "处理中… 0.0s";
+      document.getElementById("mode" + k.charAt(0).toUpperCase() + k.slice(1)).classList.add("biz-running");
+    });
+  }
+
+  function run() {
+    reset();
+    const start = Date.now();
+    ["old", "new", "min"].forEach((k) => {
+      const timer = setInterval(() => {
+        const dt = (Date.now() - start) / 1000;
+        document.getElementById(k + "-time").textContent = `处理中… ${dt.toFixed(1)}s`;
+      }, 100);
+      timers.push(timer);
+    });
+
+    events.forEach((ev) => {
+      const t = setTimeout(() => {
+        // 旧：先 narrative 再 summary
+        const oldBody = document.getElementById("old-body");
+        oldBody.appendChild(makeNarrative(ev.narrative));
+        oldBody.appendChild(makeSummary(ev.icon, ev.summary));
+
+        // 方案 1：先 summary 再 narrative
+        const newBody = document.getElementById("new-body");
+        newBody.appendChild(makeSummary(ev.icon, ev.summary));
+        newBody.appendChild(makeNarrative(ev.narrative));
+
+        // 方案 2：只 summary
+        const minBody = document.getElementById("min-body");
+        minBody.appendChild(makeSummary(ev.icon, ev.summary));
+
+        if (window.lucide) lucide.createIcons();
+      }, ev.ts);
+      timers.push(t);
+    });
+
+    // 收尾
+    const finishT = setTimeout(() => {
+      timers.forEach((x) => clearInterval(x));
+      const dt = (FINAL_TS / 1000).toFixed(1);
+      ["old", "new", "min"].forEach((k) => {
+        document.getElementById(k + "-time").textContent = `已处理 ${dt}s`;
+        const modeId = "mode" + k.charAt(0).toUpperCase() + k.slice(1);
+        document.getElementById(modeId).classList.remove("biz-running");
+        document.getElementById(k + "-ans").style.display = "block";
+        document.getElementById(k + "-ans-text").textContent = FINAL_ANSWER;
+      });
+    }, FINAL_TS);
+    timers.push(finishT);
+  }
+
+  document.getElementById("run").addEventListener("click", run);
+  document.getElementById("reset").addEventListener("click", reset);
+  if (window.lucide) lucide.createIcons();
+</script>
+</body>
+</html>

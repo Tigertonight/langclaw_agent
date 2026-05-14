@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>流式粒度对比 · A / B / C</title>
+<script src="https://unpkg.com/lucide@latest"></script>
+<style>
+  :root {
+    --bg: #ffffff;
+    --text: #111111;
+    --muted: #6b6b6b;
+    --faint: #9b9b9b;
+    --border: #e7e7e7;
+    --soft: #f4f4f5;
+    --hover: #efefef;
+    --running: #2563eb;
+    --ok: #16a34a;
+    --fail: #dc2626;
+    color-scheme: light;
+    font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 28px 0 60px; background: #f0f0f1; color: var(--text); font-size: 14px; }
+  .page { max-width: 1280px; margin: 0 auto; padding: 0 24px; }
+
+  .topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #fff; border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 18px; margin-bottom: 12px;
+  }
+  .topbar h1 { font-size: 15px; font-weight: 600; margin: 0; }
+  .toolbar { display: flex; gap: 10px; align-items: center; }
+  .btn {
+    border: 1px solid var(--border); background: #fff; padding: 6px 14px;
+    border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer; color: var(--text);
+  }
+  .btn:hover { background: var(--soft); }
+  .btn.primary { background: #111; color: #fff; border-color: #111; }
+  .btn.primary:hover { background: #2a2a2a; }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .sub { color: var(--muted); margin: 0 0 16px; font-size: 13px; }
+
+  .grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+  }
+  .col {
+    background: #fff; border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 16px 18px; min-height: 480px; display: flex; flex-direction: column;
+  }
+  .col-head { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+  .col-sub { color: var(--muted); font-size: 12px; margin: 0 0 10px; line-height: 1.55; }
+  .col-pros { color: var(--muted); font-size: 12px; margin: 0 0 12px; line-height: 1.55; }
+  .col-pros b { color: var(--ok); font-weight: 600; }
+  .col-pros i { color: #b45309; font-style: normal; font-weight: 600; }
+
+  .user-msg {
+    font-size: 13px; color: var(--text); margin: 0 0 12px;
+    padding: 8px 10px; background: var(--soft); border-radius: 6px;
+  }
+
+  /* 通用业务面板 */
+  .biz {
+    color: var(--muted); font-size: 13.5px; line-height: 1.7;
+  }
+  .biz-head {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--faint); font-size: 12.5px; cursor: pointer; user-select: none;
+    margin-bottom: 8px;
+  }
+  .biz-running .biz-head { color: var(--running); }
+  .biz-running .dotanim {
+    display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    background: currentColor; animation: blink 1.2s ease-in-out infinite;
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+
+  .biz-narrative { margin: 0 0 10px; color: var(--text); }
+  .biz-summary-line {
+    color: var(--faint); font-size: 12.5px; margin: 0 0 12px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .biz-summary-line .glyph {
+    width: 13px; height: 13px; opacity: 0.7; flex: 0 0 auto;
+  }
+  .biz-summary-line .glyph svg { width: 13px; height: 13px; stroke-width: 1.6; }
+
+  /* fade-in 动画：A/C 整段出现 */
+  .fadein {
+    animation: fadein .28s ease both;
+  }
+  @keyframes fadein {
+    from { opacity: 0; transform: translateY(2px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* B 模式：打字机光标 */
+  .typing::after {
+    content: "▍";
+    color: var(--running);
+    margin-left: 1px;
+    animation: caret .8s steps(1) infinite;
+  }
+  @keyframes caret {
+    50% { opacity: 0; }
+  }
+
+  /* answer 区 */
+  .answer {
+    margin-top: 14px; padding: 10px 12px; background: #fafafa;
+    border: 1px solid var(--border); border-radius: 8px; line-height: 1.55;
+    font-size: 13px;
+  }
+  .answer h3 { margin: 0 0 6px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+  .answer p { margin: 0; }
+
+  /* 节奏轴：底部小图，可视化每个事件的发生时间 */
+  .axis {
+    margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border);
+    font-size: 11px; color: var(--faint);
+  }
+  .axis-line { position: relative; height: 22px; background: var(--soft); border-radius: 4px; overflow: hidden; }
+  .axis-tick {
+    position: absolute; top: 0; bottom: 0; width: 2px; background: var(--running);
+    opacity: 0; animation: tickIn .2s ease forwards;
+  }
+  .axis-tick.s { background: var(--ok); }
+  .axis-tick.n { background: #7c3aed; }
+  .axis-tick.f { background: var(--fail); }
+  @keyframes tickIn { to { opacity: 1; } }
+  .axis-legend { display: flex; gap: 10px; margin-top: 4px; }
+  .axis-legend span { display: inline-flex; align-items: center; gap: 4px; }
+  .axis-legend i { width: 8px; height: 2px; display: inline-block; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="topbar">
+    <h1>流式粒度对比 · A / B / C</h1>
+    <div class="toolbar">
+      <button class="btn primary" id="run">▶ 同时开始三个</button>
+      <button class="btn" id="reset">↻ 重置</button>
+    </div>
+  </div>
+  <p class="sub">同一个用户问题、同一组后端事件，三种渲染粒度。点"同时开始"对比节奏感。</p>
+
+  <div class="grid">
+
+    <!-- ============== A: 段落级 ============== -->
+    <div class="col">
+      <h3 class="col-head">A · 段落级流式（推荐）</h3>
+      <p class="col-sub">每个 step 完成后整段 narrative 一次性 fade-in，summary line 紧跟着追加。</p>
+      <p class="col-pros"><b>优：</b>每段都是完整句子、无半句感；<i>缺：</i>单步慢时空窗明显</p>
+
+      <p class="user-msg">汉EV 卖得还行但毛利好像不太行，看下原因</p>
+      <div class="biz biz-running" id="modeA">
+        <div class="biz-head"><span class="dotanim"></span><span id="A-time">处理中… 0.0s</span></div>
+        <div class="biz-body" id="A-body"></div>
+      </div>
+      <div class="answer" id="A-ans" style="display:none">
+        <h3>回答</h3>
+        <p id="A-ans-text"></p>
+      </div>
+
+      <div class="axis">
+        <div class="axis-line" id="A-axis"></div>
+        <div class="axis-legend">
+          <span><i style="background:var(--running)"></i>narrative</span>
+          <span><i style="background:var(--ok)"></i>summary</span>
+          <span><i style="background:#7c3aed"></i>answer</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============== B: 句子级（打字机） ============== -->
+    <div class="col">
+      <h3 class="col-head">B · 句子级流式（LLM 打字机）</h3>
+      <p class="col-sub">LLM 边吐字边显示。每个段落字符级流，summary line 还是整段出。</p>
+      <p class="col-pros"><b>优：</b>反应感强、有"在想"的实时感；<i>缺：</i>慢、依赖 LLM 稳定性，可能半句卡住</p>
+
+      <p class="user-msg">汉EV 卖得还行但毛利好像不太行，看下原因</p>
+      <div class="biz biz-running" id="modeB">
+        <div class="biz-head"><span class="dotanim"></span><span id="B-time">处理中… 0.0s</span></div>
+        <div class="biz-body" id="B-body"></div>
+      </div>
+      <div class="answer" id="B-ans" style="display:none">
+        <h3>回答</h3>
+        <p id="B-ans-text"></p>
+      </div>
+
+      <div class="axis">
+        <div class="axis-line" id="B-axis"></div>
+        <div class="axis-legend">
+          <span><i style="background:var(--running)"></i>token</span>
+          <span><i style="background:var(--ok)"></i>summary</span>
+          <span><i style="background:#7c3aed"></i>answer</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============== C: 仅顶部时间流，内容整段出 ============== -->
+    <div class="col">
+      <h3 class="col-head">C · 仅时间流式</h3>
+      <p class="col-sub">顶部"处理中… X.Xs"实时跳，所有 narrative + summary 都等一段一段整出。</p>
+      <p class="col-pros"><b>优：</b>反应感够、内容最稳；<i>缺：</i>空窗期感受跟 A 差不多</p>
+
+      <p class="user-msg">汉EV 卖得还行但毛利好像不太行，看下原因</p>
+      <div class="biz biz-running" id="modeC">
+        <div class="biz-head"><span class="dotanim"></span><span id="C-time">处理中… 0.0s</span></div>
+        <div class="biz-body" id="C-body"></div>
+      </div>
+      <div class="answer" id="C-ans" style="display:none">
+        <h3>回答</h3>
+        <p id="C-ans-text"></p>
+      </div>
+
+      <div class="axis">
+        <div class="axis-line" id="C-axis"></div>
+        <div class="axis-legend">
+          <span><i style="background:var(--running)"></i>tick(100ms)</span>
+          <span><i style="background:var(--ok)"></i>summary</span>
+          <span><i style="background:#7c3aed"></i>answer</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ============ 共用：事件序列（模拟后端 SSE 推送） ============
+  // ts 单位 ms（相对开始时间）。phase 决定该事件触发哪种渲染。
+  const events = [
+    { ts: 400,  phase: "narrative", text: "先把汉EV这个月的成交订单拉出来看了一遍。" },
+    { ts: 1400, phase: "summary",   icon: "database",     text: "查了 23 条成交订单" },
+    { ts: 2500, phase: "narrative", text: "再用聚合视图横向对比了所有车系的毛利率，确认确实是汉EV这一系明显偏低。" },
+    { ts: 2500, phase: "summary",   icon: "bar-chart-3",  text: "按车系算了 5 个分组毛利率" },
+    { ts: 3100, phase: "narrative", text: "用沙箱算出汉EV跟同店均值差 -3.7 个百分点，差距主要不在售价，落在折让和整备费上。" },
+    { ts: 3100, phase: "summary",   icon: "calculator",   text: "运行了 1 次精确计算" },
+    { ts: 5200, phase: "narrative", text: "套了「毛利率归因分析」模板，把订单结构、折让占比、整备成本拆开。" },
+    { ts: 5200, phase: "summary",   icon: "file-text",    text: "套用了 1 个写作模板" },
+    { ts: 6200, phase: "answer",    text: "汉EV 本月毛利率 12.3%，比同店均值低 3.7 个百分点。主因不是售价（基本持平），而是折让占比偏高（占成交 6.2%，同店平均 4.1%）+ 整备费分摊偏高。建议：缩窄汉EV 折让上限、整备项目按车系做成本归集。" }
+  ];
+
+  const TOTAL = 6200;
+
+  // ============ 工具：构造段落 / summary line ============
+  function makeNarrative(text) {
+    const p = document.createElement("p");
+    p.className = "biz-narrative fadein";
+    p.textContent = text;
+    return p;
+  }
+  function makeSummary(icon, text) {
+    const p = document.createElement("p");
+    p.className = "biz-summary-line fadein";
+    p.innerHTML = `<span class="glyph"><i data-lucide="${icon}"></i></span><span></span>`;
+    p.querySelector("span:last-child").textContent = text;
+    return p;
+  }
+  function tick(axisEl, leftPct, kind) {
+    const t = document.createElement("span");
+    t.className = "axis-tick " + kind;
+    t.style.left = leftPct + "%";
+    axisEl.appendChild(t);
+  }
+
+  // ============ A：段落级（参考实现） ============
+  function runA() {
+    const body = document.getElementById("A-body");
+    const time = document.getElementById("A-time");
+    const ans  = document.getElementById("A-ans");
+    const ansT = document.getElementById("A-ans-text");
+    const axis = document.getElementById("A-axis");
+    const start = Date.now();
+    body.innerHTML = ""; ans.style.display = "none"; axis.innerHTML = "";
+    document.getElementById("modeA").classList.add("biz-running");
+
+    const timer = setInterval(() => {
+      const dt = (Date.now() - start) / 1000;
+      time.textContent = `处理中… ${dt.toFixed(1)}s`;
+    }, 100);
+
+    events.forEach((ev) => {
+      setTimeout(() => {
+        const pct = (ev.ts / TOTAL) * 100;
+        if (ev.phase === "narrative") {
+          body.appendChild(makeNarrative(ev.text));
+          tick(axis, pct, "n");
+          if (window.lucide) lucide.createIcons();
+        } else if (ev.phase === "summary") {
+          body.appendChild(makeSummary(ev.icon, ev.text));
+          tick(axis, pct, "s");
+          if (window.lucide) lucide.createIcons();
+        } else if (ev.phase === "answer") {
+          clearInterval(timer);
+          time.textContent = `已处理 ${(ev.ts / 1000).toFixed(1)}s`;
+          document.getElementById("modeA").classList.remove("biz-running");
+          ans.style.display = "block";
+          ansT.textContent = ev.text;
+          tick(axis, pct, "f");
+        }
+      }, ev.ts);
+    });
+  }
+
+  // ============ B：句子级（打字机） ============
+  // 把每个 narrative 段落按 ~30ms/char 流出来。summary 还是整段出。
+  function runB() {
+    const body = document.getElementById("B-body");
+    const time = document.getElementById("B-time");
+    const ans  = document.getElementById("B-ans");
+    const ansT = document.getElementById("B-ans-text");
+    const axis = document.getElementById("B-axis");
+    const start = Date.now();
+    body.innerHTML = ""; ans.style.display = "none"; axis.innerHTML = "";
+    document.getElementById("modeB").classList.add("biz-running");
+
+    const timer = setInterval(() => {
+      const dt = (Date.now() - start) / 1000;
+      time.textContent = `处理中… ${dt.toFixed(1)}s`;
+    }, 100);
+
+    events.forEach((ev) => {
+      setTimeout(() => {
+        const pct = (ev.ts / TOTAL) * 100;
+        if (ev.phase === "narrative") {
+          // 创建空 P，按字逐步追加（Text 节点 appendData 单次重排成本最低）
+          const p = document.createElement("p");
+          p.className = "biz-narrative typing";
+          const tn = document.createTextNode("");
+          p.appendChild(tn);
+          body.appendChild(p);
+          let i = 0;
+          const charTimer = setInterval(() => {
+            if (i < ev.text.length) {
+              tn.appendData(ev.text[i]);
+              i++;
+            } else {
+              p.classList.remove("typing");
+              clearInterval(charTimer);
+            }
+          }, 30);
+          tick(axis, pct, "n");
+        } else if (ev.phase === "summary") {
+          body.appendChild(makeSummary(ev.icon, ev.text));
+          tick(axis, pct, "s");
+          if (window.lucide) lucide.createIcons();
+        } else if (ev.phase === "answer") {
+          clearInterval(timer);
+          time.textContent = `已处理 ${(ev.ts / 1000).toFixed(1)}s`;
+          document.getElementById("modeB").classList.remove("biz-running");
+          ans.style.display = "block";
+          // answer 也用打字机
+          ansT.textContent = "";
+          const ansTn = document.createTextNode("");
+          ansT.appendChild(ansTn);
+          let j = 0;
+          const at = setInterval(() => {
+            if (j < ev.text.length) {
+              ansTn.appendData(ev.text[j]);
+              j++;
+            } else clearInterval(at);
+          }, 18);
+          tick(axis, pct, "f");
+        }
+      }, ev.ts);
+    });
+  }
+
+  // ============ C：仅时间流式（高频更新顶部时间，内容整段出） ============
+  function runC() {
+    const body = document.getElementById("C-body");
+    const time = document.getElementById("C-time");
+    const ans  = document.getElementById("C-ans");
+    const ansT = document.getElementById("C-ans-text");
+    const axis = document.getElementById("C-axis");
+    const start = Date.now();
+    body.innerHTML = ""; ans.style.display = "none"; axis.innerHTML = "";
+    document.getElementById("modeC").classList.add("biz-running");
+
+    // 高频更新顶部时间（每 100ms 在 axis 打一个轻 tick，凸显"持续在跑"）
+    const timer = setInterval(() => {
+      const dtMs = Date.now() - start;
+      const dt = dtMs / 1000;
+      time.textContent = `处理中… ${dt.toFixed(1)}s`;
+      const pct = (dtMs / TOTAL) * 100;
+      if (pct <= 100) {
+        const t = document.createElement("span");
+        t.className = "axis-tick";
+        t.style.left = pct + "%";
+        t.style.opacity = "0.25";
+        axis.appendChild(t);
+      }
+    }, 100);
+
+    events.forEach((ev) => {
+      setTimeout(() => {
+        const pct = (ev.ts / TOTAL) * 100;
+        if (ev.phase === "narrative") {
+          body.appendChild(makeNarrative(ev.text));
+          if (window.lucide) lucide.createIcons();
+        } else if (ev.phase === "summary") {
+          body.appendChild(makeSummary(ev.icon, ev.text));
+          tick(axis, pct, "s");
+          if (window.lucide) lucide.createIcons();
+        } else if (ev.phase === "answer") {
+          clearInterval(timer);
+          time.textContent = `已处理 ${(ev.ts / 1000).toFixed(1)}s`;
+          document.getElementById("modeC").classList.remove("biz-running");
+          ans.style.display = "block";
+          ansT.textContent = ev.text;
+          tick(axis, pct, "f");
+        }
+      }, ev.ts);
+    });
+  }
+
+  document.getElementById("run").addEventListener("click", () => {
+    runA(); runB(); runC();
+  });
+  document.getElementById("reset").addEventListener("click", () => {
+    ["A", "B", "C"].forEach((k) => {
+      document.getElementById(k + "-body").innerHTML = "";
+      document.getElementById(k + "-ans").style.display = "none";
+      document.getElementById(k + "-ans-text").textContent = "";
+      document.getElementById(k + "-axis").innerHTML = "";
+      document.getElementById(k + "-time").textContent = "处理中… 0.0s";
+      document.getElementById("mode" + k).classList.add("biz-running");
+    });
+  });
+
+  if (window.lucide) lucide.createIcons();
+</script>
+</body>
+</html>

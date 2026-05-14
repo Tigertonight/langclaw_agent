@@ -167,6 +167,32 @@ export function renderChatPage() {
     .send { height: 36px; min-width: 72px; border: 0; border-radius: 6px; background: #111; color: #fff; font-weight: 600; cursor: pointer; }
     .send:disabled { background: #cfcfcf; cursor: not-allowed; }
     .hint { width: min(820px, calc(100vw - 40px)); margin: 7px auto 0; color: var(--faint); font-size: 12px; }
+    /* 业务视角（默认）：仿 GPT 段落叙述风格，方案 1 配对（先 summary 后 narrative） */
+    .biz { margin: 0 0 12px; color: #6b6b6b; font-size: 14px; line-height: 1.7; }
+    .biz-head {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: #9b9b9b; font-size: 12.5px; user-select: none; margin-bottom: 6px;
+    }
+    .biz.running .biz-head { color: #2563eb; }
+    .biz.failed .biz-head { color: #dc2626; }
+    .biz.running .dotanim {
+      display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+      background: currentColor; animation: bizBlink 1.2s ease-in-out infinite;
+    }
+    .biz.failed .dotanim { display: inline-grid; width: 13px; height: 13px; place-items: center; }
+    .biz.failed .dotanim svg { width: 13px; height: 13px; stroke-width: 1.8; }
+    @keyframes bizBlink { 0%,100% { opacity: .3; } 50% { opacity: 1; } }
+    .biz-body { display: block; }
+    .biz-summary-line {
+      color: #9b9b9b; font-size: 12.5px; margin: 0 0 4px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .biz-summary-line .glyph { width: 13px; height: 13px; opacity: .7; flex: 0 0 auto; display: inline-grid; place-items: center; }
+    .biz-summary-line .glyph svg { width: 13px; height: 13px; stroke-width: 1.6; }
+    .biz-narrative { margin: 0 0 14px; color: #303030; font-size: 14.5px; line-height: 1.72; }
+    .biz-narrative:last-child, .biz-summary-line:last-child { margin-bottom: 0; }
+    .biz-fadein { animation: bizFadein .28s ease both; }
+    @keyframes bizFadein { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
     .run-panel { margin: 0 0 12px; border: 0; background: transparent; }
     .run-panel summary {
       min-height: 28px; padding: 0 0 10px; display: flex; align-items: center; gap: 8px;
@@ -220,6 +246,7 @@ export function renderChatPage() {
       .debug-toggle span { display: none; }
     }
   </style>
+  <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
   <main>
@@ -259,7 +286,7 @@ export function renderChatPage() {
             </button>
           </div>
           <label class="debug-toggle" title="Debug">
-            <input id="debugToggle" type="checkbox" checked />
+            <input id="debugToggle" type="checkbox" />
             <span>Debug</span>
           </label>
         </div>
@@ -301,6 +328,9 @@ export function renderChatPage() {
       confirmDelete: "\\u5220\\u9664\\u5f53\\u524d\\u4f1a\\u8bdd\\uff1f",
       confirmDeleteSession: "\\u5220\\u9664\\u8fd9\\u4e2a\\u4f1a\\u8bdd\\uff1f",
       ranCommands: "\\u5df2\\u8fd0\\u884c",
+      processing: "\\u5904\\u7406\\u4e2d\\u2026",
+      processed: "\\u5df2\\u5904\\u7406",
+      failedRun: "\\u672a\\u80fd\\u5b8c\\u6210",
       loadingPeople: "\\u6b63\\u5728\\u8bfb\\u53d6\\u5458\\u5de5",
       unknownRole: "\\u5458\\u5de5"
     };
@@ -550,6 +580,7 @@ export function renderChatPage() {
       if (event.key === "Escape") closePersonModal();
     });
     els.sessionSearch.addEventListener("input", render);
+    els.debug.addEventListener("change", render);
     els.sessionList.addEventListener("click", (event) => {
       const action = event.target.closest(".session-action");
       if (!action) return;
@@ -670,6 +701,9 @@ export function renderChatPage() {
         } else {
           addStep(assistantId, payload.step);
         }
+      } else if (event === "agentic_event") {
+        // 后端 agentic-handler 的三流事件实时透传：tool_call -> 业务视角的 summary+narrative 配对
+        applyAgenticEvent(assistantId, payload.event);
       } else if (event === "delta") {
         appendText(assistantId, payload.text || "");
       } else if (event === "done") {
@@ -710,7 +744,10 @@ export function renderChatPage() {
         } else {
           const body = document.createElement("div");
           body.className = "assistant-body";
-          if (shouldShowRun(msg)) body.appendChild(createRunPanel(msg));
+          if (shouldShowRun(msg)) {
+            // Debug 关 = 业务视角；开 = 完整 phase 列表
+            body.appendChild(els.debug.checked ? createRunPanel(msg) : createBizPanel(msg));
+          }
           const text = document.createElement("div");
           text.className = "markdown";
           text.innerHTML = renderMarkdown(msg.text || "");
@@ -727,7 +764,21 @@ export function renderChatPage() {
       }
       els.messages.scrollTop = els.messages.scrollHeight;
       setBusy(loading);
+      if (window.lucide) lucide.createIcons();
     }
+    // 全局 100ms tick：只刷新 .biz-time 文本（处理中… X.Xs），不重渲整个 DOM
+    setInterval(() => {
+      const nodes = document.querySelectorAll(".biz.running .biz-time");
+      if (!nodes.length) return;
+      for (const node of nodes) {
+        const wrap = node.closest(".biz");
+        const id = wrap?.dataset.msgId;
+        const msg = id ? messages.find((m) => m.id === id) : null;
+        if (!msg || !msg.startedAt) continue;
+        const dt = ((Date.now() - msg.startedAt) / 1000).toFixed(1);
+        node.textContent = STR.processing + " " + dt + "s";
+      }
+    }, 100);
     function renderPersonPicker() {
       const user = getCurrentUser() || people[0];
       els.personAvatar.textContent = user.name.slice(0, 1);
@@ -852,7 +903,48 @@ export function renderChatPage() {
       els.deleteChat.disabled = loading || all.length <= 1;
     }
     function shouldShowRun(msg) {
-      return msg.streaming || msg.thinking || msg.steps?.length || msg.debug?.steps?.length;
+      return msg.streaming || msg.thinking || msg.steps?.length || msg.debug?.steps?.length || msg.bizPairs?.length;
+    }
+    // 业务视角面板：顶部"处理中… X.Xs" 100ms tick + summary→narrative 配对
+    function createBizPanel(msg) {
+      const wrap = document.createElement("div");
+      wrap.className = "biz" + (msg.failed ? " failed" : (msg.streaming || msg.thinking) ? " running" : "");
+      wrap.dataset.msgId = msg.id;
+      const head = document.createElement("div");
+      head.className = "biz-head";
+      const dot = document.createElement("span");
+      dot.className = "dotanim";
+      if (msg.failed) {
+        dot.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+      }
+      const time = document.createElement("span");
+      time.className = "biz-time";
+      const dt = msg.streaming || msg.thinking
+        ? ((Date.now() - (msg.startedAt || Date.now())) / 1000).toFixed(1)
+        : ((msg.latency || 0) / 1000).toFixed(1);
+      const prefix = msg.failed ? STR.failedRun : (msg.streaming || msg.thinking ? STR.processing : STR.processed);
+      time.textContent = prefix + " " + dt + "s";
+      head.append(dot, time);
+      wrap.appendChild(head);
+      const body = document.createElement("div");
+      body.className = "biz-body";
+      for (const pair of (msg.bizPairs || [])) {
+        if (pair.summary) {
+          const s = document.createElement("p");
+          s.className = "biz-summary-line biz-fadein";
+          s.innerHTML = '<span class="glyph"><i data-lucide="' + (pair.icon || "circle") + '"></i></span><span></span>';
+          s.querySelector("span:last-child").textContent = pair.summary;
+          body.appendChild(s);
+        }
+        if (pair.narrative) {
+          const n = document.createElement("p");
+          n.className = "biz-narrative biz-fadein";
+          n.textContent = pair.narrative;
+          body.appendChild(n);
+        }
+      }
+      wrap.appendChild(body);
+      return wrap;
     }
     function createRunPanel(msg) {
       const details = document.createElement("details");
@@ -938,6 +1030,58 @@ export function renderChatPage() {
       if (!last || last.phase !== step.phase || last.detail !== step.detail) msg.steps.push(step);
       msg.thinking = true;
       touchActiveSession();
+    }
+    function applyAgenticEvent(id, ev) {
+      const msg = getMsg(id);
+      if (!msg || !ev) return;
+      msg.bizPairs = msg.bizPairs || [];
+      if (ev.kind === "agentic_tool" && ev.type === "tool_call") {
+        const pair = toolEventToBizPair(ev);
+        if (pair) msg.bizPairs.push(pair);
+      } else if (ev.kind === "agentic_lifecycle") {
+        if (ev.event === "fallback" || ev.event === "total_timeout" || ev.event === "step_failed" || ev.event === "unknown_action") {
+          msg.failed = true;
+          msg.failedReason = ev.reason || ev.error || ev.event;
+        }
+      }
+    }
+    // 把 agentic-handler 的 tool_call 事件翻译成业务视角的 {icon, summary, narrative}
+    // 不改 manifest，先在前端做映射；后续 A 阶段再下放到 manifest.display
+    function toolEventToBizPair(ev) {
+      const tool = ev.tool || "";
+      const obs = ev.observation_summary || {};
+      if (tool.startsWith("intent.")) {
+        const code = tool.slice("intent.".length);
+        const rows = obs.row_count ?? 0;
+        const isAggregate = /aggregate|stats|metrics|breakdown|compare|distribution/i.test(code);
+        return {
+          icon: isAggregate ? "bar-chart-3" : "database",
+          summary: isAggregate ? "\\u67e5\\u4e86 " + rows + " \\u4e2a\\u5206\\u7ec4\\u6307\\u6807" : "\\u67e5\\u4e86 " + rows + " \\u6761\\u8bb0\\u5f55",
+          narrative: obs.ok === false ? "\\u8c03\\u7528 " + code + " \\u672a\\u8fd4\\u56de\\u7ed3\\u679c\\u3002" : ""
+        };
+      }
+      if (tool === "tool.safe_compute") {
+        return {
+          icon: "calculator",
+          summary: "\\u8fd0\\u884c\\u4e86 1 \\u6b21\\u7cbe\\u786e\\u8ba1\\u7b97",
+          narrative: ""
+        };
+      }
+      if (tool.startsWith("tool.")) {
+        return {
+          icon: "wrench",
+          summary: "\\u8c03\\u7528\\u4e86 " + tool.slice("tool.".length),
+          narrative: ""
+        };
+      }
+      if (tool.startsWith("skill.")) {
+        return {
+          icon: "file-text",
+          summary: "\\u5957\\u7528\\u4e86\\u5199\\u4f5c\\u6a21\\u677f",
+          narrative: ""
+        };
+      }
+      return null;
     }
     function appendText(id, text) {
       const msg = getMsg(id);
