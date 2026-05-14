@@ -682,7 +682,806 @@ const cases = [
       if (!result.answer || /暂时无法直接给出/.test(result.answer)) return { ok: false, reason: `propose_tool 后没走到 answer：${truncate(result.answer)}` };
       return { ok: true };
     }
+  },
+
+  // ============================================================
+  // ↓↓↓ 第二批用例（37 → 100）
+  // 设计原则：
+  //   - 默认按 intent_code + 关键 params 软校验（match 现有 37 条的口径）
+  //   - 关键路径上挑几条加 answer 软校验（出现数字 / 出现门店名 / 出现口径）
+  //   - Agentic 类全部 allowOneRetry，避开 LLM 抖动假阳性
+  //   - 每个 case 一句话注释自己想测什么
+  // ============================================================
+
+  // ---------- #1 inventory 字段全覆盖（6） ----------
+  {
+    name: "库存-紧急预警车辆",
+    message: "现在有几台紧急预警的车",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.inventory") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.warning_level && !/紧急/.test(p.warning_level)) return { ok: false, reason: `warning_level=${p.warning_level}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "库存-融资车占比口语化",
+    message: "哪些车是融资车",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      // 没有 purchase_mode 字段，期望兜回 inventory 列表（让用户自己看），或 agentic
+      if (ic !== "dealer.query.inventory" && ic !== "general") return { ok: false, reason: `intent_code=${ic}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "库存-在途订单（inbounds）",
+    message: "在途的车都到哪一步了",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.inventory") return { ok: false, reason: `intent_code=${ic}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "库存-海豹库存",
+    message: "海豹这款车的库存",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.inventory") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.vehicle_model && !/海豹/.test(p.vehicle_model)) return { ok: false, reason: `vehicle_model=${p.vehicle_model}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "库存-关注级别口龄超 30 天",
+    message: "关注级别的车都有哪些",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.inventory") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.warning_level && !/关注/.test(p.warning_level)) return { ok: false, reason: `warning_level=${p.warning_level}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "库存-华南标准店唐DM-p",
+    message: "华南标准店的唐DM-p还有库存吗",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.inventory") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.store && !/华南/.test(p.store)) return { ok: false, reason: `store=${p.store}` };
+      if (p.vehicle_model && !/唐/.test(p.vehicle_model)) return { ok: false, reason: `vehicle_model=${p.vehicle_model}` };
+      return { ok: true };
+    }
+  },
+
+  // ---------- #2 sales_orders 字段全覆盖（8） ----------
+  {
+    name: "销售-按揭订单",
+    message: "按揭的订单有哪些",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.sales_orders") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.order_type && !/按揭|分期|贷款/.test(p.order_type)) return { ok: false, reason: `order_type=${p.order_type}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "销售-已结清订单",
+    message: "已经结清款项的订单",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.sales_orders") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.payment_status && !/已结清|结清/.test(p.payment_status)) return { ok: false, reason: `payment_status=${p.payment_status}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "销售-林悦的订单",
+    message: "林悦本月跟了哪几单",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.sales_orders") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.owner && !/林悦|sales_001/.test(p.owner)) return { ok: false, reason: `owner=${p.owner}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "销售-整备中等待交付",
+    message: "整备中还没交车的有哪些",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.sales_orders") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      const ok = !p.delivery_status || /整备中|未交付/.test(p.delivery_status);
+      if (!ok) return { ok: false, reason: `delivery_status=${p.delivery_status}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "销售-宋L 订单明细",
+    message: "宋L 的成交订单都有哪些",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.sales_orders") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.series && !/宋L|宋/.test(p.series)) return { ok: false, reason: `series=${p.series}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "销售-20 万以上订单",
+    message: "成交价 20 万以上的订单",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.sales_orders") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      // 20 万 = 200000；接受 price_min 在 [180000, 220000] 区间附近，或为空
+      const ok = p.price_min == null || (p.price_min >= 150000 && p.price_min <= 250000);
+      if (!ok) return { ok: false, reason: `price_min=${p.price_min}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "销售-已开票",
+    message: "已开发票的订单",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.sales_orders") return { ok: false, reason: `intent_code=${ic}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "销售-定金已收订单",
+    message: "已经收到定金但还没付完的订单",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.sales_orders") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      // payment_status 应为「部分收款」或「已收定金」之一
+      const ok = !p.payment_status || /部分收款|已收定金|定金/.test(p.payment_status);
+      if (!ok) return { ok: false, reason: `payment_status=${p.payment_status}` };
+      return { ok: true };
+    }
+  },
+
+  // ---------- #3 finance 字段全覆盖（6） ----------
+  {
+    name: "财务-收款记录",
+    message: "本月收到了哪些款",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.finance") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.resource_type && !/receipt|收款/.test(p.resource_type)) return { ok: false, reason: `resource_type=${p.resource_type}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "财务-月度销量返利",
+    message: "月度销量返利还有多少没到账",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.finance") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.resource_type && p.resource_type !== "rebate") return { ok: false, reason: `resource_type=${p.resource_type}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "财务-客户首付",
+    message: "客户首付的入账明细",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.finance") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      // 接受 category=客户首付 或 resource_type=receipt
+      const ok = (!p.category || /首付|客户首付/.test(p.category)) || p.resource_type === "receipt";
+      if (!ok) return { ok: false, reason: `category=${p.category} resource_type=${p.resource_type}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "财务-折让金所有出账",
+    message: "折让金账户都付了哪些款",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.finance") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.resource_type && p.resource_type !== "discount_wallet") return { ok: false, reason: `resource_type=${p.resource_type}` };
+      const okDir = !p.direction || /出账/.test(p.direction);
+      if (!okDir) return { ok: false, reason: `direction=${p.direction}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "财务-大额应付",
+    message: "10 万以上的应付款都有哪些",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.finance") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.resource_type && p.resource_type !== "payable") return { ok: false, reason: `resource_type=${p.resource_type}` };
+      const okMin = p.amount_min == null || (p.amount_min >= 80000 && p.amount_min <= 120000);
+      if (!okMin) return { ok: false, reason: `amount_min=${p.amount_min}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "财务-华南标准店出账明细",
+    message: "华南标准店本月都付了哪些款",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.finance") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.store && !/华南/.test(p.store)) return { ok: false, reason: `store=${p.store}` };
+      const okDir = !p.direction || /出账|payable/i.test(p.direction);
+      if (!okDir) return { ok: false, reason: `direction=${p.direction}` };
+      return { ok: true };
+    }
+  },
+
+  // ---------- #4 repair_orders 字段全覆盖（5） ----------
+  {
+    name: "售后-施工中工单",
+    message: "正在施工的维修工单有哪些",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.repair_orders") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.status && !/施工|进行/.test(p.status)) return { ok: false, reason: `status=${p.status}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "售后-事故维修",
+    message: "事故维修类型的工单",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.repair_orders") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.order_type && !/事故/.test(p.order_type)) return { ok: false, reason: `order_type=${p.order_type}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "售后-小李名下工单",
+    message: "服务顾问小李名下的工单",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.repair_orders") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.service_advisor && !/小李|after_sales_001/.test(p.service_advisor)) return { ok: false, reason: `service_advisor=${p.service_advisor}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "售后-厂家拒赔工单",
+    message: "厂家拒赔的工单",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.repair_orders" && ic !== "dealer.query.warranty_claims") {
+        return { ok: false, reason: `intent_code=${ic}` };
+      }
+      return { ok: true };
+    }
+  },
+  {
+    name: "售后-常规保养工单",
+    message: "常规保养的工单都有哪些",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.repair_orders") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.order_type && !/保养|常规/.test(p.order_type)) return { ok: false, reason: `order_type=${p.order_type}` };
+      return { ok: true };
+    }
+  },
+
+  // ---------- #5 warranty_claims 字段全覆盖（3） ----------
+  {
+    name: "保修-差额超 5000 的索赔",
+    message: "索赔差额超过 5000 的有哪些",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.warranty_claims") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.difference_min != null && (p.difference_min < 3000 || p.difference_min > 8000)) {
+        return { ok: false, reason: `difference_min=${p.difference_min}` };
+      }
+      return { ok: true };
+    }
+  },
+  {
+    name: "保修-已核准索赔",
+    message: "已经核准的保修索赔",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.warranty_claims") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.claim_status && !/核准|通过/.test(p.claim_status)) return { ok: false, reason: `claim_status=${p.claim_status}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "保修-内饰类故障",
+    message: "内饰故障的索赔",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.warranty_claims") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.fault_category && !/内饰/.test(p.fault_category)) return { ok: false, reason: `fault_category=${p.fault_category}` };
+      return { ok: true };
+    }
+  },
+
+  // ---------- #6 leads 字段全覆盖（5） ----------
+  {
+    name: "线索-抖音直播来源",
+    message: "抖音直播来的线索都有谁",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.leads") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.source && !/抖音/.test(p.source)) return { ok: false, reason: `source=${p.source}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "线索-跟进中状态",
+    message: "还在跟进的客户有几个",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.leads") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.status && !/跟进/.test(p.status)) return { ok: false, reason: `status=${p.status}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "线索-战败客户",
+    message: "战败的客户都是什么原因",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.leads") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.status && !/战败|失败|流失/.test(p.status)) return { ok: false, reason: `status=${p.status}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "线索-门店自然到访",
+    message: "自然到店的客户线索",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.leads") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.source && !/自然|到店|到访/.test(p.source)) return { ok: false, reason: `source=${p.source}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "线索-意向汉EV",
+    message: "想买汉EV的客户都有谁",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.leads") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.series && !/汉/.test(p.series)) return { ok: false, reason: `series=${p.series}` };
+      return { ok: true };
+    }
+  },
+
+  // ---------- #7 聚合矩阵补全（8） ----------
+  {
+    name: "聚合-销售-按车系毛利率",
+    message: "按车系看本月毛利率分别多少",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.aggregate.sales_orders") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.metric && p.metric !== "gross_margin") return { ok: false, reason: `metric=${p.metric}` };
+      if (p.group_by && !/series|车系/.test(p.group_by)) return { ok: false, reason: `group_by=${p.group_by}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "聚合-销售-单价最高的成交",
+    message: "本月成交价最高的是哪一笔",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.aggregate.sales_orders" && ic !== "dealer.query.sales_orders") {
+        return { ok: false, reason: `intent_code=${ic}` };
+      }
+      return { ok: true };
+    }
+  },
+  {
+    name: "聚合-销售-平均成交价",
+    message: "本月平均成交价多少",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.aggregate.sales_orders") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.metric && !/avg|average|平均/i.test(p.metric)) return { ok: false, reason: `metric=${p.metric}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "聚合-销售-按销售顾问成交",
+    message: "各销售顾问本月分别卖了多少单",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.aggregate.sales_orders") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.group_by && !/owner|销售|顾问/.test(p.group_by)) return { ok: false, reason: `group_by=${p.group_by}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "聚合-财务-按门店应付分布",
+    message: "各门店应付款分别多少",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.aggregate.finance") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.group_by && !/store|门店/.test(p.group_by)) return { ok: false, reason: `group_by=${p.group_by}` };
+      if (p.resource_type && p.resource_type !== "payable") return { ok: false, reason: `resource_type=${p.resource_type}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "聚合-售后-平均工时费",
+    message: "本月维修工单平均工时费多少钱",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.aggregate.repair_orders") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.metric && !/avg|average|平均|labor/i.test(p.metric)) return { ok: false, reason: `metric=${p.metric}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "聚合-线索-各来源转化率",
+    message: "各来源的转化率分别多少",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.aggregate.leads") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.metric && p.metric !== "conversion_rate") return { ok: false, reason: `metric=${p.metric}` };
+      if (p.group_by && !/source|来源/.test(p.group_by)) return { ok: false, reason: `group_by=${p.group_by}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "聚合-线索-各门店线索数",
+    message: "各门店本月线索数",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.aggregate.leads") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.group_by && !/store|门店/.test(p.group_by)) return { ok: false, reason: `group_by=${p.group_by}` };
+      return { ok: true };
+    }
+  },
+
+  // ---------- #8 中文同义词映射（6） ----------
+  {
+    name: "同义-H 级当作高意向",
+    message: "H 级线索还有哪些没成交",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.leads") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      const ok = !p.intention_level || p.intention_level === "H" || /高/.test(p.intention_level);
+      if (!ok) return { ok: false, reason: `intention_level=${p.intention_level}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "同义-热单当作高意向",
+    message: "热单都有谁",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      // 热单可能被理解为线索高意向，也可能被理解为销售热销车型；接受 leads 或 sales_orders/aggregate
+      if (!/leads|sales_orders/.test(ic ?? "")) return { ok: false, reason: `intent_code=${ic}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "同义-超期工单",
+    message: "超期没交付的工单",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.repair_orders") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      const ok = p.overdue_only === true || (p.status && p.status !== "已交付");
+      if (!ok) return { ok: false, reason: `params=${JSON.stringify(p)}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "同义-分期订单当作按揭",
+    message: "分期付款的订单有哪些",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.sales_orders") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.order_type && !/按揭|分期|贷款/.test(p.order_type)) return { ok: false, reason: `order_type=${p.order_type}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "同义-动力电池故障当作三电",
+    message: "动力电池故障的索赔",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.warranty_claims") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.fault_category && !/三电|电池|动力/.test(p.fault_category)) return { ok: false, reason: `fault_category=${p.fault_category}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "同义-未结清等价于应付未结",
+    message: "应付里还欠着的款",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.query.finance") return { ok: false, reason: `intent_code=${ic}` };
+      const p = r.debug?.route?.params ?? {};
+      if (p.resource_type && p.resource_type !== "payable") return { ok: false, reason: `resource_type=${p.resource_type}` };
+      const ok = !p.status || /未结清|未付/.test(p.status);
+      if (!ok) return { ok: false, reason: `status=${p.status}` };
+      return { ok: true };
+    }
+  },
+
+  // ---------- #9 高级多轮修参（5） ----------
+  {
+    name: "多轮-否定修正 不是华南是华东",
+    turns: [
+      { message: "查华南标准店海豹库存" },
+      {
+        message: "不是华南，是华东",
+        expect: (r) => {
+          const ic = r.debug?.route?.intent_code;
+          if (ic !== "dealer.query.inventory") return { ok: false, reason: `intent_code=${ic}` };
+          const p = r.debug?.route?.params ?? {};
+          if (p.store && /华南/.test(p.store)) return { ok: false, reason: `store=${p.store}（应为华东）` };
+          return { ok: true };
+        }
+      }
+    ]
+  },
+  {
+    name: "多轮-数值修正 改成 30 万以上",
+    turns: [
+      { message: "成交价 20 万以上的订单" },
+      {
+        message: "改成 30 万以上的",
+        expect: (r) => {
+          const ic = r.debug?.route?.intent_code;
+          if (ic !== "dealer.query.sales_orders") return { ok: false, reason: `intent_code=${ic}` };
+          const p = r.debug?.route?.params ?? {};
+          if (p.price_min != null && (p.price_min < 250000 || p.price_min > 350000)) {
+            return { ok: false, reason: `price_min=${p.price_min}` };
+          }
+          return { ok: true };
+        }
+      }
+    ]
+  },
+  {
+    name: "多轮-从车系切到具体车型",
+    turns: [
+      { message: "汉系列的库存" },
+      {
+        message: "具体看汉EV",
+        expect: (r) => {
+          const ic = r.debug?.route?.intent_code;
+          if (ic !== "dealer.query.inventory") return { ok: false, reason: `intent_code=${ic}` };
+          const p = r.debug?.route?.params ?? {};
+          if (p.vehicle_model && !/汉EV/.test(p.vehicle_model)) return { ok: false, reason: `vehicle_model=${p.vehicle_model}` };
+          return { ok: true };
+        }
+      }
+    ]
+  },
+  {
+    name: "多轮-财务切换 resource_type",
+    turns: [
+      { message: "应付未结清的" },
+      {
+        message: "返利的呢",
+        expect: (r) => {
+          const ic = r.debug?.route?.intent_code;
+          if (ic !== "dealer.query.finance") return { ok: false, reason: `intent_code=${ic}` };
+          const p = r.debug?.route?.params ?? {};
+          if (p.resource_type && p.resource_type !== "rebate") return { ok: false, reason: `resource_type=${p.resource_type}` };
+          return { ok: true };
+        }
+      }
+    ]
+  },
+  {
+    name: "多轮-销售切换 owner",
+    turns: [
+      { message: "林悦本月跟了哪几单" },
+      {
+        message: "其他销售呢",
+        expect: (r) => {
+          const ic = r.debug?.route?.intent_code;
+          if (ic !== "dealer.query.sales_orders") return { ok: false, reason: `intent_code=${ic}` };
+          // owner 已被否定，应清空或换值
+          const p = r.debug?.route?.params ?? {};
+          if (p.owner && /林悦|sales_001/.test(p.owner)) return { ok: false, reason: `owner=${p.owner}（应不再是林悦）` };
+          return { ok: true };
+        }
+      }
+    ]
+  },
+
+  // ---------- #10 反例 / 越权 / 边界（4） ----------
+  {
+    name: "边界-含糊问题不应误判 high",
+    message: "最近怎么样",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      const handler = r.debug?.route?.handler_type;
+      // 含糊 → 兜回 chitchat 或 general / agentic 都接受，但不应是某个 dealer.* 的 high confidence
+      if (handler === "intent_query" && /^dealer\./.test(ic)) {
+        return { ok: false, reason: `含糊问题被误路由到 ${ic}` };
+      }
+      return { ok: true };
+    }
+  },
+  {
+    name: "边界-不存在的门店",
+    message: "查华西旗舰店的库存",
+    expect: (r) => {
+      const ic = r.debug?.route?.intent_code;
+      // 应该照样路由到 inventory（数据层会查空），不应直接拒答
+      if (ic !== "dealer.query.inventory") return { ok: false, reason: `intent_code=${ic}` };
+      // answer 应有提示无结果或空，不应崩
+      if (!r.answer) return { ok: false, reason: "无 answer" };
+      return { ok: true };
+    }
+  },
+  {
+    name: "边界-反例：单 intent 不应升 agentic",
+    message: "本月卖了多少台",
+    expect: (r) => {
+      const handler = r.debug?.route?.handler_type;
+      if (handler === "agentic") return { ok: false, reason: "单聚合被错判 agentic" };
+      const ic = r.debug?.route?.intent_code;
+      if (ic !== "dealer.aggregate.sales_orders") return { ok: false, reason: `intent_code=${ic}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "边界-歧义：华东订单",
+    message: "华东订单",
+    expect: (r) => {
+      // 接受 sales_orders（最常见解读）或 finance（订单款项）；不应 chitchat
+      const ic = r.debug?.route?.intent_code;
+      const handler = r.debug?.route?.handler_type;
+      if (handler === "chitchat") return { ok: false, reason: "歧义被错判寒暄" };
+      if (!/sales_orders|finance|inventory/.test(ic ?? "")) return { ok: false, reason: `intent_code=${ic}` };
+      return { ok: true };
+    }
+  },
+
+  // ---------- #11 Agentic 真实业务（5，全部 allowOneRetry） ----------
+  {
+    name: "agentic-本月销售榜",
+    message: "本月销售排行榜，谁卖得最好",
+    allowOneRetry: true,
+    expect: (r) => {
+      const handler = r.debug?.route?.handler_type;
+      const ic = r.debug?.route?.intent_code;
+      // 接受 agentic 或 单 aggregate（group_by=owner）
+      const acceptable = handler === "agentic" || ic === "dealer.aggregate.sales_orders";
+      if (!acceptable) return { ok: false, reason: `handler=${handler}/intent=${ic}` };
+      if (!r.answer || /暂时无法直接给出/.test(r.answer)) return { ok: false, reason: `兜底了：${truncate(r.answer)}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "agentic-下周交车排程",
+    message: "下周要交车的有几台，分别是谁的",
+    allowOneRetry: true,
+    expect: (r) => {
+      const handler = r.debug?.route?.handler_type;
+      const ic = r.debug?.route?.intent_code;
+      const acceptable = handler === "agentic" || ic === "dealer.query.sales_orders";
+      if (!acceptable) return { ok: false, reason: `handler=${handler}/intent=${ic}` };
+      if (!r.answer || /暂时无法直接给出/.test(r.answer)) return { ok: false, reason: `兜底了：${truncate(r.answer)}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "agentic-高意向但快战败",
+    message: "高意向客户里哪些已经超过一周没跟进了",
+    allowOneRetry: true,
+    expect: (r) => {
+      const handler = r.debug?.route?.handler_type;
+      const ic = r.debug?.route?.intent_code;
+      const acceptable = handler === "agentic" || ic === "dealer.query.leads";
+      if (!acceptable) return { ok: false, reason: `handler=${handler}/intent=${ic}` };
+      if (!r.answer || /暂时无法直接给出/.test(r.answer)) return { ok: false, reason: `兜底了：${truncate(r.answer)}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "agentic-售后这周和上周对比",
+    message: "这周维修工单结算金额跟上周比怎么样",
+    allowOneRetry: true,
+    expect: (r) => {
+      const handler = r.debug?.route?.handler_type;
+      // 必须 agentic（要拉两段做对比）
+      if (handler !== "agentic" && r.debug?.route?.intent_code !== "general") {
+        return { ok: false, reason: `handler=${handler}（应 agentic）` };
+      }
+      if (!r.answer || /暂时无法直接给出/.test(r.answer)) return { ok: false, reason: `兜底了：${truncate(r.answer)}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "agentic-汉EV 卖得不错但毛利不行",
+    message: "汉EV 卖得还行但毛利好像不太行，看下原因",
+    allowOneRetry: true,
+    expect: (r) => {
+      const handler = r.debug?.route?.handler_type;
+      if (handler !== "agentic" && r.debug?.route?.intent_code !== "general") {
+        return { ok: false, reason: `handler=${handler}（应 agentic）` };
+      }
+      if (!r.answer || /暂时无法直接给出/.test(r.answer)) return { ok: false, reason: `兜底了：${truncate(r.answer)}` };
+      return { ok: true };
+    }
+  },
+
+  // ---------- #12 Skill 端到端命中（2，全部 allowOneRetry） ----------
+  {
+    name: "agentic+skill-毛利率归因端到端",
+    message: "这个月毛利率掉得有点厉害，按车系帮我分析下原因",
+    allowOneRetry: true,
+    expect: (r) => {
+      const handler = r.debug?.route?.handler_type;
+      if (handler !== "agentic" && r.debug?.route?.intent_code !== "general") {
+        return { ok: false, reason: `handler=${handler}（应 agentic）` };
+      }
+      if (!r.answer || /暂时无法直接给出/.test(r.answer)) return { ok: false, reason: `兜底了：${truncate(r.answer)}` };
+      // 软校验：answer 出现毛利相关词 + 至少一个车系
+      if (!/毛利|车系/.test(r.answer)) return { ok: false, reason: `answer 缺关键概念：${truncate(r.answer)}` };
+      return { ok: true };
+    }
+  },
+  {
+    name: "agentic+skill-库存告警简报端到端",
+    message: "把华东旗舰店库存压力写成一段经营简报",
+    allowOneRetry: true,
+    expect: (r) => {
+      const handler = r.debug?.route?.handler_type;
+      if (handler !== "agentic" && r.debug?.route?.intent_code !== "general") {
+        return { ok: false, reason: `handler=${handler}（应 agentic）` };
+      }
+      if (!r.answer || /暂时无法直接给出/.test(r.answer)) return { ok: false, reason: `兜底了：${truncate(r.answer)}` };
+      // 软校验：出现门店或库存相关词
+      if (!/华东|库存|库龄/.test(r.answer)) return { ok: false, reason: `answer 缺关键概念：${truncate(r.answer)}` };
+      return { ok: true };
+    }
   }
+
+  // ============================================================
+  // ↑↑↑ 第二批用例结束（共新增 63 条 → 总数 100）
+  // ============================================================
 ];
 
 let passed = 0;
