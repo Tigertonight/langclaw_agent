@@ -21,7 +21,7 @@ export function createSandboxTools() {
         risk_level: "sandboxed_compute",
         requires_confirmation: false,
         intents: ["data_query", "mixed"],
-        // v2: 允许 agentic 跨意图规划器把它当成"算数底座"调用
+        // 允许 agentic 跨意图规划器把它当成"算数底座"调用。
         expose_to_agentic: true,
         sandbox: {
           per_user: true,

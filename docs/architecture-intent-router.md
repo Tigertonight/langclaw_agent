@@ -1,18 +1,18 @@
 ---
-version: v2.0-draft
+version: intent-router-draft
 date: 2026-05-11
 status: draft
 author: Claude Code 协助起草
-branch: codex/intent-router-v1
+branch: codex/intent-router
 ---
 
-# v2 架构设计：Intent Router 与四类 Handler
+# Intent Router 架构设计：Intent Router 与四类 Handler
 
 ## 1. 背景与目标
 
-- **现状**：v1 是「规则分类 + 规则选 skill + 规则抽参 + 兜底再交给 LLM」的混合架构，LLM 在大多数路径上是被动补丁。
+- **原架构**：「规则分类 + 规则选 skill + 规则抽参 + 兜底再交给 LLM」的混合架构，LLM 在大多数路径上是被动补丁。
 - **痛点**：规则一旦命中就把 LLM 完全挡在外面（典型表现：`extractVehicleSeries` 把「汉EV」错配成「汉」），导致用户问法稍有偏差就路由错或抽参错。
-- **目标**：把入口交给一个 LLM Intent Router，由它输出 `intent_code`，每个 code 自带 `handler_type`，统一分发到 4 类 handler；规则只做兜底，不再做主决策。
+- **目标**：把入口交给一个 LLM Intent Router，由它输出 `intent_code` / `execution_class` / `handler_type`，每个 code 的 manifest 是唯一权威，统一分发到受控执行或自主规划。
 
 ## 2. 现状问题诊断（5 个结构性问题）
 
@@ -24,7 +24,7 @@ branch: codex/intent-router-v1
 | 4 | `enforceSkillContracts` 在 LLM 出 plan 之后用正则静默改写 plan，作用域逻辑不可解释 | `src/agent/nodes.js:72-205` |
 | 5 | PrimitiveRegistry 设计已存在但未在主路径调用；agentic loop 内还混着「dealer-evidence」等业务硬规则 | `src/runtime/agentic-loop.js`、`src/runtime/free-agent-loop.js` 仅在 fast-grounded 与 agentic 两条线之间二选一，未把"intent → handler"作为一等概念 |
 
-## 3. v2 核心架构
+## 3. 核心架构
 
 ### 3.1 流程图
 
@@ -55,16 +55,17 @@ branch: codex/intent-router-v1
                                           intent_query 作为可调用工具暴露给 agentic
 ```
 
-### 3.2 四类 handler 定位
+### 3.2 Handler 定位
 
 | handler_type | 定位 | 何时进入 |
 |---|---|---|
 | `chitchat` | 不查数据、不查 KB，直接生成回答（问候、能力介绍、闲聊、追问澄清） | 明显寒暄 / 问能力 / 不需要任何外部信息 |
 | `intent_query` | 一次性结构化查询：输入 = 已抽好的 params，输出 = answer + table | Router 高置信度地认出某个预定义查询 code |
+| `knowledge_lookup` | 知识库检索：制度、流程、手册、标准问答 | Router 命中 `knowledge.policy_qa` |
 | `workflow` | 多轮严格状态机，必须收齐 slots 再执行（如请假申请） | Router 识别出业务流程类 code |
 | `agentic` | 开放规划循环，自由组合工具，可递归调用 intent_query | 复杂分析、跨域、低置信度兜底、`intent_code = "general"` |
 
-> **why 这样切**：v1 的痛点是"快路径"和"慢路径"混着写。v2 把 4 类边界讲清楚——快的就一次执行不绕远路，慢的就老实进 agentic loop，不再让两者互相污染。
+> **why 这样切**：旧路径的痛点是"快路径"和"慢路径"混着写。Intent Router 把 4 类边界讲清楚——快的就一次执行不绕远路，慢的就老实进 agentic loop，不再让两者互相污染。
 
 ## 4. Router 详细设计
 
@@ -121,19 +122,15 @@ branch: codex/intent-router-v1
 |---|---|
 | `confidence = low` | 强制改写 `handler_type = "agentic"`，`intent_code` 保留作为 hint |
 | `intent_code = "general"` | 直接走 agentic |
-| Router 输出的 code 在 manifest 里找不到 | 退化为 `general` → agentic，并在日志打告警 |
+| Router 输出的 code 在 manifest 里找不到 | fail closed，返回 router error |
 | Router 输出的 `handler_type` 与 code manifest 不一致 | 以 manifest 为准，覆盖 Router 的输出，记日志 |
 | `params` 缺关键字段且 code 标了 `required` | 进入 `agentic`（让它自己问用户或自己组合查询）；**不要**回到旧的 if-else 抽参 |
 
-### 4.4 LLM 失败兜底（不让系统挂）
+### 4.4 LLM 失败策略
 
-调用顺序：
+当前实现采用 fail closed：Router LLM 不可用、输出无法解析、或返回未注册 intent_code 时，不回退旧业务路由。只有低风险 `system.smalltalk` 在无 API key 时有极小本地兜底。
 
-1. Router LLM 调用（带 timeout，例如 3s）
-2. 失败或超时 → 退到现有 `local-llm.js` 的 `recognizeIntent`（**不删旧规则**），把它的 `intent` 映射到新的 `intent_code` 体系
-3. 仍然失败 → `intent_code = "general"`，`handler_type = "agentic"`
-
-> **why 保留旧规则**：这是熔断保险，不是主路径。新架构只要正常工作，旧规则永远不会被触发。
+这样牺牲少量可用性，换取企业数据场景下更强的可治理性和可审计性。
 
 ## 5. Intent Code 体系框架
 
@@ -147,7 +144,7 @@ branch: codex/intent-router-v1
 
 特例：`general`、`smalltalk` 等系统级 code 不强求三段式。
 
-### 5.2 Manifest 字段（v2 新增）
+### 5.2 Manifest 字段
 
 每个 intent_code 对应一份注册项，结构如下：
 
@@ -220,14 +217,14 @@ attendance.submit.leave    handler_type=workflow
 5. 用 LLM 把 raw rows → 自然语言 answer（沿用现有 `formatBusinessDataResult` 或新的精简模板）
 6. 返回 answer + table artifact
 
-> **why 这条路径独立出来**：v1 里这种"已经知道怎么查"的问题被塞进了和 agentic 同一条 free-agent-loop，平均要走 2-3 个 LLM 调用；v2 的 intent_query 目标是 **1 次 Router LLM + 1 次 tool + 1 次 answer LLM**，延迟和成本都可控。
+> **why 这条路径独立出来**：旧路径里这种"已经知道怎么查"的问题被塞进了和 agentic 同一条 free-agent-loop，平均要走 2-3 个 LLM 调用；intent_query 目标是 **1 次 Router LLM + 1 次 tool + 1 次 answer LLM**，延迟和成本都可控。
 
 ### 6.3 workflow
 
 - 直接复用 `WorkflowRunner`（`src/runtime/workflow-runner.js`）
-- 适配层：v2 在进入 workflow 前，先把 Router 的 `intent_code` 和 `params` 翻译成现有 scenario 期望的 `active_intent` + `slots`
+- 适配层：在进入 workflow 前，先把 Router 的 `intent_code` 和 `params` 翻译成现有 scenario 期望的 `active_intent` + `slots`
 - 已经在跑的 workflow 通过 `session.active_intent_code` 续跑，不让 Router 抢回去
-- 与 v1 对比：唯一差异是入口从 `classifyIntentNode → scenarioRouter` 变成 `Router → workflow handler → scenarioRouter`
+- 与旧入口对比：唯一差异是入口从 `classifyIntentNode → scenarioRouter` 变成 `Router → workflow handler → scenarioRouter`
 
 ### 6.4 agentic
 
@@ -237,7 +234,7 @@ attendance.submit.leave    handler_type=workflow
   - 工具参数 schema：等于该 code 的 `params_schema`
   - 工具实现：内部直接走 intent_query handler，再把结果作为 observation 返回给 agentic
 - 目的：跨域复杂问题（"对比华东和华南库存压力"）由 agentic 拆解为多次子 intent_query，而不是再写一份 `planDealerMultiQuery`
-- v1 的 `enforceSkillContracts` 不在 v2 主路径再用；其逻辑（如部门 scope）下沉到对应 intent_query 的 params mapper
+- 旧的 `enforceSkillContracts` 不在主路径再用；其逻辑（如部门 scope）下沉到对应 intent_query 的 params mapper
 
 ## 7. PoC 范围：dealer-inventory
 
@@ -257,7 +254,7 @@ attendance.submit.leave    handler_type=workflow
 
 - `src/agent/orchestrator.js` — 在最前面插入 Router；命中 intent_query/chitchat 时直接走新 handler，命中 workflow 走现有 runner，命中 agentic 走现有 free-agent-loop
 - `src/runtime/agentic-loop.js` — 把 `sub_tools_available` 的 code 注册到 toolRegistry 视图
-- `skills/dealer-inventory/manifest.json` — 加 `intent_codes_v2: ["dealer.query.inventory"]`，标注 v2 入口
+- `skills/dealer-inventory/manifest.json` — 加 `intent_codes: ["dealer.query.inventory"]`，标注 Intent Router 入口
 
 ### 7.2 PoC 验证标准（必须通过的用例）
 
@@ -273,7 +270,7 @@ attendance.submit.leave    handler_type=workflow
 ### 7.3 PoC 不做的事
 
 - 不重写 leave-request workflow
-- 不删 `local-llm.js` 的关键词规则（保留作为兜底）
+- 旧 `local-llm.js` 规则仅作为 legacy 保留，不再作为业务路由兜底
 - 不接真实 LangGraph / OpenClaw 库
 - 不把其他 8 个 skill 一次性迁完
 - 不引入新的 LLM provider
@@ -297,9 +294,9 @@ attendance.submit.leave    handler_type=workflow
 
 | 阶段 | 内容 | 退出标准 |
 |---|---|---|
-| **1. Router 接入但默认不启用** | 实现 Router + intent registry；用 env flag `INTENT_ROUTER_V2=shadow` 走 shadow 模式，与现有路径双跑，只记日志 | 现有 eval 全绿；shadow 日志中 Router intent_code 与现有 intent_code 的映射准确率 ≥85% |
+| **1. Router 接入** | 实现 Router + intent registry，并用日志观测 Router intent_code 与现有 intent_code 的映射准确率 | 现有 eval 全绿；日志中 Router intent_code 与现有 intent_code 的映射准确率 ≥85% |
 | **2. dealer-inventory PoC** | 上文 §7 范围 | §7.2 的 6 个用例全过；新建的 router-eval 在 dealer-inventory 子集上 intent_code 准确率 ≥90%、params 准确率 ≥85% |
-| **3. 扩展到其他 intent_query 类** | 按 §8 顺序迁 business-query、dealer-finance、dealer-sales、dealer-after-sales、knowledge-qa、leave-records | 全量 eval 不退化（与 v1 对比下降幅度 ≤2%）；router-eval 在所有迁完的 code 上准确率 ≥88% |
+| **3. 扩展到其他 intent_query 类** | 按 §8 顺序迁 business-query、dealer-finance、dealer-sales、dealer-after-sales、knowledge-qa、leave-records | 全量 eval 不退化；router-eval 在所有迁完的 code 上准确率 ≥88% |
 | **4. 整合 workflow & 废弃旧 intent 路径** | leave-request 从 Router 入口走；删除 `inferIntentCode` 的关键词分支，`local-llm.js` 仅保留为熔断兜底 | 一周生产日志中旧路径触发率 < 1%；Router 主路径稳定 |
 
 ## 10. 风险与未决问题
@@ -320,7 +317,7 @@ attendance.submit.leave    handler_type=workflow
 - ❓ **Q2**：business-query 拆分粒度——拆 3 个 code 还是合并为一个带 `target` 参数的 code？
 - ❓ **Q3**：dealer-analysis 是否需要一个显式的 `dealer.analyze.*` code？还是完全交给 agentic + general？
 - ❓ **Q4**：`call_intent.<code>` 的工具命名是否对 LLM 友好？是否要改成更口语化的 `query_dealer_inventory` 这类名字？（影响 agentic 调用准确率）
-- ❓ **Q5**：Router 是否要支持单条消息映射到多个 intent_code（"查库存顺便看下配额"）？v2 第一版建议只支持 1 个，多 intent 让 agentic 处理。
+- ❓ **Q5**：Router 是否要支持单条消息映射到多个 intent_code（"查库存顺便看下配额"）？当前建议只支持 1 个，多 intent 让 agentic 处理。
 
 ---
 

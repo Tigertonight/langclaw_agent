@@ -24,11 +24,12 @@ function pushRecentRoute(session, route, now) {
   list.push({ intent_code: route.intent_code, params: route.params ?? {}, ts: now.toISOString() });
   return list.slice(-RECENT_ROUTES_LIMIT);
 }
-import { createAgentStep, createSkillStep, createSources, splitForStreaming } from "../runtime/agent-events.js";
+import { createAgentStep, createSources, createToolSteps, splitForStreaming } from "../runtime/agent-events.js";
 import { buildConversationContext, summarizeConversationContext } from "../runtime/conversation-context.js";
-import { FreeAgentLoop } from "../runtime/free-agent-loop.js";
 import { WorkflowRunner } from "../runtime/workflow-runner.js";
-import { classifyIntentNode } from "./nodes.js";
+import { isAutonomousPlanning, isControlledExecution } from "../router/execution-class.js";
+import { checkToolPermission } from "../auth/permissions.js";
+import { INTENTS } from "./ports.js";
 import { createDefaultSessionId } from "./session-store.js";
 
 export class SimpleWorkflowOrchestrator {
@@ -46,7 +47,6 @@ export class SimpleWorkflowOrchestrator {
     this.intentQueryHandler = intentQueryHandler ?? null;
     this.chitchatHandler = chitchatHandler ?? null;
     this.agenticHandler = agenticHandler ?? null;
-    this.freeAgentLoop = new FreeAgentLoop({ llm, knowledgeBase, toolRegistry });
     this.workflowRunner = new WorkflowRunner({
       scenarioRouter,
       applySessionPatch: (session, patch) => this.applySessionPatch(session, patch)
@@ -59,46 +59,11 @@ export class SimpleWorkflowOrchestrator {
     const enterpriseContext = await this.loadEnterpriseContext(user);
     const resolvedSessionId = sessionId ?? createDefaultSessionId(user.id);
     const session = await this.sessionStore.get(resolvedSessionId);
-    const history = getSessionHistory(session);
     const conversationContext = buildConversationContext({ session, currentMessage: message, enterpriseContext });
-    let route = null;
-
-    // v2 Intent Router 入口（默认关闭，env INTENT_ROUTER_V2=on 启用）
-    if (process.env.INTENT_ROUTER_V2 === "on" && this.intentRouter) {
-      const nowDate = new Date();
-      const recentMessages = pruneByTtl(session?.recent_messages, nowDate.getTime());
-      const recentRoutes = pruneByTtl(session?.recent_routes, nowDate.getTime());
-      const routerResult = await this.intentRouter.route({
-        message,
-        now: nowDate.toISOString(),
-        user_context: { user_id: user.id, name: user.name, department: user.department, role: user.role, permissions: user.permissions },
-        session_state: {
-          active_intent_code: session?.active_intent_code,
-          last_route: session?.last_route ?? null,
-          last_query_route: session?.last_query_route ?? null,
-          recent_messages: recentMessages,
-          recent_routes: recentRoutes
-        }
-      });
-      // 不论 handler 路径如何，都把这一轮用户原话压入滑窗
-      if (session) session.recent_messages = pushRecentMessage(session, message, nowDate);
-      // 工作流场景的续轮仍然走原路径，让 workflow runner 接管
-      if (this.workflowRunner.canResume(session)) {
-        // fall through to legacy path
-      } else if (routerResult.handler_type === "intent_query" && this.intentQueryHandler) {
-        return this.runIntentQuery({ user, message, sessionId: resolvedSessionId, session, route: routerResult, enterpriseContext, conversationContext, debug, startedAt });
-      } else if (routerResult.handler_type === "chitchat" && this.chitchatHandler) {
-        return this.runChitchat({ user, message, sessionId: resolvedSessionId, session, route: routerResult, enterpriseContext, conversationContext, debug, startedAt });
-      } else if (routerResult.handler_type === "agentic" && this.agenticHandler) {
-        return this.runAgentic({ user, message, sessionId: resolvedSessionId, session, route: routerResult, enterpriseContext, conversationContext, debug, startedAt });
-      }
-      // workflow / 兜底走下方原有路径
-    }
 
     if (this.workflowRunner.canResume(session)) {
       const activeIntent = session.active_intent;
-      route = await classifyIntentNode({ llm: this.llm, user, message, history, enterpriseContext, conversationContext });
-      if (this.workflowRunner.shouldContinueActive({ activeIntent, route, message })) {
+      if (this.workflowRunner.shouldContinueActive({ activeIntent, route: { intent: null }, message })) {
         const scenarioResult = await this.workflowRunner.runActive({ user, message, session });
         return this.finish({
           user,
@@ -122,62 +87,45 @@ export class SimpleWorkflowOrchestrator {
       await this.workflowRunner.reset(session);
     }
 
-    route ??= await classifyIntentNode({ llm: this.llm, user, message, history, enterpriseContext, conversationContext });
-    const selection = await this.selectSkill({ session, route, message, user });
-    await this.applySessionPatch(session, this.skillRuntime?.createSessionPatch(selection));
-    const skills = selection.skills;
-    const agentSteps = [
-      createAgentStep("identify_user", "确认员工身份", `当前以 ${user.name}（${user.department} / ${user.role}）的身份处理请求。`),
-      createAgentStep("classify_intent", "识别任务类型", `判断为「${route.intent}」，原因：${route.reason}。`),
-      createAgentStep("select_skill", "选择执行技能", selection.selectedSkill
-        ? `已选择 skill「${selection.selectedSkill.name}」，执行模式为 ${selection.mode}。`
-        : selection.reason),
-      createSkillStep(skills)
-    ];
-
-    if (this.skillRuntime?.shouldUseWorkflow({ route, selection })) {
-      const scenarioResult = await this.workflowRunner.runNew({ route, user, message, session });
-      return this.finish({
-        user,
-        sessionId: resolvedSessionId,
-        message,
-        route,
-        docs: [],
-        toolPlan: { calls: [] },
-        toolResults: scenarioResult.toolResults ?? [],
-        answer: scenarioResult.answer,
-        scenarioDebug: scenarioResult.debug,
-        agentSteps: agentSteps.concat(this.workflowRunner.createEnterStep()),
-        enterpriseContext,
-        conversationContext,
-        skills,
-        selectedSkill: selection.selectedSkill,
-        session,
-        debug,
-        startedAt
-      });
+    if (!this.intentRouter) {
+      return this.finishRouterError({ user, sessionId: resolvedSessionId, message, session, enterpriseContext, conversationContext, debug, startedAt, error: createRouterFailure("router_disabled", "Intent Router 未初始化。") });
     }
 
-    const result = await this.freeAgentLoop.run({ user, message, route, history, skills, selectedSkill: selection.selectedSkill, enterpriseContext, conversationContext, agentSteps });
-    return this.finish({
-      user,
-      sessionId: resolvedSessionId,
-      message,
-      route,
-      docs: result.docs,
-      toolPlan: result.toolPlan,
-      toolResults: result.toolResults,
-      answer: result.answer,
-      artifacts: result.artifacts,
-      agentSteps: result.agentSteps,
-      agentState: result.agentState,
-      enterpriseContext,
-      conversationContext,
-      skills,
-      selectedSkill: selection.selectedSkill,
-      session,
-      debug,
-      startedAt
+    const nowDate = new Date();
+    const recentMessages = pruneByTtl(session?.recent_messages, nowDate.getTime());
+    const recentRoutes = pruneByTtl(session?.recent_routes, nowDate.getTime());
+    let routerResult;
+    try {
+      routerResult = await this.intentRouter.route({
+        message,
+        now: nowDate.toISOString(),
+        user_context: { user_id: user.id, name: user.name, department: user.department, role: user.role, permissions: user.permissions },
+        session_state: {
+          active_intent_code: session?.active_intent_code,
+          last_route: session?.last_route ?? null,
+          last_query_route: session?.last_query_route ?? null,
+          recent_messages: recentMessages,
+          recent_routes: recentRoutes
+        }
+      });
+    } catch (error) {
+      return this.finishRouterError({ user, sessionId: resolvedSessionId, message, session, enterpriseContext, conversationContext, debug, startedAt, error });
+    }
+    if (session) session.recent_messages = pushRecentMessage(session, message, nowDate);
+    if (isControlledExecution(routerResult)) {
+      const controlledResult = await this.runControlledExecution({
+        user, message, sessionId: resolvedSessionId, session, route: routerResult,
+        enterpriseContext, conversationContext, debug, startedAt
+      });
+      if (controlledResult) return controlledResult;
+    }
+    if (isAutonomousPlanning(routerResult) && this.agenticHandler) {
+      return this.runAgentic({ user, message, sessionId: resolvedSessionId, session, route: routerResult, enterpriseContext, conversationContext, debug, startedAt });
+    }
+    return this.finishRouterError({
+      user, sessionId: resolvedSessionId, message, session, enterpriseContext, conversationContext, debug, startedAt,
+      error: createRouterFailure("handler_unavailable", `Intent Router 已返回 ${routerResult.intent_code}，但当前没有可接管的 handler。`),
+      route: routerResult
     });
   }
 
@@ -187,7 +135,6 @@ export class SimpleWorkflowOrchestrator {
     const enterpriseContext = await this.loadEnterpriseContext(user);
     const resolvedSessionId = sessionId ?? createDefaultSessionId(user.id);
     const session = await this.sessionStore.get(resolvedSessionId);
-    const history = getSessionHistory(session);
     const conversationContext = buildConversationContext({ session, currentMessage: message, enterpriseContext });
 
     const emit = async (event) => onEvent?.(event);
@@ -201,40 +148,10 @@ export class SimpleWorkflowOrchestrator {
     };
 
     await pushStep(createAgentStep("classify_intent", "理解你的问题", "正在判断问题类型和需要的上下文。", { status: "running" }));
-    let route = null;
-
-    // v2 Intent Router 入口（默认关闭，env INTENT_ROUTER_V2=on 启用）
-    // 与非流式 run() 中的分支保持镜像；workflow 续轮仍 fall through 到下方原路径。
-    if (process.env.INTENT_ROUTER_V2 === "on" && this.intentRouter && !this.workflowRunner.canResume(session)) {
-      const nowDate = new Date();
-      const recentMessages = pruneByTtl(session?.recent_messages, nowDate.getTime());
-      const recentRoutes = pruneByTtl(session?.recent_routes, nowDate.getTime());
-      const routerResult = await this.intentRouter.route({
-        message,
-        now: nowDate.toISOString(),
-        user_context: { user_id: user.id, name: user.name, department: user.department, role: user.role, permissions: user.permissions },
-        session_state: {
-          active_intent_code: session?.active_intent_code,
-          last_route: session?.last_route ?? null,
-          last_query_route: session?.last_query_route ?? null,
-          recent_messages: recentMessages,
-          recent_routes: recentRoutes
-        }
-      });
-      if (session) session.recent_messages = pushRecentMessage(session, message, nowDate);
-      if (routerResult.handler_type === "agentic" && this.agenticHandler) {
-        return this.runAgenticStream({
-          user, message, sessionId: resolvedSessionId, session, route: routerResult,
-          enterpriseContext, conversationContext, debug, startedAt, emit, pushStep, visibleSteps
-        });
-      }
-      // intent_query / chitchat 仍然走下面的旧 stream 路径——它们没流式 handler，也没必要专门接
-    }
 
     if (this.workflowRunner.canResume(session)) {
       const activeIntent = session.active_intent;
-      route = await classifyIntentNode({ llm: this.llm, user, message, history, enterpriseContext, conversationContext });
-      if (this.workflowRunner.shouldContinueActive({ activeIntent, route, message })) {
+      if (this.workflowRunner.shouldContinueActive({ activeIntent, route: { intent: null }, message })) {
         const scenarioResult = await this.workflowRunner.runActive({ user, message, session });
         await pushStep(this.workflowRunner.createResumeStep());
         return this.finishStream({
@@ -260,35 +177,189 @@ export class SimpleWorkflowOrchestrator {
       await pushStep(this.workflowRunner.createSwitchStep());
     }
 
-    route ??= await classifyIntentNode({ llm: this.llm, user, message, history, enterpriseContext, conversationContext });
-    await pushStep(createAgentStep("classify_intent", "识别任务类型", `判断为「${route.intent}」，置信度 ${route.confidence}，原因：${route.reason}。`));
+    if (!this.intentRouter) {
+      return this.finishRouterErrorStream({ user, sessionId: resolvedSessionId, message, session, enterpriseContext, conversationContext, debug, startedAt, emit, pushStep, visibleSteps, error: createRouterFailure("router_disabled", "Intent Router 未初始化。") });
+    }
+
+    const nowDate = new Date();
+    const recentMessages = pruneByTtl(session?.recent_messages, nowDate.getTime());
+    const recentRoutes = pruneByTtl(session?.recent_routes, nowDate.getTime());
+    let routerResult;
+    try {
+      routerResult = await this.intentRouter.route({
+        message,
+        now: nowDate.toISOString(),
+        user_context: { user_id: user.id, name: user.name, department: user.department, role: user.role, permissions: user.permissions },
+        session_state: {
+          active_intent_code: session?.active_intent_code,
+          last_route: session?.last_route ?? null,
+          last_query_route: session?.last_query_route ?? null,
+          recent_messages: recentMessages,
+          recent_routes: recentRoutes
+        }
+      });
+    } catch (error) {
+      return this.finishRouterErrorStream({ user, sessionId: resolvedSessionId, message, session, enterpriseContext, conversationContext, debug, startedAt, emit, pushStep, visibleSteps, error });
+    }
+    if (session) session.recent_messages = pushRecentMessage(session, message, nowDate);
+    if (isControlledExecution(routerResult)) {
+      const controlledResult = await this.runControlledExecutionStream({
+        user, message, sessionId: resolvedSessionId, session, route: routerResult,
+        enterpriseContext, conversationContext, debug, startedAt, emit, pushStep, visibleSteps
+      });
+      if (controlledResult) return controlledResult;
+    }
+    if (isAutonomousPlanning(routerResult) && this.agenticHandler) {
+      return this.runAgenticStream({
+        user, message, sessionId: resolvedSessionId, session, route: routerResult,
+        enterpriseContext, conversationContext, debug, startedAt, emit, pushStep, visibleSteps
+      });
+    }
+    return this.finishRouterErrorStream({
+      user, sessionId: resolvedSessionId, message, session, enterpriseContext, conversationContext, debug, startedAt, emit, pushStep, visibleSteps,
+      error: createRouterFailure("handler_unavailable", `Intent Router 已返回 ${routerResult.intent_code}，但当前没有可接管的 handler。`),
+      route: routerResult
+    });
+  }
+
+  async finishRouterError({ user, sessionId, message, session, enterpriseContext, conversationContext, debug, startedAt, error, route }) {
+    const errorRoute = createRouterErrorRoute(error, route);
+    const answer = createRouterErrorAnswer(error);
+    return this.finish({
+      user,
+      sessionId,
+      message,
+      route: errorRoute,
+      docs: [],
+      toolPlan: { calls: [] },
+      toolResults: [],
+      answer,
+      agentSteps: [createAgentStep("router_error", "路由未完成", answer, { status: "failed" })],
+      enterpriseContext,
+      conversationContext,
+      skills: [],
+      session,
+      debug,
+      startedAt
+    });
+  }
+
+  async finishRouterErrorStream({ user, sessionId, message, session, enterpriseContext, conversationContext, debug, startedAt, emit, pushStep, visibleSteps, error, route }) {
+    const errorRoute = createRouterErrorRoute(error, route);
+    const answer = createRouterErrorAnswer(error);
+    await pushStep(createAgentStep("router_error", "路由未完成", answer, { status: "failed" }));
+    await emit({ type: "route", route: errorRoute });
+    return this.finishStream({
+      user,
+      sessionId,
+      message,
+      route: errorRoute,
+      docs: [],
+      toolPlan: { calls: [] },
+      toolResults: [],
+      answer,
+      agentSteps: visibleSteps,
+      enterpriseContext,
+      conversationContext,
+      skills: [],
+      session,
+      debug,
+      startedAt,
+      emit
+    });
+  }
+
+  async runControlledExecution({ user, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt }) {
+    if (route.handler_type === "intent_query" && this.intentQueryHandler) {
+      return this.runIntentQuery({ user, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt });
+    }
+    if (route.handler_type === "chitchat" && this.chitchatHandler) {
+      return this.runChitchat({ user, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt });
+    }
+    if (route.handler_type === "knowledge_lookup") {
+      return this.runKnowledgeLookup({ user, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt });
+    }
+    if (route.handler_type === "workflow" && this.workflowRunner.hasWorkflow(INTENTS.LEAVE_REQUEST)) {
+      return this.runWorkflowFromIntentRouter({ user, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt });
+    }
+    return null;
+  }
+
+  async runControlledExecutionStream({ user, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, emit, pushStep, visibleSteps }) {
+    await pushStep(createAgentStep("classify_intent", "识别任务类型", `Router 判定为 ${route.execution_class}/${route.handler_type}（${route.intent_code}, source=${route.source}）。`));
     await emit({ type: "route", route });
 
-    const selection = await this.selectSkill({ session, route, message, user });
-    await this.applySessionPatch(session, this.skillRuntime?.createSessionPatch(selection));
-    const skills = selection.skills;
-    await pushStep(createAgentStep("select_skill", "选择执行技能", selection.selectedSkill
-      ? `已选择 skill「${selection.selectedSkill.name}」，执行模式为 ${selection.mode}。`
-      : selection.reason));
-    await pushStep(createSkillStep(skills));
-
-    if (this.skillRuntime?.shouldUseWorkflow({ route, selection })) {
-      const scenarioResult = await this.workflowRunner.runNew({ route, user, message, session });
-      await pushStep(this.workflowRunner.createEnterStep());
+    if (route.handler_type === "intent_query" && this.intentQueryHandler) {
+      const handlerResult = await this.intentQueryHandler.execute({
+        user,
+        message,
+        intent_code: route.intent_code,
+        params: route.params ?? {},
+        route,
+        session
+      });
+      const legacyRoute = {
+        intent: "data_query",
+        confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
+        reason: route.reasoning ?? "Intent Router → controlled_execution/intent_query",
+        intent_code: route.intent_code,
+        router: "intent_router",
+        router_source: route.source,
+        params: route.params,
+        execution_class: route.execution_class,
+        handler_type: route.handler_type
+      };
+      if (session) {
+        const nowDate = new Date();
+        const snapshot = { intent_code: route.intent_code, params: route.params ?? {}, ts: nowDate.toISOString() };
+        session.last_task = { intent_code: route.intent_code, params: route.params ?? {} };
+        session.active_intent_code = route.intent_code;
+        session.last_route = snapshot;
+        session.last_query_route = snapshot;
+        session.recent_routes = pushRecentRoute(session, route, nowDate);
+      }
+      if (handlerResult.debug?.denied) {
+        await pushStep(createAgentStep("permission_denied", "权限已拦截", handlerResult.answer, { status: "failed" }));
+        return this.finishStream({
+          user,
+          sessionId,
+          message,
+          route: legacyRoute,
+          docs: [],
+          toolPlan: handlerResult.toolPlan,
+          toolResults: handlerResult.toolResults,
+          answer: handlerResult.answer,
+          artifacts: [],
+          agentSteps: visibleSteps,
+          enterpriseContext,
+          conversationContext,
+          skills: [],
+          session,
+          debug,
+          startedAt,
+          emit
+        });
+      }
+      const rowCount = handlerResult.debug?.row_count ?? handlerResult.table?.rows?.length ?? 0;
+      await pushStep(createAgentStep("intent_query", "执行结构化查询", `命中 ${route.intent_code}，已生成确定性查询计划。`));
+      for (const step of createToolSteps(handlerResult.toolPlan, handlerResult.toolResults)) {
+        await pushStep(step);
+      }
+      await pushStep(createAgentStep("observe_result", "观察结果", `结构化查询返回 ${rowCount} 条记录，正在组织回答。`));
       return this.finishStream({
         user,
-        sessionId: resolvedSessionId,
+        sessionId,
         message,
-        route,
+        route: legacyRoute,
         docs: [],
-        toolPlan: { calls: [] },
-        toolResults: scenarioResult.toolResults ?? [],
-        answer: scenarioResult.answer,
-        scenarioDebug: scenarioResult.debug,
+        toolPlan: handlerResult.toolPlan,
+        toolResults: handlerResult.toolResults,
+        answer: handlerResult.answer,
+        artifacts: [],
         agentSteps: visibleSteps,
         enterpriseContext,
-        skills,
-        selectedSkill: selection.selectedSkill,
+        conversationContext,
+        skills: [],
         session,
         debug,
         startedAt,
@@ -296,41 +367,195 @@ export class SimpleWorkflowOrchestrator {
       });
     }
 
-    const result = await this.freeAgentLoop.runStream({
+    if (route.handler_type === "chitchat" && this.chitchatHandler) {
+      const handlerResult = await this.chitchatHandler.execute({ user, message });
+      if (session) {
+        session.last_route = { intent_code: route.intent_code, params: route.params ?? {}, ts: new Date().toISOString() };
+      }
+      const legacyRoute = {
+        intent: "smalltalk",
+        confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
+        reason: route.reasoning ?? "Intent Router → controlled_execution/chitchat",
+        intent_code: route.intent_code,
+        router: "intent_router",
+        router_source: route.source,
+        execution_class: route.execution_class,
+        handler_type: route.handler_type
+      };
+      await pushStep(createAgentStep("chitchat", "直接生成回答", "这是受控执行里的轻量交互，无需调用工具或检索知识库。"));
+      return this.finishStream({
+        user,
+        sessionId,
+        message,
+        route: legacyRoute,
+        docs: [],
+        toolPlan: { calls: [] },
+        toolResults: [],
+        answer: handlerResult.answer,
+        artifacts: [],
+        agentSteps: visibleSteps,
+        enterpriseContext,
+        conversationContext,
+        skills: [],
+        session,
+        debug,
+        startedAt,
+        emit
+      });
+    }
+
+    if (route.handler_type === "knowledge_lookup") {
+      return this.runKnowledgeLookupStream({ user, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, emit, pushStep, visibleSteps });
+    }
+
+    if (route.handler_type === "workflow" && this.workflowRunner.hasWorkflow(INTENTS.LEAVE_REQUEST)) {
+      return this.runWorkflowFromIntentRouterStream({ user, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, emit, pushStep, visibleSteps });
+    }
+
+    return null;
+  }
+
+  async runKnowledgeLookup({ user, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt }) {
+    const result = await this.executeKnowledgeLookup({ user, message, route, enterpriseContext, conversationContext });
+    const legacyRoute = createLegacyKnowledgeRoute(route);
+    const agentSteps = [
+      createAgentStep("identify_user", "确认员工身份", `当前以 ${user.name}（${user.department} / ${user.role}）的身份处理请求。`),
+      createAgentStep("classify_intent", "识别任务类型", `Router 判定为 ${route.execution_class}/${route.handler_type}（${route.intent_code}, source=${route.source}）。`),
+      ...createToolSteps(result.toolPlan, result.toolResults),
+      createAgentStep("observe_result", "观察结果", `知识库命中 ${result.docs.length} 个片段，正在组织回答。`)
+    ];
+    if (session) {
+      session.last_route = { intent_code: route.intent_code, params: route.params ?? {}, ts: new Date().toISOString() };
+    }
+    return this.finish({
       user,
+      sessionId,
       message,
-      route,
-      history,
-      skills,
-      selectedSkill: selection.selectedSkill,
+      route: legacyRoute,
+      docs: result.docs,
+      toolPlan: result.toolPlan,
+      toolResults: result.toolResults,
+      answer: result.answer,
+      artifacts: result.artifacts,
+      agentSteps,
       enterpriseContext,
       conversationContext,
-      agentSteps: visibleSteps,
-      emit,
-      pushStep
+      skills: [],
+      session,
+      debug,
+      startedAt
     });
+  }
 
+  async runKnowledgeLookupStream({ user, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, emit, pushStep, visibleSteps }) {
+    await pushStep(createAgentStep("classify_intent", "识别任务类型", `Router 判定为 ${route.execution_class}/${route.handler_type}（${route.intent_code}, source=${route.source}）。`));
+    await emit({ type: "route", route });
+    const result = await this.executeKnowledgeLookup({ user, message, route, enterpriseContext, conversationContext });
+    for (const step of createToolSteps(result.toolPlan, result.toolResults)) {
+      await pushStep(step);
+    }
+    await pushStep(createAgentStep("observe_result", "观察结果", `知识库命中 ${result.docs.length} 个片段，正在组织回答。`));
+    if (session) {
+      session.last_route = { intent_code: route.intent_code, params: route.params ?? {}, ts: new Date().toISOString() };
+    }
     return this.finishStream({
       user,
-      sessionId: resolvedSessionId,
+      sessionId,
       message,
-      route,
+      route: createLegacyKnowledgeRoute(route),
       docs: result.docs,
       toolPlan: result.toolPlan,
       toolResults: result.toolResults,
       answer: result.answer,
       artifacts: result.artifacts,
       agentSteps: visibleSteps,
-      agentState: result.agentState,
       enterpriseContext,
       conversationContext,
-      skills,
-      selectedSkill: selection.selectedSkill,
+      skills: [],
       session,
       debug,
       startedAt,
-      emit,
-      answerAlreadyStreamed: result.answerAlreadyStreamed
+      emit
+    });
+  }
+
+  async executeKnowledgeLookup({ user, message, route, enterpriseContext, conversationContext }) {
+    const query = typeof route.params?.query === "string" && route.params.query.trim() ? route.params.query.trim() : message;
+    const call = { name: "retrieve_knowledge", args: { query, topK: 5 } };
+    const permission = await checkToolPermission(user, call);
+    const toolResult = permission.allow
+      ? await this.toolRegistry.execute(call, { user })
+      : { ok: false, tool: call.name, error: "permission_denied", code: permission.code, message: permission.message };
+    const toolResults = [toolResult];
+    const docs = toolResult.ok ? (toolResult.data?.docs ?? []) : [];
+    const generated = await this.llm.generateAnswer({
+      user,
+      question: message,
+      route: createLegacyKnowledgeRoute(route),
+      docs,
+      toolResults,
+      enterpriseContext,
+      conversationContext
+    });
+    return {
+      docs,
+      toolPlan: { calls: [call] },
+      toolResults,
+      answer: generated.answer,
+      artifacts: generated.artifacts ?? []
+    };
+  }
+
+  async runWorkflowFromIntentRouter({ user, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt }) {
+    const scenarioResult = await this.workflowRunner.runNew({ route: { ...route, intent: INTENTS.LEAVE_REQUEST }, user, message, session });
+    const legacyRoute = createLegacyWorkflowRoute(route);
+    return this.finish({
+      user,
+      sessionId,
+      message,
+      route: legacyRoute,
+      docs: [],
+      toolPlan: { calls: [] },
+      toolResults: scenarioResult.toolResults ?? [],
+      answer: scenarioResult.answer,
+      scenarioDebug: scenarioResult.debug,
+      agentSteps: [
+        createAgentStep("identify_user", "确认员工身份", `当前以 ${user.name}（${user.department} / ${user.role}）的身份处理请求。`),
+        createAgentStep("classify_intent", "识别任务类型", `Router 判定为 ${route.execution_class}/${route.handler_type}（${route.intent_code}, source=${route.source}）。`),
+        this.workflowRunner.createEnterStep()
+      ],
+      enterpriseContext,
+      conversationContext,
+      skills: [],
+      session,
+      debug,
+      startedAt
+    });
+  }
+
+  async runWorkflowFromIntentRouterStream({ user, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, emit, pushStep, visibleSteps }) {
+    await pushStep(createAgentStep("classify_intent", "识别任务类型", `Router 判定为 ${route.execution_class}/${route.handler_type}（${route.intent_code}, source=${route.source}）。`));
+    await emit({ type: "route", route });
+    const scenarioResult = await this.workflowRunner.runNew({ route: { ...route, intent: INTENTS.LEAVE_REQUEST }, user, message, session });
+    await pushStep(this.workflowRunner.createEnterStep());
+    return this.finishStream({
+      user,
+      sessionId,
+      message,
+      route: createLegacyWorkflowRoute(route),
+      docs: [],
+      toolPlan: { calls: [] },
+      toolResults: scenarioResult.toolResults ?? [],
+      answer: scenarioResult.answer,
+      scenarioDebug: scenarioResult.debug,
+      agentSteps: visibleSteps,
+      enterpriseContext,
+      conversationContext,
+      skills: [],
+      session,
+      debug,
+      startedAt,
+      emit
     });
   }
 
@@ -343,15 +568,16 @@ export class SimpleWorkflowOrchestrator {
       route,
       session
     });
-    // 用 v1 的 intent 字符串保留兼容
+    // 保留 legacy intent 字符串，兼容下游历史字段。
     const legacyRoute = {
       intent: "data_query",
       confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
-      reason: route.reasoning ?? "v2 intent router → intent_query",
+      reason: route.reasoning ?? "Intent Router → intent_query",
       intent_code: route.intent_code,
-      router: "v2",
+      router: "intent_router",
       router_source: route.source,
       params: route.params,
+      execution_class: route.execution_class,
       handler_type: route.handler_type
     };
     if (session) {
@@ -397,10 +623,11 @@ export class SimpleWorkflowOrchestrator {
     const legacyRoute = {
       intent: "smalltalk",
       confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
-      reason: route.reasoning ?? "v2 intent router → chitchat",
+      reason: route.reasoning ?? "Intent Router → chitchat",
       intent_code: route.intent_code,
-      router: "v2",
+      router: "intent_router",
       router_source: route.source,
+      execution_class: route.execution_class,
       handler_type: route.handler_type
     };
     const agentSteps = [
@@ -437,10 +664,11 @@ export class SimpleWorkflowOrchestrator {
     const legacyRoute = {
       intent: "data_query",
       confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
-      reason: route.reasoning ?? "v2 intent router → agentic",
+      reason: route.reasoning ?? "Intent Router → agentic",
       intent_code: route.intent_code,
-      router: "v2",
+      router: "intent_router",
       router_source: route.source,
+      execution_class: route.execution_class,
       handler_type: route.handler_type,
       params: route.params
     };
@@ -494,10 +722,11 @@ export class SimpleWorkflowOrchestrator {
     const legacyRoute = {
       intent: "data_query",
       confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
-      reason: route.reasoning ?? "v2 intent router → agentic",
+      reason: route.reasoning ?? "Intent Router → agentic",
       intent_code: route.intent_code,
-      router: "v2",
+      router: "intent_router",
       router_source: route.source,
+      execution_class: route.execution_class,
       handler_type: route.handler_type,
       params: route.params
     };
@@ -652,7 +881,7 @@ export class SimpleWorkflowOrchestrator {
     if (!answerAlreadyStreamed) {
       for (const token of splitForStreaming(answer)) {
         await emit({ type: "delta", text: token });
-        await new Promise((resolve) => setTimeout(resolve, 12));
+        await new Promise((resolve) => setTimeout(resolve, 24));
       }
     }
 
@@ -705,6 +934,34 @@ function summarizeEnterpriseContext(context) {
   };
 }
 
+function createLegacyKnowledgeRoute(route) {
+  return {
+    intent: INTENTS.KNOWLEDGE_QA,
+    confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
+    reason: route.reasoning ?? "Intent Router → controlled_execution/knowledge_lookup",
+    intent_code: route.intent_code,
+    router: "intent_router",
+    router_source: route.source,
+    execution_class: route.execution_class,
+    handler_type: route.handler_type,
+    params: route.params
+  };
+}
+
+function createLegacyWorkflowRoute(route) {
+  return {
+    intent: INTENTS.LEAVE_REQUEST,
+    confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
+    reason: route.reasoning ?? "Intent Router → controlled_execution/workflow",
+    intent_code: route.intent_code,
+    router: "intent_router",
+    router_source: route.source,
+    execution_class: route.execution_class,
+    handler_type: route.handler_type,
+    params: route.params
+  };
+}
+
 function createCompactDebugInfo(debug) {
   return {
     user: debug.user,
@@ -731,6 +988,7 @@ function summarizeRoute(route) {
     confidence: route.confidence,
     router: route.router ?? route.classifier,
     reason: route.reason,
+    execution_class: route.execution_class,
     handler_type: route.handler_type,
     router_source: route.router_source,
     params: route.params
@@ -864,6 +1122,36 @@ function unique(items = []) {
   return [...new Set(items.filter(Boolean))];
 }
 
+function createRouterFailure(code, message) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
+}
+
+function createRouterErrorRoute(error, originalRoute) {
+  return {
+    intent: "router_error",
+    intent_code: originalRoute?.intent_code ?? "router.error",
+    confidence: originalRoute?.confidence ?? "none",
+    reason: error?.message ?? "Intent Router 未能给出有效路由。",
+    router: "intent_router",
+    router_source: "error",
+    execution_class: "router_error",
+    handler_type: "router_error",
+    params: originalRoute?.params ?? {},
+    error_code: error?.code ?? "router_error"
+  };
+}
+
+function createRouterErrorAnswer(error) {
+  const code = error?.code ?? "router_error";
+  if (code === "router_disabled") return "Intent Router 当前未初始化，已停止处理。本项目不再回退旧路由或 local 路由。";
+  if (code === "router_unavailable") return "Intent Router 当前不可用，已停止处理。本项目不再回退旧路由或 local 路由。";
+  if (code === "unknown_intent_code") return "Intent Router 返回了未注册的意图，已停止处理。请先在 intent manifest 中注册该意图。";
+  if (code === "handler_unavailable") return "Intent Router 已完成判断，但当前没有可接管的 handler，已停止处理。";
+  return `Intent Router 未能完成路由，已停止处理：${error?.message ?? "unknown error"}`;
+}
+
 function getSessionHistory(session, limit = 8) {
   return Array.isArray(session?.history) ? session.history.slice(-limit) : [];
 }
@@ -883,7 +1171,9 @@ function createTurnMetadata({ route, selectedSkill, toolPlan, toolResults, answe
       intent: route.intent,
       intent_code: route.intent_code,
       confidence: route.confidence,
-      reason: route.reason
+      reason: route.reason,
+      execution_class: route.execution_class,
+      handler_type: route.handler_type
     } : null,
     selected_skill: selectedSkill?.id ?? null,
     tool_calls: (toolPlan?.calls ?? []).map((call) => ({

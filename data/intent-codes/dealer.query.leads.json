@@ -4,13 +4,67 @@
   "version": "1",
   "description": "查询销售线索明细（按门店、意向车系、销售归属、意向等级、跟进状态、来源、时间过滤）。仅返回行级明细。",
   "params_schema": {
-    "store": { "type": "string", "required": false, "examples": ["华东旗舰店", "华南标准店"] },
-    "series": { "type": "string", "required": false, "description": "意向车系", "examples": ["汉", "宋L", "海豹"] },
-    "owner": { "type": "string", "required": false, "description": "销售顾问姓名" },
-    "intention_level": { "type": "enum", "values": ["H", "M", "L"], "required": false, "description": "意向等级 H=高 M=中 L=低（用户说『高意向』映射到 H）" },
-    "status": { "type": "string", "required": false, "examples": ["新分配", "已联系", "已到店", "已成交", "已流失"] },
-    "source": { "type": "string", "required": false, "examples": ["懂车帝", "抖音直播", "汽车之家"] },
-    "time_range": { "type": "string", "required": false, "examples": ["近一个月", "本月"] }
+    "store": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "华东旗舰店",
+        "华南标准店"
+      ]
+    },
+    "series": {
+      "type": "string",
+      "required": false,
+      "description": "意向车系",
+      "examples": [
+        "汉",
+        "宋L",
+        "海豹"
+      ]
+    },
+    "owner": {
+      "type": "string",
+      "required": false,
+      "description": "销售顾问姓名"
+    },
+    "intention_level": {
+      "type": "enum",
+      "values": [
+        "H",
+        "M",
+        "L"
+      ],
+      "required": false,
+      "description": "意向等级 H=高 M=中 L=低（用户说『高意向』映射到 H）"
+    },
+    "status": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "新分配",
+        "已联系",
+        "已到店",
+        "已成交",
+        "已流失"
+      ]
+    },
+    "source": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "懂车帝",
+        "抖音直播",
+        "汽车之家"
+      ]
+    },
+    "time_range": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "近一个月",
+        "本月"
+      ]
+    }
   },
   "examples": [
     "高意向的客户线索还有哪些没成交",
@@ -25,5 +79,45 @@
     "tool_name": "query_business_data",
     "resource": "dealer_leads"
   },
-  "required_permissions": ["customer:read"]
+  "required_permissions": [
+    "customer:read"
+  ],
+  "filter_mapping": {
+    "store": {
+      "field": "store_name",
+      "op": "contains"
+    },
+    "series": {
+      "field": "interested_series",
+      "op": "contains"
+    },
+    "owner": {
+      "field": "owner_name",
+      "op": "contains"
+    },
+    "intention_level": {
+      "field": "intention_level",
+      "op": "eq"
+    },
+    "status": {
+      "field": "status",
+      "op": "contains",
+      "negative_patterns": [
+        {
+          "pattern": "未成交|没成交",
+          "op": "neq",
+          "value": "已成交"
+        }
+      ]
+    },
+    "source": {
+      "field": "source",
+      "op": "contains"
+    },
+    "time_range": {
+      "field": "created_at",
+      "op": "gte",
+      "transform": "time_range_to_iso"
+    }
+  }
 }

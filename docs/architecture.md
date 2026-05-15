@@ -1,90 +1,83 @@
 # Agent Architecture
 
-## Current Phase
+## Current Runtime Shape
 
-The project is now in a first-stage transition from `intent-first workflow + tool call`
-to a more OpenClaw-like shape:
+The project now uses Intent Router as the default entrypoint. Legacy local classification and
+free-agent execution are no longer on the orchestrator main path.
 
 ```text
 Channel / Web / WeCom
   -> Session Runtime
   -> UserContextResolver
-  -> Agent Core
-     -> classifyIntentNode
-     -> skill selection
-     -> strict workflow skill OR open agent loop
-     -> primitive-backed execution
-     -> answer / artifact output
-  -> Audit Log
+  -> IntentRouter
+     -> registered intent manifest validation
+     -> confidence threshold / params schema validation
+     -> execution_class normalization
+  -> controlled_execution OR autonomous_planning
+     -> chitchat
+     -> intent_query
+     -> knowledge_lookup
+     -> workflow
+     -> agentic
+  -> ToolRegistry / KnowledgeBase / WorkflowRunner
+  -> answer + artifacts + traces
+  -> Audit Log / Session Store
 ```
 
-The current implementation is intentionally hybrid:
+## Execution Classes
 
-- intent classification is still used as a routing signal
-- skill runtime is now the primary execution selector
-- workflow scenarios remain for strict enterprise operations
-- primitive registry is added as a compatibility layer above legacy tools
+`controlled_execution` is for bounded tasks that should complete predictably:
 
-## First-Stage Runtime Shape
+- `chitchat`: low-risk direct answers.
+- `intent_query`: one registered intent plus params becomes one deterministic tool call.
+- `knowledge_lookup`: policy and handbook retrieval through permission-filtered knowledge tools.
+- `workflow`: controlled multi-turn operations such as leave requests.
 
-```text
-message
-  -> resolve user / enterprise context / session
-  -> classify intent
-  -> select skill
-  -> if strict_workflow:
-       run scenario workflow
-     else:
-       run free agent loop
-  -> answer
-```
+`autonomous_planning` is for open-ended tasks:
 
-Current primitive set:
+- `agentic`: multi-step tool calling across `intent.*`, `tool.*`, and `skill.*`.
 
-- `query`
-- `retrieve`
-- `act`
-- `artifact`
+The router may downgrade a route to `general/agentic` when confidence is below the manifest
+threshold or params fail schema validation.
 
-At this stage, primitives are not yet the only execution path. Some of them still adapt to
-legacy tools such as `query_business_data` and `submit_leave_request`.
+## Intent Manifests
 
-## LangGraph Migration Map
+Intent manifests in `data/intent-codes/*.json` are the source of truth for:
 
-Current node functions live in `src/agent/nodes.js`:
+- `intent_code`
+- `execution_class`
+- `handler_type`
+- `params_schema`
+- `confidence_threshold`
+- `tool_binding`
+- `filter_mapping`
+- `metric_definitions`
+- permissions
 
-- `classifyIntentNode`
-- `retrieveKnowledgeNode`
-- `planToolCallsNode`
-- `executeToolsNode`
-- `generateAnswerNode`
+Simple query filters should live in `filter_mapping`. `IntentQueryHandler` only keeps small
+transforms and compatibility hooks for domain semantics that cannot be expressed as direct field
+mapping.
 
-Current scenario handlers live in `src/scenarios/`. `leave-request.js` should become a LangGraph subgraph with state:
+## Legacy Components
 
-```json
-{
-  "active_intent": "leave_request",
-  "slots": {},
-  "missing_slots": [],
-  "step": "collecting"
-}
-```
+The following modules are retained for compatibility, eval history, and future reference, but are
+not the primary orchestrator path:
+
+- `src/runtime/free-agent-loop.js`
+- `src/runtime/agentic-loop.js`
+- `src/query/query-parser.js`
+- `src/query/query-compiler.js`
+- older local planning logic in `src/llm/local-llm.js`
+
+New dealer and enterprise-data capabilities should prefer intent manifests plus controlled
+handlers instead of extending these legacy paths.
 
 ## External Adapters
 
-- Enterprise WeChat: implement a real directory adapter behind `UserContextResolver`.
-- Tencent Docs: implement a real document source behind `DocumentSource`.
-- Business systems: replace mock tool `execute` implementations with API/CLI adapters.
+External systems should stay behind normalized adapters:
 
-The agent core should continue to depend on normalized `UserContext`, `DocumentSource`, and `ToolRegistry`, not external platform SDKs directly.
+- Enterprise WeChat behind `UserContextResolver`.
+- Tencent Docs behind `DocumentSource`.
+- Business systems behind `ToolRegistry` tools.
 
-## Planned Next Step
-
-The next refactor step should consolidate more legacy tools into primitives:
-
-- business data access -> `query`
-- workflow writes -> `act`
-- knowledge fetch -> `retrieve`
-- report generation -> `artifact`
-
-After that, the remaining scenarios can be gradually rewritten as strict workflow skills.
+The agent core should not depend directly on external platform SDKs.

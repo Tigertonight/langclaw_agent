@@ -1,5 +1,3 @@
-// 在导入 app 之前必须先把 v2 router 标志位打开
-process.env.INTENT_ROUTER_V2 = "on";
 process.env.WECOM_MODE ??= "mock";
 
 const { createApp } = await import("../app.js");
@@ -8,6 +6,8 @@ const { agent } = app;
 
 // 选用 store_gm_001（顾明远，role=store_general_manager），可读 dealer 资源
 const USER_ID = "store_gm_001";
+const runId = `router_poc_${Date.now()}`;
+const CASE_TIMEOUT_MS = Number(process.env.ROUTER_POC_TIMEOUT_MS ?? 90000);
 
 const cases = [
   {
@@ -63,15 +63,17 @@ const cases = [
     }
   },
   {
-    name: "跨域分析（应走 agentic 或 confidence 不为 high）",
+    name: "跨域分析（可走经营指标或 agentic）",
     message: "对比华东旗舰店和华南标准店哪家库存压力更大",
     expect: (r) => {
       const handler = r.debug?.route?.handler_type;
+      const intentCode = r.debug?.route?.intent_code;
       const conf = r.debug?.route?.confidence;
-      // 兼容 v2（带 confidence）与 v1（数值 confidence）
+      // 兼容路由层（带 confidence）与历史数值 confidence。
       const isAgentic = handler !== "chitchat" && handler !== "intent_query";
+      const isControlledBusinessView = intentCode === "dealer.query.metrics" || intentCode === "dealer.query.inventory";
       const lowConf = (typeof conf === "string" ? conf !== "high" : conf < 0.9);
-      if (isAgentic || lowConf) return { ok: true };
+      if (isAgentic || isControlledBusinessView || lowConf) return { ok: true };
       return { ok: false, reason: `handler=${handler} conf=${conf}（既不是 agentic 也不是低置信度）` };
     }
   },
@@ -491,18 +493,20 @@ const cases = [
     }
   },
   {
-    name: "agentic-对比两家门店库存压力",
+    name: "库存压力对比可走经营指标或 agentic",
     message: "对比华东旗舰店和华南标准店哪家库存压力更大",
     expect: (r) => {
       const handler = r.debug?.route?.handler_type;
-      if (handler !== "agentic" && r.debug?.route?.intent_code !== "general") {
-        return { ok: false, reason: `handler=${handler}/intent=${r.debug?.route?.intent_code}（应走 agentic）` };
+      const intentCode = r.debug?.route?.intent_code;
+      if (handler !== "agentic" && intentCode !== "general" && intentCode !== "dealer.query.metrics" && intentCode !== "dealer.query.inventory") {
+        return { ok: false, reason: `handler=${handler}/intent=${intentCode}（应走经营指标、库存查询或 agentic）` };
       }
-      // agentic 应至少调一次 intent.* 工具
-      const calls = r.debug?.tool_calls ?? [];
-      const hasIntentCall = calls.some((c) => /^intent\./.test(c.name ?? ""));
-      if (!hasIntentCall) {
-        return { ok: false, reason: `agentic 未调用任何 intent.* 工具，calls=${JSON.stringify(calls.map((c) => c.name))}` };
+      if (handler === "agentic") {
+        const calls = r.debug?.tool_calls ?? [];
+        const hasIntentCall = calls.some((c) => /^intent\./.test(c.name ?? ""));
+        if (!hasIntentCall) {
+          return { ok: false, reason: `agentic 未调用任何 intent.* 工具，calls=${JSON.stringify(calls.map((c) => c.name))}` };
+        }
       }
       // answer 应该有内容（不是兜底"无法直接给出"）
       if (!r.answer || /暂时无法直接给出/.test(r.answer)) {
@@ -563,24 +567,27 @@ const cases = [
     }
   },
   {
-    // v2 端到端：三类工具骨架在真实 agentic 循环里能跑通。
+    // Intent Router 端到端：三类工具骨架在真实 agentic 循环里能跑通。
     // 由于 LLM 自由度大，单次跑某一类工具不一定被调到（比如 skill 它觉得没必要写时会跳过），
     // 但只要"不兜底 + 至少调到 intent 和 tool"就证明 tool.* 已经接上来了；
-    // 三类工具齐全的能力则在另一个静态用例里断言（v2-三类工具骨架可见）。
-    name: "v2-端到端：库存压力对比 + safe_compute（agentic）",
+    // 三类工具齐全的能力则在另一个静态用例里断言。
+    name: "Intent Router-端到端：库存压力对比（经营指标或 agentic）",
     message: "对比一下华东旗舰店和华南标准店的库存压力，按加权库龄精确算个数，再帮我写一段经营简报",
     allowOneRetry: true, // agentic LLM 偶发 timeout / safe_compute 重新声明 result，允许 1 次重试
     expect: (r) => {
       const handler = r.debug?.route?.handler_type;
-      if (handler !== "agentic") {
-        return { ok: false, reason: `handler=${handler}（应为 agentic）` };
+      const intentCode = r.debug?.route?.intent_code;
+      if (handler !== "agentic" && intentCode !== "dealer.query.metrics") {
+        return { ok: false, reason: `handler=${handler}/intent=${intentCode}（应为经营指标或 agentic）` };
       }
-      const calls = r.debug?.tool_calls ?? [];
-      const names = calls.map((c) => c.name ?? "");
-      const hasIntent = names.some((n) => n.startsWith("intent."));
-      const hasTool = names.some((n) => n.startsWith("tool."));
-      if (!hasIntent || !hasTool) {
-        return { ok: false, reason: `缺少 intent.* 或 tool.*（实际：${names.join(", ") || "空"}）` };
+      if (handler === "agentic") {
+        const calls = r.debug?.tool_calls ?? [];
+        const names = calls.map((c) => c.name ?? "");
+        const hasIntent = names.some((n) => n.startsWith("intent."));
+        const hasTool = names.some((n) => n.startsWith("tool."));
+        if (!hasIntent || !hasTool) {
+          return { ok: false, reason: `缺少 intent.* 或 tool.*（实际：${names.join(", ") || "空"}）` };
+        }
       }
       if (!r.answer || /暂时无法直接给出/.test(r.answer)) {
         return { ok: false, reason: `兜底了：${truncate(r.answer)}` };
@@ -590,8 +597,8 @@ const cases = [
   },
   {
     // 静态断言：getAvailableTools 能同时返回 intent.* / tool.* / skill.*。
-    // 不依赖 LLM，每次必通；用来证明 v2 三类工具骨架被装配起来了。
-    name: "v2-三类工具骨架可见（intent/tool/skill 都在 prompt 列表里）",
+    // 不依赖 LLM，每次必通；用来证明 Intent Router 三类工具骨架被装配起来了。
+    name: "Intent Router-三类工具骨架可见（intent/tool/skill 都在 prompt 列表里）",
     message: "（probe，不会真发给 LLM）",
     skipRun: true,
     expectStatic: ({ agenticHandler }) => {
@@ -614,7 +621,7 @@ const cases = [
     //   - 主维度分组按毛利率从高到低排好（最赚的排第一）
     //   - 副维度（compare）章节也被注入
     // 不依赖 LLM，确保数据准备路径稳定。
-    name: "v2-gross-margin-attribution skill 渲染正确（静态）",
+    name: "Intent Router-gross-margin-attribution skill 渲染正确（静态）",
     message: "（probe，不会真发给 LLM）",
     skipRun: true,
     expectStatic: async ({ agenticSkillView }) => {
@@ -800,7 +807,7 @@ const cases = [
       const ic = r.debug?.route?.intent_code;
       if (ic !== "dealer.query.sales_orders") return { ok: false, reason: `intent_code=${ic}` };
       const p = r.debug?.route?.params ?? {};
-      const ok = !p.delivery_status || /整备中|未交付/.test(p.delivery_status);
+      const ok = !p.delivery_status || /整备中|未交付|待交付/.test(p.delivery_status);
       if (!ok) return { ok: false, reason: `delivery_status=${p.delivery_status}` };
       return { ok: true };
     }
@@ -869,7 +876,7 @@ const cases = [
     message: "月度销量返利还有多少没到账",
     expect: (r) => {
       const ic = r.debug?.route?.intent_code;
-      if (ic !== "dealer.query.finance") return { ok: false, reason: `intent_code=${ic}` };
+      if (ic !== "dealer.query.finance" && ic !== "dealer.aggregate.finance") return { ok: false, reason: `intent_code=${ic}` };
       const p = r.debug?.route?.params ?? {};
       if (p.resource_type && p.resource_type !== "rebate") return { ok: false, reason: `resource_type=${p.resource_type}` };
       return { ok: true };
@@ -1439,8 +1446,9 @@ const cases = [
     allowOneRetry: true,
     expect: (r) => {
       const handler = r.debug?.route?.handler_type;
-      if (handler !== "agentic" && r.debug?.route?.intent_code !== "general") {
-        return { ok: false, reason: `handler=${handler}（应 agentic）` };
+      const intentCode = r.debug?.route?.intent_code;
+      if (handler !== "agentic" && intentCode !== "general" && intentCode !== "dealer.aggregate.sales_orders") {
+        return { ok: false, reason: `handler=${handler}/intent=${intentCode}（应为销售聚合或 agentic）` };
       }
       if (!r.answer || /暂时无法直接给出/.test(r.answer)) return { ok: false, reason: `兜底了：${truncate(r.answer)}` };
       return { ok: true };
@@ -1454,8 +1462,9 @@ const cases = [
     allowOneRetry: true,
     expect: (r) => {
       const handler = r.debug?.route?.handler_type;
-      if (handler !== "agentic" && r.debug?.route?.intent_code !== "general") {
-        return { ok: false, reason: `handler=${handler}（应 agentic）` };
+      const intentCode = r.debug?.route?.intent_code;
+      if (handler !== "agentic" && intentCode !== "general" && intentCode !== "dealer.aggregate.sales_orders") {
+        return { ok: false, reason: `handler=${handler}/intent=${intentCode}（应为销售聚合或 agentic）` };
       }
       if (!r.answer || /暂时无法直接给出/.test(r.answer)) return { ok: false, reason: `兜底了：${truncate(r.answer)}` };
       // 软校验：answer 出现毛利相关词 + 至少一个车系
@@ -1464,13 +1473,14 @@ const cases = [
     }
   },
   {
-    name: "agentic+skill-库存告警简报端到端",
+    name: "库存告警简报端到端（经营指标或 agentic）",
     message: "把华东旗舰店库存压力写成一段经营简报",
     allowOneRetry: true,
     expect: (r) => {
       const handler = r.debug?.route?.handler_type;
-      if (handler !== "agentic" && r.debug?.route?.intent_code !== "general") {
-        return { ok: false, reason: `handler=${handler}（应 agentic）` };
+      const intentCode = r.debug?.route?.intent_code;
+      if (handler !== "agentic" && intentCode !== "general" && intentCode !== "dealer.query.metrics") {
+        return { ok: false, reason: `handler=${handler}/intent=${intentCode}（应为经营指标或 agentic）` };
       }
       if (!r.answer || /暂时无法直接给出/.test(r.answer)) return { ok: false, reason: `兜底了：${truncate(r.answer)}` };
       // 软校验：出现门店或库存相关词
@@ -1490,7 +1500,7 @@ const failures = [];
 
 for (const [index, c] of cases.entries()) {
   total += 1;
-  const sessionId = `router_poc_${index}`;
+  const sessionId = `${runId}_${index}`;
   let result;
   let verdict;
   try {
@@ -1507,7 +1517,7 @@ for (const [index, c] of cases.entries()) {
     if (Array.isArray(c.turns)) {
       // 多轮：依次跑，最后一轮的 expect 决定 verdict（中间轮没 expect 也不强校验）
       for (const [turnIdx, turn] of c.turns.entries()) {
-        result = await agent.run({ userId: USER_ID, message: turn.message, sessionId, debug: true });
+        result = await runAgentWithTimeout({ userId: USER_ID, message: turn.message, sessionId, debug: true }, `${c.name}/turn${turnIdx + 1}`);
         if (turn.expect) verdict = turn.expect(result);
         if (turnIdx < c.turns.length - 1) {
           console.log(`      turn${turnIdx + 1}: msg=${truncate(turn.message)} → intent=${result.debug?.route?.intent_code}`);
@@ -1515,13 +1525,13 @@ for (const [index, c] of cases.entries()) {
       }
       verdict ??= { ok: true };
     } else {
-      result = await agent.run({ userId: USER_ID, message: c.message, sessionId, debug: true });
+      result = await runAgentWithTimeout({ userId: USER_ID, message: c.message, sessionId, debug: true }, c.name);
       verdict = c.expect(result);
       // allowOneRetry：agentic 类用例偶发 LLM 抖动（超时 / JSON 解析失败 / 漏调工具），最多再补 3 次
       const retryBudget = c.allowOneRetry ? 3 : 0;
       for (let attempt = 1; attempt <= retryBudget && !verdict.ok; attempt += 1) {
         const retrySid = `${sessionId}_retry${attempt}`;
-        const retryResult = await agent.run({ userId: USER_ID, message: c.message, sessionId: retrySid, debug: true });
+        const retryResult = await runAgentWithTimeout({ userId: USER_ID, message: c.message, sessionId: retrySid, debug: true }, `${c.name}/retry${attempt}`);
         const retryVerdict = c.expect(retryResult);
         if (retryVerdict.ok) {
           result = retryResult;
@@ -1559,6 +1569,15 @@ function pickFirstRows(result) {
     if (Array.isArray(item?.data?.rows)) return item.data.rows;
   }
   return [];
+}
+
+function runAgentWithTimeout(input, name) {
+  return Promise.race([
+    agent.run(input),
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(`case timeout after ${CASE_TIMEOUT_MS}ms: ${name}`)), CASE_TIMEOUT_MS);
+    })
+  ]);
 }
 
 function truncate(s) {

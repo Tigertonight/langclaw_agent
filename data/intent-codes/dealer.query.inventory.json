@@ -4,10 +4,40 @@
   "version": "1",
   "description": "查询经销商整车/在途/配额/库龄等库存类信息",
   "params_schema": {
-    "vehicle_model": { "type": "string", "required": false, "examples": ["汉EV", "宋L DM-i", "海豹"] },
-    "store": { "type": "string", "required": false, "examples": ["华东旗舰店", "华南标准店"] },
-    "time_range": { "type": "string", "required": false, "examples": ["近一个月", "Q2"] },
-    "warning_level": { "type": "enum", "values": ["关注", "预警", "紧急"], "required": false }
+    "vehicle_model": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "汉EV",
+        "宋L DM-i",
+        "海豹"
+      ]
+    },
+    "store": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "华东旗舰店",
+        "华南标准店"
+      ]
+    },
+    "time_range": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "近一个月",
+        "Q2"
+      ]
+    },
+    "warning_level": {
+      "type": "enum",
+      "values": [
+        "关注",
+        "预警",
+        "紧急"
+      ],
+      "required": false
+    }
   },
   "examples": [
     "查一下华东旗舰店汉EV库存最近一个月的库龄情况",
@@ -21,5 +51,21 @@
     "tool_name": "query_business_data",
     "resource": "dealer_vehicles"
   },
-  "required_permissions": ["dealer:read"]
+  "required_permissions": [
+    "inventory:read"
+  ],
+  "filter_mapping": {
+    "vehicle_model": {
+      "field": "model",
+      "op": "contains"
+    },
+    "store": {
+      "field": "store_name",
+      "op": "contains"
+    },
+    "warning_level": {
+      "field": "stock_warning_level",
+      "op": "eq"
+    }
+  }
 }

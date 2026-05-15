@@ -4,13 +4,66 @@
   "version": "1",
   "description": "查询经销商保修索赔单（含状态、故障类别、差额、提交时间等过滤）。同时支持『有几条/多少单/列一下』这类计数和列表诉求——直接走这个 intent，不需要单独的 warranty 聚合 intent。",
   "params_schema": {
-    "store": { "type": "string", "required": false, "examples": ["华东旗舰店", "华南标准店"] },
-    "series": { "type": "string", "required": false, "examples": ["汉", "宋L", "海豹"] },
-    "claim_status": { "type": "string", "required": false, "examples": ["待提交", "厂家审核中", "已核准", "已驳回", "已结算"] },
-    "fault_category": { "type": "string", "required": false, "examples": ["三电", "内饰", "电气", "底盘"] },
-    "evidence_status": { "type": "string", "required": false, "examples": ["照片齐全", "缺工时单", "缺照片"] },
-    "time_range": { "type": "string", "required": false, "examples": ["近一个月", "Q2"] },
-    "difference_min": { "type": "number", "required": false, "description": "差额下限，例如 5000 表示只看 difference_amount>=5000" }
+    "store": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "华东旗舰店",
+        "华南标准店"
+      ]
+    },
+    "series": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "汉",
+        "宋L",
+        "海豹"
+      ]
+    },
+    "claim_status": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "待提交",
+        "厂家审核中",
+        "已核准",
+        "已驳回",
+        "已结算"
+      ]
+    },
+    "fault_category": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "三电",
+        "内饰",
+        "电气",
+        "底盘"
+      ]
+    },
+    "evidence_status": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "照片齐全",
+        "缺工时单",
+        "缺照片"
+      ]
+    },
+    "time_range": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "近一个月",
+        "Q2"
+      ]
+    },
+    "difference_min": {
+      "type": "number",
+      "required": false,
+      "description": "差额下限，例如 5000 表示只看 difference_amount>=5000"
+    }
   },
   "examples": [
     "保修索赔差额超过五千的有哪些",
@@ -25,5 +78,39 @@
     "tool_name": "query_business_data",
     "resource": "dealer_warranty_claims"
   },
-  "required_permissions": ["after_sales:read"]
+  "required_permissions": [
+    "after_sales:read"
+  ],
+  "filter_mapping": {
+    "store": {
+      "field": "store_name",
+      "op": "contains"
+    },
+    "series": {
+      "field": "series",
+      "op": "contains"
+    },
+    "claim_status": {
+      "field": "claim_status",
+      "op": "contains"
+    },
+    "fault_category": {
+      "field": "fault_category",
+      "op": "contains",
+      "transform": "clean_fault_category"
+    },
+    "evidence_status": {
+      "field": "evidence_status",
+      "op": "contains"
+    },
+    "time_range": {
+      "field": "submitted_at",
+      "op": "gte",
+      "transform": "time_range_to_iso"
+    },
+    "difference_min": {
+      "field": "difference_amount",
+      "op": "gte"
+    }
+  }
 }

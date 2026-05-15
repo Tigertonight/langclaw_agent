@@ -63,5 +63,18 @@
     "end_time": "2026-05-08 18:00",
     "reason": "去看医生",
     "submitted_at": "2026-05-09T06:47:48.228Z"
+  },
+  {
+    "id": "LR-1778769834259",
+    "applicant_user_id": "sales_001",
+    "applicant_name": "林悦",
+    "department": "华东销售部",
+    "leave_duration": "半天",
+    "status": "submitted",
+    "leave_type": "事假",
+    "start_time": "明天",
+    "end_time": "",
+    "reason": "家里有事",
+    "submitted_at": "2026-05-14T14:43:54.259Z"
   }
 ]

@@ -6,45 +6,102 @@
   "params_schema": {
     "metric": {
       "type": "enum",
-      "values": ["order_count", "total_receivable", "avg_labor", "max_receivable", "total_labor"],
+      "values": [
+        "order_count",
+        "total_receivable",
+        "avg_labor",
+        "max_receivable",
+        "total_labor"
+      ],
       "required": true
     },
     "group_by": {
       "type": "enum",
-      "values": ["store_name", "status", "order_type", "service_advisor_name", "series"],
+      "values": [
+        "store_name",
+        "status",
+        "order_type",
+        "service_advisor_name",
+        "series"
+      ],
       "required": false
     },
-    "store": { "type": "string", "required": false },
-    "series": { "type": "string", "required": false },
-    "status": { "type": "string", "required": false },
-    "order_type": { "type": "string", "required": false },
-    "time_range": { "type": "string", "required": false }
+    "store": {
+      "type": "string",
+      "required": false
+    },
+    "series": {
+      "type": "string",
+      "required": false
+    },
+    "status": {
+      "type": "string",
+      "required": false
+    },
+    "order_type": {
+      "type": "string",
+      "required": false
+    },
+    "time_range": {
+      "type": "string",
+      "required": false
+    }
   },
   "metric_definitions": {
     "order_count": {
       "definition": "工单数 = count(*)",
       "filter_addon": [],
-      "aggregations": [{ "type": "count", "field": "id", "as": "order_count" }]
+      "aggregations": [
+        {
+          "type": "count",
+          "field": "id",
+          "as": "order_count"
+        }
+      ]
     },
     "total_receivable": {
       "definition": "应收合计 = sum(receivable_amount)",
       "filter_addon": [],
-      "aggregations": [{ "type": "sum", "field": "receivable_amount", "as": "total_receivable" }]
+      "aggregations": [
+        {
+          "type": "sum",
+          "field": "receivable_amount",
+          "as": "total_receivable"
+        }
+      ]
     },
     "avg_labor": {
       "definition": "平均工时费 = avg(labor_amount)",
       "filter_addon": [],
-      "aggregations": [{ "type": "avg", "field": "labor_amount", "as": "avg_labor" }]
+      "aggregations": [
+        {
+          "type": "avg",
+          "field": "labor_amount",
+          "as": "avg_labor"
+        }
+      ]
     },
     "max_receivable": {
       "definition": "最高应收 = max(receivable_amount)",
       "filter_addon": [],
-      "aggregations": [{ "type": "max", "field": "receivable_amount", "as": "max_receivable" }]
+      "aggregations": [
+        {
+          "type": "max",
+          "field": "receivable_amount",
+          "as": "max_receivable"
+        }
+      ]
     },
     "total_labor": {
       "definition": "工时费合计 = sum(labor_amount)",
       "filter_addon": [],
-      "aggregations": [{ "type": "sum", "field": "labor_amount", "as": "total_labor" }]
+      "aggregations": [
+        {
+          "type": "sum",
+          "field": "labor_amount",
+          "as": "total_labor"
+        }
+      ]
     }
   },
   "examples": [
@@ -59,5 +116,30 @@
     "resource": "dealer_repair_orders",
     "operation": "aggregate"
   },
-  "required_permissions": ["after_sales:read"]
+  "required_permissions": [
+    "after_sales:read"
+  ],
+  "filter_mapping": {
+    "store": {
+      "field": "store_name",
+      "op": "contains"
+    },
+    "series": {
+      "field": "series",
+      "op": "contains"
+    },
+    "status": {
+      "field": "status",
+      "op": "eq"
+    },
+    "order_type": {
+      "field": "order_type",
+      "op": "contains"
+    },
+    "time_range": {
+      "field": "appointment_at",
+      "op": "gte",
+      "transform": "time_range_to_iso"
+    }
+  }
 }

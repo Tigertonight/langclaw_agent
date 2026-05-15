@@ -169,11 +169,48 @@ export function renderChatPage() {
     .hint { width: min(820px, calc(100vw - 40px)); margin: 7px auto 0; color: var(--faint); font-size: 12px; }
     /* 业务视角（默认）：仿 GPT 段落叙述风格，方案 1 配对（先 summary 后 narrative） */
     .biz { margin: 0 0 12px; color: #6b6b6b; font-size: 14px; line-height: 1.7; }
+    .assistant-body.has-answer .biz.collapsed { margin-bottom: 4px; }
     .biz-head {
-      display: inline-flex; align-items: center; gap: 6px;
+      display: inline-grid; grid-template-columns: 10px 104px 14px; align-items: center; column-gap: 6px;
       color: #9b9b9b; font-size: 12.5px; user-select: none; margin-bottom: 6px;
+      cursor: pointer;
     }
-    .biz.running .biz-head { color: #2563eb; }
+    .biz-time {
+      min-width: 0;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    .biz-head:hover { color: #565656; }
+    .biz-chevron {
+      width: 14px; height: 14px; flex: 0 0 14px;
+      color: currentColor; transition: transform .16s ease; display: inline-grid; place-items: center;
+      transform-origin: 50% 50%;
+      will-change: transform;
+    }
+    .biz-chevron::before {
+      content: "";
+      width: 6px;
+      height: 6px;
+      border-right: 1.8px solid currentColor;
+      border-bottom: 1.8px solid currentColor;
+      transform: rotate(45deg) translate(-1px, -1px);
+      border-radius: 1px;
+    }
+    .biz-chevron svg { display: none; }
+    .biz.collapsed .biz-chevron { transform: rotate(-90deg); }
+    .biz.running .biz-chevron { visibility: hidden; pointer-events: none; }
+    .biz.collapsed .biz-body {
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      pointer-events: none;
+      animation: bizCollapse .22s cubic-bezier(.22, .75, .26, 1) both;
+    }
+    .assistant-body.has-answer .biz.collapsed .biz-body {
+      display: none;
+      animation: none;
+    }
+    .biz.running .biz-head { color: #8a8a8a; }
     .biz.failed .biz-head { color: #dc2626; }
     .biz.running .dotanim {
       display: inline-block; width: 6px; height: 6px; border-radius: 50%;
@@ -182,17 +219,43 @@ export function renderChatPage() {
     .biz.failed .dotanim { display: inline-grid; width: 13px; height: 13px; place-items: center; }
     .biz.failed .dotanim svg { width: 13px; height: 13px; stroke-width: 1.8; }
     @keyframes bizBlink { 0%,100% { opacity: .3; } 50% { opacity: 1; } }
-    .biz-body { display: block; }
-    .biz-summary-line {
-      color: #9b9b9b; font-size: 12.5px; margin: 0 0 4px;
-      display: flex; align-items: center; gap: 8px;
+    .biz-body { display: grid; gap: 8px; overflow: hidden; max-height: 360px; opacity: 1; }
+    .biz-pair {
+      display: grid; grid-template-columns: 18px minmax(0, 1fr); column-gap: 10px; row-gap: 2px;
+      align-items: start;
     }
-    .biz-summary-line .glyph { width: 13px; height: 13px; opacity: .7; flex: 0 0 auto; display: inline-grid; place-items: center; }
+    .biz-summary-line {
+      color: #9b9b9b; font-size: 12.5px; margin: 0;
+      display: contents;
+    }
+    .biz-summary-line .glyph { width: 18px; height: 20px; opacity: .7; display: inline-grid; place-items: center; grid-column: 1; grid-row: 1; padding-top: 2px; }
     .biz-summary-line .glyph svg { width: 13px; height: 13px; stroke-width: 1.6; }
-    .biz-narrative { margin: 0 0 14px; color: #303030; font-size: 14.5px; line-height: 1.72; }
+    .biz-summary-line .summary-text { grid-column: 2; grid-row: 1; align-self: center; min-width: 0; }
+    .biz-narrative { margin: 0; color: #303030; font-size: 14.5px; line-height: 1.72; grid-column: 1 / -1; grid-row: 2; min-width: 0; }
+    .biz.running .biz-pair.active .summary-text {
+      color: transparent;
+      background-image: linear-gradient(100deg, #8f8f8f 0%, #8f8f8f 34%, #202020 50%, #8f8f8f 66%, #8f8f8f 100%);
+      background-size: 240% 100%;
+      background-position: 120% 0;
+      -webkit-background-clip: text;
+      background-clip: text;
+      animation: bizTextSweep 4.16s ease-in-out infinite;
+    }
+    .biz.running .biz-pair.active .glyph {
+      color: #6f6f6f;
+      opacity: .95;
+      animation: bizGlyphPulse 4.16s ease-in-out infinite;
+    }
     .biz-narrative:last-child, .biz-summary-line:last-child { margin-bottom: 0; }
     .biz-fadein { animation: bizFadein .28s ease both; }
     @keyframes bizFadein { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes bizCollapse {
+      0% { max-height: 360px; opacity: 1; transform: translateY(0); }
+      70% { max-height: 28px; opacity: .8; transform: translateY(-2px); }
+      100% { max-height: 0; opacity: 0; transform: translateY(-3px); }
+    }
+    @keyframes bizTextSweep { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+    @keyframes bizGlyphPulse { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
     .run-panel { margin: 0 0 12px; border: 0; background: transparent; }
     .run-panel summary {
       min-height: 28px; padding: 0 0 10px; display: flex; align-items: center; gap: 8px;
@@ -218,14 +281,111 @@ export function renderChatPage() {
     .thought { color: #303030; font-size: 15px; line-height: 1.72; white-space: pre-wrap; }
     .tool-line { color: #8a8a8a; font-size: 13px; display: flex; align-items: center; gap: 6px; }
     .tool-icon { width: 14px; height: 14px; border: 1px solid #bdbdbd; border-radius: 3px; display: inline-grid; place-items: center; font-size: 10px; color: #8a8a8a; }
+    .debug-overview { display: flex; flex-wrap: wrap; gap: 6px; }
+    .debug-chip {
+      max-width: 100%; display: inline-flex; align-items: center; gap: 5px; min-height: 24px;
+      border: 1px solid var(--border); border-radius: 6px; padding: 2px 7px; background: #fafafa;
+      color: #525252; font-size: 12px; line-height: 1.35;
+    }
+    .debug-chip b { color: #1f1f1f; font-weight: 650; }
+    .debug-section {
+      border: 1px solid var(--border); border-radius: 8px; background: #fff; overflow: hidden;
+    }
+    .debug-section summary {
+      min-height: 32px; display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 6px 9px; border: 0; cursor: pointer; color: #4b5563; font-size: 12.5px; font-weight: 600;
+      background: #fafafa;
+    }
+    .debug-section summary::-webkit-details-marker { display: none; }
+    .debug-section-body { padding: 8px 9px; display: grid; gap: 8px; }
+    .debug-step {
+      display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 6px 10px;
+      padding: 7px 0; border-bottom: 1px solid #f0f0f0; font-size: 12.5px; line-height: 1.55;
+    }
+    .debug-step:last-child { border-bottom: 0; }
+    .debug-phase { color: #71717a; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+    .debug-detail { color: #27272a; min-width: 0; }
+    .debug-detail strong { display: block; margin-bottom: 2px; font-weight: 650; }
+    .debug-pre {
+      margin: 0; max-height: 320px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere;
+      background: #f7f7f8; border: 1px solid #eeeeef; border-radius: 6px; padding: 9px;
+      color: #27272a; font-size: 12px; line-height: 1.5; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    }
     .sources { margin-top: 12px; color: var(--muted); font-size: 12px; }
     .error { color: #dc2626; }
+    .markdown { color: #1f1f1f; line-height: 1.78; overflow-wrap: anywhere; }
+    .markdown.answer-enter { animation: answerEnter .42s cubic-bezier(.2, .8, .2, 1) both; }
+    .markdown.answer-streaming::after {
+      content: "";
+      display: inline-block;
+      width: 6px;
+      height: 1.1em;
+      margin-left: 3px;
+      vertical-align: -0.16em;
+      border-radius: 99px;
+      background: #1f1f1f;
+      opacity: .42;
+      animation: answerCursor 1.1s ease-in-out infinite;
+    }
+    .markdown.answer-finalizing::after { display: none; }
+    .markdown.answer-streaming p {
+      transition: opacity .16s ease;
+    }
+    @keyframes answerEnter {
+      from { opacity: 0; transform: translateY(5px); filter: blur(2px); }
+      to { opacity: 1; transform: translateY(0); filter: blur(0); }
+    }
+    @keyframes answerCursor { 0%,100% { opacity: .25; } 50% { opacity: .72; } }
+    .markdown > :first-child { margin-top: 0; }
+    .markdown > :last-child { margin-bottom: 0; }
     .markdown p { margin: 0 0 12px; }
-    .markdown h1, .markdown h2, .markdown h3 { margin: 16px 0 8px; line-height: 1.35; }
-    .markdown ul, .markdown ol { padding-left: 22px; }
-    .markdown code { background: var(--soft); padding: 2px 5px; border-radius: 4px; }
-    .markdown table { border-collapse: collapse; width: 100%; margin: 10px 0; font-size: 14px; }
-    .markdown th, .markdown td { border: 1px solid var(--border); padding: 7px 9px; text-align: left; }
+    .markdown h1, .markdown h2, .markdown h3 {
+      margin: 18px 0 8px; line-height: 1.35; letter-spacing: 0; font-weight: 680;
+    }
+    .markdown h1 { font-size: 22px; }
+    .markdown h2 { font-size: 18px; }
+    .markdown h3 { font-size: 16px; }
+    .markdown ul, .markdown ol { margin: 8px 0 14px; padding-left: 22px; }
+    .markdown li { margin: 4px 0; padding-left: 2px; }
+    .markdown li p { margin: 4px 0; }
+    .markdown strong { font-weight: 680; }
+    .markdown em { color: #3f3f46; }
+    .markdown code {
+      background: var(--soft); border: 1px solid #ececee; padding: 1px 5px; border-radius: 5px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; font-size: .92em;
+    }
+    .markdown pre {
+      margin: 10px 0 14px; padding: 12px 14px; overflow-x: auto; background: #f7f7f8;
+      border: 1px solid var(--border); border-radius: 8px; line-height: 1.58;
+    }
+    .markdown .md-stream-table {
+      margin: 10px 0 14px;
+      padding: 10px 12px;
+      overflow-x: auto;
+      white-space: pre;
+      background: #fbfbfc;
+      border: 1px solid #eeeeef;
+      border-radius: 8px;
+      color: #27272a;
+      font-size: 13.5px;
+      line-height: 1.7;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    }
+    .markdown pre code { background: transparent; border: 0; padding: 0; border-radius: 0; font-size: 13px; }
+    .markdown blockquote {
+      margin: 10px 0 14px; padding: 2px 0 2px 12px; border-left: 3px solid #d4d4d8; color: #52525b;
+    }
+    .markdown .md-table-wrap { width: 100%; overflow-x: auto; margin: 10px 0 14px; }
+    .markdown .md-table-wrap.table-enter { animation: tableSettle .34s cubic-bezier(.2, .8, .2, 1) both; transform-origin: top left; }
+    .markdown table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 14px; }
+    .markdown th, .markdown td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+    .markdown th { background: #f7f7f8; font-weight: 650; color: #27272a; }
+    .markdown tr:nth-child(even) td { background: #fcfcfc; }
+    .markdown hr { border: 0; border-top: 1px solid var(--border); margin: 16px 0; }
+    @keyframes tableSettle {
+      from { opacity: .35; transform: translateY(4px) scale(.995); filter: blur(1px); }
+      to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+    }
     @media (max-width: 760px) {
       main { grid-template-columns: 1fr; }
       .sidebar {
@@ -341,7 +501,9 @@ export function renderChatPage() {
       { id: "finance_001", name: "\\u5510\\u82e5\\u6eaa", role: "\\u8d22\\u52a1\\u4e13\\u5458" }
     ];
     let people = [...FALLBACK_USERS];
-    const STORAGE_KEY = "langclaw.web.sessions.v5";
+    const LEGACY_STORAGE_KEYS = ["langclaw.web.sessions.v5"];
+    const STORAGE_KEY = "langclaw.web.sessions.v6";
+    const STEP_REVEAL_INTERVAL_MS = 460;
     const els = {
       messages: document.querySelector("#messages"),
       form: document.querySelector("#form"),
@@ -367,6 +529,7 @@ export function renderChatPage() {
       chatTitle: document.querySelector("#chatTitle"),
       chatSubtitle: document.querySelector("#chatSubtitle")
     };
+    clearLegacySessions();
     let sessions = loadSessions();
     let activeSessionId = "";
     let messages = [];
@@ -374,6 +537,9 @@ export function renderChatPage() {
     let currentUserId = people[0].id;
     let loading = false;
     let renamingSessionId = "";
+    const stepQueues = new Map();
+    const stepTimers = new Map();
+    const pendingDoneEvents = new Map();
 
     initUsers();
     openInitialSession();
@@ -476,6 +642,11 @@ export function renderChatPage() {
         return parsed.filter((session) => session && session.id && session.userId && Array.isArray(session.messages)).slice(0, 80);
       } catch {
         return [];
+      }
+    }
+    function clearLegacySessions() {
+      for (const key of LEGACY_STORAGE_KEYS) {
+        if (key !== STORAGE_KEY) localStorage.removeItem(key);
       }
     }
     function saveSessions() {
@@ -699,27 +870,19 @@ export function renderChatPage() {
         if (payload.model_thinking) {
           appendThinking(assistantId, payload.delta || "", payload.text || "");
         } else {
-          addStep(assistantId, payload.step);
+          enqueueStep(assistantId, payload.step);
         }
       } else if (event === "agentic_event") {
         // 后端 agentic-handler 的三流事件实时透传：tool_call -> 业务视角的 summary+narrative 配对
         applyAgenticEvent(assistantId, payload.event);
       } else if (event === "delta") {
         appendText(assistantId, payload.text || "");
+      } else if (event === "route") {
+        patch(assistantId, { route: payload.route });
       } else if (event === "done") {
-        const msg = getMsg(assistantId);
-        patch(assistantId, {
-          text: payload.answer || msg.text,
-          steps: msg.steps.length ? msg.steps : (payload.debug?.steps || []),
-          sources: payload.sources || [],
-          debug: payload.debug || {},
-          latency: payload.debug?.latency_ms,
-          streaming: false,
-          thinking: false,
-          streamed: true
-        });
-        touchActiveSession();
+        queueDone(assistantId, payload);
       } else if (event === "error") {
+        clearStepPlayback(assistantId);
         patch(assistantId, { text: STR.failed + (payload.message || "unknown error"), error: true, streaming: false, thinking: false });
         touchActiveSession();
       }
@@ -743,14 +906,26 @@ export function renderChatPage() {
           row.appendChild(bubble);
         } else {
           const body = document.createElement("div");
-          body.className = "assistant-body";
+          body.className = "assistant-body" + (msg.text ? " has-answer" : "");
           if (shouldShowRun(msg)) {
             // Debug 关 = 业务视角；开 = 完整 phase 列表
             body.appendChild(els.debug.checked ? createRunPanel(msg) : createBizPanel(msg));
           }
           const text = document.createElement("div");
-          text.className = "markdown";
-          text.innerHTML = renderMarkdown(msg.text || "");
+          const textClasses = ["markdown"];
+          const answerAge = msg.answerStartedAt ? Date.now() - msg.answerStartedAt : Infinity;
+          if (answerAge < 460) {
+            textClasses.push("answer-enter");
+            text.style.animationDelay = "-" + Math.max(0, answerAge) + "ms";
+          }
+          if (msg.answerStreaming && msg.text) textClasses.push("answer-streaming");
+          if (msg.answerFinalizing) textClasses.push("answer-finalizing");
+          text.className = textClasses.join(" ");
+          if (msg.answerStreaming) {
+            text.innerHTML = renderStreamingMarkdown(msg.text || "");
+          } else {
+            text.innerHTML = renderMarkdown(msg.text || "");
+          }
           body.appendChild(text);
           if (msg.sources?.length) {
             const sources = document.createElement("div");
@@ -775,8 +950,7 @@ export function renderChatPage() {
         const id = wrap?.dataset.msgId;
         const msg = id ? messages.find((m) => m.id === id) : null;
         if (!msg || !msg.startedAt) continue;
-        const dt = ((Date.now() - msg.startedAt) / 1000).toFixed(1);
-        node.textContent = STR.processing + " " + dt + "s";
+        node.textContent = STR.processing + " " + formatBizSeconds(getDisplayLatency(msg, true)) + "s";
       }
     }, 100);
     function renderPersonPicker() {
@@ -908,10 +1082,20 @@ export function renderChatPage() {
     // 业务视角面板：顶部"处理中… X.Xs" 100ms tick + summary→narrative 配对
     function createBizPanel(msg) {
       const wrap = document.createElement("div");
-      wrap.className = "biz" + (msg.failed ? " failed" : (msg.streaming || msg.thinking) ? " running" : "");
+      wrap.className = "biz" + (msg.failed ? " failed" : (msg.streaming || msg.thinking) ? " running" : "") + (msg.bizCollapsed ? " collapsed" : "");
       wrap.dataset.msgId = msg.id;
       const head = document.createElement("div");
       head.className = "biz-head";
+      head.setAttribute("role", "button");
+      head.setAttribute("tabindex", "0");
+      head.setAttribute("aria-expanded", String(!msg.bizCollapsed));
+      head.addEventListener("click", () => toggleBizCollapsed(msg.id));
+      head.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          toggleBizCollapsed(msg.id);
+        }
+      });
       const dot = document.createElement("span");
       dot.className = "dotanim";
       if (msg.failed) {
@@ -919,32 +1103,45 @@ export function renderChatPage() {
       }
       const time = document.createElement("span");
       time.className = "biz-time";
-      const dt = msg.streaming || msg.thinking
-        ? ((Date.now() - (msg.startedAt || Date.now())) / 1000).toFixed(1)
-        : ((msg.latency || 0) / 1000).toFixed(1);
+      const dt = formatBizSeconds(getDisplayLatency(msg, msg.streaming || msg.thinking));
       const prefix = msg.failed ? STR.failedRun : (msg.streaming || msg.thinking ? STR.processing : STR.processed);
       time.textContent = prefix + " " + dt + "s";
-      head.append(dot, time);
+      const chevron = document.createElement("span");
+      chevron.className = "biz-chevron";
+      chevron.innerHTML = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l4 4 4-4"/></svg>';
+      head.append(dot, time, chevron);
       wrap.appendChild(head);
       const body = document.createElement("div");
       body.className = "biz-body";
-      for (const pair of (msg.bizPairs || [])) {
+      const pairs = msg.bizPairs?.length ? msg.bizPairs : stepsToBizPairs(msg);
+      const activeIndex = !msg.failed && (msg.streaming || msg.thinking) ? pairs.length - 1 : -1;
+      pairs.forEach((pair, index) => {
+        const item = document.createElement("div");
+        item.className = "biz-pair biz-fadein" + (index === activeIndex ? " active" : "");
         if (pair.summary) {
           const s = document.createElement("p");
-          s.className = "biz-summary-line biz-fadein";
-          s.innerHTML = '<span class="glyph"><i data-lucide="' + (pair.icon || "circle") + '"></i></span><span></span>';
-          s.querySelector("span:last-child").textContent = pair.summary;
-          body.appendChild(s);
+          s.className = "biz-summary-line";
+          s.innerHTML = '<span class="glyph"><i data-lucide="' + (pair.icon || "circle") + '"></i></span><span class="summary-text"></span>';
+          s.querySelector(".summary-text").textContent = pair.summary;
+          item.appendChild(s);
         }
         if (pair.narrative) {
           const n = document.createElement("p");
-          n.className = "biz-narrative biz-fadein";
+          n.className = "biz-narrative";
           n.textContent = pair.narrative;
-          body.appendChild(n);
+          item.appendChild(n);
         }
-      }
+        body.appendChild(item);
+      });
       wrap.appendChild(body);
       return wrap;
+    }
+    function toggleBizCollapsed(id) {
+      const msg = getMsg(id);
+      if (!msg) return;
+      msg.bizCollapsed = !msg.bizCollapsed;
+      touchActiveSession();
+      render();
     }
     function createRunPanel(msg) {
       const details = document.createElement("details");
@@ -962,7 +1159,7 @@ export function renderChatPage() {
       if (!(msg.streaming || msg.thinking)) {
         const duration = document.createElement("span");
         duration.className = "run-duration";
-        duration.textContent = formatDuration(msg.latency || (Date.now() - (msg.startedAt || Date.now())));
+        duration.textContent = formatDuration(getDisplayLatency(msg, false));
         summary.appendChild(duration);
       }
       const chevron = document.createElement("span");
@@ -971,7 +1168,14 @@ export function renderChatPage() {
       summary.appendChild(chevron);
       const body = document.createElement("div");
       body.className = "run-body";
-      body.appendChild(createThought(msg));
+      body.appendChild(createDebugOverview(msg));
+      body.appendChild(createDebugSteps(msg));
+      appendDebugSection(body, "\\u8def\\u7531\\u7ed3\\u679c", msg.debug?.route || msg.route);
+      appendDebugSection(body, "\\u5de5\\u5177\\u8c03\\u7528", msg.debug?.tool_calls);
+      appendDebugSection(body, "\\u5de5\\u5177\\u7ed3\\u679c", msg.debug?.tool_results);
+      appendDebugSection(body, "Agent State", msg.debug?.state);
+      appendDebugSection(body, "\\u4f1a\\u8bdd\\u4e0a\\u4e0b\\u6587", msg.debug?.conversation);
+      appendDebugSection(body, "\\u8fd0\\u884c\\u65f6\\u95f4", msg.debug?.runtime);
       const toolCount = countToolSteps(msg);
       if (toolCount) {
         const toolLine = document.createElement("div");
@@ -981,6 +1185,87 @@ export function renderChatPage() {
       }
       details.append(summary, body);
       return details;
+    }
+    function createDebugOverview(msg) {
+      const wrap = document.createElement("div");
+      wrap.className = "debug-overview";
+      const debug = msg.debug || {};
+      const route = debug.route || msg.route || {};
+      const chips = [
+        ["intent", route.intent_code || route.intent],
+        ["class", route.execution_class],
+        ["handler", route.handler_type],
+        ["source", route.router_source || route.source || route.router],
+        ["confidence", route.confidence],
+        ["tools", debug.selected_tools?.length ? debug.selected_tools.join(", ") : null],
+        ["latency", formatDuration(getDisplayLatency(msg, false) || debug.latency_ms)]
+      ].filter(([, value]) => value !== undefined && value !== null && value !== "");
+      if (!chips.length) {
+        const chip = document.createElement("span");
+        chip.className = "debug-chip";
+        chip.textContent = msg.streaming || msg.thinking ? "\\u6b63\\u5728\\u6536\\u96c6\\u8fd0\\u884c\\u4fe1\\u606f" : "\\u672c\\u6b21\\u6ca1\\u6709\\u8fd4\\u56de debug \\u660e\\u7ec6";
+        wrap.appendChild(chip);
+        return wrap;
+      }
+      for (const [label, value] of chips) {
+        const chip = document.createElement("span");
+        chip.className = "debug-chip";
+        chip.innerHTML = "<b></b><span></span>";
+        chip.querySelector("b").textContent = label;
+        chip.querySelector("span").textContent = String(value);
+        wrap.appendChild(chip);
+      }
+      return wrap;
+    }
+    function createDebugSteps(msg) {
+      const raw = msg.steps?.length ? msg.steps : msg.debug?.steps || [];
+      const section = document.createElement("details");
+      section.className = "debug-section";
+      section.open = true;
+      const summary = document.createElement("summary");
+      summary.textContent = "\\u6267\\u884c\\u6b65\\u9aa4" + (raw.length ? " (" + raw.length + ")" : "");
+      const body = document.createElement("div");
+      body.className = "debug-section-body";
+      if (!raw.length) {
+        const pre = document.createElement("pre");
+        pre.className = "debug-pre";
+        pre.textContent = STR.thinking;
+        body.appendChild(pre);
+      } else {
+        for (const step of raw) {
+          const item = document.createElement("div");
+          item.className = "debug-step";
+          const phase = document.createElement("div");
+          phase.className = "debug-phase";
+          phase.textContent = step.phase || "-";
+          const detail = document.createElement("div");
+          detail.className = "debug-detail";
+          const title = document.createElement("strong");
+          title.textContent = step.title || "(no title)";
+          const text = document.createElement("span");
+          text.textContent = step.detail || step.text || "";
+          detail.append(title, text);
+          item.append(phase, detail);
+          body.appendChild(item);
+        }
+      }
+      section.append(summary, body);
+      return section;
+    }
+    function appendDebugSection(parent, title, value) {
+      if (value === undefined || value === null || (Array.isArray(value) && value.length === 0)) return;
+      const section = document.createElement("details");
+      section.className = "debug-section";
+      const summary = document.createElement("summary");
+      summary.textContent = title;
+      const body = document.createElement("div");
+      body.className = "debug-section-body";
+      const pre = document.createElement("pre");
+      pre.className = "debug-pre";
+      pre.textContent = prettyJson(value);
+      body.appendChild(pre);
+      section.append(summary, body);
+      parent.appendChild(section);
     }
     function createThought(msg) {
       const thought = document.createElement("div");
@@ -1008,6 +1293,75 @@ export function renderChatPage() {
       }
       return dedupeByText(mapped);
     }
+    function stepsToBizPairs(msg) {
+      const raw = msg.steps?.length ? msg.steps : msg.debug?.steps || [];
+      const pairs = [];
+      for (const step of raw) {
+        const pair = stepToBizPair(step);
+        if (pair) pairs.push(pair);
+      }
+      return dedupeBizPairs(pairs);
+    }
+    function stepToBizPair(step) {
+      const phase = step.phase || "";
+      if (["identify_user", "select_skill", "load_skill", "model_thinking"].includes(phase)) return null;
+      const detail = userFacingStepDetail(phase, step.detail || step.text || "");
+      if (phase === "classify_intent") {
+        const isInitialReceipt = step.status === "running" || /^\\u6b63\\u5728\\u7406\\u89e3\\u4f60\\u7684\\u95ee\\u9898/.test(detail);
+        return {
+          icon: isInitialReceipt ? "message-circle-more" : "route",
+          summary: isInitialReceipt ? "\\u5df2\\u6536\\u5230\\u4f60\\u7684\\u6d88\\u606f" : "\\u6b63\\u5728\\u7406\\u89e3\\u4f60\\u7684\\u95ee\\u9898",
+          narrative: isInitialReceipt
+            ? "\\u6211\\u5148\\u770b\\u4e00\\u4e0b\\u4f60\\u8981\\u95ee\\u7684\\u5185\\u5bb9\\u3001\\u8303\\u56f4\\u548c\\u65f6\\u95f4\\u3002"
+            : detail || "\\u8fd9\\u4e2a\\u95ee\\u9898\\u53ef\\u4ee5\\u6309\\u786e\\u5b9a\\u7684\\u4e1a\\u52a1\\u8def\\u5f84\\u6765\\u5904\\u7406\\u3002"
+        };
+      }
+      if (phase === "intent_query" || phase === "plan_action") {
+        return {
+          icon: "list-checks",
+          summary: "\\u51c6\\u5907\\u4e86\\u5904\\u7406\\u6b65\\u9aa4",
+          narrative: "\\u6211\\u5df2\\u7ecf\\u628a\\u8fd9\\u4e2a\\u95ee\\u9898\\u62c6\\u6210\\u53ef\\u76f4\\u63a5\\u6267\\u884c\\u7684\\u67e5\\u8be2\\u3002"
+        };
+      }
+      if (phase === "execute_tool" || phase === "tool_round" || phase === "retrieve_knowledge") {
+        return {
+          icon: phase === "retrieve_knowledge" ? "book-open" : "database",
+          summary: phase === "retrieve_knowledge" ? "\\u67e5\\u9605\\u4e86\\u77e5\\u8bc6\\u5e93" : "\\u67e5\\u8be2\\u4e86\\u4e1a\\u52a1\\u6570\\u636e",
+          narrative: phase === "retrieve_knowledge"
+            ? detail || "\\u6211\\u627e\\u5230\\u4e86\\u76f8\\u5173\\u7684\\u5236\\u5ea6\\u548c\\u8bf4\\u660e\\u3002"
+            : detail || "\\u76f8\\u5173\\u6570\\u636e\\u5df2\\u7ecf\\u62ff\\u5230\\uff0c\\u6211\\u6765\\u6574\\u7406\\u6210\\u597d\\u8bfb\\u7684\\u7ed3\\u679c\\u3002"
+        };
+      }
+      if (phase === "observe_result") {
+        return {
+          icon: "scan-search",
+          summary: "\\u6574\\u7406\\u4e86\\u67e5\\u8be2\\u7ed3\\u679c",
+          narrative: "\\u6211\\u4f1a\\u5148\\u7ed9\\u4f60\\u7ed3\\u8bba\\uff0c\\u518d\\u628a\\u9700\\u8981\\u6838\\u5bf9\\u7684\\u660e\\u7ec6\\u653e\\u5728\\u4e0b\\u9762\\u3002"
+        };
+      }
+      if (phase === "permission_denied") {
+        return {
+          icon: "shield-alert",
+          summary: "\\u6743\\u9650\\u5df2\\u62e6\\u622a",
+          narrative: detail || "\\u5f53\\u524d\\u8d26\\u53f7\\u6ca1\\u6709\\u8bbf\\u95ee\\u8fd9\\u7c7b\\u6570\\u636e\\u7684\\u6743\\u9650\\u3002"
+        };
+      }
+      if (phase === "chitchat") {
+        return {
+          icon: "message-circle",
+          summary: "\\u76f4\\u63a5\\u56de\\u7b54",
+          narrative: detail || "\\u8fd9\\u4e2a\\u95ee\\u9898\\u53ef\\u4ee5\\u76f4\\u63a5\\u56de\\u7b54\\u3002"
+        };
+      }
+      if (phase === "final_answer") {
+        return {
+          icon: "check-circle-2",
+          summary: "\\u751f\\u6210\\u4e86\\u56de\\u7b54",
+          narrative: detail || "\\u6211\\u5df2\\u5c06\\u5904\\u7406\\u7ed3\\u679c\\u7ec4\\u7ec7\\u6210\\u53ef\\u76f4\\u63a5\\u9605\\u8bfb\\u7684\\u56de\\u7b54\\u3002"
+        };
+      }
+      return detail ? { icon: "circle", summary: userFacingStepTitle(step.title), narrative: detail } : null;
+    }
     function stepToNaturalText(step) {
       const phase = step.phase || "";
       const detail = clean(step.detail || step.text || "");
@@ -1019,21 +1373,190 @@ export function renderChatPage() {
       if (phase === "final_answer") return detail || "\\u4fe1\\u606f\\u5df2\\u7ecf\\u8db3\\u591f\\uff0c\\u6211\\u5728\\u628a\\u7ed3\\u679c\\u7ec4\\u7ec7\\u6210\\u81ea\\u7136\\u8bed\\u8a00\\u3002";
       return detail;
     }
+    function userFacingStepTitle(title) {
+      const text = clean(title);
+      const titleMap = {
+        "\\u7406\\u89e3\\u4f60\\u7684\\u95ee\\u9898": "\\u7406\\u89e3\\u4e86\\u4f60\\u7684\\u95ee\\u9898",
+        "\\u8bc6\\u522b\\u4efb\\u52a1\\u7c7b\\u578b": "\\u7406\\u89e3\\u4e86\\u4f60\\u7684\\u95ee\\u9898",
+        "\\u8bc6\\u522b\\u8bf7\\u6c42\\u7c7b\\u578b": "\\u7406\\u89e3\\u4e86\\u4f60\\u7684\\u95ee\\u9898",
+        "\\u9009\\u62e9\\u6267\\u884c\\u6a21\\u5f0f": "\\u9009\\u62e9\\u4e86\\u5904\\u7406\\u65b9\\u5f0f",
+        "\\u89c4\\u5212\\u4e0b\\u4e00\\u6b65": "\\u51c6\\u5907\\u4e86\\u5904\\u7406\\u6b65\\u9aa4",
+        "\\u6267\\u884c\\u7ed3\\u6784\\u5316\\u67e5\\u8be2": "\\u67e5\\u8be2\\u4e86\\u4e1a\\u52a1\\u6570\\u636e",
+        "\\u8c03\\u7528\\u5de5\\u5177": "\\u67e5\\u8be2\\u4e86\\u4e1a\\u52a1\\u6570\\u636e",
+        "\\u6267\\u884c\\u5de5\\u5177": "\\u67e5\\u8be2\\u4e86\\u4e1a\\u52a1\\u6570\\u636e",
+        "\\u89c2\\u5bdf\\u7ed3\\u679c": "\\u6574\\u7406\\u4e86\\u67e5\\u8be2\\u7ed3\\u679c",
+        "\\u76f4\\u63a5\\u751f\\u6210\\u56de\\u7b54": "\\u76f4\\u63a5\\u56de\\u7b54",
+        "\\u751f\\u6210\\u6700\\u7ec8\\u7b54\\u590d": "\\u751f\\u6210\\u4e86\\u56de\\u7b54",
+        "\\u7ee7\\u7eed\\u53d7\\u63a7\\u6d41\\u7a0b": "\\u7ee7\\u7eed\\u5904\\u7406\\u4e1a\\u52a1\\u6d41\\u7a0b",
+        "\\u8fdb\\u5165\\u53d7\\u63a7\\u6d41\\u7a0b": "\\u8fdb\\u5165\\u4e1a\\u52a1\\u6d41\\u7a0b",
+        "\\u5207\\u6362\\u4efb\\u52a1": "\\u5207\\u6362\\u4e86\\u5904\\u7406\\u4efb\\u52a1",
+        "\\u51b3\\u5b9a\\u4e0b\\u4e00\\u6b65": "\\u51c6\\u5907\\u4e86\\u5904\\u7406\\u6b65\\u9aa4",
+        "\\u8de8\\u610f\\u56fe\\u89c4\\u5212": "\\u8fdb\\u884c\\u4e86\\u7efc\\u5408\\u5206\\u6790",
+        "\\u9700\\u8981\\u8865\\u5145\\u4fe1\\u606f": "\\u9700\\u8981\\u8865\\u5145\\u4fe1\\u606f"
+      };
+      return titleMap[text] || text || "\\u5904\\u7406\\u4e86\\u4e00\\u4e2a\\u6b65\\u9aa4";
+    }
+    function userFacingStepDetail(phase, detail) {
+      const raw = String(detail || "");
+      if (!raw.trim()) return "";
+      if (/^\\u6b63\\u5728\\u5224\\u65ad\\u95ee\\u9898\\u7c7b\\u578b/.test(raw)) return "\\u6b63\\u5728\\u7406\\u89e3\\u4f60\\u7684\\u95ee\\u9898\\u548c\\u9700\\u8981\\u7684\\u4e0a\\u4e0b\\u6587\\u3002";
+      if (/Router \\u5224\\u5b9a\\u4e3a/.test(raw)) return userFacingRouterDetail(raw);
+      if (/^\\u5224\\u65ad\\u4e3a/.test(raw)) return userFacingLegacyRouteDetail(raw);
+      if (/fast[_ ]grounded/i.test(raw)) return userFacingFastGroundedDetail(phase, raw);
+      if (/^\\u547d\\u4e2d .*\\u5df2\\u751f\\u6210\\u786e\\u5b9a\\u6027\\u67e5\\u8be2\\u8ba1\\u5212/.test(raw)) return "\\u5df2\\u51c6\\u5907\\u597d\\u4e1a\\u52a1\\u67e5\\u8be2\\u6b65\\u9aa4\\u3002";
+      if (/^\\u547d\\u4e2d .*\\u5df2\\u8c03\\u7528/.test(raw)) return raw.replace(/^\\u547d\\u4e2d .*\\uff0c/, "").replace(/\\uff0c?\\u5df2\\u8c03\\u7528 [^\\uff0c]+\\uff0c/, "\\u5df2\\u5b8c\\u6210\\u4e1a\\u52a1\\u67e5\\u8be2\\uff0c");
+      if (/\\u8fd9\\u662f\\u53d7\\u63a7\\u6267\\u884c\\u91cc\\u7684\\u8f7b\\u91cf\\u4ea4\\u4e92/.test(raw)) return "\\u8fd9\\u4e2a\\u95ee\\u9898\\u53ef\\u4ee5\\u76f4\\u63a5\\u56de\\u7b54\\u3002";
+      if (/^\\u65e0\\u9700\\u8c03\\u7528\\u5de5\\u5177/.test(raw)) return "\\u8fd9\\u4e2a\\u95ee\\u9898\\u53ef\\u4ee5\\u76f4\\u63a5\\u56de\\u7b54\\u3002";
+      if (/^\\u5f53\\u524d\\u95ee\\u9898\\u4e0d\\u9700\\u8981\\u8c03\\u7528\\u4e1a\\u52a1\\u5de5\\u5177/.test(raw)) return "\\u5f53\\u524d\\u95ee\\u9898\\u4e0d\\u9700\\u8981\\u67e5\\u8be2\\u4e1a\\u52a1\\u7cfb\\u7edf\\uff0c\\u53ef\\u4ee5\\u57fa\\u4e8e\\u5f53\\u524d\\u4e0a\\u4e0b\\u6587\\u56de\\u7b54\\u3002";
+      if (/^\\u77e5\\u8bc6\\u5e93\\u547d\\u4e2d (\\d+) \\u4e2a\\u7247\\u6bb5/.test(raw)) return raw.replace(/^\\u77e5\\u8bc6\\u5e93\\u547d\\u4e2d/, "\\u67e5\\u9605\\u5230");
+      if (/^\\u8c03\\u7528 (intent|tool|skill)\\./.test(raw)) return "\\u6b63\\u5728\\u4f7f\\u7528\\u76f8\\u5173\\u80fd\\u529b\\u5904\\u7406\\u3002";
+      return clean(raw)
+        .replace(/\\bRouter\\b/gi, "\\u7cfb\\u7edf")
+        .replace(/\\bcontrolled execution\\b|\\bcontrolled_execution\\b/gi, "\\u53d7\\u63a7\\u6267\\u884c")
+        .replace(/\\bautonomous planning\\b|\\bautonomous_planning\\b/gi, "\\u7efc\\u5408\\u5206\\u6790")
+        .replace(/\\bsource=\\w+\\b/gi, "")
+        .replace(/\\bconfidence=?\\s*[\\w.]+\\b/gi, "")
+        .replace(/\\uff08\\s*\\uff09/g, "")
+        .replace(/\\(\\s*\\)/g, "")
+        .replace(/\\s+/g, " ")
+        .trim();
+    }
+    function userFacingRouterDetail(text) {
+      if (/chitchat/.test(text)) return "\\u8bc6\\u522b\\u4e3a\\u8f7b\\u91cf\\u95ee\\u7b54\\uff0c\\u53ef\\u4ee5\\u76f4\\u63a5\\u5904\\u7406\\u3002";
+      if (/intent_query/.test(text)) return "\\u8bc6\\u522b\\u4e3a\\u4e1a\\u52a1\\u6570\\u636e\\u67e5\\u8be2\\uff0c\\u6b63\\u5728\\u4e3a\\u4f60\\u67e5\\u8be2\\u3002";
+      if (/knowledge_lookup/.test(text)) return "\\u8bc6\\u522b\\u4e3a\\u77e5\\u8bc6\\u5e93\\u95ee\\u9898\\uff0c\\u5c06\\u67e5\\u9605\\u76f8\\u5173\\u8d44\\u6599\\u540e\\u56de\\u7b54\\u3002";
+      if (/workflow/.test(text)) return "\\u8bc6\\u522b\\u4e3a\\u6d41\\u7a0b\\u529e\\u7406\\u8bf7\\u6c42\\uff0c\\u5c06\\u6309\\u4e1a\\u52a1\\u6d41\\u7a0b\\u7ee7\\u7eed\\u5904\\u7406\\u3002";
+      if (/agentic/.test(text)) return "\\u8bc6\\u522b\\u4e3a\\u9700\\u8981\\u7efc\\u5408\\u5206\\u6790\\u7684\\u95ee\\u9898\\uff0c\\u5c06\\u5206\\u6b65\\u89c4\\u5212\\u548c\\u67e5\\u8be2\\u3002";
+      return "\\u5df2\\u8bc6\\u522b\\u95ee\\u9898\\u7c7b\\u578b\\uff0c\\u6b63\\u5728\\u9009\\u62e9\\u5408\\u9002\\u7684\\u5904\\u7406\\u65b9\\u5f0f\\u3002";
+    }
+    function userFacingLegacyRouteDetail(text) {
+      if (/smalltalk|\\u95ee\\u5019|\\u80fd\\u529b\\u4ecb\\u7ecd/.test(text)) return "\\u8bc6\\u522b\\u4e3a\\u95ee\\u5019\\u6216\\u80fd\\u529b\\u4ecb\\u7ecd\\u7c7b\\u95ee\\u9898\\uff0c\\u53ef\\u4ee5\\u76f4\\u63a5\\u56de\\u7b54\\u3002";
+      if (/data_query|\\u4e1a\\u52a1|\\u6570\\u636e/.test(text)) return "\\u8bc6\\u522b\\u4e3a\\u4e1a\\u52a1\\u6570\\u636e\\u67e5\\u8be2\\uff0c\\u6b63\\u5728\\u4e3a\\u4f60\\u67e5\\u8be2\\u3002";
+      if (/leave_request|\\u8bf7\\u5047|\\u6d41\\u7a0b/.test(text)) return "\\u8bc6\\u522b\\u4e3a\\u6d41\\u7a0b\\u529e\\u7406\\u8bf7\\u6c42\\uff0c\\u5c06\\u7ee7\\u7eed\\u6536\\u96c6\\u548c\\u786e\\u8ba4\\u4fe1\\u606f\\u3002";
+      return "\\u5df2\\u8bc6\\u522b\\u95ee\\u9898\\u7c7b\\u578b\\uff0c\\u6b63\\u5728\\u9009\\u62e9\\u5408\\u9002\\u7684\\u5904\\u7406\\u65b9\\u5f0f\\u3002";
+    }
+    function userFacingFastGroundedDetail(phase, text) {
+      if (phase === "final_answer") return "\\u5df2\\u6574\\u7406\\u51fa\\u56de\\u7b54\\u3002";
+      if (phase === "select_execution_mode") return "\\u5df2\\u9009\\u62e9\\u5feb\\u901f\\u5904\\u7406\\u65b9\\u5f0f\\u3002";
+      if (phase === "plan_follow_up") return "\\u8fd8\\u9700\\u8981\\u8865\\u5145\\u4e00\\u6b21\\u67e5\\u8be2\\u6765\\u5b8c\\u5584\\u7ed3\\u679c\\u3002";
+      return clean(text).replace(/fast[_ ]grounded:?/ig, "\\u5feb\\u901f\\u5904\\u7406\\u65b9\\u5f0f");
+    }
     function countToolSteps(msg) {
       const raw = msg.steps?.length ? msg.steps : msg.debug?.steps || [];
       return raw.filter((step) => ["execute_tool", "tool_round"].includes(step.phase)).length;
     }
-    function addStep(id, step) {
+    function enqueueStep(id, step) {
+      const msg = getMsg(id);
+      if (!msg || !step) return;
+      if (msg.processFinalized) return;
+      const queue = stepQueues.get(id) || [];
+      const lastQueued = queue[queue.length - 1];
+      const lastVisible = msg.steps[msg.steps.length - 1];
+      if ((lastVisible && lastVisible.phase === step.phase && lastVisible.detail === step.detail)
+        || (lastQueued && lastQueued.phase === step.phase && lastQueued.detail === step.detail)) {
+        return;
+      }
+      queue.push(step);
+      stepQueues.set(id, queue);
+      msg.thinking = true;
+      startStepPlayback(id, msg.steps.length ? STEP_REVEAL_INTERVAL_MS : 0);
+    }
+    function startStepPlayback(id, delay) {
+      if (stepTimers.has(id)) return;
+      const timer = window.setTimeout(() => {
+        stepTimers.delete(id);
+        const queue = stepQueues.get(id) || [];
+        const step = queue.shift();
+        if (step) {
+          addStepNow(id, step);
+          if (queue.length) {
+            stepQueues.set(id, queue);
+            startStepPlayback(id, STEP_REVEAL_INTERVAL_MS);
+          } else {
+            stepQueues.delete(id);
+            flushPendingDone(id);
+          }
+        } else {
+          stepQueues.delete(id);
+          flushPendingDone(id);
+        }
+      }, delay);
+      stepTimers.set(id, timer);
+    }
+    function addStepNow(id, step) {
       const msg = getMsg(id);
       if (!msg || !step) return;
       const last = msg.steps[msg.steps.length - 1];
       if (!last || last.phase !== step.phase || last.detail !== step.detail) msg.steps.push(step);
       msg.thinking = true;
       touchActiveSession();
+      render();
+    }
+    function queueDone(id, payload) {
+      pendingDoneEvents.set(id, payload);
+      const queue = stepQueues.get(id);
+      if (!queue?.length && !stepTimers.has(id)) flushPendingDone(id);
+    }
+    function flushPendingDone(id) {
+      const payload = pendingDoneEvents.get(id);
+      if (!payload) return;
+      pendingDoneEvents.delete(id);
+      const msg = getMsg(id);
+      if (!msg) return;
+      patch(id, {
+        text: payload.answer || msg.text,
+        steps: msg.steps.length ? msg.steps : (payload.debug?.steps || []),
+        sources: payload.sources || [],
+        debug: payload.debug || {},
+        backendLatency: payload.debug?.latency_ms,
+        completedAt: Date.now(),
+        streaming: false,
+        thinking: false,
+        streamed: true,
+        bizCollapsed: true,
+        processFinalized: true,
+        answerStreaming: true,
+        answerFinalizing: true
+      });
+      window.setTimeout(() => finalizeAnswerMarkdown(id), 520);
+      touchActiveSession();
+      render();
+    }
+    function finalizeAnswerMarkdown(id) {
+      const msg = getMsg(id);
+      if (!msg) return;
+      msg.answerStreaming = false;
+      msg.answerFinalizing = false;
+      touchActiveSession();
+      render();
+    }
+    function finalizeProcessOnAnswerStart(id) {
+      const msg = getMsg(id);
+      if (!msg || msg.processFinalized) return;
+      const timer = stepTimers.get(id);
+      if (timer) window.clearTimeout(timer);
+      stepTimers.delete(id);
+      stepQueues.delete(id);
+      msg.completedAt = Date.now();
+      msg.streaming = false;
+      msg.thinking = false;
+      msg.bizCollapsed = true;
+      msg.processFinalized = true;
+      msg.answerStartedAt = msg.answerStartedAt || Date.now();
+      msg.answerStreaming = true;
+      touchActiveSession();
+    }
+    function clearStepPlayback(id) {
+      const timer = stepTimers.get(id);
+      if (timer) window.clearTimeout(timer);
+      stepTimers.delete(id);
+      stepQueues.delete(id);
+      pendingDoneEvents.delete(id);
     }
     function applyAgenticEvent(id, ev) {
       const msg = getMsg(id);
       if (!msg || !ev) return;
+      if (msg.processFinalized) return;
       msg.bizPairs = msg.bizPairs || [];
       if (ev.kind === "agentic_tool" && ev.type === "tool_call") {
         const pair = toolEventToBizPair(ev);
@@ -1063,29 +1586,46 @@ export function renderChatPage() {
       if (tool === "tool.safe_compute") {
         return {
           icon: "calculator",
-          summary: "\\u8fd0\\u884c\\u4e86 1 \\u6b21\\u7cbe\\u786e\\u8ba1\\u7b97",
+          summary: "\\u8fdb\\u884c\\u4e86\\u7cbe\\u786e\\u8ba1\\u7b97",
           narrative: ""
         };
       }
       if (tool.startsWith("tool.")) {
         return {
           icon: "wrench",
-          summary: "\\u8c03\\u7528\\u4e86 " + tool.slice("tool.".length),
+          summary: readableToolSummary(tool),
           narrative: ""
         };
       }
       if (tool.startsWith("skill.")) {
         return {
           icon: "file-text",
-          summary: "\\u5957\\u7528\\u4e86\\u5199\\u4f5c\\u6a21\\u677f",
+          summary: "\\u4f7f\\u7528\\u4e86\\u76f8\\u5173\\u6280\\u80fd",
           narrative: ""
         };
       }
       return null;
     }
+    function readableToolSummary(tool) {
+      const name = tool.slice("tool.".length);
+      const map = {
+        safe_compute: "\\u8fdb\\u884c\\u4e86\\u7cbe\\u786e\\u8ba1\\u7b97",
+        retrieve_knowledge: "\\u67e5\\u9605\\u4e86\\u77e5\\u8bc6\\u5e93",
+        query_business_data: "\\u67e5\\u8be2\\u4e86\\u4e1a\\u52a1\\u6570\\u636e",
+        list_my_customers: "\\u67e5\\u8be2\\u4e86\\u5ba2\\u6237\\u5217\\u8868",
+        query_customer: "\\u67e5\\u8be2\\u4e86\\u5ba2\\u6237\\u4fe1\\u606f",
+        query_order: "\\u67e5\\u8be2\\u4e86\\u8ba2\\u5355\\u4fe1\\u606f",
+        query_sales_report: "\\u67e5\\u8be2\\u4e86\\u9500\\u552e\\u62a5\\u8868",
+        submit_leave_request: "\\u63d0\\u4ea4\\u4e86\\u8bf7\\u5047\\u7533\\u8bf7"
+      };
+      return map[name] || "\\u4f7f\\u7528\\u4e86\\u76f8\\u5173\\u80fd\\u529b";
+    }
     function appendText(id, text) {
       const msg = getMsg(id);
-      if (msg) msg.text = (msg.text || "") + normalize(text);
+      if (msg) {
+        if (text) finalizeProcessOnAnswerStart(id);
+        msg.text = (msg.text || "") + normalize(text);
+      }
     }
     function appendThinking(id, delta, fullText) {
       const msg = getMsg(id);
@@ -1120,26 +1660,251 @@ export function renderChatPage() {
         return true;
       });
     }
+    function dedupeBizPairs(items) {
+      const seen = new Set();
+      return items.filter((item) => {
+        const key = [item.summary, item.narrative].join("|");
+        if (!key.trim() || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
     function escapeHtml(text) {
       return String(text || "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
     }
-    function renderMarkdown(text) {
-      const escaped = escapeHtml(text || "");
+    function prettyJson(value) {
+      if (typeof value === "string") return value;
+      try {
+        return JSON.stringify(value, null, 2);
+      } catch {
+        return String(value);
+      }
+    }
+    function renderStreamingMarkdown(text) {
+      const source = normalize(String(text || "")).replace(/\\r\\n/g, "\\n");
+      if (!source.trim()) return "";
+      const blocks = splitMarkdownBlocks(source);
+      const html = [];
+      for (const block of blocks) {
+        if (!block.text.trim()) continue;
+        if (isMarkdownTableBlock(block.text)) {
+          html.push(block.open
+            ? '<pre class="md-stream-table">' + escapeHtml(block.text.trim()) + "</pre>"
+            : renderMarkdownTable(block.text, { animate: true }));
+        } else if (block.open) {
+          html.push(renderActiveMarkdownBlock(block.text));
+        } else {
+          html.push(renderMarkdown(block.text));
+        }
+      }
+      return html.join("");
+    }
+    function splitMarkdownBlocks(text) {
+      const lines = String(text || "").split("\\n");
+      const fence = String.fromCharCode(96).repeat(3);
+      const blocks = [];
+      let current = [];
+      let inFence = false;
+      for (const line of lines) {
+        if (line.trim().startsWith(fence)) inFence = !inFence;
+        if (!inFence && !line.trim()) {
+          if (current.length) {
+            blocks.push({ text: current.join("\\n"), open: false });
+            current = [];
+          }
+          continue;
+        }
+        current.push(line);
+      }
+      if (current.length) {
+        blocks.push({ text: current.join("\\n"), open: !text.endsWith("\\n\\n") && !text.endsWith("\\n\\r\\n") });
+      }
+      return blocks;
+    }
+    function isMarkdownTableBlock(block) {
+      const rows = String(block || "").split("\\n").map((line) => line.trim()).filter(Boolean);
+      return rows.some((line) => /^\\|.*\\|$/.test(line)) || rows.some((line) => /^:?-{3,}:?(\\s*\\|\\s*:?-{3,}:?)+$/.test(line));
+    }
+    function renderActiveMarkdownBlock(block) {
+      const text = String(block || "");
+      const fence = String.fromCharCode(96).repeat(3);
+      if (/^#{1,3}\\s+/.test(text.trim())) return renderMarkdown(text);
+      if (/^([-*]\\s+|\\d+[.)]\\s+)/m.test(text)) return renderMarkdown(text);
+      if (/^>\\s?/m.test(text)) return renderMarkdown(text);
+      if (text.trim().startsWith(fence)) return "<pre><code>" + escapeHtml(text.replace(new RegExp("^" + fence + "\\\\w*\\\\n?"), "")) + "</code></pre>";
+      return "<p>" + text.split("\\n").map((line) => renderInline(line.trim())).join("<br>") + "</p>";
+    }
+    function renderMarkdown(text, { streaming = false } = {}) {
       const tick = String.fromCharCode(96);
-      const inlineCode = new RegExp(tick + "([^" + tick + "]+)" + tick, "g");
+      const fence = tick.repeat(3);
+      const source = normalize(String(text || "")).replace(/\\r\\n/g, "\\n").trim();
+      if (!source) return "";
+      const lines = source.split("\\n");
+      const html = [];
+      let paragraph = [];
+      let list = null;
+      let quote = [];
+      let table = [];
+      let code = null;
+
+      const flushParagraph = () => {
+        if (!paragraph.length) return;
+        html.push("<p>" + paragraph.map((line) => renderInline(line)).join("<br>") + "</p>");
+        paragraph = [];
+      };
+      const flushList = () => {
+        if (!list) return;
+        html.push("<" + list.type + ">" + list.items.map((item) => "<li>" + renderInline(item) + "</li>").join("") + "</" + list.type + ">");
+        list = null;
+      };
+      const flushQuote = () => {
+        if (!quote.length) return;
+        html.push("<blockquote>" + quote.map((line) => "<p>" + renderInline(line) + "</p>").join("") + "</blockquote>");
+        quote = [];
+      };
+      const flushTable = () => {
+        if (streaming) {
+          html.push(renderMarkdownTable(table.join("\\n"), { animate: true }));
+          table = [];
+          return;
+        }
+        if (table.length < 2 || !isMarkdownTableDivider(table[1])) {
+          paragraph.push(...table);
+          table = [];
+          return;
+        }
+        html.push(renderMarkdownTable(table.join("\\n"), { animate: true }));
+        table = [];
+      };
+      const flushBlocks = () => {
+        flushTable();
+        flushParagraph();
+        flushList();
+        flushQuote();
+      };
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (code) {
+          if (trimmed.startsWith(fence)) {
+            html.push("<pre><code>" + escapeHtml(code.lines.join("\\n")) + "</code></pre>");
+            code = null;
+          } else {
+            code.lines.push(line);
+          }
+          continue;
+        }
+        if (trimmed.startsWith(fence)) {
+          flushBlocks();
+          code = { lines: [] };
+          continue;
+        }
+        if (!trimmed) {
+          flushBlocks();
+          continue;
+        }
+        if (/^\\|.+\\|$/.test(trimmed)) {
+          flushParagraph();
+          flushList();
+          flushQuote();
+          table.push(trimmed);
+          continue;
+        }
+        if (table.length) flushTable();
+        const heading = /^(#{1,3})\\s+(.+)$/.exec(trimmed);
+        if (heading) {
+          flushBlocks();
+          const level = heading[1].length;
+          html.push("<h" + level + ">" + renderInline(heading[2]) + "</h" + level + ">");
+          continue;
+        }
+        if (/^(-{3,}|\\*{3,})$/.test(trimmed)) {
+          flushBlocks();
+          html.push("<hr>");
+          continue;
+        }
+        if (/^>\\s?/.test(trimmed)) {
+          flushParagraph();
+          flushList();
+          quote.push(trimmed.replace(/^>\\s?/, ""));
+          continue;
+        }
+        const bullet = /^[-*]\\s+(.+)$/.exec(trimmed);
+        const ordered = /^\\d+[.)]\\s+(.+)$/.exec(trimmed);
+        if (bullet || ordered) {
+          flushParagraph();
+          flushQuote();
+          const type = bullet ? "ul" : "ol";
+          if (!list || list.type !== type) flushList();
+          if (!list) list = { type, items: [] };
+          list.items.push(bullet ? bullet[1] : ordered[1]);
+          continue;
+        }
+        flushList();
+        flushQuote();
+        paragraph.push(trimmed);
+      }
+      if (code) html.push("<pre><code>" + escapeHtml(code.lines.join("\\n")) + "</code></pre>");
+      flushBlocks();
+      return html.join("");
+    }
+    function splitMarkdownTableRow(row) {
+      return row.replace(/^\\||\\|$/g, "").split("|").map((cell) => cell.trim());
+    }
+    function isMarkdownTableDivider(row) {
+      return splitMarkdownTableRow(row).every((cell) => /^:?-{3,}:?$/.test(cell));
+    }
+    function renderMarkdownTable(text, { animate = false } = {}) {
+      const lines = String(text || "").split("\\n").map((line) => line.trim()).filter(Boolean);
+      const dividerIndex = lines.findIndex((line) => isMarkdownTableDivider(line));
+      if (dividerIndex < 1) {
+        return '<pre class="md-stream-table">' + escapeHtml(lines.join("\\n")) + "</pre>";
+      }
+      const header = splitMarkdownTableRow(lines[dividerIndex - 1]);
+      const rows = lines.slice(dividerIndex + 1)
+        .filter((line) => /^\\|.*\\|$/.test(line))
+        .map(splitMarkdownTableRow);
+      const visibleRows = rows.length ? rows : [header.map(() => "")];
+      return (
+        '<div class="md-table-wrap' + (animate ? " table-enter" : "") + '"><table><thead><tr>' +
+        header.map((cell) => "<th>" + renderInline(cell) + "</th>").join("") +
+        "</tr></thead><tbody>" +
+        visibleRows.map((row) => "<tr>" + header.map((_, index) => "<td>" + renderInline(row[index] || "") + "</td>").join("") + "</tr>").join("") +
+        "</tbody></table></div>"
+      );
+    }
+    function renderInline(text) {
+      const tick = String.fromCharCode(96);
+      const placeholders = [];
+      const escaped = escapeHtml(text || "").replace(new RegExp(tick + "([^" + tick + "]+)" + tick, "g"), (_, code) => {
+        placeholders.push("<code>" + code + "</code>");
+        return "__MD_CODE_" + (placeholders.length - 1) + "__";
+      });
       return escaped
-        .replace(/^### (.*)$/gm, "<h3>$1</h3>")
-        .replace(/^## (.*)$/gm, "<h2>$1</h2>")
-        .replace(/^# (.*)$/gm, "<h1>$1</h1>")
-        .replace(/\\*\\*(.*?)\\*\\*/g, "<strong>$1</strong>")
-        .replace(inlineCode, "<code>$1</code>")
-        .split(/\\n{2,}/).map((block) => "<p>" + block.replace(/\\n/g, "<br>") + "</p>").join("");
+        .replace(/\\*\\*(.+?)\\*\\*/g, "<strong>$1</strong>")
+        .replace(/__(.+?)__/g, "<strong>$1</strong>")
+        .replace(/\\*(.+?)\\*/g, "<em>$1</em>")
+        .replace(/\\[(.+?)\\]\\((https?:\\/\\/[^\\s)]+)\\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
+        .replace(/__MD_CODE_(\\d+)__/g, (_, index) => placeholders[Number(index)] || "");
     }
     function formatDuration(ms) {
       const value = Number(ms);
       if (!Number.isFinite(value) || value <= 0) return "";
       if (value < 1000) return value + "ms";
       return (value / 1000).toFixed(value > 10000 ? 0 : 1) + "s";
+    }
+    function getDisplayLatency(msg, live) {
+      if (live) return Math.max(0, Date.now() - (msg.startedAt || Date.now()));
+      if (msg.startedAt && msg.completedAt) return Math.max(0, msg.completedAt - msg.startedAt);
+      const backendLatency = Number(msg.backendLatency);
+      if (Number.isFinite(backendLatency) && backendLatency > 0) return backendLatency;
+      return 0;
+    }
+    function formatBizSeconds(ms) {
+      const value = Number(ms);
+      if (!Number.isFinite(value) || value <= 0) return "0.1";
+      const seconds = value / 1000;
+      return Math.max(0.1, seconds).toFixed(1);
     }
     function formatSessionTime(value) {
       const date = new Date(Number(value) || Date.now());

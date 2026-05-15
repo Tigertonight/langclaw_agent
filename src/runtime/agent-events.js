@@ -131,7 +131,7 @@ export function createObservationStep(state) {
 }
 
 export function splitForStreaming(text) {
-  return String(text ?? "").match(/.{1,8}/gs) ?? [];
+  return String(text ?? "").match(/.{1,4}/gs) ?? [];
 }
 
 function readableToolName(name) {

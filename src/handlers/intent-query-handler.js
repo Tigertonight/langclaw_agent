@@ -1,5 +1,5 @@
 /**
- * IntentQueryHandler：v2 一次性结构化查询执行器。
+ * IntentQueryHandler：一次性结构化查询执行器。
  *
  *   1. 根据 manifest 拿 tool_binding（PoC 仅支持 dealer.query.inventory）
  *   2. 把 Router 抽好的 params 直接映射成 filters，绝不再做硬编码字面量过滤
@@ -37,20 +37,22 @@ export class IntentQueryHandler {
       };
     }
 
-    const { params: effectiveParams, defaultsApplied } = this.applyDefaults({ manifest, params, user });
+    const { params: effectiveParams, defaultsApplied } = this.applyDefaults({ manifest, params, user, message });
     params = effectiveParams;
 
     if (binding.operation === "aggregate") {
       return this.executeAggregate({ user, message, manifest, params, binding, defaultsApplied });
     }
 
-    const filters = this.buildFilters({ intent_code, resource: binding.resource, params });
+    const filters = this.buildFilters({ manifest, intent_code, resource: binding.resource, params, message, user });
+    const sort = this.buildSort({ intent_code, resource: binding.resource, params, message });
     const toolCall = {
       name: binding.tool_name,
       args: {
         resource: binding.resource,
         operation: "search",
         filters,
+        ...(sort.length ? { sort } : {}),
         limit: 50
       }
     };
@@ -66,10 +68,10 @@ export class IntentQueryHandler {
     } else if (rows.length === 0) {
       answer = "没有查到符合条件的记录。";
     } else {
-      answer = await this.summarize({ message, rows, intent_code, resource: binding.resource });
+      answer = await this.summarize({ user, message, rows, intent_code, resource: binding.resource });
     }
     if (defaultsApplied?.length) {
-      answer = `${answer}\n\n※ 已自动套用：${defaultsApplied.map((d) => `${d.field}=${d.value}（${d.reason}）`).join("，")}`;
+      answer = appendDefaultNotes(answer, defaultsApplied);
     }
 
     const debug = {
@@ -105,7 +107,7 @@ export class IntentQueryHandler {
       };
     }
 
-    const baseFilters = this.buildFilters({ intent_code, resource: binding.resource, params });
+    const baseFilters = this.buildFilters({ manifest, intent_code, resource: binding.resource, params, message, user });
     const filterAddon = Array.isArray(def.filter_addon) ? def.filter_addon : [];
     const filters = [...baseFilters, ...filterAddon];
 
@@ -128,16 +130,27 @@ export class IntentQueryHandler {
     if (toolResult?.ok === false) {
       answer = `查询未成功：${toolResult?.message ?? toolResult?.error ?? "未知错误"}。`;
     } else {
-      answer = formatAggregateAnswer({
+      const deterministicAnswer = formatAggregateAnswer({
         metric,
         metricDef: def,
         groupBy: toolCall.args.group_by ?? null,
         toolData: toolResult?.data,
         params
       });
+      answer = await this.summarizeAggregate({
+        user,
+        message,
+        intent_code,
+        resource: binding.resource,
+        metric,
+        metricDef: def,
+        groupBy: toolCall.args.group_by ?? null,
+        toolResult,
+        deterministicAnswer
+      });
     }
     if (defaultsApplied?.length) {
-      answer = `${answer}\n※ 已自动套用：${defaultsApplied.map((d) => `${d.field}=${d.value}（${d.reason}）`).join("，")}`;
+      answer = appendDefaultNotes(answer, defaultsApplied);
     }
 
     const debug = {
@@ -157,20 +170,61 @@ export class IntentQueryHandler {
     };
   }
 
-  applyDefaults({ manifest, params, user }) {
+  applyDefaults({ manifest, params, user, message }) {
     const next = { ...(params ?? {}) };
     const applied = [];
     const schema = manifest.params_schema ?? {};
     // store 默认值：用户在 users.json 里有 default_store，且当前 manifest 接受 store 字段、用户没显式提
-    if (schema.store && (next.store == null || next.store === "") && user?.default_store) {
+    if (schema.store && (next.store == null || next.store === "") && user?.default_store && !shouldSkipDefaultStore({ params: next, message })) {
       next.store = user.default_store;
       applied.push({ field: "store", value: user.default_store, reason: "默认门店" });
     }
     return { params: next, defaultsApplied: applied };
   }
 
-  buildFilters({ intent_code, resource, params }) {
+  buildFilters({ manifest, intent_code, resource, params, message, user }) {
+    const mapped = this.buildMappedFilters({ manifest, params, message, user });
+    if (mapped) return mapped;
+
     const filters = [];
+    if (intent_code === "attendance.leave_query" && resource === "leave_requests") {
+      const { scope, applicant_name, leave_type, time_range, status } = params ?? {};
+      const text = String(message ?? "");
+      const selfScope = scope === "self" || /(我|我的|本人)/.test(text);
+      const companyScope = scope === "company" || /(全公司|整个公司|公司全员|所有员工|全部员工|公司最近)/.test(text);
+      const teamScope = scope === "team" || /(同学|下属|下级|下辖|团队|组员|成员)/.test(text);
+      const peopleScope = /(谁|哪些人|哪几个人|哪位|哪些员工)/.test(text);
+      if (applicant_name && typeof applicant_name === "string" && applicant_name.trim()) {
+        filters.push({ field: "applicant_name", op: "contains", value: applicant_name.trim() });
+      } else if ((companyScope || peopleScope) && user?.permissions?.includes("org:read")) {
+        filters.push({ field: "applicant_user_id", op: "in", value: "__ALL_ORG_USERS__" });
+      } else if (teamScope && user?.permissions?.includes("org:read")) {
+        filters.push({ field: "applicant_user_id", op: "in", value: "__CURRENT_USER_REPORTS__" });
+      } else if (selfScope) {
+        filters.push({ field: "applicant_user_id", op: "eq", value: "__CURRENT_USER__" });
+      } else if (user?.permissions?.includes("org:read")) {
+        filters.push({ field: "applicant_user_id", op: "in", value: "__ALL_ORG_USERS__" });
+      } else {
+        filters.push({ field: "applicant_user_id", op: "eq", value: "__CURRENT_USER__" });
+      }
+      const inferredType = inferLeaveType(text);
+      if (leave_type && typeof leave_type === "string" && leave_type.trim()) {
+        filters.push({ field: "leave_type", op: "eq", value: leave_type.trim() });
+      } else if (inferredType) {
+        filters.push({ field: "leave_type", op: "eq", value: inferredType });
+      }
+      const inferredStatus = typeof status === "string" && status.trim() ? status.trim() : null;
+      if (inferredStatus) filters.push({ field: "status", op: "eq", value: inferredStatus });
+      const monthToken = extractMonthToken(text);
+      if (monthToken) {
+        filters.push({ field: "start_time", op: "contains", value: monthToken });
+      } else {
+        const sinceIso = translateTimeRangeToIso(String(time_range || text));
+        if (sinceIso) {
+          filters.push({ field: "start_time", op: "gte", value: sinceIso });
+        }
+      }
+    }
     if (intent_code === "dealer.query.inventory" && resource === "dealer_vehicles") {
       const { vehicle_model, store, time_range, warning_level } = params ?? {};
       if (vehicle_model && typeof vehicle_model === "string" && vehicle_model.trim()) {
@@ -352,6 +406,31 @@ export class IntentQueryHandler {
     return filters;
   }
 
+  buildMappedFilters({ manifest, params, message, user }) {
+    const mapping = manifest?.filter_mapping;
+    if (!mapping || typeof mapping !== "object") return null;
+
+    const filters = [];
+    for (const [paramName, ruleOrRules] of Object.entries(mapping)) {
+      const rules = Array.isArray(ruleOrRules) ? ruleOrRules : [ruleOrRules];
+      for (const rule of rules) {
+        if (!rule || typeof rule !== "object") continue;
+        const raw = valueForMapping({ paramName, params, message, user, rule });
+        const filter = buildFilterFromRule({ raw, rule, params, message, user });
+        if (Array.isArray(filter)) filters.push(...filter);
+        else if (filter) filters.push(filter);
+      }
+    }
+    return filters;
+  }
+
+  buildSort({ intent_code, resource }) {
+    if (intent_code === "attendance.leave_query" && resource === "leave_requests") {
+      return [{ field: "start_time", direction: "desc" }];
+    }
+    return [];
+  }
+
   checkPermissions({ manifest, user }) {
     const required = manifest.required_permissions ?? [];
     if (!required.length) return { ok: true };
@@ -363,6 +442,10 @@ export class IntentQueryHandler {
     // 这里只做粗粒度放行（避免在 handler 层抢着拒绝），细粒度仍交给 ToolRegistry/authorizeToolCall。
     const resource = manifest.tool_binding?.resource;
     if (resource === "dealer_finance" && user.role === "store_general_manager") {
+      return { ok: true };
+    }
+    if (["dealer_vehicles", "dealer_inbounds", "dealer_quotas", "dealer_stores"].includes(resource)
+        && (userPerms.has("inventory:read") || userPerms.has("order:read") || userPerms.has("sales_report:read"))) {
       return { ok: true };
     }
     if (typeof resource === "string" && resource.startsWith("dealer_")
@@ -378,41 +461,188 @@ export class IntentQueryHandler {
     };
   }
 
-  async summarize({ message, rows, intent_code, resource }) {
-    const sample = rows.slice(0, 10);
-    if (this.llm && typeof this.llm.generateAnswer === "function" && (process.env.LLM_API_KEY || process.env.OPENAI_API_KEY)) {
+  async summarize({ user, message, rows, intent_code, resource }) {
+    if (rows.length === 1 && isSimpleSingleRowQuestion(message)) {
+      return formatRowsTemplate({ rows, total: rows.length, resource });
+    }
+    if (canUseAnswerLLM(this.llm)) {
       try {
         const result = await this.llm.generateAnswer({
-          user: { name: "员工" },
+          user: summarizeUserForAnswer(user),
           question: message,
-          route: { intent: "data_query", intent_code },
+          route: { intent: "data_query", intent_code, handler_type: "intent_query" },
           docs: [],
           toolResults: [{
             ok: true,
             tool: "query_business_data",
-            data: { resource, rows: sample, total: rows.length }
+            data: {
+              resource,
+              operation: "search",
+              rows,
+              total: rows.length,
+              fields: inferDisplayFields(resource, rows),
+              answer_preference: createSearchAnswerPreference({ message, resource, rows })
+            }
           }]
         });
-        if (result?.answer) return result.answer;
+        if (result?.answer && acceptSearchAnswer(result.answer, { rows })) return result.answer;
       } catch {
         // 走模板兜底
       }
     }
     return formatRowsTemplate({ rows, total: rows.length, resource });
   }
+
+  async summarizeAggregate({ user, message, intent_code, resource, metric, metricDef, groupBy, toolResult, deterministicAnswer }) {
+    if (!canUseAnswerLLM(this.llm)) return deterministicAnswer;
+    try {
+      const result = await this.llm.generateAnswer({
+        user: summarizeUserForAnswer(user),
+        question: message,
+        route: { intent: "data_query", intent_code, handler_type: "intent_query", params: { metric, group_by: groupBy } },
+        docs: [],
+        toolResults: [{
+          ok: true,
+          tool: "query_business_data",
+          data: {
+            ...(toolResult?.data ?? {}),
+            resource,
+            operation: "aggregate",
+            deterministic_answer: deterministicAnswer,
+            metric,
+            metric_definition: metricDef?.definition,
+            answer_preference: {
+              format: groupBy ? "natural_grouped_metric" : "natural_metric_answer",
+              rules: [
+                "先直接回答用户问的指标，不要使用“查询结果显示”这类套话。",
+                "必须保留 deterministic_answer 中的指标值、记录数和统计口径，但不要提 deterministic_answer 这个词。",
+                "可以把口径放在末尾，用“口径上...”或“这里按...”自然说明。",
+                "不能新增任何未在 aggregates/groups 中出现的数据。",
+                groupBy ? "如果有多组结果，可以用一张简短 Markdown 表格。" : "单一统计不要生成表格。"
+              ]
+            }
+          }
+        }]
+      });
+      if (result?.answer && aggregateAnswerPreservesMetric(result.answer, toolResult?.data)) return result.answer;
+    } catch {
+      // 走确定性聚合答案兜底
+    }
+    return deterministicAnswer;
+  }
+}
+
+function canUseAnswerLLM(llm) {
+  if (!llm || typeof llm.generateAnswer !== "function") return false;
+  return Boolean(
+    llm.answerApiKey ||
+    process.env.LLM_ANSWER_API_KEY ||
+    process.env.LLM_API_KEY ||
+    process.env.OPENAI_API_KEY
+  );
+}
+
+function summarizeUserForAnswer(user) {
+  return user ? {
+    id: user.id,
+    name: user.name,
+    role: user.role,
+    department: user.department
+  } : { name: "员工" };
+}
+
+function isSimpleSingleRowQuestion(message) {
+  const text = String(message ?? "");
+  if (/(分析|原因|为什么|总结|简报|报告|复盘|建议|行动|归因|怎么看|解读|对比|趋势)/.test(text)) return false;
+  return /(是否|有没有|吗|是不是|查一下|看一下|详情|状态)/.test(text);
+}
+
+function createSearchAnswerPreference({ message, resource, rows }) {
+  return {
+    format: rows.length > 1 ? "natural_markdown_table" : "natural_single_record",
+    display_fields: inferDisplayFields(resource, rows),
+    rules: [
+      "像一个业务同事一样组织回答：先给一句自然结论，再展开必要明细。",
+      "不要说 rows、字段、工具结果、查询结果这些工程词。",
+      "只根据 rows 组织回答，不得新增、推断或改写 rows 中没有的事实。",
+      rows.length > 1
+        ? "多条明细默认输出 Markdown 表格，表格前给一句短摘要。"
+        : "单条明细用短段落或小表格，保持简洁。",
+      "如果用户问名单、哪些人、有哪些、明细、清单、最近记录，必须覆盖 rows 中每一条记录。",
+      "状态、枚举、ID、金额、日期时间等字段值必须原样保留；不要把 submitted/approved 等状态自行翻译成另一种业务状态，也不要在没有字典映射时解释它们的审批含义。",
+      "如果 rows 超过页面可读范围，可以展示关键列，但不能遗漏人名/对象名和核心状态。",
+      "如果要解释范围或默认条件，用一句自然语言轻描淡写说明，不要使用“自动套用”。"
+    ],
+    user_question: String(message ?? "")
+  };
+}
+
+function acceptSearchAnswer(answer, { rows }) {
+  const text = String(answer ?? "").trim();
+  if (!text) return false;
+  if (rows.length <= 1) return true;
+  // 多行明细必须保持可扫描的表格形态；否则回退到确定性 Markdown 表格。
+  return /\|.+\|[\s\S]*\|[\s:-]+\|/.test(text);
+}
+
+function appendDefaultNotes(answer, defaultsApplied = []) {
+  const notes = defaultsApplied
+    .map((d) => defaultNoteText(d))
+    .filter(Boolean);
+  if (!notes.length) return answer;
+  return `${answer}\n\n${notes.join("\n")}`;
+}
+
+function defaultNoteText(item) {
+  if (!item) return "";
+  if (item.field === "store") {
+    return `这里按你的默认门店「${item.value}」来看的。`;
+  }
+  return `这里按 ${item.field}=${item.value} 来看的。`;
+}
+
+function shouldSkipDefaultStore({ params, message }) {
+  const text = String(message ?? "");
+  if (params?.group_by === "store_name") return true;
+  return /(各门店|所有门店|全部门店|全部门店|全店|全公司|整个|整体|体系|集团|区域|对比)/.test(text);
 }
 
 function translateTimeRangeToIso(text) {
   const now = new Date();
-  if (/近一个月|最近一个月|本月|过去一个月/.test(text)) {
+  if (/本月|这个月/.test(text)) {
+    return formatLocalDate(new Date(now.getFullYear(), now.getMonth(), 1));
+  }
+  if (/上月|上个月/.test(text)) {
+    return formatLocalDate(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+  }
+  if (/本周|这周/.test(text)) {
+    const d = new Date(now);
+    const day = d.getDay() || 7;
+    d.setDate(d.getDate() - day + 1);
+    return formatLocalDate(d);
+  }
+  if (/今天|今日/.test(text)) {
+    return formatLocalDate(now);
+  }
+  if (/昨天|昨日/.test(text)) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - 1);
+    return formatLocalDate(d);
+  }
+  if (/最近|近期|近来/.test(text)) {
     const d = new Date(now);
     d.setMonth(d.getMonth() - 1);
-    return d.toISOString().slice(0, 10);
+    return formatLocalDate(d);
+  }
+  if (/近一个月|最近一个月|过去一个月/.test(text)) {
+    const d = new Date(now);
+    d.setMonth(d.getMonth() - 1);
+    return formatLocalDate(d);
   }
   if (/近三个月|最近三个月|过去三个月/.test(text)) {
     const d = new Date(now);
     d.setMonth(d.getMonth() - 3);
-    return d.toISOString().slice(0, 10);
+    return formatLocalDate(d);
   }
   if (/近半年|最近半年/.test(text)) {
     const d = new Date(now);
@@ -423,8 +653,117 @@ function translateTimeRangeToIso(text) {
   if (quarterMatch) {
     const q = Number(quarterMatch[1]);
     const startMonth = (q - 1) * 3;
-    return new Date(now.getFullYear(), startMonth, 1).toISOString().slice(0, 10);
+    return formatLocalDate(new Date(now.getFullYear(), startMonth, 1));
   }
+  return null;
+}
+
+function formatLocalDate(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function valueForMapping({ paramName, params, message, user, rule }) {
+  if (rule.source === "message") return String(message ?? "");
+  if (rule.source === "user_id") return user?.id ?? null;
+  if (rule.source === "default_store") return user?.default_store ?? null;
+  return params?.[paramName];
+}
+
+function buildFilterFromRule({ raw, rule, message, user }) {
+  let value = raw;
+  if (value === undefined || value === null || value === "") return null;
+  if (typeof value === "string") value = value.trim();
+  if (value === "") return null;
+
+  const transformed = applyMappingTransform(value, rule, { message, user });
+  if (transformed === null || transformed === undefined || transformed === "") return null;
+  if (Array.isArray(transformed)) {
+    if (!transformed.length) return null;
+    if (transformed.every((item) => item && typeof item === "object" && item.field && item.op)) return transformed;
+    return { field: rule.field, op: rule.op ?? "in", value: transformed };
+  }
+  if (typeof transformed === "object" && transformed.field && transformed.op) return transformed;
+
+  return {
+    field: rule.field,
+    op: rule.op ?? "eq",
+    value: transformed
+  };
+}
+
+function applyMappingTransform(value, rule, { message, user } = {}) {
+  if (rule.transform === "time_range_to_iso") {
+    return translateTimeRangeToIso(String(value ?? ""));
+  }
+  if (rule.transform === "month_token_or_time_range") {
+    const text = String(value ?? message ?? "");
+    return extractMonthToken(text) ?? translateTimeRangeToIso(text);
+  }
+  if (rule.transform === "clean_fault_category") {
+    return String(value ?? "").replace(/故障类别|故障$/u, "").trim();
+  }
+  if (rule.transform === "normalize_finance_direction") {
+    const text = String(value ?? "").trim();
+    if (/付款|支付|付了|扣款|抵扣|支出|支款/.test(text)) return "出账";
+    if (/收款|到账|收到/.test(text)) return "收款";
+    return text;
+  }
+  if (rule.transform === "infer_leave_type") {
+    return inferLeaveType(String(value ?? message ?? ""));
+  }
+  if (rule.transform === "overdue_repair_filters") {
+    if (value !== true) return null;
+    const today = new Date().toISOString().slice(0, 10);
+    return [
+      { field: "promised_finish_at", op: "lte", value: today },
+      { field: "status", op: "neq", value: "已交付" }
+    ];
+  }
+  if (rule.transform === "leave_scope") {
+    const text = String(message ?? "");
+    const scope = String(value ?? "");
+    const selfScope = scope === "self" || /(我|我的|本人)/.test(text);
+    const companyScope = scope === "company" || /(全公司|整个公司|公司全员|所有员工|全部员工|公司最近)/.test(text);
+    const teamScope = scope === "team" || /(同学|下属|下级|下辖|团队|组员|成员)/.test(text);
+    const peopleScope = /(谁|哪些人|哪几个人|哪位|哪些员工)/.test(text);
+    if ((companyScope || peopleScope) && user?.permissions?.includes("org:read")) {
+      return { field: "applicant_user_id", op: "in", value: "__ALL_ORG_USERS__" };
+    }
+    if (teamScope && user?.permissions?.includes("org:read")) {
+      return { field: "applicant_user_id", op: "in", value: "__CURRENT_USER_REPORTS__" };
+    }
+    if (selfScope) return { field: "applicant_user_id", op: "eq", value: "__CURRENT_USER__" };
+    if (user?.permissions?.includes("org:read")) {
+      return { field: "applicant_user_id", op: "in", value: "__ALL_ORG_USERS__" };
+    }
+    return { field: "applicant_user_id", op: "eq", value: "__CURRENT_USER__" };
+  }
+
+  if (rule.negative_patterns && Array.isArray(rule.negative_patterns)) {
+    const text = String(value ?? "");
+    for (const item of rule.negative_patterns) {
+      if (item?.pattern && new RegExp(item.pattern).test(text)) {
+        return { field: rule.field, op: item.op ?? "neq", value: item.value };
+      }
+    }
+  }
+  return value;
+}
+
+function extractMonthToken(text) {
+  if (/本月|这个月/.test(text)) return new Date().toISOString().slice(0, 7);
+  const explicit = String(text ?? "").match(/(20\d{2})[-年/.](\d{1,2})/);
+  if (explicit) return `${explicit[1]}-${String(Number(explicit[2])).padStart(2, "0")}`;
+  const monthOnly = String(text ?? "").match(/(\d{1,2})月/);
+  if (monthOnly) return `${new Date().getFullYear()}-${String(Number(monthOnly[1])).padStart(2, "0")}`;
+  return null;
+}
+
+function inferLeaveType(text) {
+  if (/年假/.test(text)) return "年假";
+  if (/病假/.test(text)) return "病假";
+  if (/事假/.test(text)) return "事假";
+  if (/调休/.test(text)) return "调休";
   return null;
 }
 
@@ -440,12 +779,9 @@ function formatAggregateAnswer({ metric, metricDef, groupBy, toolData, params })
     } else {
       // 选用作为"主指标"的那个 as：取 metric_definitions 里第一个非 _ 开头的 derived，否则第一个 aggregations 的 as
       const primaryAs = pickPrimaryAs(metricDef, metric);
-      lines.push(`按 ${labelOfField(groupBy)} 分组的「${labelOfMetric(metric)}」：`);
-      for (const g of groups) {
-        const groupValue = Object.values(g.group ?? {})[0] ?? "(空)";
-        const value = g.aggregates?.[primaryAs];
-        lines.push(`- ${groupValue}：${fmt(value)}（${g.row_count} 条记录）`);
-      }
+      lines.push(createGroupedMetricIntro({ metric, groupBy, total: toolData?.total }));
+      lines.push("");
+      lines.push(formatGroupedMetricTable({ groups, groupBy, primaryAs, metric, formatValue: fmt }));
     }
   } else {
     const aggregates = toolData?.aggregates ?? {};
@@ -454,12 +790,35 @@ function formatAggregateAnswer({ metric, metricDef, groupBy, toolData, params })
     if (value === null || value === undefined) {
       lines.push(`没有查到符合条件的记录，无法计算${labelOfMetric(metric)}。`);
     } else {
-      lines.push(`${labelOfMetric(metric)}：**${fmt(value)}**（基于 ${toolData?.total ?? 0} 条记录）`);
+      lines.push(`${labelOfMetric(metric)}是 **${fmt(value)}**。`);
+      if (Number(toolData?.total ?? 0) > 0) lines.push(`这次统计覆盖 ${toolData.total} 条记录。`);
     }
   }
 
-  lines.push(`※ 口径：${definition}`);
+  lines.push(`口径上：${definition}`);
   return lines.join("\n");
+}
+
+function createGroupedMetricIntro({ metric, groupBy, total }) {
+  if (metric === "order_count" && groupBy === "order_status") {
+    return `最近订单按${labelOfField(groupBy)}看，主要是下面这些状态。`;
+  }
+  const totalText = Number(total ?? 0) > 0 ? `（共 ${total} 条记录）` : "";
+  return `${labelOfMetric(metric)}按${labelOfField(groupBy)}分布如下${totalText}。`;
+}
+
+function formatGroupedMetricTable({ groups, groupBy, primaryAs, metric, formatValue }) {
+  const metricLabel = labelOfMetric(metric);
+  const rows = [
+    `| ${labelOfField(groupBy)} | ${metricLabel} | 记录数 |`,
+    "| --- | --- | --- |"
+  ];
+  for (const g of groups) {
+    const groupValue = Object.values(g.group ?? {})[0] ?? "(空)";
+    const value = g.aggregates?.[primaryAs];
+    rows.push(`| ${escapeMarkdownCell(groupValue)} | ${escapeMarkdownCell(formatValue(value))} | ${g.row_count ?? "-"} |`);
+  }
+  return rows.join("\n");
 }
 
 function pickPrimaryAs(metricDef, metric) {
@@ -517,7 +876,13 @@ function labelOfField(field) {
     intention_level: "意向等级",
     source: "来源",
     interested_series: "意向车系",
-    service_advisor_name: "服务顾问"
+    service_advisor_name: "服务顾问",
+    inventory: "库存",
+    lead: "线索",
+    sales: "销售",
+    finance: "财务",
+    after_sales: "售后",
+    warranty: "三包"
   };
   return map[field] ?? field;
 }
@@ -536,8 +901,109 @@ function formatMetricValue(metric, value) {
 
 function formatRowsTemplate({ rows, total, resource }) {
   const head = rows.slice(0, 8);
+  const table = formatRowsTable({ rows: head, resource });
+  if (table) return `最近有 ${total} 条相关记录：\n\n${table}`;
   const lines = head.map((row) => formatRowByResource(row, resource));
-  return `为您查到 ${total} 条记录：\n${lines.join("\n")}`;
+  return `最近有 ${total} 条相关记录：\n${lines.join("\n")}`;
+}
+
+function formatRowsTable({ rows, resource }) {
+  if (!rows.length) return "";
+  const columns = getDisplayColumns(resource, rows);
+  if (!columns.length) return "";
+  const header = `| ${columns.map((column) => column.label).join(" | ")} |`;
+  const divider = `| ${columns.map(() => "---").join(" | ")} |`;
+  const body = rows.map((row) => `| ${columns.map((column) => escapeMarkdownCell(formatCellValue(row[column.field]))).join(" | ")} |`);
+  return [header, divider, ...body].join("\n");
+}
+
+function inferDisplayFields(resource, rows) {
+  return getDisplayColumns(resource, rows).map((column) => column.field);
+}
+
+function getDisplayColumns(resource, rows = []) {
+  const presets = {
+    leave_requests: [
+      ["applicant_name", "员工"],
+      ["leave_type", "类型"],
+      ["leave_duration", "时长"],
+      ["start_time", "开始时间"],
+      ["end_time", "结束时间"],
+      ["status", "状态"],
+      ["reason", "事由"]
+    ],
+    dealer_vehicles: [
+      ["store_name", "门店"],
+      ["series", "车系"],
+      ["model", "车型"],
+      ["status", "状态"],
+      ["stock_age_days", "库龄(天)"],
+      ["stock_warning_level", "预警"]
+    ],
+    dealer_sales_orders: [
+      ["store_name", "门店"],
+      ["customer_name", "客户"],
+      ["series", "车系"],
+      ["model", "车型"],
+      ["order_status", "订单状态"],
+      ["payment_status", "收款状态"],
+      ["delivery_status", "交付状态"],
+      ["final_price", "成交价"]
+    ],
+    dealer_leads: [
+      ["store_name", "门店"],
+      ["customer_name", "客户"],
+      ["source", "来源"],
+      ["interested_series", "意向车系"],
+      ["intention_level", "意向等级"],
+      ["status", "状态"],
+      ["followup_count", "跟进次数"]
+    ]
+  };
+  const preset = presets[resource];
+  if (preset) {
+    return preset
+      .filter(([field]) => rows.some((row) => row?.[field] !== undefined && row?.[field] !== null && row?.[field] !== ""))
+      .map(([field, label]) => ({ field, label }));
+  }
+  return Object.keys(rows[0] ?? {})
+    .slice(0, 6)
+    .map((field) => ({ field, label: field }));
+}
+
+function formatCellValue(value) {
+  if (value === undefined || value === null || value === "") return "-";
+  if (Array.isArray(value)) return value.join("、");
+  if (typeof value === "object") return JSON.stringify(value);
+  return String(value);
+}
+
+function escapeMarkdownCell(value) {
+  return String(value).replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
+}
+
+function aggregateAnswerPreservesMetric(answer, data) {
+  const text = String(answer ?? "");
+  const values = [];
+  for (const value of Object.values(data?.aggregates ?? {})) {
+    if (value !== null && value !== undefined) values.push(value);
+  }
+  for (const group of data?.groups ?? []) {
+    for (const value of Object.values(group?.aggregates ?? {})) {
+      if (value !== null && value !== undefined) values.push(value);
+    }
+  }
+  if (!values.length) return true;
+  return values.some((value) => answerContainsNumber(text, value));
+}
+
+function answerContainsNumber(text, value) {
+  if (typeof value !== "number") return text.includes(String(value));
+  const raw = String(value);
+  const rounded = String(Math.round(value));
+  const fixed2 = Number.isInteger(value) ? raw : value.toFixed(2);
+  const localized = value.toLocaleString("zh-CN");
+  return [raw, rounded, fixed2, localized].some((candidate) => candidate && text.includes(candidate));
 }
 
 function formatRowByResource(row, resource) {
@@ -561,6 +1027,12 @@ function formatRowByResource(row, resource) {
   }
   if (resource === "dealer_leads") {
     return `- [${row.id ?? ""}] ${row.store_name ?? ""} ${row.customer_name ?? ""} ${row.interested_series ?? ""}（意向 ${row.intention_level ?? ""}，状态 ${row.status ?? ""}，跟进 ${row.followup_count ?? 0} 次）`;
+  }
+  if (resource === "leave_requests") {
+    return `- ${row.applicant_name ?? "未知员工"}：${row.leave_type ?? "请假"} ${row.leave_duration ?? ""}，${row.start_time ?? ""} 至 ${row.end_time ?? ""}（${row.status ?? "未知状态"}，${row.reason ?? "未填写事由"}）`;
+  }
+  if (resource === "dealer_metrics") {
+    return `- ${row.store_name ?? ""} ${labelOfField(row.category)}/${row.metric ?? ""}：${row.value ?? ""}${row.unit ?? ""}（${row.severity ?? ""}） ${row.summary ?? ""} 建议：${row.recommendation ?? ""}`;
   }
   return `- ${JSON.stringify(row).slice(0, 200)}`;
 }
