@@ -1,0 +1,23 @@
+{
+  "intent_code": "knowledge.policy_qa",
+  "execution_class": "controlled_execution",
+  "handler_type": "knowledge_lookup",
+  "version": "1",
+  "description": "查询制度、流程、手册、标准、报销、假勤、权限、安全等知识库内容。",
+  "params_schema": {
+    "query": { "type": "string", "required": true, "examples": ["差旅报销标准是什么", "年假制度怎么规定"] },
+    "topic": { "type": "string", "required": false, "examples": ["报销", "年假", "安全制度"] }
+  },
+  "examples": [
+    "差旅报销标准是什么？",
+    "年假制度怎么规定",
+    "信息安全政策里对外发资料有什么要求",
+    "销售话术手册里怎么介绍金融方案"
+  ],
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "tool_binding": {
+    "tool_name": "retrieve_knowledge"
+  },
+  "required_permissions": ["policy:read"]
+}

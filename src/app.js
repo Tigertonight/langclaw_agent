@@ -9,7 +9,6 @@ import {
   WeComDirectory
 } from "./auth/user-context-resolver.js";
 import { OpenAILLMClient } from "./llm/openai-llm.js";
-import { LocalLLMClient } from "./llm/local-llm.js";
 import { IntentRegistry } from "./router/intent-registry.js";
 import { IntentRouter } from "./router/intent-router.js";
 import { IntentQueryHandler } from "./handlers/intent-query-handler.js";
@@ -67,11 +66,10 @@ export function createApp() {
     permissionProvider: new LocalPermissionProvider()
   });
   const intentRegistry = new IntentRegistry({ dir: "data/intent-codes" });
-  const localLLM = new LocalLLMClient();
-  const intentRouter = new IntentRouter({ llm, registry: intentRegistry, localLLM });
+  const intentRouter = new IntentRouter({ llm, registry: intentRegistry });
   const intentQueryHandler = new IntentQueryHandler({ llm, toolRegistry, registry: intentRegistry });
   const chitchatHandler = new ChitchatHandler({ llm });
-  // v2: 给 agentic 单独的 skill 视图（注入式包），与 v1 workflow 的 SkillRegistryStore 解耦
+  // 给 agentic 单独的 skill 视图（注入式包），与 workflow 的 SkillRegistryStore 解耦。
   const agenticSkillView = new AgenticSkillView();
   const agenticHandler = new AgenticHandler({
     intentRegistry,

@@ -1,11 +1,11 @@
-# router-poc 测试用例清单（v2，37 → 100）
+# router-poc 测试用例清单（Intent Router，37 → 100）
 
 本次新增 63 条，总计 100 条。运行：
 
 ```bash
 npm run eval:router
 # 或
-INTENT_ROUTER_V2=on WECOM_MODE=mock node src/eval/router-poc.js
+WECOM_MODE=mock node src/eval/router-poc.js
 ```
 
 校验口径：
@@ -157,7 +157,7 @@ INTENT_ROUTER_V2=on WECOM_MODE=mock node src/eval/router-poc.js
 
 **2. 关键路径加 answer 软校验**：只在 #11、#12 这类要看到产出价值的 case 加 `answer` 关键词检查（"毛利"、"华东" 等）。其余 case 不校验 answer 内容，避免 LLM 一拖动就 fail。
 
-**3. Agentic 类全部 `allowOneRetry`**：跟"v2-端到端：库存压力对比"这条参考，最多重试 3 次。MiniMax 偶发空 content / 非 JSON 的概率经过观察大约 2-5%。
+**3. Agentic 类全部 `allowOneRetry`**：跟"Intent Router-端到端：库存压力对比"这条参考，最多重试 3 次。MiniMax 偶发空 content / 非 JSON 的概率经过观察大约 2-5%。
 
 **4. 数据真实性**：所有用例都基于 `data/dealer-*.json` 的实际字段值——
    - 门店：华东旗舰店、华南标准店、华北卫星店
@@ -169,5 +169,5 @@ INTENT_ROUTER_V2=on WECOM_MODE=mock node src/eval/router-poc.js
 
 **5. 已知不稳因素**：
    - MiniMax 偶发服务降级（已用步内 4 次重试 + 用例级 allowOneRetry 兜住）
-   - 多轮修参依赖 LLM 正确处理 `last_query_route` 滑窗（v2 路由器已实现，但仍有抖动）
+   - 多轮修参依赖 LLM 正确处理 `last_query_route` 滑窗（Intent Router 已实现，但仍有抖动）
    - Agentic 决策路径长，单 case 最长可达 60 秒

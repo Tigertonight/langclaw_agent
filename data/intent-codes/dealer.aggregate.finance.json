@@ -6,44 +6,106 @@
   "params_schema": {
     "metric": {
       "type": "enum",
-      "values": ["total_amount", "unsettled_amount", "record_count", "avg_amount"],
+      "values": [
+        "total_amount",
+        "unsettled_amount",
+        "record_count",
+        "avg_amount"
+      ],
       "required": true
     },
     "group_by": {
       "type": "enum",
-      "values": ["store_name", "resource_type", "direction", "category", "status"],
+      "values": [
+        "store_name",
+        "resource_type",
+        "direction",
+        "category",
+        "status"
+      ],
       "required": false
     },
     "resource_type": {
       "type": "enum",
-      "values": ["discount_wallet", "payable", "receivable", "receipt", "rebate"],
+      "values": [
+        "discount_wallet",
+        "payable",
+        "receivable",
+        "receipt",
+        "rebate"
+      ],
       "required": false
     },
-    "store": { "type": "string", "required": false },
-    "direction": { "type": "string", "required": false },
-    "status": { "type": "string", "required": false },
-    "time_range": { "type": "string", "required": false }
+    "store": {
+      "type": "string",
+      "required": false
+    },
+    "direction": {
+      "type": "string",
+      "required": false
+    },
+    "status": {
+      "type": "string",
+      "required": false
+    },
+    "time_range": {
+      "type": "string",
+      "required": false
+    }
   },
   "metric_definitions": {
     "total_amount": {
       "definition": "总金额 = sum(amount)",
       "filter_addon": [],
-      "aggregations": [{ "type": "sum", "field": "amount", "as": "total_amount" }]
+      "aggregations": [
+        {
+          "type": "sum",
+          "field": "amount",
+          "as": "total_amount"
+        }
+      ]
     },
     "unsettled_amount": {
       "definition": "未结清金额 = sum(amount) where status != 已结清/已入账/已出账/已到账",
-      "filter_addon": [{ "field": "status", "op": "in", "value": ["未结清", "待结算"] }],
-      "aggregations": [{ "type": "sum", "field": "amount", "as": "unsettled_amount" }]
+      "filter_addon": [
+        {
+          "field": "status",
+          "op": "in",
+          "value": [
+            "未结清",
+            "待结算"
+          ]
+        }
+      ],
+      "aggregations": [
+        {
+          "type": "sum",
+          "field": "amount",
+          "as": "unsettled_amount"
+        }
+      ]
     },
     "record_count": {
       "definition": "记录数 = count(*)",
       "filter_addon": [],
-      "aggregations": [{ "type": "count", "field": "id", "as": "record_count" }]
+      "aggregations": [
+        {
+          "type": "count",
+          "field": "id",
+          "as": "record_count"
+        }
+      ]
     },
     "avg_amount": {
       "definition": "平均金额 = avg(amount)",
       "filter_addon": [],
-      "aggregations": [{ "type": "avg", "field": "amount", "as": "avg_amount" }]
+      "aggregations": [
+        {
+          "type": "avg",
+          "field": "amount",
+          "as": "avg_amount"
+        }
+      ]
     }
   },
   "examples": [
@@ -58,5 +120,31 @@
     "resource": "dealer_finance",
     "operation": "aggregate"
   },
-  "required_permissions": ["finance:read"]
+  "required_permissions": [
+    "finance:read"
+  ],
+  "filter_mapping": {
+    "resource_type": {
+      "field": "resource_type",
+      "op": "eq"
+    },
+    "store": {
+      "field": "store_name",
+      "op": "contains"
+    },
+    "direction": {
+      "field": "direction",
+      "op": "eq",
+      "transform": "normalize_finance_direction"
+    },
+    "status": {
+      "field": "status",
+      "op": "eq"
+    },
+    "time_range": {
+      "field": "occurred_at",
+      "op": "gte",
+      "transform": "time_range_to_iso"
+    }
+  }
 }

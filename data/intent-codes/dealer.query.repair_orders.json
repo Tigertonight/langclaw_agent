@@ -4,13 +4,60 @@
   "version": "1",
   "description": "查询经销商售后维修工单（含状态、车系、逾期、时间、服务顾问等过滤）",
   "params_schema": {
-    "store": { "type": "string", "required": false, "examples": ["华东旗舰店", "华南标准店"] },
-    "series": { "type": "string", "required": false, "examples": ["汉", "宋L", "海豹"] },
-    "status": { "type": "string", "required": false, "examples": ["待结算", "维修中", "已交付", "已取消"] },
-    "order_type": { "type": "string", "required": false, "examples": ["常规保养", "事故维修", "保修维修"] },
-    "service_advisor": { "type": "string", "required": false },
-    "time_range": { "type": "string", "required": false, "examples": ["近一个月", "本月", "Q2"] },
-    "overdue_only": { "type": "boolean", "required": false, "description": "true 时仅返回 promised_finish_at 已过且未交付的工单（逾期）" }
+    "store": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "华东旗舰店",
+        "华南标准店"
+      ]
+    },
+    "series": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "汉",
+        "宋L",
+        "海豹"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "待结算",
+        "维修中",
+        "已交付",
+        "已取消"
+      ]
+    },
+    "order_type": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "常规保养",
+        "事故维修",
+        "保修维修"
+      ]
+    },
+    "service_advisor": {
+      "type": "string",
+      "required": false
+    },
+    "time_range": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "近一个月",
+        "本月",
+        "Q2"
+      ]
+    },
+    "overdue_only": {
+      "type": "boolean",
+      "required": false,
+      "description": "true 时仅返回 promised_finish_at 已过且未交付的工单（逾期）"
+    }
   },
   "examples": [
     "查一下逾期未交付的维修工单",
@@ -24,5 +71,38 @@
     "tool_name": "query_business_data",
     "resource": "dealer_repair_orders"
   },
-  "required_permissions": ["after_sales:read"]
+  "required_permissions": [
+    "after_sales:read"
+  ],
+  "filter_mapping": {
+    "store": {
+      "field": "store_name",
+      "op": "contains"
+    },
+    "series": {
+      "field": "series",
+      "op": "contains"
+    },
+    "status": {
+      "field": "status",
+      "op": "eq"
+    },
+    "order_type": {
+      "field": "order_type",
+      "op": "contains"
+    },
+    "service_advisor": {
+      "field": "service_advisor_name",
+      "op": "contains"
+    },
+    "time_range": {
+      "field": "appointment_at",
+      "op": "gte",
+      "transform": "time_range_to_iso"
+    },
+    "overdue_only": {
+      "field": "promised_finish_at",
+      "transform": "overdue_repair_filters"
+    }
+  }
 }

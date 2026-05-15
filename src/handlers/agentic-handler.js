@@ -1,12 +1,12 @@
 /**
  * AgenticHandler：跨意图的 LLM tool-calling 循环。
  *
- * 设计原则（v1）：
+ * 设计原则：
  *   - intent_code 是 agent 的工具，但不是唯一来源。getAvailableTools()
  *     按三类拼装：intent.* / skill.* / tool.*。第一版只有 intent，后两类
  *     返回空数组占位。
  *   - 每一步 LLM 决定调哪个工具；调 intent.* 时落到 IntentQueryHandler.execute；
- *     调 skill.* / tool.* 在第一版会报 not_implemented（v2 接入）。
+ *     调 skill.* / tool.* 进入对应注入式 skill 或原子工具。
  *   - 步数上限 5；每步超时 20s；总超时 60s。
  *   - 不重写 router、不重写 IntentQueryHandler，只是另一种调度方式。
  *
@@ -14,18 +14,19 @@
  *   - 在 decide 阶段，LLM 可以输出 action.type=propose_tool，描述一个临时步骤。
  *     由系统决定是否实现。本期不做，但 normalizeAction 已经预留了分支。
  */
+import { applyPromptCache } from "../llm/prompt-cache.js";
 
 // 三类工具组合时，典型路径：intent×2 + tool.safe_compute + skill.* 注入 + answer = 5 步起。
 // 留点余量给单步抖动重试，定 7。
 const MAX_ITERATIONS = 7;
-// v2 起 system prompt 里要列 intent.* / tool.* / skill.* 三类工具，整个 prompt 接近 4-5KB，
+// system prompt 里要列 intent.* / tool.* / skill.* 三类工具，整个 prompt 接近 4-5KB，
 // MiniMax-M2.7 单步推理 20s 容易超时；适度放宽到 35s。总时长同步拉到 120s。
 const STEP_TIMEOUT_MS = 35000;
 const TOTAL_TIMEOUT_MS = 180000;
 
 export class AgenticHandler {
-  // v2 起 skillRegistry 期望是 AgenticSkillView（注入式 skill 视图），
-  // 字段名保留是为了让 v1 期写好的 getAvailableTools 兼容。
+  // skillRegistry 期望是 AgenticSkillView（注入式 skill 视图），
+  // 字段名保留是为了兼容已写好的 getAvailableTools。
   constructor({ intentRegistry, intentQueryHandler, skillRegistry = null, toolRegistry = null } = {}) {
     this.intentRegistry = intentRegistry;
     this.intentQueryHandler = intentQueryHandler;
@@ -64,6 +65,7 @@ export class AgenticHandler {
 
     let answer = null;
     let lastError = null;
+    const executedToolResults = [];
 
     const apiKey = process.env.LLM_DECISION_API_KEY ?? process.env.LLM_API_KEY ?? process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -116,6 +118,13 @@ export class AgenticHandler {
         const callName = decision.tool_name;
         const args = decision.args ?? {};
         const observation = await this.callTool({ callName, args, user, session });
+        executedToolResults.push({
+          ok: observation?.ok !== false,
+          tool: callName,
+          data: observation,
+          error: observation?.error,
+          message: observation?.message
+        });
         pushTool({ step, type: "tool_call", tool: callName, args, observation_summary: summarizeObservation(observation) });
         // skill.* 是"注入式工具"：不返回结构化结果，而是把 SKILL.md+模板+示例
         // 当作新到的专家说明塞进对话，让主 LLM 下一步直接 answer。
@@ -168,7 +177,7 @@ export class AgenticHandler {
         latency_ms: Date.now() - startedAt
       },
       toolPlan: { calls: streams.tool.filter((t) => t.type === "tool_call").map((t) => ({ name: t.tool, args: t.args })) },
-      toolResults: []
+      toolResults: executedToolResults
     };
   }
 
@@ -186,13 +195,13 @@ export class AgenticHandler {
         manifest
       });
     }
-    // 2. skill.*（v2 接入，v1 占位空）
+    // 2. skill.*（注入式 skill）
     if (this.skillRegistry?.listForAgent) {
       for (const skill of this.skillRegistry.listForAgent({ user }) ?? []) {
         list.push({ ...skill, kind: "skill", name: `skill.${skill.id}` });
       }
     }
-    // 3. tool.*（v2 接入；只露出标了 expose_to_agentic 的）
+    // 3. tool.*（只露出标了 expose_to_agentic 的）
     if (this.toolRegistry?.list) {
       for (const tool of this.toolRegistry.list({ user }) ?? []) {
         if (!tool.metadata?.expose_to_agentic) continue;
@@ -262,6 +271,7 @@ export class AgenticHandler {
       stream: false,
       response_format: { type: "json_object" }
     };
+    applyPromptCache(body, { baseUrl, model, scope: "agentic.loop_decision" });
     const response = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },

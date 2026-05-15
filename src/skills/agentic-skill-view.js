@@ -1,7 +1,7 @@
 /**
- * AgenticSkillView：v2 引入的"注入式 skill"加载器。
+ * AgenticSkillView：agentic 路径使用的"注入式 skill"加载器。
  *
- * 它和 SkillRegistryStore（v1 的 workflow skill 体系）是完全独立的——后者管"安装/启用/版本"，
+ * 它和 SkillRegistryStore（workflow skill 体系）是完全独立的——后者管"安装/启用/版本"，
  * 这里只管"把 skills/agentic/<id>/ 目录下的提示词包，按 Claude Code Skill 的形态读出来"。
  *
  * 协议：与 openclaw / Claude Code Skill 对齐，frontmatter 仅 name + description（超集兼容）：
@@ -23,7 +23,7 @@
  *   2. loadForInjection({id, args, user})  →  跑 preprocess.js + 渲染 template + 拼 examples
  *      → 返回一段可作为 user/system 消息塞回主 agentic 对话的文本块
  *
- * 这里不缓存元数据：v2 启动时一次性扫描，运行期不再热加载。listForAgent 同步（已扫好）。
+ * 这里不缓存元数据：启动时一次性扫描，运行期不再热加载。listForAgent 同步（已扫好）。
  */
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";

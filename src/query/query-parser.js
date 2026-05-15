@@ -390,8 +390,8 @@ function parseCustomerQuery({ question, entities, operation }) {
 function parseLeaveRecordQuery({ user, question, operation, entities }) {
   const filters = [];
   const selfScope = /(我|我的|本人)/.test(String(question ?? ""));
-  const teamScope = /(同学|下属|下级|下辖|团队|组员|成员|谁)/.test(String(question ?? "")) && !selfScope;
-  const companyScope = /(全公司|整个公司|公司全员|所有员工|全部员工)/.test(String(question ?? "")) && !selfScope;
+  const teamScope = /(同学|下属|下级|下辖|团队|组员|成员)/.test(String(question ?? "")) && !selfScope;
+  const companyScope = /(全公司|整个公司|公司全员|所有员工|全部员工|谁|哪些人|哪几个人|哪位|哪些员工)/.test(String(question ?? "")) && !selfScope;
 
   if (entities?.employee && user?.permissions?.includes("org:read")) {
     filters.push({ field: "applicant_name", op: "contains", value: entities.employee.name });
@@ -490,7 +490,7 @@ export function isLeaveRecordQuestion(question) {
   const text = String(question ?? "");
   const hasLeave = /(请.*假|休假|年假|病假|事假|调休)/.test(text);
   const asksRecord = /(记录|历史|明细|列表|查询|查看|查一下|统计|几次|多少次|有哪些|都有谁)/.test(text);
-  const asksPeople = /(同学|下属|下级|下辖|团队|组员|成员|谁)/.test(text);
+  const asksPeople = /(同学|下属|下级|下辖|团队|组员|成员|谁|哪些人|哪几个人|哪位|哪些员工)/.test(text);
   return hasLeave && (asksRecord || asksPeople);
 }
 

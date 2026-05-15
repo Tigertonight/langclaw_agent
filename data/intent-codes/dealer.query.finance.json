@@ -6,17 +6,73 @@
   "params_schema": {
     "resource_type": {
       "type": "enum",
-      "values": ["discount_wallet", "payable", "receivable", "receipt", "rebate"],
+      "values": [
+        "discount_wallet",
+        "payable",
+        "receivable",
+        "receipt",
+        "rebate"
+      ],
       "required": false,
       "description": "款项大类：折让金=discount_wallet，应付=payable，应收=receivable，收款=receipt，返利=rebate"
     },
-    "store": { "type": "string", "required": false, "examples": ["华东旗舰店", "华南标准店"] },
-    "category": { "type": "string", "required": false, "examples": ["销售返利", "整车采购", "客户首付", "月度销量返利"] },
-    "direction": { "type": "string", "required": false, "examples": ["入账", "出账", "应付", "应收返利", "收款"] },
-    "status": { "type": "string", "required": false, "examples": ["已入账", "未结清", "已到账", "待结算"] },
-    "time_range": { "type": "string", "required": false, "examples": ["近一个月", "六月份", "本月", "Q2"] },
-    "amount_min": { "type": "number", "required": false },
-    "amount_max": { "type": "number", "required": false }
+    "store": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "华东旗舰店",
+        "华南标准店"
+      ]
+    },
+    "category": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "销售返利",
+        "整车采购",
+        "客户首付",
+        "月度销量返利"
+      ]
+    },
+    "direction": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "入账",
+        "出账",
+        "应付",
+        "应收返利",
+        "收款"
+      ]
+    },
+    "status": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "已入账",
+        "未结清",
+        "已到账",
+        "待结算"
+      ]
+    },
+    "time_range": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "近一个月",
+        "六月份",
+        "本月",
+        "Q2"
+      ]
+    },
+    "amount_min": {
+      "type": "number",
+      "required": false
+    },
+    "amount_max": {
+      "type": "number",
+      "required": false
+    }
   },
   "examples": [
     "六月份华东旗舰店挂账中的应付金额合计",
@@ -31,5 +87,43 @@
     "tool_name": "query_business_data",
     "resource": "dealer_finance"
   },
-  "required_permissions": ["finance:read"]
+  "required_permissions": [
+    "finance:read"
+  ],
+  "filter_mapping": {
+    "resource_type": {
+      "field": "resource_type",
+      "op": "eq"
+    },
+    "store": {
+      "field": "store_name",
+      "op": "contains"
+    },
+    "category": {
+      "field": "category",
+      "op": "contains"
+    },
+    "direction": {
+      "field": "direction",
+      "op": "eq",
+      "transform": "normalize_finance_direction"
+    },
+    "status": {
+      "field": "status",
+      "op": "eq"
+    },
+    "time_range": {
+      "field": "occurred_at",
+      "op": "gte",
+      "transform": "time_range_to_iso"
+    },
+    "amount_min": {
+      "field": "amount",
+      "op": "gte"
+    },
+    "amount_max": {
+      "field": "amount",
+      "op": "lte"
+    }
+  }
 }
