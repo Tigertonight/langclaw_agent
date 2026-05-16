@@ -5,15 +5,21 @@
   "type": "module",
   "description": "A minimal enterprise agent workflow with tools, permissions, RAG retrieval, reranking, CLI, HTTP API, and evals.",
   "scripts": {
-    "chat": "node src/cli.js",
-    "server": "node src/server/http.js",
-    "eval": "node src/eval/run-eval.js",
-    "eval:dealer": "node src/eval/dealer-smoke.js",
-    "smoke": "node src/eval/smoke.js",
-    "eval:router": "node src/eval/router-poc.js",
-    "arch:smoke": "node src/eval/architecture-smoke.js",
-    "session:smoke": "node src/eval/session-recovery.js",
-    "config:check": "node src/eval/config-check.js"
+    "chat": "tsc -p tsconfig.build.json && node dist/cli.js",
+    "server": "tsc -p tsconfig.build.json && node dist/server/http.js",
+    "eval": "tsc -p tsconfig.build.json && node dist/eval/run-eval.js",
+    "eval:dealer": "tsc -p tsconfig.build.json && node dist/eval/dealer-smoke.js",
+    "smoke": "tsc -p tsconfig.build.json && node dist/eval/smoke.js",
+    "eval:router": "tsc -p tsconfig.build.json && node dist/eval/router-poc.js",
+    "arch:smoke": "tsc -p tsconfig.build.json && node dist/eval/architecture-smoke.js",
+    "session:smoke": "tsc -p tsconfig.build.json && node dist/eval/session-recovery.js",
+    "config:check": "tsc -p tsconfig.build.json && node dist/eval/config-check.js",
+    "typecheck": "tsc -p tsconfig.json",
+    "build:ts": "tsc -p tsconfig.build.json"
+  },
+  "devDependencies": {
+    "@types/node": "^25.8.0",
+    "typescript": "^5.6.3"
   },
   "engines": {
     "node": ">=18"
