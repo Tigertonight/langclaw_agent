@@ -1,0 +1,15 @@
+{
+  "intent_code": "general",
+  "handler_type": "agentic",
+  "version": "1",
+  "description": "通用兜底意图：复杂分析、跨域问题、低置信度兜底。",
+  "params_schema": {},
+  "examples": [
+    "对比华东旗舰店和华南标准店哪家库存压力更大",
+    "帮我看看最近经营有什么风险"
+  ],
+  "confidence_threshold": "low",
+  "sub_tools_available": false,
+  "tool_binding": null,
+  "required_permissions": []
+}

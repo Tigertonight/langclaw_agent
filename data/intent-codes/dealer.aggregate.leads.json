@@ -1,0 +1,194 @@
+{
+  "intent_code": "dealer.aggregate.leads",
+  "handler_type": "intent_query",
+  "version": "1",
+  "description": "对销售线索做计数/转化率等聚合。当用户问『线索数、转化率、各意向等级分布、各门店线索数』时使用；问明细时改用 dealer.query.leads。",
+  "params_schema": {
+    "metric": {
+      "type": "enum",
+      "values": [
+        "lead_count",
+        "converted_count",
+        "conversion_rate",
+        "lost_count",
+        "avg_followup"
+      ],
+      "required": true
+    },
+    "group_by": {
+      "type": "enum",
+      "values": [
+        "store_name",
+        "intention_level",
+        "status",
+        "source",
+        "owner_name",
+        "interested_series"
+      ],
+      "required": false
+    },
+    "store": {
+      "type": "string",
+      "required": false
+    },
+    "intention_level": {
+      "type": "enum",
+      "values": [
+        "H",
+        "M",
+        "L"
+      ],
+      "required": false
+    },
+    "source": {
+      "type": "string",
+      "required": false
+    },
+    "owner": {
+      "type": "string",
+      "required": false
+    },
+    "time_range": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "metric_definitions": {
+    "lead_count": {
+      "definition": "线索数 = count(*)",
+      "filter_addon": [],
+      "aggregations": [
+        {
+          "type": "count",
+          "field": "id",
+          "as": "lead_count"
+        }
+      ]
+    },
+    "converted_count": {
+      "definition": "成交线索数 = count(*) where status=已成交 或 converted_order_id 非空",
+      "filter_addon": [
+        {
+          "field": "converted_order_id",
+          "op": "neq",
+          "value": ""
+        }
+      ],
+      "aggregations": [
+        {
+          "type": "count",
+          "field": "id",
+          "as": "converted_count"
+        }
+      ]
+    },
+    "conversion_rate": {
+      "definition": "转化率 = 成交数 / 总线索数（已转为百分比）。注意：分母是当前 filter 范围内的全部线索，分子用 distinct_count 避免重复计数",
+      "filter_addon": [],
+      "aggregations": [
+        {
+          "type": "count",
+          "field": "id",
+          "as": "_total"
+        },
+        {
+          "type": "distinct_count",
+          "field": "converted_order_id",
+          "as": "_converted"
+        }
+      ],
+      "derived": [
+        {
+          "as": "_rate",
+          "op": "/",
+          "left": {
+            "ref": "_converted"
+          },
+          "right": {
+            "ref": "_total"
+          }
+        },
+        {
+          "as": "conversion_rate_pct",
+          "op": "*",
+          "left": {
+            "ref": "_rate"
+          },
+          "right": {
+            "const": 100
+          }
+        }
+      ]
+    },
+    "lost_count": {
+      "definition": "战败线索数 = count(*) where status=战败/已流失",
+      "filter_addon": [
+        {
+          "field": "status",
+          "op": "in",
+          "value": [
+            "战败",
+            "已流失"
+          ]
+        }
+      ],
+      "aggregations": [
+        {
+          "type": "count",
+          "field": "id",
+          "as": "lost_count"
+        }
+      ]
+    },
+    "avg_followup": {
+      "definition": "平均跟进次数 = avg(followup_count)",
+      "filter_addon": [],
+      "aggregations": [
+        {
+          "type": "avg",
+          "field": "followup_count",
+          "as": "avg_followup"
+        }
+      ]
+    }
+  },
+  "examples": [
+    "本月线索总数",
+    "本月转化率",
+    "各意向等级线索数量",
+    "各门店线索分布",
+    "懂车帝来源转化率"
+  ],
+  "confidence_threshold": "medium",
+  "tool_binding": {
+    "tool_name": "query_business_data",
+    "resource": "dealer_leads",
+    "operation": "aggregate"
+  },
+  "required_permissions": [
+    "customer:read"
+  ],
+  "filter_mapping": {
+    "store": {
+      "field": "store_name",
+      "op": "contains"
+    },
+    "intention_level": {
+      "field": "intention_level",
+      "op": "eq"
+    },
+    "source": {
+      "field": "source",
+      "op": "contains"
+    },
+    "owner": {
+      "field": "owner_name",
+      "op": "contains"
+    },
+    "time_range": {
+      "field": "created_at",
+      "op": "gte",
+      "transform": "time_range_to_iso"
+    }
+  }
+}

@@ -1,199 +1,163 @@
-# Enterprise Agent MVP
+# Enterprise Agent · 汽车经销垂类
 
-一个面向企业内部问答的基础 Agent 项目。当前实现采用 **workflow + tool call** 架构，不依赖 LangChain/OpenClaw，但保留了清晰接口，后续可以平滑迁移。
+面向汽车 4S 店内部使用的企业 Agent。围绕"店总 / 区域 / 销售顾问 / 售后顾问 / 财务"几类岗位，把零散的业务问题——线索漏斗、库存压力、订单毛利、维修工单、保修索赔、财务汇总——拢成一个会话入口。
 
-## 能力
+技术上是 **workflow + tool-calling** 架构，不依赖 LangChain / OpenClaw，但对外接口稳定（LLM client / KnowledgeBase / Tool / Orchestrator），后续要迁也不难。
 
-- 用户身份与 RBAC 权限控制
-- `UserContextResolver` 身份解析接口，当前支持 local/mock 企业微信，后续可接真实企业微信通讯录
-- Mock 企业数据接口工具
-- 上下文感知 Tool Registry：按用户权限、intent、scenario step 渐进式披露工具
-- 知识库切片、召回、重排、来源引用
-- `DocumentSource` 文档源接口，当前支持本地 Markdown/mock 腾讯文档，后续可接真实腾讯文档
-- Agent 编排流程：意图识别、工具规划、权限校验、工具执行、RAG、回答生成
-- 多轮业务场景：请假申请 slot filling、确认、提交
-- 会话状态：支持同一 `session_id` 下连续补全业务条件
-- 文件持久化 session：重启后可继续多轮业务流程
-- CLI 调试入口
-- HTTP `/api/chat` 入口
-- Eval 测试集与自动验证脚本
-- OpenAI-compatible Chat Completions 适配层，可通过环境变量接 MiniMax 等真实模型
+## 当前能做什么
+
+- **Intent Router**：单次 LLM 调用判别 `{execution_class, intent_code, handler_type, params}`，意图清单从 `data/intent-codes/*.json` 加载；执行 manifest 校验、置信度阈值、参数 schema 校验；无可用路由时 fail closed，不回退旧业务规则
+- **两类路由执行层**：
+  - `controlled_execution` — 边界明确、可预测完成：闲聊、单次结构化查询/聚合、知识检索、受控工作流
+  - `autonomous_planning` — 开放多步规划：跨意图分析、原因诊断、报告/行动计划、低置信度兜底
+- **五类已落地 handler**：
+  - `intent_query` — 一个意图 + 一组参数 → 一次工具执行
+  - `knowledge_lookup` — 制度 / 流程 / 手册问题 → 权限过滤后的知识库检索
+  - `workflow` — 请假等受控多轮流程 → slot 收集、确认、提交
+  - `chitchat` — 直接回答的小聊
+  - `agentic` — 跨意图的 LLM tool-calling 循环（最多 7 步、单步 35s、整体 180s 超时）
+- **Manifest 驱动查询**：简单查询筛选规则优先写在 intent manifest 的 `filter_mapping`，`IntentQueryHandler` 只保留少量通用 transform / domain hook
+- **三类工具（agentic 路径）**：
+  - `intent.*` — 每个 intent_code 自动暴露成工具
+  - `tool.*` — 标了 `expose_to_agentic` 的原子能力，目前主要是 `safe_compute`（沙箱里跑 JS 算精确指标）
+  - `skill.*` — 注入式"写作/汇报包"，调用后把 `SKILL.md` + 模板 + 示例塞进上下文，下一步直接 answer
+- **流式 UI**：`/` 自带聊天页。默认业务视角——顶部"处理中… X.Xs" 100ms 跳一次，每步出一对"动作量化 + 解读叙述"；右上角 Debug 开关切回完整 phase 列表
+- **RBAC + 多人身份**：本地 mock + 企业微信（可选真实接入），按权限决定哪些工具可见
+- **会话持久化**：文件存储，重启不丢上下文
+- **OpenAI-compatible LLM**：默认接 MiniMax，也可换成任何 OpenAI 兼容端点
 
 ## 快速开始
 
 ```bash
+# 自检 + 冒烟
+npm run config:check
 npm run smoke
-npm run arch:smoke
-npm run session:smoke
-npm run config:check
-npm run eval
-npm run chat -- sales_001 "帮我查一下星河科技最近订单状态"
+
+# 启 HTTP 服务（含聊天页）
 npm run server
+# 浏览器打开 http://localhost:3000
+
+# CLI 调试
+npm run chat -- sales_001 "汉EV 卖得还行但毛利好像不太行，看下原因"
 ```
 
-多轮请假 demo 可以用交互式 CLI：
+接 MiniMax（或任何 OpenAI 兼容服务）：
 
 ```bash
-npm run chat -- sales_001
+cp .env.example .env
+# 填入：
+# LLM_BASE_URL=https://api.minimaxi.com/v1
+# LLM_API_KEY=你的_key
+# LLM_MODEL=MiniMax-M2.7
+# LLM_PROMPT_CACHE=auto
 ```
 
-然后依次输入：
+## 关键环境变量
+
+| 变量 | 说明 |
+|---|---|
+| `LLM_API_KEY` / `LLM_BASE_URL` / `LLM_MODEL` | 默认 LLM（OpenAI 兼容） |
+| `LLM_DECISION_*` / `LLM_ANSWER_*` / `LLM_STREAM_*` | 分阶段独立模型覆盖（路由判别 / 最终回答 / 流式） |
+| `LLM_PROMPT_CACHE` | 大模型请求缓存开关：`auto` 默认开启。MiniMax / DeepSeek 走服务端自动 prompt cache；OpenAI 注入 `prompt_cache_key` |
+| `LLM_PROMPT_CACHE_RETENTION` | 可选，仅对支持的 OpenAI-compatible 服务注入：`in_memory` / `24h` |
+| `LLM_PROMPT_CACHE_KEY_PREFIX` | prompt cache key 前缀，默认 `openclaw-agent` |
+| `WECOM_MODE` | `real` 接企业微信通讯录，`mock`（默认）走本地 |
+| `WECOM_CORP_ID` / `WECOM_CONTACT_SECRET` | 企业微信真实接入所需 |
+| `TENCENT_DOCS_MODE` | `real` 接腾讯文档，`mock`（默认）走本地 |
+| `AGENTIC_DEBUG=1` | agentic handler 多打调试日志 |
+| `PORT` / `HOST` | 默认 3000 / 0.0.0.0 |
+
+## 目录结构
 
 ```text
-我明天想请假
-年假，请到下午6点，因为家里有事
-确认
+src/
+  agent/        Orchestrator（run + runStream）+ session store
+  router/       Intent Router（LLM 判别） + intent registry
+  handlers/     intent-query / chitchat / agentic 三类 handler
+  skills/       AgenticSkillView（注入式 skill 加载） + workflow skill runtime
+  tools/        ToolRegistry + 业务工具 + sandbox（safe_compute）
+  runtime/      conversation-context / free-agent-loop / workflow-runner
+  auth/         UserContextResolver + WeCom + RBAC
+  rag/          LocalKnowledgeBase + 腾讯文档 source
+  llm/          OpenAILLMClient（OpenAI 兼容）
+  server/       HTTP / SSE 入口 + 自带聊天页
+  scenarios/    请假/工作流场景
+  eval/         所有自动化验证脚本
+
+skills/agentic/
+  summarize-alert/           告警摘要 skill 包（SKILL.md + template + examples）
+  gross-margin-attribution/  毛利率归因 skill 包
+
+data/
+  dealer-*.json              门店/库存/线索/订单/维修/财务等 mock 业务数据
+  intent-codes/*.json        Intent Router 的意图字典（dealer.query.* / dealer.aggregate.* …）
+  wecom-*.json               组织架构 mock
+  users.json                 账户 + RBAC
+
+docs/
+  architecture.md                     长期架构
+  architecture-intent-router.md       Intent Router 设计演进文档
+  router-poc-cases.md                 router-poc 用例清单
+  mockups/*.html                      agentic 流式 UI 设计 mockup
 ```
 
-如果要接 MiniMax，把 `.env.example` 复制为 `.env` 并填写：
+## HTTP 接口
 
 ```bash
-LLM_BASE_URL=https://api.minimaxi.com/v1
-LLM_API_KEY=你的_minimax_key
-LLM_MODEL=MiniMax-M2.7
-```
-
-当前真实模型主要用于最终回答生成；意图识别和工具规划仍保留本地确定性规则，方便 eval 稳定。后续可以把这两个节点也切到模型 JSON 输出。
-
-当前仓库已进入第一阶段架构重构：
-
-- 主链路开始从 `intent-first` 过渡到 `skill-first`
-- 新增 `SkillRuntime` 作为统一技能选择层
-- 新增 `PrimitiveRegistry` 作为 `query / retrieve / act / artifact` 兼容层
-- 现有 workflow 场景继续保留，作为严格受控的 enterprise skill
-- 新增私有 skill registry 第一阶段能力：本地目录安装、manifest 解析、启停与版本管理、enterprise runtime 权限绑定
-
-## Private Skill Registry v1
-
-当前已支持第一阶段私有 skill 注册：
-
-- 从本地目录安装 skill
-- `manifest.json` + `SKILL.md` 双文件模式
-- `enabled` / `version` 管理
-- skill 级 `required_permissions` 绑定到 enterprise runtime
-
-相关目录：
-
-```text
-skills/                       内置 skills
-workspace/skills/installed/  本地安装后的 skills
-workspace/skills/registry.json registry 状态
-```
-
-HTTP 管理接口：
-
-```bash
-GET  /api/skills
-POST /api/skills/install
-POST /api/skills/:id/enabled
-```
-
-真实集成默认关闭。要接企业微信通讯录：
-
-```bash
-WECOM_MODE=real
-WECOM_CORP_ID=你的企业ID
-WECOM_CONTACT_SECRET=通讯录secret
-```
-
-要接腾讯文档，当前通过可配置内容接口接入：
-
-```bash
-TENCENT_DOCS_MODE=real
-TENCENT_DOCS_BASE_URL=腾讯文档开放平台API域名
-TENCENT_DOCS_ACCESS_TOKEN=访问token
-TENCENT_DOCS_DOC_IDS=doc_id_1,doc_id_2
-TENCENT_DOCS_CONTENT_ENDPOINT_TEMPLATE=/具体读取内容接口/{docId}
-```
-
-配置是否齐全可运行：
-
-```bash
-npm run config:check
-```
-
-HTTP 请求：
-
-```bash
+# 单轮
 curl -X POST http://127.0.0.1:3000/api/chat \
   -H "Content-Type: application/json" \
-  -d '{"user_id":"sales_001","message":"帮我查一下星河科技最近订单状态","debug":true}'
+  -d '{"user_id":"sales_001","message":"汉EV 卖得还行但毛利好像不太行，看下原因","debug":true}'
+
+# 流式（SSE，浏览器聊天页用的就是这个）
+curl -N -X POST http://127.0.0.1:3000/api/chat/stream \
+  -H "Content-Type: application/json" \
+  -d '{"user_id":"store_gm_001","message":"门店本月库存压力如何？"}'
+
+# 用 wecom_userid 直接发
+curl -X POST http://127.0.0.1:3000/api/chat \
+  -H "Content-Type: application/json" \
+  -d '{"wecom_userid":"sales_001","message":"差旅报销标准是什么？"}'
 ```
 
-多轮 HTTP 调用需要复用同一个 `session_id`：
+多轮在请求里带同一个 `session_id` 即可。
+
+## 验证脚本
 
 ```bash
-curl -s -X POST http://127.0.0.1:3000/api/chat \
-  -H 'Content-Type: application/json' \
-  -d '{"user_id":"sales_001","session_id":"demo_leave_001","message":"我明天想请假","debug":true}'
-
-curl -s -X POST http://127.0.0.1:3000/api/chat \
-  -H 'Content-Type: application/json' \
-  -d '{"user_id":"sales_001","session_id":"demo_leave_001","message":"年假，请到下午6点，因为家里有事","debug":true}'
-
-curl -s -X POST http://127.0.0.1:3000/api/chat \
-  -H 'Content-Type: application/json' \
-  -d '{"user_id":"sales_001","session_id":"demo_leave_001","message":"确认","debug":true}'
+npm run config:check    # env / 集成自检
+npm run smoke           # 通用冒烟
+npm run arch:smoke      # 架构冒烟
+npm run session:smoke   # session 持久化恢复
+npm run eval            # 基础 eval 集
+npm run eval:dealer     # 汽车经销冒烟
+npm run eval:router     # Intent Router POC（100 用例，含跨意图三类工具）
 ```
 
-## 推荐目录
+## Tool 元数据规范
 
-```text
-src/agent       Agent workflow 和回答生成
-src/auth        用户上下文与权限
-src/scenarios   多轮业务场景
-src/tools       企业数据工具
-src/rag         知识库索引、召回、重排
-src/llm         LLM 抽象与实现
-src/server      HTTP API
-src/eval        自动化测试
-data            mock 企业数据
-docs/knowledge  知识库文档
-docs/architecture.md 长期架构与 LangGraph 迁移映射
-```
-
-## 身份与文档源
-
-Agent 不直接依赖企业微信或腾讯文档，而是通过稳定接口接入：
-
-```text
-企业微信 / 本地 mock → UserContextResolver → UserContext → Agent
-腾讯文档 / Markdown → DocumentSource → KnowledgeBase → RAG
-```
-
-当前 HTTP demo 可以传 `wecom_userid`：
-
-```bash
-curl -s -X POST http://127.0.0.1:3000/api/chat \
-  -H 'Content-Type: application/json' \
-  -d '{"wecom_userid":"sales_001","message":"差旅报销标准是什么？","debug":true}'
-```
-
-## Tool 规范
-
-业务 API、CLI、SDK 都应该先包装成受控 tool，再注册到 `ToolRegistry`。每个 tool 除了 `name`、`description`、`schema`、`execute`，还需要声明企业治理元数据：
+业务能力包成 tool 注册到 `ToolRegistry`，除了 `name`/`description`/`schema`/`execute`，还要声明治理元数据：
 
 ```js
 metadata: {
-  required_permissions: ["leave:submit"],
-  risk_level: "write",
-  requires_confirmation: true,
-  scenarios: ["leave_request"],
+  required_permissions: ["sales:query"],
+  risk_level: "read",                  // read / write
+  requires_confirmation: false,
+  expose_to_agentic: true,              // 是否允许 agentic 路径直接调用
+  scenarios: ["dealer_alert"],
   steps: ["awaiting_confirmation"]
 }
 ```
 
-当前 registry 会根据用户权限、intent、scenario 和 step 动态返回可用工具。比如请假信息收集阶段不会暴露 `submit_leave_request`，只有用户确认后才允许提交。
+`ToolRegistry` 会按用户权限、当前 intent、scenario 步骤动态决定哪些工具可见。比如确认前不会暴露写操作的 tool。
 
-## 后续迁移
+## 占位 / 还没做
 
-当前核心接口在 `src/agent/ports.js`：
+- `agentic-skills/compose-followup/` — 占位，未实现
+- AgenticHandler 的 `propose_tool` 动作分支 — dynamic planning hook，记录但不执行
+- 腾讯文档真实接入 — Source 类已写，默认仍是 mock
+- 请假 workflow — 已接入 Intent Router 的 `workflow` handler
 
-- `LLMClient`
-- `KnowledgeBase`
-- `Tool`
-- `AgentOrchestrator`
+## 接 MiniMax 之外的模型
 
-迁移 LangGraph 时，可以把 `classifyIntent`、`retrieveDocs`、`planToolCalls`、`permissionGuard`、`executeTools`、`generateAnswer` 分别变成 graph node。`src/scenarios/leave-request.js` 这类场景可以直接迁成 subgraph，当前 `session.state` 就是未来的 graph state。
-
-接 OpenClaw 时，建议只把 OpenClaw 作为外部执行通道或入口通道，不要替代当前权限和审计核心。
+LLM 客户端是 OpenAI 兼容的，把 `LLM_BASE_URL` / `LLM_MODEL` 指到对应服务即可。决策、最终回答可以分配不同的 key/model（用 `LLM_DECISION_*` / `LLM_ANSWER_*` 这组 env），方便给路由用便宜模型、给回答用贵模型。

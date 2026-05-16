@@ -1,0 +1,23 @@
+{
+  "intent_code": "workflow.leave_request",
+  "execution_class": "controlled_execution",
+  "handler_type": "workflow",
+  "version": "1",
+  "description": "发起、办理或提交请假申请；需要收集请假类型、开始时间、结束时间和事由，并在确认后提交。",
+  "params_schema": {
+    "leave_type": { "type": "enum", "values": ["年假", "病假", "事假", "调休"], "required": false },
+    "start_time": { "type": "string", "required": false },
+    "end_time": { "type": "string", "required": false },
+    "reason": { "type": "string", "required": false }
+  },
+  "examples": [
+    "我要请明天下午半天假",
+    "帮我申请一天年假",
+    "我身体不舒服，想请病假",
+    "明天家里有事请个事假"
+  ],
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "tool_binding": null,
+  "required_permissions": ["leave:submit"]
+}

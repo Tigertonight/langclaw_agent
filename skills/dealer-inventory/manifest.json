@@ -1,0 +1,12 @@
+{
+  "id": "dealer-inventory",
+  "name": "dealer-inventory",
+  "version": "0.1.0",
+  "enabled": true,
+  "description": "Plan dealer vehicle inventory, inbound, quota, PDI, certificate, and stock-age queries.",
+  "planning_style": "guided",
+  "intents": ["data_query", "mixed"],
+  "intent_codes": ["dealer.inventory_query"],
+  "required_primitives": ["query"],
+  "output_modes": ["answer", "table"]
+}

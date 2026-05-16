@@ -1,0 +1,39 @@
+{
+  "intent_code": "dealer.query.metrics",
+  "execution_class": "controlled_execution",
+  "handler_type": "intent_query",
+  "version": "1",
+  "description": "查询经销商经营指标和风险总览，包括库存、线索、销售、财务、售后、三包等跨域经营健康度；适用于经营总览、周报、晨会、风险优先级、行动项等管理问题的第一步。",
+  "params_schema": {
+    "store": { "type": "string", "required": false, "examples": ["华东旗舰店", "华南标准店"] },
+    "category": {
+      "type": "enum",
+      "values": ["inventory", "lead", "sales", "finance", "after_sales", "warranty"],
+      "required": false
+    },
+    "severity": {
+      "type": "enum",
+      "values": ["critical", "warning", "normal"],
+      "required": false
+    }
+  },
+  "examples": [
+    "华东旗舰店经营风险总览",
+    "给我一份华东旗舰店本周经营周报",
+    "今天门店最该关注什么",
+    "看一下华东旗舰店库存和线索的优先级",
+    "华东旗舰店财务风险有哪些"
+  ],
+  "confidence_threshold": "medium",
+  "sub_tools_available": true,
+  "tool_binding": {
+    "tool_name": "query_business_data",
+    "resource": "dealer_metrics"
+  },
+  "filter_mapping": {
+    "store": { "field": "store_name", "op": "contains" },
+    "category": { "field": "category", "op": "eq" },
+    "severity": { "field": "severity", "op": "eq" }
+  },
+  "required_permissions": []
+}
