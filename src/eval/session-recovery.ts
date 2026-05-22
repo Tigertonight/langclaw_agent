@@ -1,4 +1,5 @@
 import { createApp } from "../app.js";
+import { resolveUserWorkspace } from "../runtime/workspace-context.js";
 
 const sessionId = `eval_recovery_${Date.now()}`;
 
@@ -34,7 +35,7 @@ if (!second.answer.includes("开始：明天")) {
   throw new Error("recovered session should keep start_time from first turn");
 }
 
-await app.sessionStore.clear(sessionId);
+await app.sessionStore.clear(sessionId, resolveUserWorkspace("sales_001"));
 
 console.log("PASS session recovery");
 

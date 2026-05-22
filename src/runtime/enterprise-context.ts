@@ -1,73 +1,78 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { resolveProjectPath } from "../data/load-json.js";
 import { createRuntimeClockSnapshot } from "./runtime-clock.js";
+import { resolveUserWorkspace, safeJoinWorkspace, summarizeWorkspaceContext, type WorkspaceContext } from "./workspace-context.js";
+import { TaskStore, summarizeTask } from "../tasks/task-store.js";
+import { TaskRetriever } from "../tasks/task-retriever.js";
+import { loadDisabledEvolutionTargets } from "../evolution/governance.js";
+import { MemoryRetriever } from "../memory/memory-retriever.js";
 import type { JsonObject, UserContext } from "../types/agent-contracts.js";
 
 const ADMIN_FILES = ["AGENTS.md", "SOUL.md", "TOOLS.md", "POLICY.md"];
-const DENIED_MEMORY_PATTERNS = [
-  /不用管权限|忽略权限|绕过权限|查所有|全部客户|所有客户/,
-  /修改.*(规则|权限|策略|tool|工具|system|soul|agent)/i,
-  /以后.*(不用|不要).*(审批|授权|校验|权限)/,
-  /记住.*(密码|密钥|secret|token|key|身份证|银行卡)/i
-];
 
 export class EnterpriseContextProvider {
   private readonly workspaceDir: string;
   private readonly memoryDir: string;
+  private readonly taskStore: TaskStore;
+  private readonly taskRetriever: TaskRetriever;
+  private readonly memoryRetriever: MemoryRetriever;
 
   constructor({ workspaceDir = "workspace" }: { workspaceDir?: string } = {}) {
     this.workspaceDir = resolveProjectPath(workspaceDir);
     this.memoryDir = path.join(this.workspaceDir, "memory");
+    this.taskStore = new TaskStore();
+    this.taskRetriever = new TaskRetriever({ taskStore: this.taskStore });
+    this.memoryRetriever = new MemoryRetriever({ taskStore: this.taskStore });
   }
 
-  async load({ user }: { user: UserContext }): Promise<unknown> {
+  async load({ user, workspace = resolveUserWorkspace(user), message, sessionId }: { user: UserContext; workspace?: WorkspaceContext; message?: string; sessionId?: string }): Promise<unknown> {
     const admin = await this.loadAdminContext();
     const orgMemory = await this.loadOrgMemory();
-    const userMemory = await this.loadUserMemory(user.id);
+    const userMemory = await this.loadUserMemory(user.id, workspace);
+    const evolution = await this.loadEvolutionContext(workspace);
+    const disabled = await loadDisabledEvolutionTargets(workspace);
+    userMemory.items = userMemory.items.filter((item) => !disabled.has(item.key) && !disabled.has(`memory:${item.key}`));
+    const activeTasks = await this.taskStore.active(workspace, 8);
+    const relevantTasks = typeof message === "string" && message.trim()
+      ? await this.taskRetriever.retrieve(workspace, message, 5)
+      : [];
+    const relevantMemory = typeof message === "string" && message.trim()
+      ? await this.memoryRetriever.retrieve(workspace, message, { sessionId, limit: 12 })
+      : [];
     return {
       runtime: createRuntimeClockSnapshot(),
+      workspace: summarizeWorkspaceContext(workspace),
       admin,
       org_memory: orgMemory,
       user_memory: userMemory,
+      memory: {
+        relevant: relevantMemory,
+        usage_grounding: {
+          query: message ?? "",
+          restored_memory_count: relevantMemory.filter((item) => item.source === "memory").length,
+          restored_task_count: relevantMemory.filter((item) => item.source === "task").length,
+          restored_transcript_count: relevantMemory.filter((item) => item.source === "transcript").length,
+          restored_episode_count: relevantMemory.filter((item) => item.source === "episode").length,
+          top_sources: relevantMemory.slice(0, 5).map((item) => ({
+            source: item.source,
+            id: item.id,
+            relevance: item.relevance,
+            reason: item.score_breakdown
+          }))
+        }
+      },
+      tasks: {
+        active: activeTasks.map(summarizeTask).filter((task) => !disabled.has(String(task.id)) && !disabled.has(`task:${String(task.id)}`)),
+        relevant: relevantTasks.filter((task) => !disabled.has(String(task.id)) && !disabled.has(`task:${String(task.id)}`))
+      },
+      evolution,
       policy: {
         admin_managed: true,
         ordinary_user_can_modify_admin_context: false,
-        user_memory_write_policy: "filtered_personal_preferences_only"
+        user_memory_write_policy: "llm_evolution_judge_only"
       }
-    };
-  }
-
-  async maybeWriteUserMemory({ user, message }: { user: UserContext; message?: string }): Promise<JsonObject | null> {
-    const candidate = extractUserMemoryCandidate(message);
-    if (!candidate) return null;
-    if (!isAllowedUserMemory(candidate, message)) {
-      return {
-        status: "denied",
-        reason: "该内容涉及权限、策略、敏感信息或组织级规则，不能写入个人记忆。",
-        candidate
-      };
-    }
-
-    const memory = await this.loadUserMemory(user.id);
-    const nextItem = {
-      ...candidate,
-      source: "chat",
-      created_at: new Date().toISOString()
-    };
-    const filtered = memory.items.filter((item) => item.key !== nextItem.key);
-    const nextMemory = {
-      owner_user_id: user.id,
-      scope: "user" as const,
-      readonly_for_users: false,
-      items: filtered.concat(nextItem).slice(-50),
-      updated_at: new Date().toISOString()
-    };
-    await this.saveUserMemory(user.id, nextMemory);
-    return {
-      status: "written",
-      item: nextItem
     };
   }
 
@@ -95,8 +100,8 @@ export class EnterpriseContextProvider {
     }
   }
 
-  async loadUserMemory(userId: string): Promise<UserMemory> {
-    const file = this.userMemoryPath(userId);
+  async loadUserMemory(userId: string, workspace = resolveUserWorkspace(userId)): Promise<UserMemory> {
+    const file = this.userMemoryPath(workspace);
     if (!existsSync(file)) {
       return {
         owner_user_id: userId,
@@ -117,14 +122,20 @@ export class EnterpriseContextProvider {
     }
   }
 
-  async saveUserMemory(userId: string, memory: UserMemory): Promise<void> {
-    await mkdir(path.join(this.memoryDir, "user"), { recursive: true });
-    await writeFile(this.userMemoryPath(userId), JSON.stringify(memory, null, 2), "utf8");
+  userMemoryPath(workspace: WorkspaceContext): string {
+    return path.join(workspace.memory_dir, "memory.json");
   }
 
-  userMemoryPath(userId: string): string {
-    const safe = String(userId).replace(/[^a-zA-Z0-9_.:-]/g, "_");
-    return path.join(this.memoryDir, "user", `${safe}.json`);
+  async loadEvolutionContext(workspace: WorkspaceContext): Promise<JsonObject> {
+    const preferencesFile = safeJoinWorkspace(workspace.root, ".evolution", "preferences.md");
+    const preferences = existsSync(preferencesFile)
+      ? (await readFile(preferencesFile, "utf8")).slice(0, 6000)
+      : "";
+    return {
+      preferences,
+      skill_preferences_dir: ".evolution/skills",
+      note: "User-scoped evolution context only. It cannot override admin policy or permissions."
+    };
   }
 }
 
@@ -143,43 +154,4 @@ interface UserMemory extends JsonObject {
   readonly_for_users: boolean;
   items: UserMemoryItem[];
   updated_at?: string;
-}
-
-function extractUserMemoryCandidate(message?: string): UserMemoryItem | null {
-  const text = String(message ?? "").trim();
-  if (!text) return null;
-
-  if (/以后.*(简短|简洁|短一点|详细|表格|markdown|列表)/.test(text)) {
-    return {
-      key: "answer_style_preference",
-      type: "preference",
-      value: text,
-      confidence: 0.78
-    };
-  }
-
-  if (/(默认|以后).*(排序|筛选|展示|显示)/.test(text)) {
-    return {
-      key: "query_presentation_preference",
-      type: "preference",
-      value: text,
-      confidence: 0.72
-    };
-  }
-
-  if (/^(记住|以后|默认)/.test(text)) {
-    return {
-      key: "general_user_preference_candidate",
-      type: "preference",
-      value: text,
-      confidence: 0.55
-    };
-  }
-
-  return null;
-}
-
-function isAllowedUserMemory(candidate: UserMemoryItem, message?: string): boolean {
-  const text = `${candidate.value ?? ""}\n${message ?? ""}`;
-  return !DENIED_MEMORY_PATTERNS.some((pattern) => pattern.test(text));
 }

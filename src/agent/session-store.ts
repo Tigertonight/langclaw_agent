@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile, rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { resolveProjectPath } from "../data/load-json.js";
+import type { WorkspaceContext } from "../runtime/workspace-context.js";
 import type { JsonObject, JsonValue } from "../types/agent-contracts.js";
 
 export interface SessionHistoryItem {
@@ -82,6 +83,36 @@ export class FileSessionStore {
   filePath(sessionId: string): string {
     const safe = sessionId.replace(/[^a-zA-Z0-9_.:-]/g, "_");
     return path.join(this.dir, `${safe}.json`);
+  }
+}
+
+export class UserWorkspaceSessionStore {
+  async get(sessionId: string, workspace: WorkspaceContext): Promise<AgentSession> {
+    const file = this.filePath(sessionId, workspace);
+    if (!existsSync(file)) return createSession(sessionId);
+    try {
+      return JSON.parse(await readFile(file, "utf8")) as AgentSession;
+    } catch {
+      return createSession(sessionId);
+    }
+  }
+
+  async save(session: AgentSession, workspace: WorkspaceContext): Promise<void> {
+    await mkdir(workspace.sessions_dir, { recursive: true });
+    const next = {
+      ...session,
+      updated_at: new Date().toISOString()
+    };
+    await writeFile(this.filePath(session.id, workspace), JSON.stringify(next, null, 2), "utf8");
+  }
+
+  async clear(sessionId: string, workspace: WorkspaceContext): Promise<void> {
+    await rm(this.filePath(sessionId, workspace), { force: true });
+  }
+
+  filePath(sessionId: string, workspace: WorkspaceContext): string {
+    const safe = sessionId.replace(/[^a-zA-Z0-9_.:-]/g, "_");
+    return path.join(workspace.sessions_dir, `${safe}.json`);
   }
 }
 

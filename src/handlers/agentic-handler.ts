@@ -15,6 +15,7 @@
  *     由系统决定是否实现。本期不做，但 normalizeAction 已经预留了分支。
  */
 import { applyPromptCache } from "../llm/prompt-cache.js";
+import { RuntimeHooks } from "../runtime/hooks.js";
 import type { IntentManifest, IntentRegistry, JsonObject, JsonValue, Route, ToolCall, ToolResult, UserContext } from "../types/agent-contracts.js";
 
 interface AgenticIntentQueryHandler {
@@ -26,8 +27,8 @@ interface AgenticIntentQueryHandler {
 }
 
 interface AgenticSkillRegistry {
-  listForAgent?(input: { user?: UserContext }): Array<Record<string, unknown>>;
-  loadForInjection?(input: { id?: string; args?: JsonObject; user?: UserContext }): Promise<Record<string, unknown>> | Record<string, unknown>;
+  listForAgent?(input: { user?: UserContext; workspace?: unknown }): Array<Record<string, unknown>>;
+  loadForInjection?(input: { id?: string; args?: JsonObject; user?: UserContext; workspace?: unknown }): Promise<Record<string, unknown>> | Record<string, unknown>;
 }
 
 interface AgenticToolRegistry {
@@ -46,6 +47,7 @@ interface AgenticHandlerOptions {
   intentQueryHandler?: AgenticIntentQueryHandler;
   skillRegistry?: AgenticSkillRegistry | null;
   toolRegistry?: AgenticToolRegistry | null;
+  hooks?: RuntimeHooks;
 }
 
 interface AgenticToolView {
@@ -71,6 +73,8 @@ interface PlannerState {
   completed: string[];
   missing: string[];
   evidence: Array<Record<string, unknown>>;
+  tasks?: Array<Record<string, unknown>>;
+  claimed_task?: Record<string, unknown> | null;
 }
 
 interface AgenticDecision extends Record<string, unknown> {
@@ -124,6 +128,7 @@ type StreamPush = (entry: Record<string, unknown>) => void;
 
 interface AgenticExecuteInput {
   user?: UserContext;
+  workspace?: unknown;
   message?: string;
   route?: Route;
   session?: Record<string, unknown>;
@@ -143,12 +148,14 @@ export class AgenticHandler {
   private readonly intentQueryHandler?: AgenticIntentQueryHandler;
   private readonly skillRegistry: AgenticSkillRegistry | null;
   private readonly toolRegistry: AgenticToolRegistry | null;
+  private readonly hooks: RuntimeHooks;
 
-  constructor({ intentRegistry, intentQueryHandler, skillRegistry = null, toolRegistry = null }: AgenticHandlerOptions = {}) {
+  constructor({ intentRegistry, intentQueryHandler, skillRegistry = null, toolRegistry = null, hooks }: AgenticHandlerOptions = {}) {
     this.intentRegistry = intentRegistry;
     this.intentQueryHandler = intentQueryHandler;
     this.skillRegistry = skillRegistry;
     this.toolRegistry = toolRegistry;
+    this.hooks = hooks ?? new RuntimeHooks();
   }
 
   /**
@@ -160,9 +167,9 @@ export class AgenticHandler {
    *   onEmit?: (event: Record<string, unknown>) => Promise<void> | void
    * }} [input]
    */
-  async execute({ user, message, route, session, onEmit }: AgenticExecuteInput = {}) {
+  async execute({ user, workspace, message, route, session, onEmit }: AgenticExecuteInput = {}) {
     const startedAt = Date.now();
-    const tools = this.getAvailableTools({ user });
+    const tools = this.getAvailableTools({ user, workspace });
     // 三流 traces（参考 openclaw agent loop）：
     //   - lifecycle：步骤级里程碑（start / decided / step_failed / answered / total_timeout / fallback）
     //   - assistant：LLM 侧事件（每一轮决策、propose_tool 提议）
@@ -193,10 +200,30 @@ export class AgenticHandler {
     let lastError: string | null = null;
     const executedToolResults: Array<Record<string, unknown>> = [];
     let plannerState = createInitialPlannerState(message);
+    const taskContext = await this.prepareTaskContext({ user, message, answerHint: route?.intent_code });
+    if (taskContext.relevant.length || taskContext.claimed) {
+      plannerState = {
+        ...plannerState,
+        tasks: taskContext.relevant,
+        claimed_task: taskContext.claimed
+      };
+      pushLifecycle("task_context_loaded", {
+        relevant_task_count: taskContext.relevant.length,
+        claimed_task_id: taskContext.claimed?.id ?? null
+      });
+      if (safeEmit && taskContext.claimed) {
+        await safeEmit({
+          kind: "task_continuity",
+          type: "task_resumed",
+          task: taskContext.claimed,
+          summary: createTaskContinuitySummary(taskContext.claimed)
+        });
+      }
+    }
 
     const apiKey = process.env.LLM_DECISION_API_KEY ?? process.env.LLM_API_KEY ?? process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      const localResult = await this.tryLocalAgenticFallback({ user, message, route, session, streams, pushLifecycle, pushTool });
+      const localResult = await this.tryLocalAgenticFallback({ user, workspace, message, route, session, streams, pushLifecycle, pushTool });
       if (localResult) return localResult;
       pushLifecycle("fallback", { reason: "no_api_key" });
       return this.buildFallback({ message, route, reason: "未配置 LLM_API_KEY，agentic 直接兜底返回。", streams });
@@ -231,7 +258,7 @@ export class AgenticHandler {
       if (stepErr) {
         lastError = stepErr instanceof Error ? stepErr.message : String(stepErr);
         pushLifecycle("step_failed", { step, error: lastError, attempts: attemptsUsed });
-        const localResult = await this.tryLocalAgenticFallback({ user, message, route, session, streams, pushLifecycle, pushTool });
+        const localResult = await this.tryLocalAgenticFallback({ user, workspace, message, route, session, streams, pushLifecycle, pushTool });
         if (localResult) return localResult;
         break;
       }
@@ -252,7 +279,7 @@ export class AgenticHandler {
         break;
       }
       if (decision.action === "plan" || decision.action === "dag_plan") {
-        const dagResult = await this.executeDagPlan({ plan: decision.plan ?? decision.steps, user, session, step, pushLifecycle, pushTool });
+        const dagResult = await this.executeDagPlan({ plan: decision.plan ?? decision.steps, user, workspace, session, step, pushLifecycle, pushTool });
         if (!dagResult.ok) {
           lastError = dagResult.message;
           pushLifecycle("step_failed", { step, error: lastError });
@@ -281,7 +308,7 @@ export class AgenticHandler {
         }
         pushLifecycle("parallel_tools_started", { step, count: calls.length });
         const observations = await Promise.all(calls.map(async (call) => {
-          const observation = await this.callTool({ callName: call.tool_name, args: call.args, user, session });
+          const observation = await this.callTool({ callName: call.tool_name, args: call.args, user, workspace, session });
           return { call, observation };
         }));
         for (const { call, observation } of observations) {
@@ -321,6 +348,7 @@ export class AgenticHandler {
       pushLifecycle("fallback", { reason: lastError ?? "no_answer_in_max_steps" });
       return this.buildFallback({ message, route, reason: lastError ?? "未在步数上限内得到答案", streams });
     }
+    await this.recordTaskProgress({ user, claimedTask: taskContext.claimed, answer, plannerState });
     const flatTraces = mergeStreams(streams);
     return {
       answer,
@@ -339,7 +367,7 @@ export class AgenticHandler {
     };
   }
 
-  getAvailableTools({ user }: { user?: UserContext }): AgenticToolView[] {
+  getAvailableTools({ user, workspace }: { user?: UserContext; workspace?: unknown }): AgenticToolView[] {
     const list: AgenticToolView[] = [];
     // 1. intent.*
     for (const manifest of this.intentRegistry.listCodes()) {
@@ -355,14 +383,14 @@ export class AgenticHandler {
     }
     // 2. skill.*（注入式 skill）
     if (this.skillRegistry?.listForAgent) {
-      for (const skill of this.skillRegistry.listForAgent({ user }) ?? []) {
+      for (const skill of this.skillRegistry.listForAgent({ user, workspace }) ?? []) {
         const id = typeof skill.id === "string" ? skill.id : "";
         if (id) list.push({ ...skill, kind: "skill", name: `skill.${id}` } as AgenticToolView);
       }
     }
     // 3. tool.*（只露出标了 expose_to_agentic 的）
     if (this.toolRegistry?.list) {
-      for (const tool of this.toolRegistry.list({ user }) ?? []) {
+      for (const tool of this.toolRegistry.list({ user, workspace }) ?? []) {
         if (!tool.metadata?.expose_to_agentic) continue;
         // tool.schema 是 JSON Schema（type=object, properties=...），转成统一的 {key:{type,description}}
         const params_schema: Record<string, { type?: string; description?: string }> = {};
@@ -398,6 +426,7 @@ export class AgenticHandler {
       "- intent.* ：业务高级查询（按口径返回 rows/answer，先用它拿数据）。",
       "- tool.*   ：原子能力，例如 tool.safe_compute 在沙箱里跑 JS 算精确指标（加权库龄、占比、差额等）。",
       "- skill.*  ：注入式『写作/汇报包』。调用后会把它的 SKILL.md + 模板渲染结果塞进上下文，下一步你直接 answer 输出文案。",
+      "- task.*   ：长程任务状态能力。遇到『继续上次那个』或跨轮任务，优先使用 task.retrieve / task.update / task.complete 维护任务状态。",
       toolLines,
       "",
       "工作流程：每一轮你输出严格 JSON，schema 如下，不要 markdown：",
@@ -459,13 +488,14 @@ export class AgenticHandler {
     return parseDecision(await response.json());
   }
 
-  async callTool({ callName, args, user, session }: { callName?: string; args?: JsonObject; user?: UserContext; session?: Record<string, unknown> }): Promise<AgenticObservation> {
+  async callTool({ callName, args, user, workspace, session }: { callName?: string; args?: JsonObject; user?: UserContext; workspace?: unknown; session?: Record<string, unknown> }): Promise<AgenticObservation> {
     if (callName?.startsWith("intent.")) {
       const intent_code = callName.slice("intent.".length);
       const manifest = this.intentRegistry.getCode(intent_code);
       if (!manifest) return { ok: false, error: "unknown_intent", message: `intent ${intent_code} 不存在` };
       const result = await this.intentQueryHandler.execute({
         user,
+        workspace,
         message: "(by agentic)",
         intent_code,
         params: args ?? {},
@@ -490,7 +520,7 @@ export class AgenticHandler {
       const skillId = skills.find?.((s) => s.id === requested)
         ? requested
         : skills.find((s) => normalizeSkillId(s.id) === normalizeSkillId(requested))?.id ?? requested;
-      const inj = await this.skillRegistry.loadForInjection({ id: skillId, args, user });
+      const inj = await this.skillRegistry.loadForInjection({ id: skillId, args, user, workspace });
       if (inj.ok === false) return inj as AgenticObservation;
       return {
         _kind: "skill_injection",
@@ -510,7 +540,7 @@ export class AgenticHandler {
       if (!tool.metadata?.expose_to_agentic) {
         return { ok: false, error: "tool_not_exposed", message: `tool ${underlying} 未授权 agentic 直接调用` };
       }
-      const result = await this.toolRegistry.execute({ name: underlying, args }, { user });
+      const result = await this.toolRegistry.execute({ name: underlying, args }, { user, workspace });
       return normalizeObservation(result);
     }
     return { ok: false, error: "unknown_tool_namespace", message: `工具名 ${callName} 必须以 intent./skill./tool. 开头` };
@@ -518,6 +548,7 @@ export class AgenticHandler {
 
   async tryLocalAgenticFallback({
     user,
+    workspace,
     message,
     route,
     session,
@@ -526,6 +557,7 @@ export class AgenticHandler {
     pushTool
   }: {
     user?: UserContext;
+    workspace?: unknown;
     message?: string;
     route?: Route;
     session?: Record<string, unknown>;
@@ -542,7 +574,7 @@ export class AgenticHandler {
     pushLifecycle("local_fallback_started", { reason: "repair_week_over_week" });
     const observations: AgenticObservationItem[] = [];
     for (const [index, call] of calls.entries()) {
-      const observation = await this.callTool({ callName: call.tool_name, args: call.args, user, session });
+      const observation = await this.callTool({ callName: call.tool_name, args: call.args, user, workspace, session });
       observations.push({ call, observation });
       pushTool({ step: index, type: "tool_call", tool: call.tool_name, args: call.args, observation_summary: summarizeObservation(observation) });
     }
@@ -574,9 +606,10 @@ export class AgenticHandler {
     };
   }
 
-  async executeDagPlan({ plan, user, session, step, pushLifecycle, pushTool }: {
+  async executeDagPlan({ plan, user, workspace, session, step, pushLifecycle, pushTool }: {
     plan?: unknown;
     user?: UserContext;
+    workspace?: unknown;
     session?: Record<string, unknown>;
     step: number;
     pushLifecycle: LifecyclePush;
@@ -593,7 +626,7 @@ export class AgenticHandler {
       pushLifecycle("dag_wave_started", { step, wave, count: ready.length, node_ids: ready.map((node) => node.id) });
       const waveResults = await Promise.all(ready.map(async (node) => {
         const args = resolveDagArgs(node.args, completed);
-        const observation = await this.callTool({ callName: node.tool_name, args, user, session });
+        const observation = await this.callTool({ callName: node.tool_name, args, user, workspace, session });
         return { call: { tool_name: node.tool_name, args, id: node.id }, observation };
       }));
       for (const result of waveResults) {
@@ -623,6 +656,37 @@ export class AgenticHandler {
       toolResults: [] as ToolResult[]
     };
   }
+
+  async prepareTaskContext({ user, message, answerHint }: { user?: UserContext; message?: string; answerHint?: string }): Promise<{ relevant: Array<Record<string, unknown>>; claimed: Record<string, unknown> | null }> {
+    if (!user?.id || !message?.trim()) return { relevant: [], claimed: null };
+    const result = await this.hooks.dispatch("agentic_prepare", {
+      user_id: user.id,
+      user: normalizeHookJson(user),
+      message,
+      route_hint: answerHint
+    });
+    return {
+      relevant: Array.isArray(result.relevant_tasks) ? result.relevant_tasks as Array<Record<string, unknown>> : [],
+      claimed: result.claimed_task && typeof result.claimed_task === "object" && !Array.isArray(result.claimed_task)
+        ? result.claimed_task as Record<string, unknown>
+        : null
+    };
+  }
+
+  async recordTaskProgress({ user, claimedTask, answer, plannerState }: { user?: UserContext; claimedTask?: Record<string, unknown> | null; answer: string; plannerState: PlannerState }): Promise<void> {
+    if (!user?.id || !claimedTask?.id || !claimedTask.task_list_id) return;
+    await this.hooks.emit("agentic_complete", {
+      user_id: user.id,
+      user: normalizeHookJson(user),
+      claimed_task: normalizeHookJson(claimedTask),
+      answer,
+      planner_state: normalizeHookJson(plannerState)
+    });
+  }
+}
+
+function normalizeHookJson(value: unknown): JsonValue {
+  return JSON.parse(JSON.stringify(value ?? null)) as JsonValue;
 }
 
 function parseDecision(json: unknown): AgenticDecision {
@@ -659,8 +723,21 @@ function buildPlannerUserMessage({ message, plannerState }: { message?: string; 
   return JSON.stringify({
     user_request: message,
     planner_state: plannerState,
+    continuity_summary: plannerState.claimed_task ? createTaskContinuitySummary(plannerState.claimed_task) : null,
+    task_instruction: plannerState.claimed_task
+      ? "你已经恢复了一个相关长程任务。回答开头应自然承接：说明恢复到哪个任务、当前进度/next_action、接下来要做什么；然后继续执行。必要时调用 task.update/task.complete。"
+      : "如用户表达继续上次、刚才那个、长期跟进，请优先使用 task.retrieve 找到相关任务。",
     instruction: "请先判断是否需要工具。多个独立查询可以在同一轮用 tools 数组并发返回。"
   }, null, 2);
+}
+
+function createTaskContinuitySummary(task: Record<string, unknown>): string {
+  return [
+    `恢复任务：${String(task.subject ?? task.id ?? "unknown")}`,
+    task.status ? `状态：${String(task.status)}` : "",
+    task.next_action ? `下一步：${String(task.next_action)}` : "",
+    task.reason ? `召回原因：${String(task.reason)}` : ""
+  ].filter(Boolean).join("；");
 }
 
 function applyPlannerStateUpdate(state: PlannerState, update: AgenticDecision["state_update"]): PlannerState {
