@@ -64,6 +64,11 @@ const TOOL_POLICIES: ToolPolicy[] = [
     authorize: async () => allow()
   },
   {
+    name: "runtime_tools",
+    matches: ({ toolCall }) => /^(runtime|task|memory|evolution|maintenance|plugin)\./.test(toolCall.name),
+    authorize: async () => allow()
+  },
+  {
     name: "customer_list",
     matches: ({ toolCall }) => toolCall.name === "list_my_customers",
     authorize: async ({ user }) => hasPermission(user, "customer:read")

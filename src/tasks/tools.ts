@@ -88,6 +88,109 @@ export function createTaskTools(): ToolDefinition[] {
       }
     },
     {
+      name: "task.claim",
+      description: "Claim a task for active business-agent work and mark it in progress.",
+      metadata: { required_permissions: [], expose_to_agentic: true, risk_level: "write" },
+      schema: { type: "object", properties: { id: { type: "string" }, task_list_id: { type: "string" }, owner: { type: "string" } }, required: ["id"] },
+      async execute(args, context) {
+        const workspace = getWorkspace(context);
+        const task = await taskStore.upsert(workspace, {
+          id: String(args?.id ?? "task"),
+          task_list_id: stringOrUndefined(args?.task_list_id),
+          owner: normalizeOwner(args?.owner),
+          status: "in_progress",
+          metadata: {
+            claimed_at: new Date().toISOString(),
+            claimed_by: stringOrUndefined(args?.owner) ?? context.user?.id ?? "agent"
+          }
+        });
+        return { ok: true, tool: "task.claim", data: { task: summarizeTask(task) } };
+      }
+    },
+    {
+      name: "task.release",
+      description: "Release a claimed task back to pending or waiting_user.",
+      metadata: { required_permissions: [], expose_to_agentic: true, risk_level: "write" },
+      schema: { type: "object", properties: { id: { type: "string" }, task_list_id: { type: "string" }, status: { type: "string" } }, required: ["id"] },
+      async execute(args, context) {
+        const workspace = getWorkspace(context);
+        const task = await taskStore.upsert(workspace, {
+          id: String(args?.id ?? "task"),
+          task_list_id: stringOrUndefined(args?.task_list_id),
+          status: normalizeStatus(args?.status) ?? "pending",
+          metadata: {
+            released_at: new Date().toISOString(),
+            released_by: context.user?.id ?? "agent"
+          }
+        });
+        return { ok: true, tool: "task.release", data: { task: summarizeTask(task) } };
+      }
+    },
+    {
+      name: "task.block",
+      description: "Mark a task as blocked and link blocker task ids or an open question.",
+      metadata: { required_permissions: [], expose_to_agentic: true, risk_level: "write" },
+      schema: { type: "object", properties: { id: { type: "string" }, blocked_by: { type: "array" }, reason: { type: "string" }, task_list_id: { type: "string" } }, required: ["id"] },
+      async execute(args, context) {
+        const workspace = getWorkspace(context);
+        const reason = stringOrUndefined(args?.reason);
+        const task = await taskStore.upsert(workspace, {
+          id: String(args?.id ?? "task"),
+          task_list_id: stringOrUndefined(args?.task_list_id),
+          status: "blocked",
+          blocked_by: normalizeStringArray(args?.blocked_by),
+          open_questions: reason ? [reason] : [],
+          metadata: {
+            blocked_at: new Date().toISOString(),
+            block_reason: reason
+          }
+        });
+        return { ok: true, tool: "task.block", data: { task: summarizeTask(task) } };
+      }
+    },
+    {
+      name: "task.unblock",
+      description: "Unblock a task and move it back to in_progress.",
+      metadata: { required_permissions: [], expose_to_agentic: true, risk_level: "write" },
+      schema: { type: "object", properties: { id: { type: "string" }, task_list_id: { type: "string" }, next_action: { type: "string" } }, required: ["id"] },
+      async execute(args, context) {
+        const workspace = getWorkspace(context);
+        const task = await taskStore.upsert(workspace, {
+          id: String(args?.id ?? "task"),
+          task_list_id: stringOrUndefined(args?.task_list_id),
+          status: "in_progress",
+          next_action: stringOrUndefined(args?.next_action),
+          blocked_by: [],
+          metadata: {
+            unblocked_at: new Date().toISOString(),
+            unblocked_by: context.user?.id ?? "agent"
+          }
+        });
+        task.blocked_by = [];
+        await taskStore.save(workspace, task);
+        await taskStore.updateActiveIndex(workspace);
+        return { ok: true, tool: "task.unblock", data: { task: summarizeTask(task) } };
+      }
+    },
+    {
+      name: "task.busy",
+      description: "Check whether this workspace has in-progress or blocked business tasks.",
+      metadata: { required_permissions: [], expose_to_agentic: true, risk_level: "read" },
+      schema: { type: "object", properties: {} },
+      async execute(_args, context) {
+        const workspace = getWorkspace(context);
+        const tasks = await taskStore.active(workspace, 20);
+        return {
+          ok: true,
+          tool: "task.busy",
+          data: {
+            busy: tasks.some((task) => task.status === "in_progress" || task.status === "blocked"),
+            tasks: tasks.map(summarizeTask)
+          }
+        };
+      }
+    },
+    {
       name: "task.link_artifact",
       description: "Link an artifact path or URL to an existing task.",
       metadata: { required_permissions: [], expose_to_agentic: true, risk_level: "write" },
@@ -129,4 +232,9 @@ function normalizeStringArray(value: unknown): string[] {
 function normalizeStatus(value: unknown): TaskStatus | undefined {
   const text = String(value ?? "");
   return ["pending", "in_progress", "waiting_user", "blocked", "completed", "archived"].includes(text) ? text as TaskStatus : undefined;
+}
+
+function normalizeOwner(value: unknown): "agent" | "user" | "system" {
+  const text = String(value ?? "");
+  return text === "user" || text === "system" ? text : "agent";
 }
