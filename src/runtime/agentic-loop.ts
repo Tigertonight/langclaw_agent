@@ -50,6 +50,7 @@ interface AgenticRunInput {
   history?: unknown[];
   skills?: SkillDefinition[];
   selectedSkill?: SkillDefinition | null;
+  workspace?: unknown;
   enterpriseContext?: unknown;
   conversationContext?: unknown;
   agentSteps?: AgentStep[];
@@ -134,6 +135,7 @@ export class AgenticLoop {
 
   async runInternal({
     user,
+    workspace,
     message,
     route,
     history = [],
@@ -230,6 +232,7 @@ export class AgenticLoop {
       const roundResults = await executeToolCalls({
         toolRegistry: this.toolRegistry,
         user,
+        workspace,
         calls
       });
       toolResults.push(...roundResults);
@@ -258,6 +261,7 @@ export class AgenticLoop {
         const evidenceResults = await executeToolCalls({
           toolRegistry: this.toolRegistry,
           user,
+          workspace,
           calls: evidenceFollowUpPlan.calls
         });
         toolResults.push(...evidenceResults);
@@ -367,7 +371,7 @@ export class AgenticLoop {
   }
 }
 
-async function executeToolCalls({ toolRegistry, user, calls }: { toolRegistry: ToolRegistry; user: UserContext; calls: ToolCall[] }): Promise<ToolResult[]> {
+async function executeToolCalls({ toolRegistry, user, workspace, calls }: { toolRegistry: ToolRegistry; user: UserContext; workspace?: unknown; calls: ToolCall[] }): Promise<ToolResult[]> {
   const results: ToolResult[] = [];
   for (const call of calls) {
     const permission = await checkToolPermission(user, call);
@@ -381,7 +385,7 @@ async function executeToolCalls({ toolRegistry, user, calls }: { toolRegistry: T
       });
       continue;
     }
-    results.push(await toolRegistry.execute(call, { user }) as ToolResult);
+    results.push(await toolRegistry.execute(call, { user, workspace }) as ToolResult);
   }
   return results;
 }

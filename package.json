@@ -13,6 +13,13 @@
     "eval:router": "tsc -p tsconfig.build.json && node dist/eval/router-poc.js",
     "arch:smoke": "tsc -p tsconfig.build.json && node dist/eval/architecture-smoke.js",
     "session:smoke": "tsc -p tsconfig.build.json && node dist/eval/session-recovery.js",
+    "workspace:isolation": "tsc -p tsconfig.build.json && node dist/eval/workspace-isolation.js",
+    "evolution:smoke": "tsc -p tsconfig.build.json && node dist/eval/evolution-runtime.js",
+    "evolution:governance": "tsc -p tsconfig.build.json && node dist/eval/evolution-governance.js",
+    "memory:evolution-stack": "tsc -p tsconfig.build.json && node dist/eval/memory-evolution-stack.js",
+    "hook:evolution-loop": "tsc -p tsconfig.build.json && node dist/eval/hook-runtime-evolution-loop.js",
+    "skill:curator": "tsc -p tsconfig.build.json && node dist/eval/skill-curator-maintenance.js",
+    "task:smoke": "tsc -p tsconfig.build.json && node dist/eval/task-store.js",
     "config:check": "tsc -p tsconfig.build.json && node dist/eval/config-check.js",
     "typecheck": "tsc -p tsconfig.json",
     "build:ts": "tsc -p tsconfig.build.json"

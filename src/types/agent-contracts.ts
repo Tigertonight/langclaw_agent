@@ -199,6 +199,7 @@ export interface ToolPlan {
 
 export interface ToolExecutionContext {
   user?: UserContext;
+  workspace?: unknown;
   intent?: string;
   scenario?: string;
   step?: string;

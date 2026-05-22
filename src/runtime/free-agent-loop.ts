@@ -54,6 +54,7 @@ interface FreeAgentInput {
   history?: unknown[];
   skills?: SkillDefinition[];
   selectedSkill?: SkillDefinition | null;
+  workspace?: unknown;
   enterpriseContext?: unknown;
   conversationContext?: unknown;
   agentSteps?: AgentStep[];
@@ -107,7 +108,7 @@ export class FreeAgentLoop {
     return this.runFastGroundedStream({ ...input, execution });
   }
 
-  async runFastGrounded({ user, message, route, history = [], skills = [], selectedSkill, enterpriseContext, conversationContext, agentSteps, execution }: FastGroundedInput): Promise<FastGroundedResult> {
+  async runFastGrounded({ user, message, route, history = [], skills = [], selectedSkill, workspace, enterpriseContext, conversationContext, agentSteps, execution }: FastGroundedInput): Promise<FastGroundedResult> {
     const state = createAgentState({ user, message, route, history, skills, enterpriseContext });
     agentSteps.push(createAgentStep("select_execution_mode", "选择执行模式", `使用 fast_grounded：${execution.reason}`));
     const groundedLlm = this.llm.local ?? this.llm;
@@ -133,7 +134,7 @@ export class FreeAgentLoop {
     }
 
     if (toolPlan.calls?.length) {
-      const roundResults = await executeToolsNode({ toolRegistry: this.toolRegistry, user, toolPlan }) as ToolResult[];
+      const roundResults = await executeToolsNode({ toolRegistry: this.toolRegistry, user, workspace, toolPlan }) as ToolResult[];
       toolResults.push(...roundResults);
       recordToolRound(state, toolPlan, roundResults);
       agentSteps.push(...createToolSteps(toolPlan, roundResults));
@@ -158,7 +159,7 @@ export class FreeAgentLoop {
             tools: followUpPlan.calls.map((call) => call.name)
           }
         }));
-        const followUpResults = await executeToolsNode({ toolRegistry: this.toolRegistry, user, toolPlan: followUpPlan }) as ToolResult[];
+        const followUpResults = await executeToolsNode({ toolRegistry: this.toolRegistry, user, workspace, toolPlan: followUpPlan }) as ToolResult[];
         toolResults.push(...followUpResults);
         recordToolRound(state, followUpPlan, followUpResults);
         toolPlan.calls.push(...followUpPlan.calls);

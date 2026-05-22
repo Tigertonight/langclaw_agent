@@ -3,6 +3,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { resolveProjectPath } from "../data/load-json.js";
+import { resolveUserWorkspace, safeJoinWorkspace, type WorkspaceContext } from "../runtime/workspace-context.js";
 import type { JsonObject, JsonValue, ToolDefinition, ToolExecutionContext } from "../types/agent-contracts.js";
 
 const DEFAULT_TIMEOUT_MS = 1000;
@@ -113,8 +114,9 @@ async function executeSafeCompute(args: SafeComputeArgs = {}, context: ToolExecu
     return failure("code_too_large", `Code exceeds ${MAX_CODE_CHARS} characters.`);
   }
 
-  const sandboxDir = resolveProjectPath("workspace", "sandboxes", userId);
-  const auditDir = resolveProjectPath("logs", "sandbox", userId);
+  const workspace = getWorkspaceContext(context);
+  const sandboxDir = safeJoinWorkspace(workspace.root, "sandboxes");
+  const auditDir = safeJoinWorkspace(workspace.root, "logs", "sandbox");
   await mkdir(sandboxDir, { recursive: true });
   await mkdir(auditDir, { recursive: true });
 
@@ -272,6 +274,22 @@ function failure(error: string, message: string): JsonObject {
 
 function sanitizeUserId(value: unknown): string {
   return String(value || "anonymous").replace(/[^a-zA-Z0-9_.-]/g, "_").slice(0, 80) || "anonymous";
+}
+
+function getWorkspaceContext(context: ToolExecutionContext): WorkspaceContext {
+  const workspace = context.workspace;
+  if (isWorkspaceContext(workspace)) return workspace;
+  return resolveUserWorkspace(context.user?.id ?? "anonymous");
+}
+
+function isWorkspaceContext(value: unknown): value is WorkspaceContext {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const candidate = value as Partial<WorkspaceContext>;
+  return typeof candidate.root === "string"
+    && typeof candidate.memory_dir === "string"
+    && typeof candidate.sessions_dir === "string"
+    && typeof candidate.sandboxes_dir === "string"
+    && typeof candidate.logs_dir === "string";
 }
 
 function clamp(value: number, min: number, max: number): number {

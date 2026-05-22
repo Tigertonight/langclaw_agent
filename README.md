@@ -6,7 +6,7 @@
 
 ## 当前能做什么
 
-- **Intent Router**：单次 LLM 调用判别 `{execution_class, intent_code, handler_type, params}`，意图清单从 `data/intent-codes/*.json` 加载；执行 manifest 校验、置信度阈值、参数 schema 校验；无可用路由时 fail closed，不回退旧业务规则
+- **Intent Router**：高确定性的本地受控规则优先处理闲聊、dealer 查询、知识制度问答和短句修参；其余请求再由单次 LLM 调用判别 `{execution_class, intent_code, handler_type, params}`。意图清单从 `data/intent-codes/*.json` 加载；执行 manifest 校验、置信度阈值、参数 schema 校验；无可用路由时 fail closed，不回退旧业务规则
 - **两类路由执行层**：
   - `controlled_execution` — 边界明确、可预测完成：闲聊、单次结构化查询/聚合、知识检索、受控工作流
   - `autonomous_planning` — 开放多步规划：跨意图分析、原因诊断、报告/行动计划、低置信度兜底
@@ -29,6 +29,13 @@
 ## 快速开始
 
 ```bash
+# 安装依赖
+npm install
+
+# TypeScript 编译与类型检查
+npm run build:ts
+npm run typecheck
+
 # 自检 + 冒烟
 npm run config:check
 npm run smoke
@@ -83,6 +90,7 @@ src/
   server/       HTTP / SSE 入口 + 自带聊天页
   scenarios/    请假/工作流场景
   eval/         所有自动化验证脚本
+  types/        共享 TypeScript contract / JSON / Route / Tool 类型
 
 skills/agentic/
   summarize-alert/           告警摘要 skill 包（SKILL.md + template + examples）
@@ -125,6 +133,8 @@ curl -X POST http://127.0.0.1:3000/api/chat \
 ## 验证脚本
 
 ```bash
+npm run build:ts        # 编译 src/*.ts 到 dist/
+npm run typecheck       # 仅类型检查，不输出
 npm run config:check    # env / 集成自检
 npm run smoke           # 通用冒烟
 npm run arch:smoke      # 架构冒烟
@@ -133,6 +143,8 @@ npm run eval            # 基础 eval 集
 npm run eval:dealer     # 汽车经销冒烟
 npm run eval:router     # Intent Router POC（100 用例，含跨意图三类工具）
 ```
+
+当前仓库已迁移到 TypeScript。运行类脚本会先执行 `build:ts`，再从 `dist/` 启动；`dist/` 属于生成产物，不提交。离线无 LLM Key 时，dealer 路由和知识制度问答覆盖在确定性规则内；历史 `npm run eval` 中部分通用业务/组织架构用例仍依赖旧业务路由或远端 Router LLM，迁移期间优先以 `typecheck`、`eval:router`、`eval:dealer` 作为 TS 迁移回归门禁。
 
 ## Tool 元数据规范
 

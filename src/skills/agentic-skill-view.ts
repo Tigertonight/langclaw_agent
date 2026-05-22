@@ -30,6 +30,8 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { resolveProjectPath } from "../data/load-json.js";
+import { SkillCurator, isSkillArchived, sortSkillsByCurator } from "../evolution/skill-curator.js";
+import { resolveUserWorkspace, safeJoinWorkspace, type WorkspaceContext } from "../runtime/workspace-context.js";
 import type { JsonObject, JsonValue } from "../types/agent-contracts.js";
 
 const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/;
@@ -79,10 +81,12 @@ type SimpleYamlContainer = JsonObject | JsonValue[];
 export class AgenticSkillView {
   private readonly rootDir: string;
   private readonly skills: AgenticSkill[];
+  private readonly curator: SkillCurator;
 
   constructor({ rootDir = "skills/agentic" }: { rootDir?: string } = {}) {
     this.rootDir = resolveProjectPath(rootDir);
     this.skills = this.scan();
+    this.curator = new SkillCurator();
   }
 
   scan(): AgenticSkill[] {
@@ -118,8 +122,8 @@ export class AgenticSkillView {
   }
 
   // 给 AgenticHandler.getAvailableTools 用：返回 tool 列表的精简形态
-  listForAgent({ user: _user }: { user?: unknown } = {}): AgenticSkillToolView[] {
-    return this.skills.map((s) => ({
+  listForAgent({ user, workspace }: { user?: { id?: string }; workspace?: unknown } = {}): AgenticSkillToolView[] {
+    return this.skillsForWorkspace(workspace ?? (user?.id ? resolveUserWorkspace(user.id) : null)).map((s) => ({
       id: s.id,
       name: `skill.${s.id}`,
       kind: "skill",
@@ -131,20 +135,29 @@ export class AgenticSkillView {
   }
 
   // skill.* 被调用时跑这里：把 SKILL.md + 渲染后的 template + examples 组装成可注入的文本块
-  async loadForInjection({ id, args = {}, user: _user }: { id?: string; args?: TemplateVars; user?: unknown } = {}): Promise<JsonObject> {
-    const skill = this.skills.find((s) => s.id === id);
+  async loadForInjection({ id, args = {}, user: _user, workspace }: { id?: string; args?: TemplateVars; user?: unknown; workspace?: unknown } = {}): Promise<JsonObject> {
+    const resolvedWorkspace = workspace ?? (isUserLike(_user) ? resolveUserWorkspace(_user.id) : null);
+    const skill = this.skillsForWorkspace(resolvedWorkspace).find((s) => s.id === id);
     if (!skill) {
       return { ok: false, error: "unknown_skill", message: `skill ${id} 不存在` };
+    }
+    if (isWorkspaceContext(resolvedWorkspace)) {
+      await this.curator.recordUsage(resolvedWorkspace, skill.id, "used");
     }
     const vars = await runPreprocess(skill.dir, args);
     const template = readIfExists(path.join(skill.dir, "template.md"));
     const renderedTemplate = template ? renderTemplate(template, { ...args, ...vars }) : "";
     const examples = readExamples(skill.dir);
+    const evolutionPreferences = readEvolutionSkillPreferences(resolvedWorkspace, skill.id);
 
     // 组装注入块：让主 LLM 把它当成新到的"专家说明"接着用
     const sections: string[] = [];
     sections.push(`# Skill 注入：${skill.name}（id=${skill.id}）`);
     sections.push(`说明：${skill.description}`);
+    if (evolutionPreferences) {
+      sections.push("# 用户进化偏好");
+      sections.push(evolutionPreferences);
+    }
     if (skill.skill_md_body?.trim()) sections.push(skill.skill_md_body.trim());
     if (renderedTemplate?.trim()) {
       sections.push("---");
@@ -163,6 +176,84 @@ export class AgenticSkillView {
       preprocess_vars: vars
     };
   }
+
+  private skillsForWorkspace(workspace: unknown): AgenticSkill[] {
+    if (!isWorkspaceContext(workspace)) return this.skills;
+    const disabled = readDisabledTargets(workspace);
+    const evolutionDir = safeJoinWorkspace(workspace.root, ".evolution", "skills");
+    const map = new Map(this.skills.filter((skill) => !isTargetDisabled(disabled, skill.id)).map((skill) => [skill.id, skill]));
+    if (!existsSync(evolutionDir)) return Array.from(map.values());
+    for (const folder of readdirSync(evolutionDir)) {
+      if (isTargetDisabled(disabled, folder)) continue;
+      const dir = path.join(evolutionDir, folder);
+      if (!statSync(dir).isDirectory()) continue;
+      const skillFile = path.join(dir, "SKILL.md");
+      if (!existsSync(skillFile)) continue;
+      map.set(folder, readAgenticSkillFromDir(dir, folder));
+    }
+    return sortSkillsByCurator(
+      workspace,
+      Array.from(map.values()).filter((skill) => !isSkillArchived(workspace, skill.id))
+    );
+  }
+}
+
+function readAgenticSkillFromDir(dir: string, folder: string): AgenticSkill {
+  const raw = readFileSync(path.join(dir, "SKILL.md"), "utf8");
+  const { meta, body } = parseFrontmatter(raw);
+  const id = String(meta.name ?? meta.id ?? folder);
+  const when_to_use = Array.isArray(meta.when_to_use) && meta.when_to_use.length
+    ? meta.when_to_use.map(String)
+    : extractBulletSection(body, ["When to use", "When to Use", "when_to_use"]);
+  const io = (isJsonObject(meta.io) && Object.keys(meta.io).length)
+    ? meta.io as AgenticSkillIO
+    : { args: extractInputsSection(body) };
+  return {
+    id,
+    dir,
+    name: id,
+    description: String(meta.description ?? ""),
+    when_to_use,
+    io,
+    skill_md_body: body
+  };
+}
+
+function readEvolutionSkillPreferences(workspace: unknown, skillId: string): string {
+  if (!isWorkspaceContext(workspace)) return "";
+  if (isTargetDisabled(readDisabledTargets(workspace), skillId)) return "";
+  const file = safeJoinWorkspace(workspace.root, ".evolution", "skills", skillId, "evolution_preferences.md");
+  if (!existsSync(file)) return "";
+  return readFileSync(file, "utf8").slice(0, 4000);
+}
+
+function readDisabledTargets(workspace: WorkspaceContext): Set<string> {
+  const file = safeJoinWorkspace(workspace.root, ".evolution", "disabled.json");
+  if (!existsSync(file)) return new Set();
+  try {
+    const parsed = JSON.parse(readFileSync(file, "utf8")) as { items?: Array<{ target?: unknown }> };
+    return new Set((parsed.items ?? []).map((item) => String(item.target ?? "")).filter(Boolean));
+  } catch {
+    return new Set();
+  }
+}
+
+function isTargetDisabled(disabled: Set<string>, skillId: string): boolean {
+  return disabled.has(skillId) || disabled.has(`skill:${skillId}`) || disabled.has(`.evolution/skills/${skillId}/SKILL.md`);
+}
+
+function isWorkspaceContext(value: unknown): value is WorkspaceContext {
+  return Boolean(value)
+    && typeof value === "object"
+    && !Array.isArray(value)
+    && typeof (value as { root?: unknown }).root === "string";
+}
+
+function isUserLike(value: unknown): value is { id: string } {
+  return Boolean(value)
+    && typeof value === "object"
+    && !Array.isArray(value)
+    && typeof (value as { id?: unknown }).id === "string";
 }
 
 // 从 markdown body 抽出某个 H2 章节里的 "- xxx" bullet list（用于 ## When to use）

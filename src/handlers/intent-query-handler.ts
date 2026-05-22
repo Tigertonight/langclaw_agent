@@ -43,6 +43,7 @@ interface IntentQueryHandlerOptions {
 
 interface IntentQueryExecuteInput {
   user?: UserContext;
+  workspace?: unknown;
   message?: string;
   intent_code?: string;
   params?: JsonObject;
@@ -52,6 +53,7 @@ interface IntentQueryExecuteInput {
 
 interface AggregateInput {
   user?: UserContext;
+  workspace?: unknown;
   message?: string;
   manifest: IntentManifest;
   params: JsonObject;
@@ -120,7 +122,7 @@ export class IntentQueryHandler {
     this.registry = registry;
   }
 
-  async execute({ user, message, intent_code, params = {}, route: _route, session: _session }: IntentQueryExecuteInput = {}): Promise<IntentQueryResult> {
+  async execute({ user, workspace, message, intent_code, params = {}, route: _route, session: _session }: IntentQueryExecuteInput = {}): Promise<IntentQueryResult> {
     const manifest = this.registry.getCode(intent_code);
     if (!manifest) {
       throw new Error(`IntentQueryHandler: 未知 intent_code ${intent_code}`);
@@ -148,7 +150,7 @@ export class IntentQueryHandler {
     params = effectiveParams;
 
     if (binding.operation === "aggregate") {
-      return this.executeAggregate({ user, message, manifest, params, binding, defaultsApplied });
+      return this.executeAggregate({ user, workspace, message, manifest, params, binding, defaultsApplied });
     }
 
     const filters = this.buildFilters({ manifest, intent_code, resource: binding.resource, params, message, user });
@@ -165,7 +167,7 @@ export class IntentQueryHandler {
     };
     const toolPlan = { calls: [toolCall] };
 
-    const toolResult = normalizeToolResult(await this.toolRegistry.execute(toolCall, { user }));
+    const toolResult = normalizeToolResult(await this.toolRegistry.execute(toolCall, { user, workspace }));
     const toolResults = [toolResult];
 
     const rows = toolResult?.data?.rows ?? [];
@@ -201,7 +203,7 @@ export class IntentQueryHandler {
     };
   }
 
-  async executeAggregate({ user, message, manifest, params, binding, defaultsApplied = [] }: AggregateInput): Promise<IntentQueryResult> {
+  async executeAggregate({ user, workspace, message, manifest, params, binding, defaultsApplied = [] }: AggregateInput): Promise<IntentQueryResult> {
     const intent_code = manifest.intent_code;
     const metric = typeof params?.metric === "string" ? params.metric : null;
     const groupBy = typeof params?.group_by === "string" ? params.group_by : null;
@@ -233,7 +235,7 @@ export class IntentQueryHandler {
       }
     };
     const toolPlan = { calls: [toolCall] };
-    const toolResult = normalizeToolResult(await this.toolRegistry.execute(toolCall, { user }));
+    const toolResult = normalizeToolResult(await this.toolRegistry.execute(toolCall, { user, workspace }));
     const toolResults = [toolResult];
 
     let answer;
