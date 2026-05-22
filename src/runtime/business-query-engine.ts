@@ -109,6 +109,7 @@ export class BusinessQueryEngine {
     return {
       session_id: String(record.session_id ?? sessionId),
       run_id: String(record.run_id ?? runId),
+      user_message: input.message,
       answer: String(record.answer ?? ""),
       output: normalizeJson(output),
       context_budget: assembled.budget,
@@ -179,7 +180,14 @@ function summarizeTaskRetrieval(enterpriseContext: unknown): JsonObject {
     relevant_count: relevant.length,
     top: relevant.slice(0, 3).map((task) => ({
       id: stringifyOrNull(task.id),
+      task_list_id: stringifyOrNull(task.task_list_id),
+      subject: stringifyOrNull(task.subject),
+      active_form: stringifyOrNull(task.active_form),
+      goal: stringifyOrNull(task.goal),
       status: stringifyOrNull(task.status),
+      priority: stringifyOrNull(task.priority),
+      next_action: stringifyOrNull(task.next_action),
+      updated_at: stringifyOrNull(task.updated_at),
       relevance: typeof task.relevance === "number" ? task.relevance : null,
       reason: stringifyOrNull(task.reason)
     }))

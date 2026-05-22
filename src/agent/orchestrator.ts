@@ -1036,6 +1036,7 @@ export class SimpleWorkflowOrchestrator {
       run_id: runId,
       answer,
       sources: createSources(docs as never),
+      pending_actions: extractPendingActions(toolResults),
       artifacts
     };
 
@@ -1393,6 +1394,20 @@ function summarizeToolResults(results: ToolResult[] | unknown = []): Array<Recor
       metrics: data.metrics
     };
   });
+}
+
+function extractPendingActions(results: ToolResult[] | unknown = []): Array<Record<string, unknown>> {
+  const list = Array.isArray(results) ? results as ToolResult[] : [];
+  return list
+    .filter((result) => result.error === "confirmation_required" && result.data?.pending_action_id)
+    .map((result) => ({
+      id: result.data?.pending_action_id,
+      tool: result.data?.tool ?? result.tool,
+      risk_level: result.data?.risk_level ?? "write",
+      expires_at: result.data?.expires_at,
+      reason: result.message ?? "需要用户确认后才能执行。",
+      call: result.data?.call
+    }));
 }
 
 function summarizeSampleRows(resource: unknown, rows: unknown = []): Array<Record<string, unknown>> {

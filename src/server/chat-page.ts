@@ -171,8 +171,8 @@ export function renderChatPage(): string {
     .biz { margin: 0 0 12px; color: #6b6b6b; font-size: 14px; line-height: 1.7; }
     .assistant-body.has-answer .biz.collapsed { margin-bottom: 4px; }
     .biz-head {
-      display: inline-grid; grid-template-columns: 10px 104px 14px; align-items: center; column-gap: 6px;
-      color: #9b9b9b; font-size: 12.5px; user-select: none; margin-bottom: 6px;
+      min-height: 22px; display: inline-grid; grid-template-columns: 16px max-content 14px; align-items: center; column-gap: 6px;
+      color: #9b9b9b; font-size: 12.5px; line-height: 22px; user-select: none; margin-bottom: 8px;
       cursor: pointer;
     }
     .biz-time {
@@ -212,25 +212,34 @@ export function renderChatPage(): string {
     }
     .biz.running .biz-head { color: #8a8a8a; }
     .biz.failed .biz-head { color: #dc2626; }
-    .biz.running .dotanim {
-      display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    .dotanim {
+      width: 16px; height: 16px; display: inline-grid; place-items: center; color: currentColor;
+    }
+    .dotanim::before {
+      content: ""; width: 11px; height: 6px; border-left: 1.8px solid currentColor; border-bottom: 1.8px solid currentColor;
+      transform: rotate(-45deg) translate(1px, -1px); border-radius: 1px;
+    }
+    .biz.running .dotanim::before {
+      width: 6px; height: 6px; border: 0; border-radius: 50%; transform: none;
       background: currentColor; animation: bizBlink 1.2s ease-in-out infinite;
     }
     .biz.failed .dotanim { display: inline-grid; width: 13px; height: 13px; place-items: center; }
+    .biz.failed .dotanim::before { display: none; }
     .biz.failed .dotanim svg { width: 13px; height: 13px; stroke-width: 1.8; }
     @keyframes bizBlink { 0%,100% { opacity: .3; } 50% { opacity: 1; } }
-    .biz-body { display: grid; gap: 8px; overflow: hidden; max-height: 360px; opacity: 1; }
+    .biz-body { display: grid; gap: 10px; overflow: hidden; max-height: 360px; opacity: 1; }
     .biz-pair {
-      display: grid; grid-template-columns: 18px minmax(0, 1fr); column-gap: 10px; row-gap: 2px;
+      display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: 10px; row-gap: 4px;
       align-items: start;
     }
     .biz-summary-line {
-      color: #9b9b9b; font-size: 12.5px; margin: 0;
-      display: contents;
+      grid-column: 1 / -1; grid-row: 1; min-width: 0;
+      display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: center;
+      color: #9b9b9b; font-size: 12.5px; line-height: 20px; margin: 0;
     }
-    .biz-summary-line .glyph { width: 18px; height: 20px; opacity: .7; display: inline-grid; place-items: center; grid-column: 1; grid-row: 1; padding-top: 2px; }
-    .biz-summary-line .glyph svg { width: 13px; height: 13px; stroke-width: 1.6; }
-    .biz-summary-line .summary-text { grid-column: 2; grid-row: 1; align-self: center; min-width: 0; }
+    .biz-summary-line .glyph { width: 20px; height: 20px; opacity: .7; display: inline-grid; place-items: center; grid-column: 1; }
+    .biz-summary-line .glyph svg { width: 14px; height: 14px; stroke-width: 1.6; display: block; }
+    .biz-summary-line .summary-text { grid-column: 2; min-width: 0; align-self: center; }
     .biz-narrative { margin: 0; color: #303030; font-size: 14.5px; line-height: 1.72; grid-column: 1 / -1; grid-row: 2; min-width: 0; }
     .biz.running .biz-pair.active .summary-text {
       color: transparent;
@@ -311,7 +320,74 @@ export function renderChatPage(): string {
       background: #f7f7f8; border: 1px solid #eeeeef; border-radius: 6px; padding: 9px;
       color: #27272a; font-size: 12px; line-height: 1.5; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
-    .sources { margin-top: 12px; color: var(--muted); font-size: 12px; }
+    .sources { margin-top: 12px; }
+    .source-disclosure {
+      margin-top: 10px; color: var(--muted); font-size: 12px;
+    }
+    .source-disclosure summary {
+      width: fit-content; display: flex; align-items: center; gap: 6px;
+      cursor: pointer; user-select: none; color: #6f6f6f; list-style: none;
+      border: 1px solid var(--border); border-radius: 999px; padding: 4px 9px;
+      background: #fff; transition: background .14s ease, border-color .14s ease, color .14s ease;
+    }
+    .source-disclosure summary::-webkit-details-marker { display: none; }
+    .source-disclosure summary:hover { background: var(--soft); border-color: #d4d4d4; color: #262626; }
+    .source-disclosure .source-caret {
+      width: 11px; height: 11px; display: inline-grid; place-items: center; transition: transform .16s ease;
+    }
+    .source-disclosure .source-caret::before {
+      content: ""; width: 5px; height: 5px; border-right: 1.6px solid currentColor; border-bottom: 1.6px solid currentColor;
+      transform: rotate(45deg) translate(-1px, -1px); border-radius: 1px;
+    }
+    .source-disclosure[open] .source-caret { transform: rotate(-180deg); }
+    .source-panel {
+      margin-top: 8px; display: grid; gap: 7px; padding: 10px 11px;
+      border: 1px solid var(--border); border-radius: 8px; background: #fafafa;
+    }
+    .source-item { display: grid; gap: 3px; color: #525252; line-height: 1.5; }
+    .source-item-title { color: #262626; font-weight: 600; font-size: 12.5px; }
+    .source-item-meta { color: #8a8a8a; font-size: 11.5px; }
+    .source-item-quote { color: #555; font-size: 12px; }
+    .a2ui-surfaces { margin-top: 14px; display: grid; gap: 10px; }
+    .a2ui-card {
+      border: 1px solid var(--border); border-radius: 8px; background: #fff; padding: 10px 11px;
+      display: grid; gap: 9px; color: #27272a;
+    }
+    .a2ui-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .a2ui-list { display: grid; gap: 7px; }
+    .a2ui-text { font-size: 13px; line-height: 1.62; color: #303030; }
+    .a2ui-text h3 { margin: 0 0 3px; font-size: 13px; line-height: 1.35; font-weight: 700; }
+    .a2ui-button {
+      height: 30px; border: 1px solid #d4d4d8; border-radius: 6px; background: #111; color: #fff;
+      padding: 0 10px; font: inherit; font-size: 12.5px; cursor: pointer;
+    }
+    .a2ui-button.secondary { background: #fff; color: #27272a; }
+    .a2ui-button:disabled { opacity: .55; cursor: not-allowed; }
+    .material-card {
+      border: 1px solid var(--border); border-radius: 8px; background: #fff; padding: 11px;
+      display: grid; gap: 10px; color: #27272a;
+    }
+    .material-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .material-title { font-size: 13px; line-height: 1.35; font-weight: 700; color: #202020; }
+    .material-subtle { color: #7a7a7a; font-size: 12px; line-height: 1.45; }
+    .material-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .material-metric { border: 1px solid #eeeeef; border-radius: 7px; padding: 8px; background: #fafafa; min-width: 0; }
+    .material-metric strong { display: block; font-size: 16px; line-height: 1.1; color: #111; margin-bottom: 4px; }
+    .material-list { display: grid; gap: 8px; }
+    .material-item { border: 1px solid #eeeeef; border-radius: 7px; padding: 9px; display: grid; gap: 6px; background: #fff; }
+    .material-item-title { font-weight: 650; font-size: 13px; color: #202020; }
+    .material-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .material-chip { border: 1px solid #e3e3e6; border-radius: 999px; padding: 2px 7px; color: #555; font-size: 11.5px; background: #fafafa; }
+    .material-action { color: #444; font-size: 12.5px; line-height: 1.45; }
+    .material-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .material-timeline { display: grid; gap: 6px; }
+    .material-step { display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 7px; align-items: center; color: #777; font-size: 12px; }
+    .material-step-dot { width: 8px; height: 8px; border-radius: 99px; background: #d4d4d8; justify-self: center; }
+    .material-step.done .material-step-dot { background: #111; }
+    .material-step.current .material-step-dot { background: #111; box-shadow: 0 0 0 4px rgba(17,17,17,.08); }
+    .material-step.done, .material-step.current { color: #303030; }
+    .material-progress { height: 6px; border-radius: 999px; background: #eee; overflow: hidden; }
+    .material-progress span { display: block; height: 100%; background: #111; border-radius: inherit; }
     .error { color: #dc2626; }
     .markdown { color: #1f1f1f; line-height: 1.78; overflow-wrap: anywhere; }
     .markdown.answer-enter { animation: answerEnter .42s cubic-bezier(.2, .8, .2, 1) both; }
@@ -927,12 +1003,8 @@ export function renderChatPage(): string {
             text.innerHTML = renderMarkdown(msg.text || "");
           }
           body.appendChild(text);
-          if (msg.sources?.length) {
-            const sources = document.createElement("div");
-            sources.className = "sources";
-            sources.textContent = "\\u6765\\u6e90\\uff1a" + msg.sources.map((s) => clean(s.title + " / " + s.heading)).join("\\uff1b");
-            body.appendChild(sources);
-          }
+          if (msg.sources?.length && !hasA2UISourceSurface(msg)) body.appendChild(renderSourceDisclosure(msg.sources));
+          if (msg.a2ui?.length) body.appendChild(renderA2UISurfaces(msg));
           row.appendChild(body);
         }
         els.messages.appendChild(row);
@@ -1507,6 +1579,7 @@ export function renderChatPage(): string {
         text: payload.answer || msg.text,
         steps: msg.steps.length ? msg.steps : (payload.debug?.steps || []),
         sources: payload.sources || [],
+        a2ui: payload.a2ui || [],
         debug: payload.debug || {},
         backendLatency: payload.debug?.latency_ms,
         completedAt: Date.now(),
@@ -1529,6 +1602,401 @@ export function renderChatPage(): string {
       msg.answerFinalizing = false;
       touchActiveSession();
       render();
+    }
+    function renderA2UISurfaces(msg) {
+      const wrap = document.createElement("div");
+      wrap.className = "a2ui-surfaces";
+      const surfaces = materializeA2UI(msg.a2ui || []);
+      for (const surface of surfaces) {
+        const root = renderOpenUIView(surface)
+          || (isA2UISourceSurface(surface) ? renderA2UISourceDisclosure(surface) : renderA2UIComponent(surface, surface.root));
+        if (root) wrap.appendChild(root);
+      }
+      return wrap;
+    }
+    function materializeA2UI(envelopes) {
+      const map = new Map();
+      for (const envelope of envelopes || []) {
+        if (envelope.createSurface) {
+          const s = envelope.createSurface;
+          map.set(s.surfaceId, { id: s.surfaceId, root: s.root, data: {}, components: new Map() });
+        }
+        if (envelope.updateDataModel) {
+          const u = envelope.updateDataModel;
+          const surface = map.get(u.surfaceId) || { id: u.surfaceId, root: "", data: {}, components: new Map() };
+          surface.data = u.value || {};
+          map.set(u.surfaceId, surface);
+        }
+        if (envelope.updateComponents) {
+          const u = envelope.updateComponents;
+          const surface = map.get(u.surfaceId) || { id: u.surfaceId, root: "", data: {}, components: new Map() };
+          for (const item of u.components || []) surface.components.set(item.id, item.component || {});
+          map.set(u.surfaceId, surface);
+        }
+      }
+      return Array.from(map.values()).filter((surface) => surface.root && surface.components.size);
+    }
+    function hasA2UISourceSurface(msg) {
+      return (msg.a2ui || []).some((envelope) => {
+        const surfaceId = envelope.createSurface?.surfaceId || envelope.updateComponents?.surfaceId || envelope.updateDataModel?.surfaceId || "";
+        return surfaceId.includes("_sources");
+      });
+    }
+    function isA2UISourceSurface(surface) {
+      return String(surface.id || "").includes("_sources") || surface.root === "sources_root";
+    }
+    function renderA2UISourceDisclosure(surface) {
+      const sources = Array.isArray(surface.data?.sources) ? surface.data.sources : [];
+      return renderSourceDisclosure(sources);
+    }
+    function renderOpenUIView(surface) {
+      const view = surface.data?.openui;
+      if (!view?.component || view.protocol !== "openui-bridge/0.1") return null;
+      const props = view.props || {};
+      if (view.component === "CitationDisclosure") return renderSourceDisclosure(props.sources || surface.data?.sources || []);
+      if (view.component === "DealerVehicleProgress") return renderMaterialVehicleProgress(surface, props);
+      if (view.component === "ExpenseEstimate") return renderMaterialExpenseEstimate(surface, props);
+      if (view.component === "LeaveRequestForm") return renderMaterialLeaveRequestForm(surface, props);
+      if (view.component === "ApprovalFlow" || view.component === "ApprovalCard") return renderMaterialApproval(surface, props, view.actions || []);
+      if (view.component === "TaskResumeCard") return renderMaterialTaskResume(surface, props);
+      return null;
+    }
+    function renderMaterialVehicleProgress(surface, props) {
+      const orders = Array.isArray(props.orders) ? props.orders : [];
+      const summary = props.summary || {};
+      if (!orders.length) return null;
+      const card = materialCard("车辆交付进度", "由 OpenUI Bridge 映射到本地车辆进度物料");
+      const metrics = document.createElement("div");
+      metrics.className = "material-metrics";
+      metrics.append(
+        materialMetric(summary.total ?? orders.length, "相关订单"),
+        materialMetric(summary.pending_delivery ?? "-", "待交付/整备"),
+        materialMetric(summary.unpaid ?? "-", "未结清")
+      );
+      card.appendChild(metrics);
+      const list = document.createElement("div");
+      list.className = "material-list";
+      orders.slice(0, 6).forEach((order) => {
+        const item = document.createElement("div");
+        item.className = "material-item";
+        const title = document.createElement("div");
+        title.className = "material-item-title";
+        title.textContent = clean([order.customer_name || "客户", [order.series, order.model].filter(Boolean).join(" ")].filter(Boolean).join(" · "));
+        const row = document.createElement("div");
+        row.className = "material-row";
+        row.append(
+          materialChip("订单 " + clean(order.id || "-")),
+          materialChip("交付 " + clean(order.delivery_status || order.order_status || "-")),
+          materialChip("收款 " + clean(order.payment_status || "-"))
+        );
+        const action = document.createElement("div");
+        action.className = "material-action";
+        action.textContent = "下一步：" + inferVehicleNextAction(order);
+        const timeline = renderMaterialTimeline(order.timeline || []);
+        item.append(title, row);
+        if (timeline) item.appendChild(timeline);
+        item.appendChild(action);
+        list.appendChild(item);
+      });
+      card.appendChild(list);
+      return card;
+    }
+    function renderMaterialExpenseEstimate(_surface, props) {
+      const card = materialCard("报销金额测算", props.status === "exceeded" ? "存在超标金额，需要补充说明或审批。" : "按当前制度标准测算。");
+      const metrics = document.createElement("div");
+      metrics.className = "material-metrics";
+      metrics.append(
+        materialMetric(formatMoney(props.claimed_amount), "申报金额"),
+        materialMetric(formatMoney(props.eligible_amount), "预计可报"),
+        materialMetric(formatMoney(props.exceeded_amount), "超标金额")
+      );
+      const basis = document.createElement("div");
+      basis.className = "material-action";
+      basis.textContent = "规则依据：" + clean(props.policy_basis || "按当前制度标准测算");
+      card.append(metrics, basis);
+      return card;
+    }
+    function renderMaterialLeaveRequestForm(surface, props) {
+      const slots = props.slots || {};
+      const missing = Array.isArray(props.missing_slots) ? props.missing_slots : [];
+      const card = materialCard("请假申请", props.step === "completed" ? "已提交" : props.step === "awaiting_confirmation" ? "等待确认提交" : "继续补全请假信息");
+      const progress = document.createElement("div");
+      progress.className = "material-progress";
+      const bar = document.createElement("span");
+      bar.style.width = Math.max(0, Math.min(100, Number(props.completion || 0))) + "%";
+      progress.appendChild(bar);
+      const list = document.createElement("div");
+      list.className = "material-list";
+      [
+        ["请假类型", slots.leave_type],
+        ["开始时间", slots.start_time],
+        ["结束时间", slots.end_time],
+        ["请假事由", slots.reason]
+      ].forEach(([label, value]) => {
+        const item = document.createElement("div");
+        item.className = "material-item";
+        const row = document.createElement("div");
+        row.className = "material-row";
+        row.append(materialChip(label), materialChip(value || "待补充"));
+        item.appendChild(row);
+        list.appendChild(item);
+      });
+      const status = document.createElement("div");
+      status.className = "material-action";
+      status.textContent = missing.length ? "还需补充：" + missing.join("、") : "信息已完整，可继续确认提交。";
+      card.append(progress, list, status);
+      return card;
+    }
+    function renderMaterialApproval(surface, props, actions) {
+      const pending = Array.isArray(props.pending_actions) ? props.pending_actions : [];
+      if (!pending.length) return null;
+      const card = materialCard("审批确认流程", "确认后会执行动作并返回结果。");
+      const timeline = renderMaterialTimeline(props.steps || []);
+      if (timeline) card.appendChild(timeline);
+      const list = document.createElement("div");
+      list.className = "material-list";
+      pending.forEach((action) => {
+        const item = document.createElement("div");
+        item.className = "material-item";
+        const title = document.createElement("div");
+        title.className = "material-item-title";
+        title.textContent = clean(action.tool || "待确认操作");
+        const meta = document.createElement("div");
+        meta.className = "material-subtle";
+        meta.textContent = clean([action.id, action.risk_level, action.expires_at].filter(Boolean).join(" · "));
+        const actionRow = document.createElement("div");
+        actionRow.className = "material-actions";
+        const id = action.id || "";
+        actionRow.append(
+          materialActionButton("确认执行", "runtime.pending_action.confirm", { pending_action_id: id }, surface),
+          materialActionButton("拒绝", "runtime.pending_action.reject", { pending_action_id: id }, surface, true)
+        );
+        item.append(title, meta, actionRow);
+        list.appendChild(item);
+      });
+      card.appendChild(list);
+      return card;
+    }
+    function renderMaterialTaskResume(surface, props) {
+      const tasks = Array.isArray(props.tasks) ? props.tasks : [];
+      if (!tasks.length) return null;
+      const card = materialCard(tasks.length > 1 ? "你想继续哪个任务？" : "继续这个任务？", "从当前消息召回相关长程任务。");
+      const list = document.createElement("div");
+      list.className = "material-list";
+      tasks.forEach((task) => {
+        const item = document.createElement("div");
+        item.className = "material-item";
+        const title = document.createElement("div");
+        title.className = "material-item-title";
+        title.textContent = clean(task.subject || task.active_form || task.id || "未命名任务");
+        const meta = document.createElement("div");
+        meta.className = "material-subtle";
+        meta.textContent = clean([task.status, task.next_action ? "下一步：" + task.next_action : "", task.reason].filter(Boolean).join(" · "));
+        const actions = document.createElement("div");
+        actions.className = "material-actions";
+        const context = { task_id: task.id || "", task_list_id: task.task_list_id || "" };
+        actions.append(
+          materialActionButton("继续这个", "task.resume.select", context, surface),
+          materialActionButton("先不继续", "task.resume.ignore", context, surface, true)
+        );
+        item.append(title, meta, actions);
+        list.appendChild(item);
+      });
+      card.appendChild(list);
+      return card;
+    }
+    function materialCard(titleText, subtitleText) {
+      const card = document.createElement("div");
+      card.className = "material-card";
+      const head = document.createElement("div");
+      head.className = "material-head";
+      const title = document.createElement("div");
+      title.className = "material-title";
+      title.textContent = titleText;
+      const sub = document.createElement("div");
+      sub.className = "material-subtle";
+      sub.textContent = subtitleText;
+      head.append(title);
+      card.append(head, sub);
+      return card;
+    }
+    function materialMetric(value, label) {
+      const node = document.createElement("div");
+      node.className = "material-metric";
+      const strong = document.createElement("strong");
+      strong.textContent = String(value ?? "-");
+      const span = document.createElement("span");
+      span.className = "material-subtle";
+      span.textContent = label;
+      node.append(strong, span);
+      return node;
+    }
+    function materialChip(text) {
+      const node = document.createElement("span");
+      node.className = "material-chip";
+      node.textContent = text;
+      return node;
+    }
+    function renderMaterialTimeline(steps) {
+      if (!Array.isArray(steps) || !steps.length) return null;
+      const node = document.createElement("div");
+      node.className = "material-timeline";
+      steps.forEach((step) => {
+        const item = document.createElement("div");
+        item.className = "material-step " + clean(step.status || "pending");
+        const dot = document.createElement("span");
+        dot.className = "material-step-dot";
+        const label = document.createElement("span");
+        label.textContent = clean(step.label || step.key || "-");
+        item.append(dot, label);
+        node.appendChild(item);
+      });
+      return node;
+    }
+    function formatMoney(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return "-";
+      return Math.round(n).toLocaleString("zh-CN") + " 元";
+    }
+    function materialActionButton(label, name, context, surface, secondary = false) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "a2ui-button" + (secondary ? " secondary" : "");
+      button.textContent = label;
+      button.addEventListener("click", () => dispatchA2UIAction({ event: { name, context } }, surface, button));
+      return button;
+    }
+    function inferVehicleNextAction(order) {
+      if ((order.payment_status || "") !== "已结清") return "优先跟进尾款/金融放款到账";
+      if ((order.invoice_status || "") !== "已开票") return "确认开票节点";
+      if ((order.delivery_status || "") !== "已交付") return "确认整备、上牌和交付排期";
+      return "已完成交付，保持客户回访";
+    }
+    function renderSourceDisclosure(sources) {
+      const cleanSources = (sources || []).filter(Boolean);
+      if (!cleanSources.length) return null;
+      const details = document.createElement("details");
+      details.className = "source-disclosure";
+      const summary = document.createElement("summary");
+      const caret = document.createElement("span");
+      caret.className = "source-caret";
+      const label = document.createElement("span");
+      label.textContent = "引用来源 · " + cleanSources.length;
+      summary.append(caret, label);
+      const panel = document.createElement("div");
+      panel.className = "source-panel";
+      cleanSources.slice(0, 8).forEach((source) => {
+        const item = document.createElement("div");
+        item.className = "source-item";
+        const title = document.createElement("div");
+        title.className = "source-item-title";
+        title.textContent = clean([source.title, source.heading].filter(Boolean).join(" / ") || "来源");
+        item.appendChild(title);
+        const metaParts = [];
+        if (source.source) metaParts.push(source.source);
+        if (typeof source.score === "number") metaParts.push("相关度 " + source.score.toFixed(2));
+        if (metaParts.length) {
+          const meta = document.createElement("div");
+          meta.className = "source-item-meta";
+          meta.textContent = clean(metaParts.join(" · "));
+          item.appendChild(meta);
+        }
+        if (source.quote) {
+          const quote = document.createElement("div");
+          quote.className = "source-item-quote";
+          quote.textContent = clean(String(source.quote).slice(0, 220));
+          item.appendChild(quote);
+        }
+        panel.appendChild(item);
+      });
+      details.append(summary, panel);
+      return details;
+    }
+    function renderA2UIComponent(surface, id) {
+      const component = surface.components.get(id);
+      if (!component) return null;
+      const [type, props] = Object.entries(component)[0] || [];
+      if (!type) return null;
+      if (type === "Card") {
+        const node = document.createElement("div");
+        node.className = "a2ui-card";
+        for (const child of props.children || []) {
+          const childNode = renderA2UIComponent(surface, child);
+          if (childNode) node.appendChild(childNode);
+        }
+        return node;
+      }
+      if (type === "Row") {
+        const node = document.createElement("div");
+        node.className = "a2ui-row";
+        for (const child of props.children || []) {
+          const childNode = renderA2UIComponent(surface, child);
+          if (childNode) node.appendChild(childNode);
+        }
+        return node;
+      }
+      if (type === "List") {
+        const node = document.createElement("div");
+        node.className = "a2ui-list";
+        for (const child of props.children || []) {
+          const childNode = renderA2UIComponent(surface, child);
+          if (childNode) node.appendChild(childNode);
+        }
+        return node;
+      }
+      if (type === "Text") {
+        const node = document.createElement("div");
+        node.className = "a2ui-text";
+        node.innerHTML = renderMarkdown(resolveA2UIText(props.text));
+        return node;
+      }
+      if (type === "Button") {
+        const node = document.createElement("button");
+        node.type = "button";
+        node.className = "a2ui-button" + (/拒绝|取消/.test(resolveA2UIText(props.text)) ? " secondary" : "");
+        node.textContent = resolveA2UIText(props.text);
+        node.addEventListener("click", () => dispatchA2UIAction(props.action, surface, node));
+        return node;
+      }
+      return null;
+    }
+    function resolveA2UIText(value) {
+      if (!value) return "";
+      if (typeof value === "string") return value;
+      if (typeof value.literalString === "string") return value.literalString;
+      if (typeof value.path === "string") return "";
+      return String(value);
+    }
+    async function dispatchA2UIAction(action, surface, button) {
+      const event = action?.event;
+      if (!event?.name || loading) return;
+      button.disabled = true;
+      const original = button.textContent;
+      button.textContent = "处理中";
+      try {
+        const response = await fetch("/api/a2ui/action", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: currentUserId,
+            session_id: activeSessionId,
+            action: {
+              name: event.name,
+              surface_id: surface.id,
+              context: event.context || {}
+            },
+            metadata: {
+              a2uiClientDataModel: { surfaces: { [surface.id]: surface.data || {} } }
+            }
+          })
+        });
+        const payload = await response.json();
+        button.textContent = payload.ok ? "已处理" : "失败";
+        if (!payload.ok) button.disabled = false;
+      } catch {
+        button.textContent = original || "重试";
+        button.disabled = false;
+      }
     }
     function finalizeProcessOnAnswerStart(id) {
       const msg = getMsg(id);

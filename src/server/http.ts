@@ -1,5 +1,7 @@
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import { createApp } from "../app.js";
+import { createA2UIModule } from "../a2ui/module.js";
+import { A2UIBadRequestError } from "../a2ui/dto.js";
 import { loadJson } from "../data/load-json.js";
 import { renderChatPage } from "./chat-page.js";
 import type { JsonObject } from "../types/agent-contracts.js";
@@ -32,7 +34,13 @@ interface SkillListItem extends JsonObject {
 
 type RequestBody = Record<string, unknown>;
 
-const { agent, queryEngine, skillRegistry, skillLoader, userContextResolver } = createApp();
+const { agent, queryEngine, skillRegistry, skillLoader, userContextResolver, toolRegistry } = createApp();
+const { chatController: a2uiChatController } = createA2UIModule({
+  queryEngine,
+  streamAgent: agent,
+  toolRegistry,
+  userContextResolver
+});
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "0.0.0.0";
 const chatStreamTimeoutMs = readPositiveNumberEnv("CHAT_STREAM_TIMEOUT_MS", 60000);
@@ -94,6 +102,25 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
     return;
   }
 
+  if (req.method === "GET" && pathname === "/api/a2ui/capabilities") {
+    sendJson(res, 200, a2uiChatController.capabilities());
+    return;
+  }
+
+  if (req.method === "POST" && pathname === "/api/a2ui/action") {
+    try {
+      const body = await readJson(req);
+      const result = await a2uiChatController.action(body);
+      sendJson(res, result.ok === false ? 400 : 200, result);
+    } catch (error) {
+      sendJson(res, isBadRequestError(error) ? 400 : 500, {
+        error: isBadRequestError(error) ? "bad_request" : "a2ui_action_failed",
+        message: error instanceof Error ? error.message : "unknown error"
+      });
+    }
+    return;
+  }
+
   if (req.method === "GET" && pathname === "/api/skills") {
     try {
       const skills = await skillLoader.list();
@@ -113,8 +140,8 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
         }))
       });
     } catch (error) {
-      sendJson(res, 500, {
-        error: "internal_error",
+      sendJson(res, isBadRequestError(error) ? 400 : 500, {
+        error: isBadRequestError(error) ? "bad_request" : "internal_error",
         message: error instanceof Error ? error.message : "unknown error"
       });
     }
@@ -163,22 +190,10 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
   if (req.method === "POST" && pathname === "/api/chat") {
     try {
       const body = await readJson(req);
-      if (typeof body.user_id !== "string" || typeof body.message !== "string") {
-        sendJson(res, 400, { error: "bad_request", message: "user_id 和 message 必填。" });
-        return;
-      }
-      const result = await queryEngine.submitMessage({
-        userId: body.user_id,
-        userContext: isRequestObject(body.user_context) ? body.user_context : undefined,
-        wecomUserId: typeof body.wecom_userid === "string" ? body.wecom_userid : undefined,
-        message: body.message,
-        sessionId: typeof body.session_id === "string" ? body.session_id : undefined,
-        debug: body.debug === true
-      });
-      sendJson(res, 200, result);
+      sendJson(res, 200, await a2uiChatController.chat(body));
     } catch (error) {
-      sendJson(res, 500, {
-        error: "internal_error",
+      sendJson(res, isBadRequestError(error) ? 400 : 500, {
+        error: isBadRequestError(error) ? "bad_request" : "internal_error",
         message: error instanceof Error ? error.message : "unknown error"
       });
     }
@@ -189,27 +204,14 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
     let streamClosed = false;
     try {
       const body = await readJson(req);
-      if (typeof body.user_id !== "string" || typeof body.message !== "string") {
-        sendJson(res, 400, { error: "bad_request", message: "user_id 和 message 必填。" });
-        return;
-      }
-
       res.writeHead(200, {
         "Content-Type": "text/event-stream; charset=utf-8",
         "Cache-Control": "no-cache, no-transform",
         Connection: "keep-alive"
       });
 
-      await withTimeout(agent.runStream({
-        userId: body.user_id,
-        userContext: isRequestObject(body.user_context) ? body.user_context : undefined,
-        wecomUserId: typeof body.wecom_userid === "string" ? body.wecom_userid : undefined,
-        message: body.message,
-        sessionId: typeof body.session_id === "string" ? body.session_id : undefined,
-        debug: body.debug === true,
-        onEvent: (event: JsonObject) => {
+      await withTimeout(a2uiChatController.stream(body, async (event) => {
           if (!streamClosed && !res.destroyed) sendSse(res, event.type, event);
-        }
       }), chatStreamTimeoutMs, "chat_stream_timeout");
       streamClosed = true;
       res.end();
@@ -224,6 +226,7 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
       }
       sendSse(res, "error", {
         type: "error",
+        error: isBadRequestError(error) ? "bad_request" : "stream_error",
         message: error instanceof Error ? error.message : "unknown error"
       });
       res.end();
@@ -276,6 +279,6 @@ async function readJson(req: IncomingMessage): Promise<RequestBody> {
   return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as RequestBody : {};
 }
 
-function isRequestObject(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+function isBadRequestError(error: unknown): boolean {
+  return error instanceof A2UIBadRequestError || (Boolean(error) && typeof error === "object" && (error as { code?: unknown }).code === "bad_request");
 }
