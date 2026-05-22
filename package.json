@@ -21,6 +21,7 @@
     "hook:evolution-loop": "tsc -p tsconfig.build.json && node dist/eval/hook-runtime-evolution-loop.js",
     "business:runtime": "tsc -p tsconfig.build.json && node dist/eval/business-agent-runtime.js",
     "trace:maturity": "tsc -p tsconfig.build.json && node dist/eval/trace-maturity.js",
+    "a2ui:adapter": "tsc -p tsconfig.build.json && node dist/eval/a2ui-adapter.js",
     "skill:curator": "tsc -p tsconfig.build.json && node dist/eval/skill-curator-maintenance.js",
     "task:smoke": "tsc -p tsconfig.build.json && node dist/eval/task-store.js",
     "config:check": "tsc -p tsconfig.build.json && node dist/eval/config-check.js",
