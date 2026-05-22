@@ -17,12 +17,14 @@ interface AgentObservationState {
   status?: string;
 }
 
-export function createSources(docs: KnowledgeSearchResult[]): Array<{ source: string; title: string; heading: string; score: number }> {
+export function createSources(docs: KnowledgeSearchResult[]): Array<{ id: string; source: string; title: string; heading: string; score: number; quote: string }> {
   return docs.map((doc) => ({
+    id: doc.id,
     source: doc.metadata.source,
     title: doc.metadata.title,
     heading: doc.metadata.heading,
-    score: doc.score
+    score: doc.score,
+    quote: String(doc.text ?? "").replace(/\s+/g, " ").trim().slice(0, 180)
   }));
 }
 

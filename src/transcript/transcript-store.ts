@@ -6,10 +6,14 @@ import type { JsonObject } from "../types/agent-contracts.js";
 import { SQLiteTranscriptIndex } from "./sqlite-transcript-index.js";
 
 export type TranscriptEventType =
+  | "turn_start"
+  | "context_assembly"
   | "user_message"
   | "assistant_answer"
+  | "route_decision"
   | "tool_call"
   | "tool_result"
+  | "tool_governance"
   | "agent_step"
   | "task_claimed"
   | "task_updated"
@@ -43,6 +47,7 @@ export class TranscriptStore {
   }
 
   async appendTurn(workspace: WorkspaceContext, sessionId: string, input: {
+    runId?: string;
     message: string;
     answer: string;
     route?: unknown;
@@ -51,20 +56,22 @@ export class TranscriptStore {
     agentSteps?: unknown[];
   }): Promise<void> {
     await this.append(workspace, sessionId, "user_message", {
+      run_id: input.runId,
       text: input.message,
       route: toJson(input.route)
     });
     for (const call of input.toolCalls ?? []) {
-      await this.append(workspace, sessionId, "tool_call", toJsonObject(call));
+      await this.append(workspace, sessionId, "tool_call", { ...toJsonObject(call), run_id: input.runId });
     }
     for (const result of input.toolResults ?? []) {
-      await this.append(workspace, sessionId, "tool_result", toJsonObject(result));
+      await this.append(workspace, sessionId, "tool_result", { ...toJsonObject(result), run_id: input.runId });
     }
     for (const step of input.agentSteps ?? []) {
-      await this.append(workspace, sessionId, "agent_step", toJsonObject(step));
+      await this.append(workspace, sessionId, "agent_step", { ...toJsonObject(step), run_id: input.runId });
     }
-    await this.append(workspace, sessionId, "assistant_answer", { text: input.answer });
+    await this.append(workspace, sessionId, "assistant_answer", { run_id: input.runId, text: input.answer });
     await this.append(workspace, sessionId, "turn_end", {
+      run_id: input.runId,
       message_preview: input.message.slice(0, 300),
       answer_preview: input.answer.slice(0, 600)
     });
@@ -113,6 +120,11 @@ export class TranscriptStore {
   async replay(workspace: WorkspaceContext, sessionId: string, { types, limit = 200 }: { types?: TranscriptEventType[]; limit?: number } = {}): Promise<TranscriptEvent[]> {
     const events = await this.recent(workspace, sessionId, limit);
     return types?.length ? events.filter((event) => types.includes(event.type)) : events;
+  }
+
+  async replayRun(workspace: WorkspaceContext, sessionId: string, runId: string, { types, limit = 400 }: { types?: TranscriptEventType[]; limit?: number } = {}): Promise<TranscriptEvent[]> {
+    const events = await this.replay(workspace, sessionId, { types, limit });
+    return events.filter((event) => event.data?.run_id === runId);
   }
 
   dir(workspace: WorkspaceContext): string {

@@ -169,7 +169,7 @@ export class LeaveRequestScenario {
       };
     }
 
-    const result = await this.toolRegistry.execute(call, { user }) as ToolResult;
+    const result = await this.toolRegistry.execute(call, { user, confirmed: true }) as ToolResult;
     await appendAuditEvent({
       type: "tool.executed",
       tool: call.name,

@@ -25,6 +25,8 @@ import { MockTencentDocsSource, TencentDocsSource } from "./rag/document-sources
 import { LocalKnowledgeBase } from "./rag/local-knowledge-base.js";
 import { PrimitiveRegistry } from "./primitives/registry.js";
 import { EnterpriseContextProvider } from "./runtime/enterprise-context.js";
+import { BusinessQueryEngine } from "./runtime/business-query-engine.js";
+import { PendingActionStore } from "./runtime/pending-action-store.js";
 import { RuntimeHooks } from "./runtime/hooks.js";
 import { createMaintenanceSchedulerPlugin } from "./runtime/maintenance-scheduler-plugin.js";
 import { createTranscriptPlugin } from "./runtime/transcript-plugin.js";
@@ -39,6 +41,8 @@ import { createBusinessTools } from "./tools/business-tools.js";
 import { createKnowledgeTools } from "./tools/knowledge-tools.js";
 import { createMaintenanceTools } from "./tools/maintenance-tools.js";
 import { createPluginTools } from "./tools/plugin-tools.js";
+import { createPendingActionTools } from "./tools/pending-action-tools.js";
+import { createRuntimeInspectionTools } from "./tools/runtime-inspection-tools.js";
 import { createSandboxTools } from "./tools/sandbox-tools.js";
 import { ToolRegistry } from "./tools/registry.js";
 import type { JsonValue } from "./types/agent-contracts.js";
@@ -81,7 +85,8 @@ export function createApp() {
       })
     : new MockTencentDocsSource();
   const knowledgeBase = new LocalKnowledgeBase({ documentSource });
-  const toolRegistry = new ToolRegistry([
+  const pendingActionStore = new PendingActionStore();
+  const baseTools = [
     ...createBusinessTools(),
     ...createKnowledgeTools({ knowledgeBase }),
     ...createSandboxTools(),
@@ -90,11 +95,18 @@ export function createApp() {
     ...createMemoryTools(),
     ...createTaskTools(),
     ...createEvolutionTools({ evolutionRuntime })
-  ]);
+  ];
+  const toolRegistry = new ToolRegistry(baseTools, { hooks, pendingActionStore });
+  for (const tool of createPendingActionTools({ pendingActionStore, toolRegistry })) {
+    toolRegistry.register(tool);
+  }
   const primitiveRegistry = new PrimitiveRegistry({ toolRegistry, knowledgeBase });
   const skillRegistry = new SkillRegistryStore();
   const skillLoader = new FileSystemSkillLoader({ registryStore: skillRegistry });
   const enterpriseContextProvider = new EnterpriseContextProvider();
+  for (const tool of createRuntimeInspectionTools({ transcriptStore, enterpriseContextProvider, toolRegistry })) {
+    toolRegistry.register(tool);
+  }
   const sessionStore = new UserWorkspaceSessionStore();
   const scenarioRouter = new ScenarioRouter({ toolRegistry });
   const skillRuntime = new SkillRuntime({ skillLoader, scenarioRouter });
@@ -140,7 +152,13 @@ export function createApp() {
     transcriptStore,
     hooks
   });
-  return { agent, llm, integrations, documentSource, knowledgeBase, toolRegistry, primitiveRegistry, skillRegistry, skillLoader, skillRuntime, agenticSkillView, enterpriseContextProvider, sessionStore, scenarioRouter, userContextResolver, intentRegistry, intentRouter, intentQueryHandler, chitchatHandler, agenticHandler, evolutionRuntime, transcriptStore, hooks };
+  const queryEngine = new BusinessQueryEngine({
+    agent,
+    userContextResolver,
+    enterpriseContextProvider,
+    hooks
+  });
+  return { agent, queryEngine, llm, integrations, documentSource, knowledgeBase, toolRegistry, primitiveRegistry, skillRegistry, skillLoader, skillRuntime, agenticSkillView, enterpriseContextProvider, sessionStore, scenarioRouter, userContextResolver, intentRegistry, intentRouter, intentQueryHandler, chitchatHandler, agenticHandler, evolutionRuntime, transcriptStore, pendingActionStore, hooks };
 }
 
 function normalizeAppJson(value: unknown): JsonValue {

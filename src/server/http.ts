@@ -32,7 +32,7 @@ interface SkillListItem extends JsonObject {
 
 type RequestBody = Record<string, unknown>;
 
-const { agent, skillRegistry, skillLoader, userContextResolver } = createApp();
+const { agent, queryEngine, skillRegistry, skillLoader, userContextResolver } = createApp();
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "0.0.0.0";
 const chatStreamTimeoutMs = readPositiveNumberEnv("CHAT_STREAM_TIMEOUT_MS", 60000);
@@ -167,7 +167,7 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
         sendJson(res, 400, { error: "bad_request", message: "user_id 和 message 必填。" });
         return;
       }
-      const result = await agent.run({
+      const result = await queryEngine.submitMessage({
         userId: body.user_id,
         userContext: isRequestObject(body.user_context) ? body.user_context : undefined,
         wecomUserId: typeof body.wecom_userid === "string" ? body.wecom_userid : undefined,
