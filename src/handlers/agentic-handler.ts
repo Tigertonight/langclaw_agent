@@ -15,6 +15,7 @@
  *     由系统决定是否实现。本期不做，但 normalizeAction 已经预留了分支。
  */
 import { applyPromptCache } from "../llm/prompt-cache.js";
+import { nextAgentItemId, type AgentItemEvent } from "../runtime/agent-events.js";
 import { RuntimeHooks } from "../runtime/hooks.js";
 import type { IntentManifest, IntentRegistry, JsonObject, JsonValue, Route, ToolCall, ToolResult, UserContext } from "../types/agent-contracts.js";
 
@@ -189,9 +190,41 @@ export class AgenticHandler {
       if (safeEmit) safeEmit({ kind: "agentic_assistant", ...full });
     };
     const pushTool: StreamPush = (entry) => {
-      const full = { ts: Date.now() - startedAt, ...entry };
+      const ts = Date.now() - startedAt;
+      const full = { ts, ...entry };
       streams.tool.push(full);
       if (safeEmit) safeEmit({ kind: "agentic_tool", ...full });
+      // 同步发出强类型 item 事件（agent-events.AgentItemEvent），让消费者（业务流 / Debug 流 /
+      // 时间流）能用同一个 itemId 串联同一次工具调用。不改 streams.tool 形态，纯增量。
+      if (safeEmit && entry && typeof entry.type === "string" && entry.type === "tool_call") {
+        const toolName = String(entry.tool ?? "");
+        const itemId = nextAgentItemId("tool");
+        const observation = (entry.observation_summary ?? entry.observation) as JsonObject | undefined;
+        const failedFromObs = !!observation && (observation.ok === false || observation.isError === true);
+        const summary = typeof entry.observation_summary === "object" && entry.observation_summary
+          ? `${toolName} ${failedFromObs ? "失败" : "完成"}`
+          : `调用 ${toolName}`;
+        const item: AgentItemEvent = {
+          itemId,
+          stream: "tool",
+          phase: "end",
+          kind: "tool",
+          status: failedFromObs ? "failed" : "completed",
+          title: toolName,
+          summary,
+          meta: {
+            args: entry.args as JsonValue ?? null,
+            step: entry.step as JsonValue ?? null,
+            dag_node: entry.dag_node as JsonValue ?? null
+          },
+          ts,
+          endedAt: new Date().toISOString(),
+          error: failedFromObs
+            ? { code: String(observation?.code ?? observation?.error ?? "execution_failed"), message: String(observation?.message ?? "") }
+            : undefined
+        };
+        safeEmit({ kind: "agentic_item", ...item });
+      }
     };
 
     pushLifecycle("start", { message_preview: typeof message === "string" ? message.slice(0, 80) : null, tools_count: tools.length });

@@ -10,6 +10,110 @@ export interface AgentStep {
   [key: string]: JsonValue | JsonObject | undefined;
 }
 
+/**
+ * 强类型事件 schema，灵感来自 OpenClaw `AgentEventStream` + `AgentItemEventData`。
+ *
+ * 业务流（onBlockReply）/ Debug 流（agent_steps）/ 时间流（lifecycle）原本各发各的事件，
+ * 容易漂移。通过统一的 item 抽象，让一次"工具调用 / 命令执行 / 检索操作"在三个视角下
+ * 共享同一个 itemId 与生命周期，业务流读 summary、Debug 读全字段、时间流看 phase 排序。
+ *
+ * 这是新增能力，不替换 AgentStep / lifecycle/assistant/tool 三个原始 array。
+ */
+export type AgentEventStream =
+  | "lifecycle"
+  | "assistant"
+  | "tool"
+  | "thinking"
+  | "error"
+  | "approval";
+
+export type AgentEventPhase = "start" | "update" | "end";
+
+export type AgentItemKind = "tool" | "command" | "search" | "analysis" | "patch" | "skill";
+
+export type AgentItemStatus = "running" | "completed" | "failed" | "blocked";
+
+export interface AgentItemEvent {
+  itemId: string;
+  stream: AgentEventStream;
+  phase: AgentEventPhase;
+  kind: AgentItemKind;
+  status: AgentItemStatus;
+  title: string;
+  summary?: string;
+  meta?: JsonObject;
+  toolCallId?: string;
+  /** 相对会话开始的毫秒数，与 lifecycle/assistant/tool 三个 array 的 ts 对齐 */
+  ts?: number;
+  startedAt?: string;
+  endedAt?: string;
+  error?: { code: string; message: string };
+}
+
+let __itemIdSeq = 0;
+export function nextAgentItemId(prefix = "item"): string {
+  __itemIdSeq += 1;
+  return `${prefix}_${Date.now().toString(36)}_${__itemIdSeq.toString(36)}`;
+}
+
+/**
+ * 把一次工具调用浓缩成一组 item 事件（start + end）。
+ * 调用方拿到这两个事件后可以直接 push 给 onEmit，也可以拆开做更细的 update。
+ */
+export function buildToolItemEvents(input: {
+  itemId: string;
+  toolName: string;
+  args?: JsonObject;
+  ts: number;
+  result?: ToolResult;
+  toolCallId?: string;
+}): { start: AgentItemEvent; end: AgentItemEvent } {
+  const { itemId, toolName, args, ts, result, toolCallId } = input;
+  const start: AgentItemEvent = {
+    itemId,
+    stream: "tool",
+    phase: "start",
+    kind: "tool",
+    status: "running",
+    title: toolName,
+    summary: `开始调用 ${toolName}`,
+    meta: args ? { args } : undefined,
+    toolCallId,
+    ts,
+    startedAt: new Date().toISOString()
+  };
+  const failed = !!result && (result.ok === false || result.isError === true);
+  const end: AgentItemEvent = {
+    itemId,
+    stream: "tool",
+    phase: "end",
+    kind: "tool",
+    status: failed ? "failed" : "completed",
+    title: toolName,
+    summary: result ? summarizeToolResultText(result) : "工具调用结束",
+    meta: result ? { result_ok: result.ok ?? !failed, code: result.code } : undefined,
+    toolCallId,
+    ts,
+    endedAt: new Date().toISOString(),
+    error: failed
+      ? { code: String(result?.code ?? result?.error ?? "execution_failed"), message: String(result?.message ?? "") }
+      : undefined
+  };
+  return { start, end };
+}
+
+function summarizeToolResultText(result: ToolResult): string {
+  if (result.ok === false || result.isError === true) {
+    return `失败：${result.message ?? result.error ?? "未知错误"}`;
+  }
+  if (result.tool === "query_business_data") {
+    const data = result.data ?? {};
+    if (data.operation === "aggregate") return `统计返回，匹配 ${data.total ?? 0} 条`;
+    return `返回 ${data.rows?.length ?? 0} 条记录`;
+  }
+  return "调用完成";
+}
+
 interface AgentObservationState {
   observations?: Array<{ summary?: string }>;
   missing_facts?: string[];
