@@ -6,6 +6,7 @@ import { TaskLearner } from "./task-learner.js";
 import { EpisodeStore } from "./episode-store.js";
 import { SignalCollector } from "./signal-collector.js";
 import { appendEvolutionLog } from "./log.js";
+import { AutoCompactionTrigger } from "./auto-compaction.js";
 import type { EvolutionResult, EvolutionTurnInput } from "./types.js";
 
 export class EvolutionRuntime {
@@ -15,6 +16,7 @@ export class EvolutionRuntime {
   private readonly skillLearner: SkillLearner;
   private readonly episodeStore: EpisodeStore;
   private readonly signalCollector: SignalCollector;
+  private readonly autoCompaction: AutoCompactionTrigger;
   private readonly onReviewed?: (input: EvolutionTurnInput, result: EvolutionResult) => Promise<void> | void;
 
   constructor({
@@ -23,6 +25,7 @@ export class EvolutionRuntime {
     taskLearner = new TaskLearner(),
     skillLearner = new SkillLearner(),
     episodeStore = new EpisodeStore(),
+    autoCompaction,
     debounceMs,
     onSessionIdle,
     onReviewed
@@ -32,6 +35,7 @@ export class EvolutionRuntime {
     taskLearner?: TaskLearner;
     skillLearner?: SkillLearner;
     episodeStore?: EpisodeStore;
+    autoCompaction?: AutoCompactionTrigger;
     debounceMs?: number;
     onSessionIdle?: (input: EvolutionTurnInput) => Promise<void> | void;
     onReviewed?: (input: EvolutionTurnInput, result: EvolutionResult) => Promise<void> | void;
@@ -41,6 +45,7 @@ export class EvolutionRuntime {
     this.taskLearner = taskLearner;
     this.skillLearner = skillLearner;
     this.episodeStore = episodeStore;
+    this.autoCompaction = autoCompaction ?? new AutoCompactionTrigger({ memoryLearner });
     this.onReviewed = onReviewed;
     this.signalCollector = new SignalCollector({
       debounceMs,
@@ -108,6 +113,12 @@ export class EvolutionRuntime {
       trigger: input.trigger,
       result
     });
+    // 自动 compaction：根据 item 数量 + 冷却窗口决定是否触发，永不抛
+    try {
+      await this.autoCompaction.maybeRun(input.workspace);
+    } catch {
+      // maybeRun 内部已兜底，外层再吞一层防止任何异常打断 reviewTurn
+    }
     await this.onReviewed?.(input, result);
     return result;
   }

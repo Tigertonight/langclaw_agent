@@ -22,4 +22,8 @@ export class TokenCache<T = string> {
       expiresAt: Date.now() + expiresInSeconds * 1000
     });
   }
+
+  delete(key: string): void {
+    this.items.delete(key);
+  }
 }

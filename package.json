@@ -12,6 +12,19 @@
     "smoke": "tsc -p tsconfig.build.json && node dist/eval/smoke.js",
     "eval:router": "tsc -p tsconfig.build.json && node dist/eval/router-poc.js",
     "router:governance": "tsc -p tsconfig.build.json && node dist/eval/router-governance.js",
+    "router:commands": "tsc -p tsconfig.build.json && node dist/eval/router-commands.js",
+    "tool:timeout": "tsc -p tsconfig.build.json && node dist/eval/tool-timeout.js",
+    "tool:abort": "tsc -p tsconfig.build.json && node dist/eval/tool-abort.js",
+    "tool:retry": "tsc -p tsconfig.build.json && node dist/eval/tool-retry.js",
+    "emit:resilience": "tsc -p tsconfig.build.json && node dist/eval/emit-resilience.js",
+    "prompt:authority-alert": "tsc -p tsconfig.build.json && node dist/eval/prompt-authority-alert.js",
+    "prompt:alert-dedup": "tsc -p tsconfig.build.json && node dist/eval/prompt-alert-dedup.js",
+    "context:ingest-hook": "tsc -p tsconfig.build.json && node dist/eval/context-ingest-hook.js",
+    "ingest:failure": "tsc -p tsconfig.build.json && node dist/eval/ingest-failure.js",
+    "handlers:auth": "tsc -p tsconfig.build.json && node dist/eval/handlers-auth.js",
+    "commands:api": "tsc -p tsconfig.build.json && node dist/eval/commands-api.js",
+    "item:watchdog": "tsc -p tsconfig.build.json && node dist/eval/item-watchdog.js",
+    "metrics:smoke": "tsc -p tsconfig.build.json && node dist/eval/metrics-collector.js",
     "arch:smoke": "tsc -p tsconfig.build.json && node dist/eval/architecture-smoke.js",
     "session:smoke": "tsc -p tsconfig.build.json && node dist/eval/session-recovery.js",
     "workspace:isolation": "tsc -p tsconfig.build.json && node dist/eval/workspace-isolation.js",
@@ -32,6 +45,14 @@
     "tool:error-msg": "tsc -p tsconfig.build.json && node dist/eval/tool-error-message.js",
     "store:concurrency": "tsc -p tsconfig.build.json && node dist/eval/store-concurrency.js",
     "ops:endpoints": "tsc -p tsconfig.build.json && node dist/eval/ops-endpoints.js",
+    "skill:install-e2e": "tsc -p tsconfig.build.json && node dist/eval/skill-install-e2e.js",
+    "evolution:auto-compact": "tsc -p tsconfig.build.json && node dist/eval/auto-compaction-smoke.js",
+    "scheduler:self-driving": "tsc -p tsconfig.build.json && node dist/eval/scheduler-self-driving.js",
+    "mcp:smoke": "tsc -p tsconfig.build.json && node dist/eval/mcp-client-smoke.js",
+    "agent:spawn": "tsc -p tsconfig.build.json && node dist/eval/spawn-agent-smoke.js",
+    "cron:smoke": "tsc -p tsconfig.build.json && node dist/eval/cron-smoke.js",
+    "terminal:smoke": "tsc -p tsconfig.build.json && node dist/eval/terminal-smoke.js",
+    "regress:batch2": "tsc -p tsconfig.build.json && node dist/eval/batch2-regression.js",
     "typecheck": "tsc -p tsconfig.json",
     "build:ts": "tsc -p tsconfig.build.json"
   },
@@ -43,6 +64,7 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "zod": "^4.4.3"
   }
 }

@@ -167,6 +167,24 @@ export function renderChatPage(): string {
     .send { height: 36px; min-width: 72px; border: 0; border-radius: 6px; background: #111; color: #fff; font-weight: 600; cursor: pointer; }
     .send:disabled { background: #cfcfcf; cursor: not-allowed; }
     .hint { width: min(820px, calc(100vw - 40px)); margin: 7px auto 0; color: var(--faint); font-size: 12px; }
+    .composer-suggest {
+      width: min(820px, calc(100vw - 40px)); margin: 0 auto; position: relative;
+    }
+    .composer-suggest .suggest-popup {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      background: #fff; border: 1px solid #d4d4d4; border-radius: 8px;
+      box-shadow: 0 18px 44px rgba(0,0,0,.12); padding: 6px; z-index: 5;
+      max-height: 260px; overflow-y: auto; display: none;
+    }
+    .composer-suggest .suggest-popup.open { display: block; }
+    .suggest-item {
+      display: grid; grid-template-columns: max-content 1fr; align-items: baseline;
+      gap: 10px; padding: 8px 10px; border-radius: 6px; cursor: pointer;
+    }
+    .suggest-item:hover, .suggest-item.active { background: #f4f4f5; }
+    .suggest-trigger { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; color: #111; font-weight: 600; }
+    .suggest-title { font-size: 12.5px; color: #6b6b6b; }
+    .suggest-empty { padding: 10px; color: var(--faint); font-size: 12.5px; text-align: center; }
     /* 业务视角（默认）：仿 GPT 段落叙述风格，方案 1 配对（先 summary 后 narrative） */
     .biz { margin: 0 0 12px; color: #6b6b6b; font-size: 14px; line-height: 1.7; }
     .assistant-body.has-answer .biz.collapsed { margin-bottom: 4px; }
@@ -256,6 +274,12 @@ export function renderChatPage(): string {
       animation: bizGlyphPulse 4.16s ease-in-out infinite;
     }
     .biz-narrative:last-child, .biz-summary-line:last-child { margin-bottom: 0; }
+    /* item 状态视觉：运行中转圈、失败红字 */
+    .biz-pair-status-running .biz-summary-line .glyph svg { animation: bizSpin 1.2s linear infinite; }
+    .biz-pair-status-failed .biz-summary-line .glyph { color: #c0392b; opacity: 1; }
+    .biz-pair-status-failed .biz-summary-line .summary-text { color: #c0392b; }
+    .biz-error { color: #c0392b !important; font-size: 12.5px !important; }
+    @keyframes bizSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .biz-fadein { animation: bizFadein .28s ease both; }
     @keyframes bizFadein { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes bizCollapse {
@@ -544,12 +568,13 @@ export function renderChatPage(): string {
         </div>
       </div>
       <div id="messages" class="messages"></div>
+      <div class="composer-suggest"><div id="suggestPopup" class="suggest-popup" role="listbox" aria-label="&#x547D;&#x4EE4;&#x5EFA;&#x8BAE;"></div></div>
       <form id="form" class="composer">
         <div class="composer-inner">
-          <textarea id="input" rows="1" placeholder="&#x8F93;&#x5165;&#x95EE;&#x9898;&#x6216;&#x4E1A;&#x52A1;&#x6307;&#x4EE4;"></textarea>
+          <textarea id="input" rows="1" placeholder="&#x8F93;&#x5165;&#x95EE;&#x9898;&#x6216;&#x4E1A;&#x52A1;&#x6307;&#x4EE4;&#xFF08;&#x6309; / &#x67E5;&#x770B;&#x5FEB;&#x6377;&#x547D;&#x4EE4;&#xFF09;"></textarea>
           <button id="send" class="send" type="submit">&#x53D1;&#x9001;</button>
         </div>
-        <div class="hint">Enter &#x53D1;&#x9001; &#183; Shift+Enter &#x6362;&#x884C;</div>
+        <div class="hint">Enter &#x53D1;&#x9001; &#183; Shift+Enter &#x6362;&#x884C; &#183; / &#x547D;&#x4EE4;&#x8865;&#x5168;</div>
       </form>
     </section>
     <div id="personModalBackdrop" class="person-modal-backdrop" aria-hidden="true">
@@ -601,6 +626,7 @@ export function renderChatPage(): string {
       form: document.querySelector("#form"),
       input: document.querySelector("#input"),
       send: document.querySelector("#send"),
+      suggestPopup: document.querySelector("#suggestPopup"),
       personPicker: document.querySelector("#personPicker"),
       personTrigger: document.querySelector("#personTrigger"),
       personAvatar: document.querySelector("#personAvatar"),
@@ -863,12 +889,28 @@ export function renderChatPage(): string {
     els.input.addEventListener("input", () => {
       els.input.style.height = "auto";
       els.input.style.height = Math.max(36, Math.min(180, els.input.scrollHeight)) + "px";
+      updateCommandSuggest();
     });
     els.input.addEventListener("keydown", (event) => {
+      if (commandSuggest.open) {
+        if (event.key === "ArrowDown") { event.preventDefault(); moveSuggest(1); return; }
+        if (event.key === "ArrowUp") { event.preventDefault(); moveSuggest(-1); return; }
+        if (event.key === "Tab" || (event.key === "Enter" && !event.shiftKey)) {
+          event.preventDefault();
+          acceptSuggest();
+          return;
+        }
+        if (event.key === "Escape") { event.preventDefault(); closeSuggest(); return; }
+      }
       if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
         els.form.requestSubmit();
       }
+    });
+    els.input.addEventListener("blur", () => { setTimeout(closeSuggest, 120); });
+    els.suggestPopup.addEventListener("mousedown", (event) => {
+      // 阻止 textarea blur 抢先关闭弹层
+      event.preventDefault();
     });
     els.form.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -905,8 +947,11 @@ export function renderChatPage(): string {
           })
         });
         await readSse(response, assistantId);
+        // 流正常结束后，把还没收到 end 的 item 视为"未完成"，避免 spinner 残留
+        finalizeRunningItems(getMsg(assistantId), "\\u6d41\\u5df2\\u7ed3\\u675f\\u4f46\\u672a\\u6536\\u5230 end \\u4e8b\\u4ef6");
       } catch (error) {
         const message = error.name === "AbortError" ? STR.requestTimeout : STR.failed + (error.message || "unknown error");
+        finalizeRunningItems(getMsg(assistantId), message);
         patch(assistantId, { text: message, error: true, streaming: false, thinking: false });
         touchActiveSession();
       } finally {
@@ -929,6 +974,108 @@ export function renderChatPage(): string {
       const ctx = data.user_context;
       userContextCache.set(userId, ctx);
       return ctx;
+    }
+    /**
+     * /命令自动补全：当输入以 / 开头且光标在第一行时，弹出基于 /api/commands
+     * 的过滤列表（按权限过滤）。Tab/Enter 接受、Esc 关闭。
+     */
+    const commandSuggest = { open: false, items: [], active: 0, fetched: new Map(), inflight: null };
+    async function loadCommandsForUser(userId) {
+      if (commandSuggest.fetched.has(userId)) return commandSuggest.fetched.get(userId);
+      if (commandSuggest.inflight && commandSuggest.inflight.userId === userId) return commandSuggest.inflight.promise;
+      const promise = (async () => {
+        try {
+          const res = await fetch("/api/commands?user_id=" + encodeURIComponent(userId));
+          if (!res.ok) return [];
+          const data = await res.json();
+          const list = Array.isArray(data.commands) ? data.commands : [];
+          commandSuggest.fetched.set(userId, list);
+          return list;
+        } catch (_err) {
+          return [];
+        }
+      })();
+      commandSuggest.inflight = { userId, promise };
+      const result = await promise;
+      commandSuggest.inflight = null;
+      return result;
+    }
+    function updateCommandSuggest() {
+      const value = els.input.value;
+      // 只在第一行、以 / 开头时触发
+      const firstLine = value.split("\\n")[0] || "";
+      if (!firstLine.startsWith("/")) { closeSuggest(); return; }
+      const query = firstLine.toLowerCase();
+      loadCommandsForUser(currentUserId).then((commands) => {
+        // 比较时机：用户可能已经把 / 删掉了，重新检查
+        const stillFirst = (els.input.value.split("\\n")[0] || "").toLowerCase();
+        if (!stillFirst.startsWith("/")) { closeSuggest(); return; }
+        const matches = commands.filter((cmd) => {
+          const triggers = Array.isArray(cmd.triggers) && cmd.triggers.length ? cmd.triggers : ["/" + cmd.id];
+          return triggers.some((trigger) => trigger.toLowerCase().startsWith(stillFirst));
+        }).slice(0, 8);
+        renderSuggest(matches);
+      });
+    }
+    function renderSuggest(items) {
+      commandSuggest.items = items;
+      commandSuggest.active = 0;
+      if (!items.length) {
+        els.suggestPopup.innerHTML = '<div class="suggest-empty">没有匹配的命令</div>';
+        els.suggestPopup.classList.add("open");
+        commandSuggest.open = true;
+        return;
+      }
+      const html = items.map((cmd, idx) => {
+        const triggers = Array.isArray(cmd.triggers) && cmd.triggers.length ? cmd.triggers : ["/" + cmd.id];
+        const primary = triggers[0];
+        return '<div class="suggest-item' + (idx === 0 ? ' active' : '') + '" role="option" data-idx="' + idx + '">'
+          + '<span class="suggest-trigger">' + escapeHtml(primary) + '</span>'
+          + '<span class="suggest-title">' + escapeHtml(cmd.title || cmd.id) + '</span>'
+          + '</div>';
+      }).join("");
+      els.suggestPopup.innerHTML = html;
+      els.suggestPopup.classList.add("open");
+      commandSuggest.open = true;
+      els.suggestPopup.querySelectorAll(".suggest-item").forEach((node) => {
+        node.addEventListener("click", () => {
+          commandSuggest.active = Number(node.dataset.idx) || 0;
+          acceptSuggest();
+        });
+      });
+    }
+    function moveSuggest(delta) {
+      if (!commandSuggest.items.length) return;
+      const total = commandSuggest.items.length;
+      commandSuggest.active = (commandSuggest.active + delta + total) % total;
+      const nodes = els.suggestPopup.querySelectorAll(".suggest-item");
+      nodes.forEach((node) => node.classList.remove("active"));
+      const target = nodes[commandSuggest.active];
+      if (target) {
+        target.classList.add("active");
+        target.scrollIntoView({ block: "nearest" });
+      }
+    }
+    function acceptSuggest() {
+      const cmd = commandSuggest.items[commandSuggest.active];
+      if (!cmd) { closeSuggest(); return; }
+      const triggers = Array.isArray(cmd.triggers) && cmd.triggers.length ? cmd.triggers : ["/" + cmd.id];
+      els.input.value = triggers[0];
+      els.input.focus();
+      els.input.style.height = "auto";
+      els.input.style.height = Math.max(36, Math.min(180, els.input.scrollHeight)) + "px";
+      closeSuggest();
+    }
+    function closeSuggest() {
+      if (!commandSuggest.open) return;
+      commandSuggest.open = false;
+      commandSuggest.items = [];
+      commandSuggest.active = 0;
+      els.suggestPopup.classList.remove("open");
+      els.suggestPopup.innerHTML = "";
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (ch) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
     }
     async function readSse(response, assistantId) {
       if (!response.ok || !response.body) throw new Error("stream failed");
@@ -1228,12 +1375,17 @@ export function renderChatPage(): string {
       const activeIndex = !msg.failed && (msg.streaming || msg.thinking) ? pairs.length - 1 : -1;
       pairs.forEach((pair, index) => {
         const item = document.createElement("div");
-        item.className = "biz-pair biz-fadein" + (index === activeIndex ? " active" : "");
-        if (pair.summary) {
+        const statusClass = pair.status ? " biz-pair-status-" + pair.status : "";
+        const isActive = index === activeIndex || pair.status === "running";
+        item.className = "biz-pair biz-fadein" + (isActive ? " active" : "") + statusClass;
+        if (pair.summary || pair.status === "running") {
           const s = document.createElement("p");
           s.className = "biz-summary-line";
-          s.innerHTML = '<span class="glyph"><i data-lucide="' + (pair.icon || "circle") + '"></i></span><span class="summary-text"></span>';
-          s.querySelector(".summary-text").textContent = pair.summary;
+          // 运行中的卡片用 loader 图标，失败的用 alert-circle，完成的用原图标
+          const icon = pair.status === "running" ? "loader" : (pair.status === "failed" ? "alert-circle" : (pair.icon || "circle"));
+          s.innerHTML = '<span class="glyph"><i data-lucide="' + icon + '"></i></span><span class="summary-text"></span>';
+          const summaryText = pair.status === "running" && !pair.summary ? "\\u8c03\\u7528\\u5de5\\u5177\\u4e2d\\u2026" : (pair.summary || "");
+          s.querySelector(".summary-text").textContent = summaryText;
           item.appendChild(s);
         }
         if (pair.narrative) {
@@ -1241,6 +1393,12 @@ export function renderChatPage(): string {
           n.className = "biz-narrative";
           n.textContent = pair.narrative;
           item.appendChild(n);
+        }
+        if (pair.errorMessage) {
+          const e = document.createElement("p");
+          e.className = "biz-narrative biz-error";
+          e.textContent = pair.errorMessage;
+          item.appendChild(e);
         }
         body.appendChild(item);
       });
@@ -2138,7 +2296,16 @@ export function renderChatPage(): string {
       if (!msg || !ev) return;
       if (msg.processFinalized) return;
       msg.bizPairs = msg.bizPairs || [];
+      msg.bizPairsByItemId = msg.bizPairsByItemId || Object.create(null);
+      // 优先消费强类型 agentic_item 事件：按 itemId 合并 start/end，避免同一次工具
+      // 调用渲染成两张卡片。旧的 agentic_tool 事件保留作 fallback。
+      if (ev.kind === "agentic_item" && ev.kind === "agentic_item" && ev.stream === "tool" && ev.itemId) {
+        applyToolItemEvent(msg, ev);
+        return;
+      }
       if (ev.kind === "agentic_tool" && ev.type === "tool_call") {
+        // 后端已携带 item_id 的 tool_call，对应的 item start/end 已经处理过了，跳过避免重复。
+        if (ev.item_id && msg.bizPairsByItemId[ev.item_id]) return;
         const pair = toolEventToBizPair(ev);
         if (pair) msg.bizPairs.push(pair);
       } else if (ev.kind === "agentic_lifecycle") {
@@ -2147,6 +2314,80 @@ export function renderChatPage(): string {
           msg.failedReason = ev.reason || ev.error || ev.event;
         }
       }
+    }
+    // 单个 item 的 end 丢包保护时长：60s。超过则标记为失败而不是永久 spinner。
+    const ITEM_WATCHDOG_MS = 60000;
+    function applyToolItemEvent(msg, ev) {
+      const itemId = ev.itemId;
+      const existing = msg.bizPairsByItemId[itemId];
+      if (ev.phase === "start") {
+        if (existing) return; // 重复 start，忽略
+        // 用 args/tool 名构造一张"运行中"卡片，先占位，等 end 再覆盖
+        const pair = toolItemToBizPair(ev) || { icon: "loader", summary: "\\u8c03\\u7528\\u5de5\\u5177\\u4e2d", narrative: "" };
+        pair.itemId = itemId;
+        pair.status = "running";
+        pair.watchdogTimer = window.setTimeout(function() {
+          if (pair.status === "running") {
+            pair.status = "failed";
+            pair.errorMessage = "\\u54cd\\u5e94\\u8d85\\u65f6\\uff08\\u672a\\u6536\\u5230 end \\u4e8b\\u4ef6\\uff09";
+            render();
+          }
+        }, ITEM_WATCHDOG_MS);
+        msg.bizPairs.push(pair);
+        msg.bizPairsByItemId[itemId] = pair;
+        return;
+      }
+      if (ev.phase === "end") {
+        // end 阶段：清掉 watchdog；合并到已有 pair；如果没有 start 过（理论上不应该），就 push 一张
+        if (existing && existing.watchdogTimer) {
+          window.clearTimeout(existing.watchdogTimer);
+          existing.watchdogTimer = null;
+        }
+        const updated = toolItemToBizPair(ev) || existing || { icon: "circle", summary: "", narrative: "" };
+        if (existing) {
+          existing.icon = updated.icon || existing.icon;
+          existing.summary = updated.summary || existing.summary;
+          existing.narrative = updated.narrative || existing.narrative;
+          existing.status = ev.status || "completed";
+          if (ev.error) existing.errorMessage = ev.error.message || ev.error.code;
+        } else {
+          updated.itemId = itemId;
+          updated.status = ev.status || "completed";
+          if (ev.error) updated.errorMessage = ev.error.message || ev.error.code;
+          msg.bizPairs.push(updated);
+          msg.bizPairsByItemId[itemId] = updated;
+        }
+      }
+    }
+    /**
+     * 当 SSE 流结束/中断时，把所有还在 running 的 item 强制收尾。
+     * 防御场景：后端 emit end 之前进程崩溃 / 网络断开 / SSE 提前 close。
+     * 没有这层兜底，UI 会卡在 spinner 永不结束。
+     */
+    function finalizeRunningItems(msg, reason) {
+      if (!msg || !msg.bizPairs) return;
+      for (const pair of msg.bizPairs) {
+        if (pair.status !== "running") continue;
+        if (pair.watchdogTimer) {
+          window.clearTimeout(pair.watchdogTimer);
+          pair.watchdogTimer = null;
+        }
+        pair.status = "failed";
+        pair.errorMessage = reason || "\\u8fde\\u63a5\\u4e2d\\u65ad\\uff0c\\u672a\\u6536\\u5230\\u5b8c\\u6574\\u54cd\\u5e94";
+      }
+    }
+    // 把 agentic_item 翻译成业务 bizPair（与 toolEventToBizPair 等价但读 item 字段）
+    function toolItemToBizPair(ev) {
+      const tool = ev.title || "";
+      const meta = ev.meta || {};
+      // 复用旧的字典：构造一个伪 ev 给 toolEventToBizPair
+      return toolEventToBizPair({
+        tool: tool,
+        observation_summary: ev.error
+          ? { ok: false, message: ev.error.message }
+          : (ev.phase === "end" ? { ok: ev.status !== "failed" } : null),
+        args: meta.args
+      });
     }
     // 把 agentic-handler 的 tool_call 事件翻译成业务视角的 {icon, summary, narrative}
     // 不改 manifest，先在前端做映射；后续 A 阶段再下放到 manifest.display

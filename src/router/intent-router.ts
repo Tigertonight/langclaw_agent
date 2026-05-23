@@ -1,6 +1,7 @@
 import { appendFileSync, mkdirSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { buildSystemPrompt, buildUserPrompt } from "./router-prompt.js";
+import { CommandRegistry } from "./command-registry.js";
 import { EXECUTION_CLASSES, executionClassForHandler, normalizeExecutionClass } from "./execution-class.js";
 import { applyPromptCache } from "../llm/prompt-cache.js";
 import { DeterministicRuleRegistry } from "./deterministic-rule-registry.js";
@@ -53,6 +54,11 @@ export class IntentRouter {
   private readonly registry: IntentRegistry;
   private readonly timeoutMs: number;
   private readonly deterministicRules: DeterministicRuleRegistry;
+  /**
+   * 前置命令注册表。默认空，由外部通过 router.commands.register(...) 注入。
+   * 命中即返回 Route，跳过 deterministic_rule 与 LLM。
+   */
+  readonly commands: CommandRegistry;
 
   /**
    * @param {{
@@ -73,6 +79,7 @@ export class IntentRouter {
       registry,
       createRoute: (intentCode, params, reasoning) => this.createDeterministicRoute(intentCode, params, reasoning)
     });
+    this.commands = new CommandRegistry();
   }
 
   /**
@@ -97,6 +104,21 @@ export class IntentRouter {
         latency_ms: Date.now() - startedAt
       });
       return localControlled;
+    }
+    const command = this.tryRegisteredCommand({ message });
+    if (command) {
+      this.appendLog({
+        ts: new Date().toISOString(),
+        message,
+        intent_code: command.route.intent_code,
+        execution_class: command.route.execution_class,
+        handler_type: command.route.handler_type,
+        confidence: command.route.confidence,
+        source: command.route.source,
+        command_id: command.commandId,
+        latency_ms: Date.now() - startedAt
+      });
+      return command.route;
     }
     const deterministic = this.tryShortCorrectionRoute({ message, session_state })
       ?? this.tryDeterministicControlledRoute({ message });
@@ -203,6 +225,18 @@ export class IntentRouter {
   /** @param {{ message?: string }} input */
   tryDeterministicControlledRoute({ message }: { message?: string }): Route | null {
     return this.deterministicRules.match({ message });
+  }
+
+  /**
+   * 尝试外部注册的前置命令（registerCommand 风格）。命中即生成 Route，跳过 deterministic_rule 与 LLM。
+   * 默认无注册项，纯旁路。返回 null 表示未命中。
+   */
+  tryRegisteredCommand({ message }: { message?: string }): { route: Route; commandId: string } | null {
+    const text = String(message ?? "").trim();
+    if (!text) return null;
+    return this.commands.tryMatch({ message: text }, (intentCode, params, reasoning, source) =>
+      this.createDeterministicRoute(intentCode, params, reasoning, source ?? "registered_command")
+    );
   }
 
   /** @param {{ message?: string, session_state?: import("../types/agent-contracts.js").SessionState }} [input] */

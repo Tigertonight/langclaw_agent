@@ -169,6 +169,10 @@ export interface ToolMetadata {
   steps?: string[];
   /** 单工具执行超时（ms），不设则用 ToolRegistry 默认值。 */
   timeout_ms?: number;
+  /** 风险等级。常见取值: read / write / destructive / sensitive_read / sandboxed_compute。 */
+  risk_level?: string;
+  /** 是否需要用户二次确认 */
+  requires_confirmation?: boolean;
   [key: string]: unknown;
 }
 
@@ -185,6 +189,12 @@ export interface ToolDefinition {
 
 export interface ToolResult {
   ok?: boolean;
+  /**
+   * 显式失败标记。等价语义于 ok === false，但保留出来是为了与 LLM 的
+   * function-calling 协议（如 Anthropic tool_result 的 is_error）对齐，
+   * 让模型在 transcript 里能直接读到"工具失败"信号并自行决策。
+   */
+  isError?: boolean;
   tool?: string;
   error?: string;
   code?: string;
@@ -208,6 +218,12 @@ export interface ToolExecutionContext {
   intent?: string;
   scenario?: string;
   step?: string;
+  /**
+   * 由 ToolRegistry.execute 注入的取消信号。工具实现应在 fetch / db 查询等
+   * I/O 处把它透传下去（fetch 第二参 { signal }，pg 用 query.abort 等），
+   * 这样 timeout / 用户取消 / 上层主动 abort 时能真正释放资源。
+   * 旧工具忽略 signal 也不会出错，只是无法真正中断。
+   */
   signal?: AbortSignal;
   [key: string]: unknown;
 }

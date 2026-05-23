@@ -1,10 +1,13 @@
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
-import { createApp } from "../app.js";
+import { createHash } from "node:crypto";
+import { attachMcpServers, createApp } from "../app.js";
 import { createA2UIModule } from "../a2ui/module.js";
 import { A2UIBadRequestError } from "../a2ui/dto.js";
 import { loadJson } from "../data/load-json.js";
+import { resolveUserWorkspace, type WorkspaceContext } from "../runtime/workspace-context.js";
 import { renderChatPage } from "./chat-page.js";
 import { basicLiveness, checkReadiness } from "./health.js";
+import { handlerManifestRegistry } from "../handlers/handler-manifest.js";
 import { TokenAuthenticator, AuthError, type AuthContext } from "../security/auth.js";
 import { RateLimiter, RateLimitError, readClientIp } from "../security/rate-limiter.js";
 import { sharedMetrics, logEvent, newTraceId, startRequest, type RequestContext } from "../security/observability.js";
@@ -38,7 +41,9 @@ interface SkillListItem extends JsonObject {
 
 type RequestBody = Record<string, unknown>;
 
-const { agent, queryEngine, skillRegistry, skillLoader, userContextResolver, toolRegistry } = createApp();
+const app = createApp();
+const mcp = await attachMcpServers(app.toolRegistry);
+const { agent, queryEngine, skillRegistry, skillLoader, userContextResolver, toolRegistry, intentRegistry, intentRouter, metricsCollector, cronRunner } = app;
 const { chatController: a2uiChatController } = createA2UIModule({
   queryEngine,
   streamAgent: agent,
@@ -68,6 +73,7 @@ const PROTECTED_PATHS = new Set([
   "/api/a2ui/action",
   "/api/a2ui/history"
 ]);
+const cronHeartbeat = startCronHeartbeat();
 
 const server = http.createServer(async (req: IncomingMessage, res: ServerResponse) => {
   setCors(res);
@@ -144,9 +150,14 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
   }
 
   if (req.method === "GET" && pathname === "/api/metrics") {
+    const range = url.searchParams.get("range");
+    const windowMs = parseRangeMs(range);
+    const end = Date.now();
+    const start = windowMs === null ? undefined : end - windowMs;
     sendJson(res, 200, {
       metrics: metrics.snapshot(),
-      rate_limiter: rateLimiter.snapshot()
+      rate_limiter: rateLimiter.snapshot(),
+      runtime: metricsCollector.aggregate({ windowStart: start, windowEnd: end })
     });
     return;
   }
@@ -205,6 +216,100 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
       sendJson(res, result.ok === false ? 400 : 200, { ...result, trace_id: ctx.traceId });
     } catch (error) {
       handleError(error, res, ctx, { path: pathname });
+    }
+    return;
+  }
+
+  if (req.method === "GET" && pathname === "/api/handlers") {
+    try {
+      const auth = await authorizeHandlersInspect(req, url);
+      if (!auth.ok) {
+        sendJson(res, auth.status, { error: auth.code, message: auth.message });
+        return;
+      }
+      const handlers = handlerManifestRegistry.list();
+      const intents = intentRegistry.listCodes().map((manifest) => ({
+        intent_code: manifest.intent_code,
+        handler_type: manifest.handler_type,
+        description: manifest.description ?? null
+      }));
+      const intentsByHandler = new Map<string, string[]>();
+      for (const item of intents) {
+        const list = intentsByHandler.get(item.handler_type) ?? [];
+        list.push(item.intent_code);
+        intentsByHandler.set(item.handler_type, list);
+      }
+      const payload = {
+        handlers: handlers.map((manifest) => ({
+          ...manifest,
+          bound_intent_codes: intentsByHandler.get(manifest.handler_type) ?? []
+        })),
+        intent_codes: intents,
+        commands: intentRouter.commands.list().map((command) => ({ id: command.id }))
+      };
+      const body = JSON.stringify(payload, null, 2);
+      const etag = `"W/${createHash("sha1").update(body).digest("hex").slice(0, 16)}"`;
+      const ifNoneMatch = req.headers["if-none-match"];
+      if (typeof ifNoneMatch === "string" && ifNoneMatch === etag) {
+        res.writeHead(304, { ETag: etag });
+        res.end();
+        return;
+      }
+      res.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        ETag: etag,
+        "Cache-Control": "private, max-age=60"
+      });
+      res.end(body);
+    } catch (error) {
+      sendJson(res, 500, {
+        error: "internal_error",
+        message: error instanceof Error ? error.message : "unknown error"
+      });
+    }
+    return;
+  }
+
+  if (req.method === "GET" && pathname === "/api/commands") {
+    try {
+      // 这个接口面向"前端聊天框 / 输入提示"，需要认到具体用户来过滤命令。
+      // 鉴权：必须带 user_id（X-User-Id 或 ?user_id=），与 /api/handlers 分开
+      // ——/api/handlers 是运维接口，commands 是用户接口。
+      const userId = (typeof req.headers["x-user-id"] === "string" ? req.headers["x-user-id"] : url.searchParams.get("user_id")) || "";
+      if (!userId) {
+        sendJson(res, 401, { error: "unauthorized", message: "请提供 X-User-Id 或 ?user_id=" });
+        return;
+      }
+      let user;
+      try {
+        user = await userContextResolver.resolve({ userId });
+      } catch (error) {
+        sendJson(res, 401, { error: "unauthorized", message: error instanceof Error ? error.message : "unknown user" });
+        return;
+      }
+      const userPermissions = new Set(Array.isArray(user.permissions) ? user.permissions : []);
+      const commands = intentRouter.commands.list();
+      const visible: Array<JsonObject> = [];
+      for (const command of commands) {
+        const intentCode = command.intentCode;
+        if (intentCode) {
+          const manifest = intentRegistry.getCode(intentCode);
+          const required = manifest?.required_permissions ?? [];
+          if (required.length && !required.every((perm) => userPermissions.has(perm))) continue;
+        }
+        visible.push({
+          id: command.id,
+          intent_code: intentCode ?? null,
+          title: command.title ?? command.id,
+          triggers: command.triggers ?? []
+        });
+      }
+      sendJson(res, 200, { commands: visible, user_id: userId });
+    } catch (error) {
+      sendJson(res, 500, {
+        error: "internal_error",
+        message: error instanceof Error ? error.message : "unknown error"
+      });
     }
     return;
   }
@@ -375,6 +480,10 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
 
 server.listen(port, host, () => {
   console.log(`Enterprise Agent MVP listening on http://${host}:${port}`);
+  const connectedMcp = mcp.statuses.filter((status) => status.connected).length;
+  if (mcp.statuses.length) {
+    console.log(`MCP servers: ${connectedMcp}/${mcp.statuses.length} connected`);
+  }
 });
 
 let shuttingDown = false;
@@ -383,6 +492,8 @@ async function gracefulShutdown(signal: string): Promise<void> {
   shuttingDown = true;
   draining = true;
   logEvent("info", "shutdown_started", { signal, in_flight: inFlight.size });
+  if (cronHeartbeat) clearInterval(cronHeartbeat);
+  await mcp.registry.stop().catch(() => undefined);
 
   // 1. 停止接收新连接（已建立的请求继续跑直到完成或超时）
   server.close(() => {
@@ -438,6 +549,46 @@ function readPositiveNumberEnv(name: string, fallback: number): number {
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
+function startCronHeartbeat(): NodeJS.Timeout | null {
+  if (process.env.CRON_HEARTBEAT_DISABLED === "true") return null;
+  const intervalMs = readPositiveNumberEnv("CRON_HEARTBEAT_MS", 60_000);
+  const tick = async () => {
+    const workspaces = await cronWorkspaces();
+    for (const workspace of workspaces) {
+      try {
+        await cronRunner.runDue(workspace);
+      } catch (error) {
+        console.warn(`[cron] runDue failed for ${workspace.user_id}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  };
+  const timer = setInterval(() => { void tick(); }, intervalMs);
+  timer.unref();
+  return timer;
+}
+
+async function cronWorkspaces(): Promise<WorkspaceContext[]> {
+  try {
+    const users = await loadJson<WecomUserRecord[]>("data/users.json");
+    return users
+      .filter((user) => typeof user.id === "string" && user.id.length > 0)
+      .map((user) => resolveUserWorkspace(user.id as string));
+  } catch (error) {
+    console.warn(`[cron] failed to load users: ${error instanceof Error ? error.message : String(error)}`);
+    return [];
+  }
+}
+
+async function shutdown(signal: string): Promise<void> {
+  if (cronHeartbeat) clearInterval(cronHeartbeat);
+  await mcp.registry.stop().catch(() => undefined);
+  server.close(() => {
+    console.log(`Enterprise Agent MVP stopped (${signal})`);
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(0), 3000).unref();
+}
+
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, code: string): Promise<T> {
   if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) return promise;
   let timer: NodeJS.Timeout;
@@ -460,6 +611,20 @@ function readLastEventId(req: IncomingMessage): string {
   if (typeof value === "string") return value;
   if (Array.isArray(value) && value.length) return value[0];
   return "";
+}
+
+/**
+ * 解析 ?range=1h|6h|30m，无值返回 null 表示用 collector 默认窗口。
+ */
+function parseRangeMs(range: string | null): number | null {
+  if (!range) return null;
+  const match = /^(\d+)(ms|s|m|h|d)$/.exec(range.trim());
+  if (!match) return null;
+  const value = Number(match[1]);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  const unit = match[2];
+  const factor = unit === "ms" ? 1 : unit === "s" ? 1000 : unit === "m" ? 60_000 : unit === "h" ? 3_600_000 : 86_400_000;
+  return value * factor;
 }
 
 function isBadRequestError(error: unknown): boolean {
@@ -527,4 +692,35 @@ function handleError(error: unknown, res: ServerResponse, ctx: RequestContext, f
   }
   logEvent("error", "request_failed", { trace_id: ctx.traceId, ...fields, error: error instanceof Error ? error.message : String(error) });
   sendJson(res, 500, { error: "internal_error", message: error instanceof Error ? error.message : "unknown error", trace_id: ctx.traceId });
+}
+
+interface AuthorizeResult {
+  ok: boolean;
+  status: number;
+  code?: string;
+  message?: string;
+}
+
+/**
+ * 鉴权策略（生产可用，三档）：
+ *   1. HANDLERS_API_PUBLIC=true → 任何人都能读（仅供本地调试）
+ *   2. HANDLERS_API_USERS 包含 user_id（逗号分隔）→ 直接放行
+ *   3. user.permissions 含 "runtime:inspect" → 放行
+ * 都不命中 → 401 / 403。
+ */
+async function authorizeHandlersInspect(req: IncomingMessage, url: URL): Promise<AuthorizeResult> {
+  if (process.env.HANDLERS_API_PUBLIC === "true") return { ok: true, status: 200 };
+  const userId = (typeof req.headers["x-user-id"] === "string" ? req.headers["x-user-id"] : url.searchParams.get("user_id")) || "";
+  if (!userId) return { ok: false, status: 401, code: "unauthorized", message: "请提供 X-User-Id 或 ?user_id=" };
+  const allowlist = (process.env.HANDLERS_API_USERS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  if (allowlist.includes(userId)) return { ok: true, status: 200 };
+  try {
+    const user = await userContextResolver.resolve({ userId });
+    if (Array.isArray(user.permissions) && user.permissions.includes("runtime:inspect")) {
+      return { ok: true, status: 200 };
+    }
+    return { ok: false, status: 403, code: "forbidden", message: `用户 ${userId} 缺少 runtime:inspect 权限。` };
+  } catch (error) {
+    return { ok: false, status: 401, code: "unauthorized", message: error instanceof Error ? error.message : "unknown user" };
+  }
 }

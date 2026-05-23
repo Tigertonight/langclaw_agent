@@ -1,0 +1,13 @@
+{
+  "$schema": "tool execution policy: per-tool timeout_ms / retries / retry_backoff_ms. only `timeout` and `network` errors retry. metadata.timeout_ms wins over this file; this file wins over TOOL_EXECUTION_TIMEOUT_MS env.",
+  "defaults": {
+    "timeout_ms": 20000,
+    "retries": 0,
+    "retry_backoff_ms": 200
+  },
+  "tools": {
+    "rag.search_knowledge": { "timeout_ms": 8000, "retries": 1 },
+    "rag.fetch_document": { "timeout_ms": 12000, "retries": 1 },
+    "wecom.lookup_user": { "timeout_ms": 5000, "retries": 2, "retry_backoff_ms": 300 }
+  }
+}
