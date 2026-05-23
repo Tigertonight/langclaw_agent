@@ -92,11 +92,13 @@ export class BusinessQueryEngine {
       sections: assembled.sections.map((section) => ({
         name: section.name,
         chars: section.chars,
-        priority: section.priority
+        priority: section.priority,
+        stage: section.stage
       })),
       dropped: assembled.dropped,
       estimated_tokens: assembled.estimated_tokens,
-      prompt_authority: assembled.prompt_authority
+      prompt_authority: assembled.prompt_authority,
+      stages: assembled.stages
     });
     const output = await this.agent.run({
       userId: input.userId,
