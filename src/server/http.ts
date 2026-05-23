@@ -4,6 +4,7 @@ import { createA2UIModule } from "../a2ui/module.js";
 import { A2UIBadRequestError } from "../a2ui/dto.js";
 import { loadJson } from "../data/load-json.js";
 import { renderChatPage } from "./chat-page.js";
+import { handlerManifestRegistry } from "../handlers/handler-manifest.js";
 import type { JsonObject } from "../types/agent-contracts.js";
 
 interface WecomUserRecord extends JsonObject {
@@ -34,7 +35,7 @@ interface SkillListItem extends JsonObject {
 
 type RequestBody = Record<string, unknown>;
 
-const { agent, queryEngine, skillRegistry, skillLoader, userContextResolver, toolRegistry } = createApp();
+const { agent, queryEngine, skillRegistry, skillLoader, userContextResolver, toolRegistry, intentRegistry, intentRouter } = createApp();
 const { chatController: a2uiChatController } = createA2UIModule({
   queryEngine,
   streamAgent: agent,
@@ -115,6 +116,37 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
     } catch (error) {
       sendJson(res, isBadRequestError(error) ? 400 : 500, {
         error: isBadRequestError(error) ? "bad_request" : "a2ui_action_failed",
+        message: error instanceof Error ? error.message : "unknown error"
+      });
+    }
+    return;
+  }
+
+  if (req.method === "GET" && pathname === "/api/handlers") {
+    try {
+      const handlers = handlerManifestRegistry.list();
+      const intents = intentRegistry.listCodes().map((manifest) => ({
+        intent_code: manifest.intent_code,
+        handler_type: manifest.handler_type,
+        description: manifest.description ?? null
+      }));
+      const intentsByHandler = new Map<string, string[]>();
+      for (const item of intents) {
+        const list = intentsByHandler.get(item.handler_type) ?? [];
+        list.push(item.intent_code);
+        intentsByHandler.set(item.handler_type, list);
+      }
+      sendJson(res, 200, {
+        handlers: handlers.map((manifest) => ({
+          ...manifest,
+          bound_intent_codes: intentsByHandler.get(manifest.handler_type) ?? []
+        })),
+        intent_codes: intents,
+        commands: intentRouter.commands.list().map((command) => ({ id: command.id }))
+      });
+    } catch (error) {
+      sendJson(res, 500, {
+        error: "internal_error",
         message: error instanceof Error ? error.message : "unknown error"
       });
     }
