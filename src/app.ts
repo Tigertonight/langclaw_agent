@@ -16,6 +16,7 @@ import { createEvolutionIterationPlugin } from "./evolution/iteration-plugin.js"
 import { createEvolutionTools } from "./evolution/tools.js";
 import { createMemoryTools } from "./memory/tools.js";
 import { createTaskTools } from "./tasks/tools.js";
+import { DEFAULT_COMMANDS } from "./router/default-commands.js";
 import { IntentRegistry } from "./router/intent-registry.js";
 import { IntentRouter } from "./router/intent-router.js";
 import { IntentQueryHandler } from "./handlers/intent-query-handler.js";
@@ -123,6 +124,7 @@ export function createApp() {
   });
   const intentRegistry = new IntentRegistry({ dir: "data/intent-codes" });
   const intentRouter = new IntentRouter({ llm, registry: intentRegistry });
+  intentRouter.commands.registerAll(DEFAULT_COMMANDS);
   const intentQueryHandler = new IntentQueryHandler({ llm, toolRegistry, registry: intentRegistry });
   const chitchatHandler = new ChitchatHandler({ llm });
   // 给 agentic 单独的 skill 视图（注入式包），与 workflow 的 SkillRegistryStore 解耦。
