@@ -1,6 +1,6 @@
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
-import { createApp } from "./app.js";
+import { attachMcpServers, createApp } from "./app.js";
 
 interface CliRunResult {
   answer?: string;
@@ -10,7 +10,9 @@ interface CliRunResult {
   context_budget?: unknown;
 }
 
-const { queryEngine } = createApp();
+const app = createApp();
+const mcp = await attachMcpServers(app.toolRegistry);
+const { queryEngine } = app;
 const [, , userArg, ...messageParts] = process.argv;
 
 if (userArg && messageParts.length > 0) {
@@ -21,6 +23,7 @@ if (userArg && messageParts.length > 0) {
     debug: true
   });
   printResult(result as CliRunResult);
+  await mcp.registry.stop();
   process.exit(0);
 }
 
@@ -36,6 +39,7 @@ while (true) {
   printResult(result as CliRunResult);
 }
 rl.close();
+await mcp.registry.stop();
 
 function printResult(result: CliRunResult): void {
   output.write(`\n${result.answer}\n`);
