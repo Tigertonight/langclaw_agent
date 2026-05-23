@@ -126,18 +126,21 @@ export class ToolRegistry {
       else upstream.addEventListener("abort", onUpstreamAbort, { once: true });
     }
     const childContext: ToolExecutionContext = { ...(context ?? {}), signal: controller.signal };
+    const startedAt = Date.now();
     try {
-      return await runWithTimeout(tool.execute(call.args ?? {}, childContext), timeoutMs, call.name, controller);
+      const result = await runWithTimeout(tool.execute(call.args ?? {}, childContext), timeoutMs, call.name, controller);
+      await this.emitGovernance(call, context, tool, "completed", undefined, undefined, undefined, Date.now() - startedAt);
+      return result;
     } catch (error) {
       const folded = buildToolErrorResult(call.name, error);
-      await this.emitGovernance(call, context, tool, "execution_failed", folded.message, folded.code);
+      await this.emitGovernance(call, context, tool, "execution_failed", folded.message, folded.code, undefined, Date.now() - startedAt);
       return folded;
     } finally {
       if (upstream) upstream.removeEventListener("abort", onUpstreamAbort);
     }
   }
 
-  private async emitGovernance(call: ToolCall, context: ToolExecutionContext | undefined, tool: ToolDefinition, decision: string, message?: string, code?: string, pendingActionId?: string): Promise<void> {
+  private async emitGovernance(call: ToolCall, context: ToolExecutionContext | undefined, tool: ToolDefinition, decision: string, message?: string, code?: string, pendingActionId?: string, latencyMs?: number): Promise<void> {
     const userId = context?.user?.id;
     if (!this.hooks || !userId) return;
     await this.hooks.emit("tool_result", {
@@ -149,6 +152,8 @@ export class ToolRegistry {
       code,
       message,
       pending_action_id: pendingActionId,
+      latency_ms: typeof latencyMs === "number" ? latencyMs : undefined,
+      at: new Date().toISOString(),
       risk_level: typeof tool.metadata?.risk_level === "string" ? tool.metadata.risk_level : "read",
       requires_confirmation: tool.metadata?.requires_confirmation === true
     });

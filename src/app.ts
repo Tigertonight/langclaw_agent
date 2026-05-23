@@ -32,6 +32,7 @@ import { RuntimeHooks } from "./runtime/hooks.js";
 import { createMaintenanceSchedulerPlugin } from "./runtime/maintenance-scheduler-plugin.js";
 import { createTranscriptPlugin } from "./runtime/transcript-plugin.js";
 import { createPromptAuthorityAlertPlugin } from "./runtime/prompt-authority-alert-plugin.js";
+import { MetricsCollector, createMetricsPlugin } from "./runtime/metrics-collector.js";
 import { FileSystemSkillLoader } from "./runtime/skill-loader.js";
 import { TranscriptStore } from "./transcript/transcript-store.js";
 import { createTaskContinuityPlugin } from "./tasks/task-continuity-plugin.js";
@@ -74,6 +75,8 @@ export function createApp() {
   const transcriptStore = new TranscriptStore();
   hooks.use(createTranscriptPlugin({ transcriptStore }));
   hooks.use(createPromptAuthorityAlertPlugin({ transcriptStore }));
+  const metricsCollector = new MetricsCollector();
+  hooks.use(createMetricsPlugin(metricsCollector));
   hooks.use(createEvolutionSignalPlugin({ evolutionRuntime }));
   hooks.use(createEvolutionIterationPlugin());
   hooks.use(createTaskContinuityPlugin());
@@ -162,7 +165,7 @@ export function createApp() {
     enterpriseContextProvider,
     hooks
   });
-  return { agent, queryEngine, llm, integrations, documentSource, knowledgeBase, toolRegistry, primitiveRegistry, skillRegistry, skillLoader, skillRuntime, agenticSkillView, enterpriseContextProvider, sessionStore, scenarioRouter, userContextResolver, intentRegistry, intentRouter, intentQueryHandler, chitchatHandler, agenticHandler, evolutionRuntime, transcriptStore, pendingActionStore, hooks };
+  return { agent, queryEngine, llm, integrations, documentSource, knowledgeBase, toolRegistry, primitiveRegistry, skillRegistry, skillLoader, skillRuntime, agenticSkillView, enterpriseContextProvider, sessionStore, scenarioRouter, userContextResolver, intentRegistry, intentRouter, intentQueryHandler, chitchatHandler, agenticHandler, evolutionRuntime, transcriptStore, pendingActionStore, hooks, metricsCollector };
 }
 
 function normalizeAppJson(value: unknown): JsonValue {
