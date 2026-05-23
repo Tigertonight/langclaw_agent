@@ -14,6 +14,7 @@
     "router:governance": "tsc -p tsconfig.build.json && node dist/eval/router-governance.js",
     "router:commands": "tsc -p tsconfig.build.json && node dist/eval/router-commands.js",
     "tool:timeout": "tsc -p tsconfig.build.json && node dist/eval/tool-timeout.js",
+    "tool:abort": "tsc -p tsconfig.build.json && node dist/eval/tool-abort.js",
     "prompt:authority-alert": "tsc -p tsconfig.build.json && node dist/eval/prompt-authority-alert.js",
     "context:ingest-hook": "tsc -p tsconfig.build.json && node dist/eval/context-ingest-hook.js",
     "arch:smoke": "tsc -p tsconfig.build.json && node dist/eval/architecture-smoke.js",

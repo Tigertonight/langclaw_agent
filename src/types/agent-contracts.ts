@@ -167,6 +167,12 @@ export interface ToolMetadata {
   intents?: string[];
   scenarios?: string[];
   steps?: string[];
+  /** 单个工具的硬超时（毫秒）。优先级高于 TOOL_EXECUTION_TIMEOUT_MS env。 */
+  timeout_ms?: number;
+  /** 风险等级。常见取值: read / write / destructive / sensitive_read / sandboxed_compute。 */
+  risk_level?: string;
+  /** 是否需要用户二次确认 */
+  requires_confirmation?: boolean;
   [key: string]: unknown;
 }
 
@@ -209,6 +215,13 @@ export interface ToolExecutionContext {
   intent?: string;
   scenario?: string;
   step?: string;
+  /**
+   * 由 ToolRegistry.execute 注入的取消信号。工具实现应在 fetch / db 查询等
+   * I/O 处把它透传下去（fetch 第二参 { signal }，pg 用 query.abort 等），
+   * 这样 timeout / 用户取消 / 上层主动 abort 时能真正释放资源。
+   * 旧工具忽略 signal 也不会出错，只是无法真正中断。
+   */
+  signal?: AbortSignal;
   [key: string]: unknown;
 }
 
