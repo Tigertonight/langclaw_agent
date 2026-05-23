@@ -22,6 +22,7 @@
     "context:ingest-hook": "tsc -p tsconfig.build.json && node dist/eval/context-ingest-hook.js",
     "ingest:failure": "tsc -p tsconfig.build.json && node dist/eval/ingest-failure.js",
     "handlers:auth": "tsc -p tsconfig.build.json && node dist/eval/handlers-auth.js",
+    "commands:api": "tsc -p tsconfig.build.json && node dist/eval/commands-api.js",
     "item:watchdog": "tsc -p tsconfig.build.json && node dist/eval/item-watchdog.js",
     "metrics:smoke": "tsc -p tsconfig.build.json && node dist/eval/metrics-collector.js",
     "arch:smoke": "tsc -p tsconfig.build.json && node dist/eval/architecture-smoke.js",

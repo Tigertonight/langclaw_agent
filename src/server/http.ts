@@ -173,6 +173,50 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
     return;
   }
 
+  if (req.method === "GET" && pathname === "/api/commands") {
+    try {
+      // 这个接口面向"前端聊天框 / 输入提示"，需要认到具体用户来过滤命令。
+      // 鉴权：必须带 user_id（X-User-Id 或 ?user_id=），与 /api/handlers 分开
+      // ——/api/handlers 是运维接口，commands 是用户接口。
+      const userId = (typeof req.headers["x-user-id"] === "string" ? req.headers["x-user-id"] : url.searchParams.get("user_id")) || "";
+      if (!userId) {
+        sendJson(res, 401, { error: "unauthorized", message: "请提供 X-User-Id 或 ?user_id=" });
+        return;
+      }
+      let user;
+      try {
+        user = await userContextResolver.resolve({ userId });
+      } catch (error) {
+        sendJson(res, 401, { error: "unauthorized", message: error instanceof Error ? error.message : "unknown user" });
+        return;
+      }
+      const userPermissions = new Set(Array.isArray(user.permissions) ? user.permissions : []);
+      const commands = intentRouter.commands.list();
+      const visible: Array<JsonObject> = [];
+      for (const command of commands) {
+        const intentCode = command.intentCode;
+        if (intentCode) {
+          const manifest = intentRegistry.getCode(intentCode);
+          const required = manifest?.required_permissions ?? [];
+          if (required.length && !required.every((perm) => userPermissions.has(perm))) continue;
+        }
+        visible.push({
+          id: command.id,
+          intent_code: intentCode ?? null,
+          title: command.title ?? command.id,
+          triggers: command.triggers ?? []
+        });
+      }
+      sendJson(res, 200, { commands: visible, user_id: userId });
+    } catch (error) {
+      sendJson(res, 500, {
+        error: "internal_error",
+        message: error instanceof Error ? error.message : "unknown error"
+      });
+    }
+    return;
+  }
+
   if (req.method === "GET" && pathname === "/api/metrics") {
     try {
       const auth = await authorizeHandlersInspect(req, url);
