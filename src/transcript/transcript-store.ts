@@ -14,6 +14,7 @@ export type TranscriptEventType =
   | "tool_call"
   | "tool_result"
   | "tool_governance"
+  | "prompt_authority_alert"
   | "agent_step"
   | "task_claimed"
   | "task_updated"

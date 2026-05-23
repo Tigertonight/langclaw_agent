@@ -31,6 +31,7 @@ import { PendingActionStore } from "./runtime/pending-action-store.js";
 import { RuntimeHooks } from "./runtime/hooks.js";
 import { createMaintenanceSchedulerPlugin } from "./runtime/maintenance-scheduler-plugin.js";
 import { createTranscriptPlugin } from "./runtime/transcript-plugin.js";
+import { createPromptAuthorityAlertPlugin } from "./runtime/prompt-authority-alert-plugin.js";
 import { FileSystemSkillLoader } from "./runtime/skill-loader.js";
 import { TranscriptStore } from "./transcript/transcript-store.js";
 import { createTaskContinuityPlugin } from "./tasks/task-continuity-plugin.js";
@@ -72,6 +73,7 @@ export function createApp() {
   });
   const transcriptStore = new TranscriptStore();
   hooks.use(createTranscriptPlugin({ transcriptStore }));
+  hooks.use(createPromptAuthorityAlertPlugin({ transcriptStore }));
   hooks.use(createEvolutionSignalPlugin({ evolutionRuntime }));
   hooks.use(createEvolutionIterationPlugin());
   hooks.use(createTaskContinuityPlugin());
