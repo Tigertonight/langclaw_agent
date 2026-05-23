@@ -7,6 +7,7 @@ import { SQLiteTranscriptIndex } from "./sqlite-transcript-index.js";
 
 export type TranscriptEventType =
   | "turn_start"
+  | "context_ingest"
   | "context_assembly"
   | "user_message"
   | "assistant_answer"
@@ -14,6 +15,7 @@ export type TranscriptEventType =
   | "tool_call"
   | "tool_result"
   | "tool_governance"
+  | "prompt_authority_alert"
   | "agent_step"
   | "task_claimed"
   | "task_updated"

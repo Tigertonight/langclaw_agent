@@ -17,13 +17,42 @@ export interface ContextAssemblyInput {
   enterpriseContext?: unknown;
   conversationContext?: unknown;
   budget?: Partial<ContextBudget>;
+  tokenBudget?: number;
 }
+
+export type PromptAuthority = "assembled" | "preassembly_may_overflow";
+
+/**
+ * Context 生命周期阶段（参考 OpenClaw 的 ingest/assemble/afterTurn/compact/maintain）。
+ *
+ * 当前 ContextAssembler 把所有事都揉在一次 assemble() 里做，肉眼难分辨"这块字段
+ * 是哪个阶段产生的"。先不重构 assembler，只在 hook payload 上做 stage 标注，
+ * 让 transcript / debug 面板可以按阶段看：
+ *   - ingest：来自外部数据源、本轮还未参与提示拼装的原始素材（admin / memory / tasks）
+ *   - assemble：本轮提示拼装本身（runtime / conversation）
+ *   - afterTurn：本轮回答之后才会写回的内容（暂未由 assembler 输出，留位）
+ *
+ * 该枚举仅用于元信息标注。
+ */
+export type ContextStage = "ingest" | "assemble" | "afterTurn";
+
+const STAGE_BY_SECTION: Record<string, ContextStage> = {
+  runtime: "assemble",
+  admin: "ingest",
+  memory: "ingest",
+  tasks: "ingest",
+  conversation: "assemble"
+};
 
 export interface ContextAssemblyResult extends JsonObject {
   context: JsonObject;
   budget: JsonObject;
   sections: JsonObject[];
   dropped: JsonObject[];
+  estimated_tokens: number;
+  prompt_authority: PromptAuthority;
+  /** 按生命周期阶段聚合的字符占用，便于 hook 消费者按阶段做统计/告警。 */
+  stages: JsonObject;
 }
 
 const DEFAULT_BUDGET: ContextBudget = {
@@ -58,11 +87,11 @@ export class ContextAssembler {
     }), Math.max(1000, budget.maxChars - budget.adminChars - budget.memoryChars - budget.taskChars - budget.transcriptChars), dropped);
 
     sections.push(
-      createSection("runtime", runtime, priority("runtime")),
-      createSection("admin", admin, priority("admin")),
-      createSection("memory", memory, priority("memory")),
-      createSection("tasks", tasks, priority("tasks")),
-      createSection("conversation", transcript, priority("conversation"))
+      createSection("runtime", runtime, priority("runtime"), stageOf("runtime")),
+      createSection("admin", admin, priority("admin"), stageOf("admin")),
+      createSection("memory", memory, priority("memory"), stageOf("memory")),
+      createSection("tasks", tasks, priority("tasks"), stageOf("tasks")),
+      createSection("conversation", transcript, priority("conversation"), stageOf("conversation"))
     );
 
     const totalChars = sections.reduce((sum, section) => sum + Number(section.chars ?? 0), 0);
@@ -81,6 +110,13 @@ export class ContextAssembler {
       }
     }
 
+    const usedChars = sections.reduce((sum, section) => sum + Number(section.chars ?? 0), 0);
+    const preTrimChars = totalChars;
+    const estimatedTokens = estimateTokensFromChars(usedChars);
+    const preTrimEstimatedTokens = estimateTokensFromChars(preTrimChars);
+    const promptAuthority: PromptAuthority = dropped.length > 0 ? "preassembly_may_overflow" : "assembled";
+    const stages = summarizeStages(sections);
+
     return {
       context: {
         runtime: parseSection(runtime),
@@ -91,13 +127,29 @@ export class ContextAssembler {
       },
       budget: {
         max_chars: budget.maxChars,
-        used_chars: sections.reduce((sum, section) => sum + Number(section.chars ?? 0), 0),
-        sections: sections.map(({ name, chars, priority }) => ({ name, chars, priority }))
+        used_chars: usedChars,
+        pre_trim_chars: preTrimChars,
+        token_budget: input.tokenBudget ?? null,
+        estimated_tokens: estimatedTokens,
+        pre_trim_estimated_tokens: preTrimEstimatedTokens,
+        sections: sections.map(({ name, chars, priority, stage }) => ({ name, chars, priority, stage }))
       },
       sections,
-      dropped
+      dropped,
+      estimated_tokens: estimatedTokens,
+      prompt_authority: promptAuthority,
+      stages
     };
   }
+}
+
+/**
+ * 粗估 token 数。中文 ~1.5 字符/token，英文 ~4 字符/token，混排取保守值 2 字符/token。
+ * 当且仅当下游需要近似预算判断时使用，不替代真正的 tokenizer。
+ */
+function estimateTokensFromChars(chars: number): number {
+  if (!Number.isFinite(chars) || chars <= 0) return 0;
+  return Math.ceil(chars / 2);
 }
 
 function trimSection(name: string, value: JsonValue, maxChars: number, dropped: JsonObject[]): string {
@@ -107,8 +159,26 @@ function trimSection(name: string, value: JsonValue, maxChars: number, dropped: 
   return raw.slice(0, Math.max(0, maxChars - 24)) + "\n...(section truncated)";
 }
 
-function createSection(name: string, content: string, sectionPriority: number): JsonObject {
-  return { name, content, chars: content.length, priority: sectionPriority };
+function createSection(name: string, content: string, sectionPriority: number, stage: ContextStage): JsonObject {
+  return { name, content, chars: content.length, priority: sectionPriority, stage };
+}
+
+function stageOf(sectionName: string): ContextStage {
+  return STAGE_BY_SECTION[sectionName] ?? "assemble";
+}
+
+function summarizeStages(sections: JsonObject[]): JsonObject {
+  const summary: Record<ContextStage, { sections: string[]; chars: number }> = {
+    ingest: { sections: [], chars: 0 },
+    assemble: { sections: [], chars: 0 },
+    afterTurn: { sections: [], chars: 0 }
+  };
+  for (const section of sections) {
+    const stage = (section.stage as ContextStage) ?? "assemble";
+    summary[stage].sections.push(String(section.name ?? ""));
+    summary[stage].chars += Number(section.chars ?? 0);
+  }
+  return summary as unknown as JsonObject;
 }
 
 function priority(name: string): number {

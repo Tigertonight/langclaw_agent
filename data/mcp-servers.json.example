@@ -1,0 +1,23 @@
+{
+  "_comment": "MCP servers — 启动时由 src/mcp/registry.ts 读取，把每个 server 的 tools 注册成 mcp.<serverId>.<toolName>。复制此文件为 mcp-servers.json 并按需要启用。",
+  "servers": [
+    {
+      "id": "everything",
+      "_purpose": "官方 reference server，自带 echo/add/longRunningOperation 等示例 tool，用来验证 MCP 链路",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-everything"],
+      "enabled": false,
+      "timeout_ms": 15000
+    },
+    {
+      "id": "filesystem",
+      "_purpose": "官方 filesystem server，把指定目录暴露成 read_file / write_file / list_directory 等工具",
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"],
+      "enabled": false,
+      "timeout_ms": 15000
+    }
+  ]
+}

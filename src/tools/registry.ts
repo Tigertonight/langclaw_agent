@@ -10,6 +10,7 @@ import {
   formatToolUnavailable,
   formatUnknownTool
 } from "./tool-error-formatter.js";
+import { ToolPolicyStore, isRetriableErrorCode, type ToolPolicy } from "./tool-policy.js";
 import type { ZodTypeAny } from "zod";
 import type {
   JsonObject,
@@ -39,13 +40,13 @@ export class ToolRegistry {
   private readonly tools: Map<string, ToolDefinition>;
   private readonly hooks?: RuntimeHooks;
   private readonly pendingActionStore: PendingActionStore;
-  private readonly defaultTimeoutMs: number;
+  private readonly policyStore: ToolPolicyStore;
 
-  constructor(tools: ToolDefinition[], { hooks, pendingActionStore = new PendingActionStore(), defaultTimeoutMs }: { hooks?: RuntimeHooks; pendingActionStore?: PendingActionStore; defaultTimeoutMs?: number } = {}) {
+  constructor(tools: ToolDefinition[], { hooks, pendingActionStore = new PendingActionStore(), defaultTimeoutMs, policyStore }: { hooks?: RuntimeHooks; pendingActionStore?: PendingActionStore; defaultTimeoutMs?: number; policyStore?: ToolPolicyStore } = {}) {
     this.tools = new Map(tools.map((tool) => [tool.name, tool]));
     this.hooks = hooks;
     this.pendingActionStore = pendingActionStore;
-    this.defaultTimeoutMs = defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
+    this.policyStore = policyStore ?? new ToolPolicyStore({ defaults: { timeout_ms: defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS } });
   }
 
   list(context: ToolExecutionContext = {}): ToolDescription[] {
@@ -79,6 +80,7 @@ export class ToolRegistry {
     if (!tool) {
       return {
         ok: false,
+        isError: true,
         tool: call.name,
         error: "unknown_tool",
         message: formatUnknownTool(call.name)
@@ -96,6 +98,7 @@ export class ToolRegistry {
       await this.emitGovernance(call, context, tool, "permission_denied", permission.message, permission.code);
       return {
         ok: false,
+        isError: true,
         tool: call.name,
         error: "permission_denied",
         code: permission.code,
@@ -108,6 +111,7 @@ export class ToolRegistry {
       await this.emitGovernance(call, context, tool, "tool_unavailable", unavailableMsg);
       return {
         ok: false,
+        isError: true,
         tool: call.name,
         error: "tool_unavailable",
         message: unavailableMsg
@@ -120,6 +124,7 @@ export class ToolRegistry {
       await this.emitGovernance(call, context, tool, "confirmation_required", confirmMsg, undefined, pendingAction?.id);
       return {
         ok: false,
+        isError: true,
         tool: call.name,
         error: "confirmation_required",
         message: confirmMsg,
@@ -141,6 +146,7 @@ export class ToolRegistry {
       await this.emitGovernance(call, context, tool, "invalid_input", validatedArgs.message);
       return {
         ok: false,
+        isError: true,
         tool: call.name,
         error: "invalid_input",
         message: validatedArgs.message,
@@ -148,60 +154,8 @@ export class ToolRegistry {
       } satisfies ToolResult;
     }
 
-    const timeoutMs = typeof tool.metadata?.timeout_ms === "number" && tool.metadata.timeout_ms > 0
-      ? tool.metadata.timeout_ms
-      : this.defaultTimeoutMs;
-    const abortController = new AbortController();
-    const parentSignal = context?.signal;
-    const onParentAbort = (): void => abortController.abort(parentSignal?.reason);
-    if (parentSignal) {
-      if (parentSignal.aborted) abortController.abort(parentSignal.reason);
-      else parentSignal.addEventListener("abort", onParentAbort, { once: true });
-    }
-    const timer = setTimeout(() => abortController.abort(new Error("tool_execute_timeout")), timeoutMs);
-
-    let result: unknown;
-    try {
-      const childContext: ToolExecutionContext = { ...(context ?? {}), signal: abortController.signal };
-      const execPromise = Promise.resolve(tool.execute(validatedArgs.value, childContext));
-      const abortPromise = new Promise<never>((_, reject) => {
-        abortController.signal.addEventListener("abort", () => {
-          const reason = abortController.signal.reason;
-          reject(reason instanceof Error ? reason : new Error(typeof reason === "string" ? reason : "tool_aborted"));
-        }, { once: true });
-      });
-      result = await Promise.race([execPromise, abortPromise]);
-    } catch (error) {
-      const isTimeout = error instanceof Error && error.message === "tool_execute_timeout";
-      if (isTimeout) {
-        sharedMetrics.inc("tool_execute_timeout", { tool: call.name });
-        logEvent("warn", "tool_execute_timeout", {
-          tool: call.name,
-          user_id: context?.user?.id,
-          timeout_ms: timeoutMs
-        });
-      } else {
-        sharedMetrics.inc("tool_execute_failed", { tool: call.name });
-        logEvent("error", "tool_execute_failed", {
-          tool: call.name,
-          user_id: context?.user?.id,
-          error: error instanceof Error ? error.message : String(error)
-        });
-      }
-      const rawMessage = isTimeout
-        ? `工具执行超时（${timeoutMs}ms）`
-        : (error instanceof Error ? error.message : "tool execution failed");
-      return {
-        ok: false,
-        tool: call.name,
-        error: isTimeout ? "execute_timeout" : "execute_failed",
-        message: isTimeout ? rawMessage : formatExecuteFailed(call.name, rawMessage)
-      } satisfies ToolResult;
-    } finally {
-      clearTimeout(timer);
-      if (parentSignal) parentSignal.removeEventListener("abort", onParentAbort);
-    }
-
+    const policy = this.policyStore.resolve(call.name, typeof tool.metadata?.timeout_ms === "number" ? tool.metadata.timeout_ms : undefined);
+    const result = await this.executeWithRetry({ ...call, args: validatedArgs.value }, context, tool, policy);
     this.validateOutput(tool, result);
     return result;
   }
@@ -246,7 +200,59 @@ export class ToolRegistry {
     // 不阻断 —— 仅观测，避免一上线就把所有现有 tool 全锁死
   }
 
-  private async emitGovernance(call: ToolCall, context: ToolExecutionContext | undefined, tool: ToolDefinition, decision: string, message?: string, code?: string, pendingActionId?: string): Promise<void> {
+  private async executeWithRetry(call: ToolCall, context: ToolExecutionContext | undefined, tool: ToolDefinition, policy: ToolPolicy): Promise<ToolResult | unknown> {
+    const upstream = context?.signal;
+    let lastFailure: ToolResult | null = null;
+    const maxAttempts = Math.max(1, policy.retries + 1);
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      if (upstream?.aborted) {
+        const aborted: ToolResult = { ok: false, isError: true, tool: call.name, error: "execution_failed", code: "aborted", message: "调用方已取消。" };
+        await this.emitGovernance(call, context, tool, "execution_failed", aborted.message, aborted.code, undefined, 0, attempt);
+        return aborted;
+      }
+      const controller = new AbortController();
+      const onUpstreamAbort = () => controller.abort(upstream?.reason);
+      if (upstream) upstream.addEventListener("abort", onUpstreamAbort, { once: true });
+      const childContext: ToolExecutionContext = { ...(context ?? {}), signal: controller.signal };
+      const startedAt = Date.now();
+      try {
+        const result = await runWithTimeout(tool.execute(call.args ?? {}, childContext), policy.timeoutMs, call.name, controller);
+        await this.emitGovernance(call, context, tool, "completed", undefined, undefined, undefined, Date.now() - startedAt, attempt);
+        return result;
+      } catch (error) {
+        const folded = buildToolErrorResult(call.name, error);
+        const isLastAttempt = attempt === maxAttempts - 1;
+        const retriable = isRetriableErrorCode(folded.code) && !upstream?.aborted;
+        if (folded.code === "timeout") {
+          sharedMetrics.inc("tool_execute_timeout", { tool: call.name });
+          logEvent("warn", "tool_execute_timeout", {
+            tool: call.name,
+            user_id: context?.user?.id,
+            timeout_ms: policy.timeoutMs,
+            attempt
+          });
+        } else {
+          sharedMetrics.inc("tool_execute_failed", { tool: call.name });
+          logEvent("error", "tool_execute_failed", {
+            tool: call.name,
+            user_id: context?.user?.id,
+            code: folded.code,
+            error: folded.message,
+            attempt
+          });
+        }
+        await this.emitGovernance(call, context, tool, "execution_failed", folded.message, folded.code, undefined, Date.now() - startedAt, attempt);
+        lastFailure = folded;
+        if (isLastAttempt || !retriable) return folded;
+        await sleep(policy.retryBackoffMs * Math.pow(2, attempt), upstream);
+      } finally {
+        if (upstream) upstream.removeEventListener("abort", onUpstreamAbort);
+      }
+    }
+    return lastFailure ?? { ok: false, isError: true, tool: call.name, error: "execution_failed", code: "internal_error", message: "tool retry loop exited without result" } satisfies ToolResult;
+  }
+
+  private async emitGovernance(call: ToolCall, context: ToolExecutionContext | undefined, tool: ToolDefinition, decision: string, message?: string, code?: string, pendingActionId?: string, latencyMs?: number, attempt?: number): Promise<void> {
     const userId = context?.user?.id;
     if (!this.hooks || !userId) return;
     await this.hooks.emit("tool_result", {
@@ -258,6 +264,9 @@ export class ToolRegistry {
       code,
       message,
       pending_action_id: pendingActionId,
+      latency_ms: typeof latencyMs === "number" ? latencyMs : undefined,
+      attempt: typeof attempt === "number" ? attempt : undefined,
+      at: new Date().toISOString(),
       risk_level: typeof tool.metadata?.risk_level === "string" ? tool.metadata.risk_level : "read",
       requires_confirmation: tool.metadata?.requires_confirmation === true
     });
@@ -282,6 +291,82 @@ function resolveContextWorkspace(context?: ToolExecutionContext): WorkspaceConte
   return workspace && typeof workspace === "object" && !Array.isArray(workspace) && typeof (workspace as { root?: unknown }).root === "string"
     ? workspace as WorkspaceContext
     : null;
+}
+
+/**
+ * 把工具运行时异常折叠成 ToolResult(isError=true)，让 LLM 在 transcript 里
+ * 直接读到失败信号，自己决定继续/换路。永远不要把异常 throw 出主循环。
+ */
+export function buildToolErrorResult(toolName: string, error: unknown): ToolResult {
+  const { code, message } = classifyToolError(error);
+  return {
+    ok: false,
+    isError: true,
+    tool: toolName,
+    error: "execution_failed",
+    code,
+    message: formatExecuteFailed(toolName, message)
+  };
+}
+
+/**
+ * 退避用 sleep。如果 upstream signal 中途 abort，立刻 resolve（不抛错），
+ * 让上层的 abort 检查自然地落到下一轮 isLastAttempt 判断里。
+ */
+function sleep(ms: number, upstream?: AbortSignal | null): Promise<void> {
+  if (!Number.isFinite(ms) || ms <= 0) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    const timer = setTimeout(() => {
+      if (upstream) upstream.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => { clearTimeout(timer); resolve(); };
+    if (upstream) upstream.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+/**
+ * 给一个 promise 套硬超时。超时后抛 TimeoutError，让上层 try/catch 折叠成
+ * ToolResult(isError=true, code="timeout")。原 promise 不会被取消（JS 没有
+ * 通用的 cancel），只是结果被丢弃——工具实现应自带 AbortController 才能真停掉。
+ */
+function runWithTimeout<T>(promise: Promise<T> | T, timeoutMs: number, toolName: string, controller?: AbortController): Promise<T> {
+  if (timeoutMs <= 0) return Promise.resolve(promise);
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      const err = new Error(`tool "${toolName}" timed out after ${timeoutMs}ms`);
+      err.name = "TimeoutError";
+      // 让监听 signal 的工具实现感知到取消，释放底层 fetch/db 等资源
+      controller?.abort(err);
+      reject(err);
+    }, timeoutMs);
+    Promise.resolve(promise)
+      .then((value) => { clearTimeout(timer); resolve(value); })
+      .catch((error) => { clearTimeout(timer); reject(error); });
+  });
+}
+
+function classifyToolError(error: unknown): { code: string; message: string } {
+  if (error instanceof Error) {
+    const name = error.name || "Error";
+    let code: string;
+    if (name === "AbortError" || /aborted|canceled|cancelled/i.test(error.message)) {
+      code = "aborted";
+    } else if (name === "TimeoutError" || /timeout|timed out/i.test(error.message)) {
+      code = "timeout";
+    } else if (/permission|forbidden|unauthor/i.test(error.message)) {
+      code = "permission";
+    } else if (/network|fetch|ECONN|ENOTFOUND|ETIMEDOUT/i.test(error.message)) {
+      code = "network";
+    } else {
+      code = "internal_error";
+    }
+    return { code, message: error.message || String(error) };
+  }
+  if (typeof error === "string") {
+    return { code: "internal_error", message: error };
+  }
+  return { code: "internal_error", message: "工具执行抛出未知异常。" };
 }
 
 export function isToolAvailable(tool: ToolDefinition, context: ToolExecutionContext = {}): boolean {

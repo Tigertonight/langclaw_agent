@@ -72,11 +72,27 @@ export class BusinessQueryEngine {
     });
     const workspace = resolveUserWorkspace(user);
     const sessionId = input.sessionId ?? createDefaultSessionId(user.id);
-    const enterpriseContext = await this.enterpriseContextProvider.load({
-      user,
-      workspace,
-      message: input.message,
-      sessionId
+    let enterpriseContext: unknown = {};
+    let ingestError: Error | null = null;
+    try {
+      enterpriseContext = await this.enterpriseContextProvider.load({
+        user,
+        workspace,
+        message: input.message,
+        sessionId
+      });
+    } catch (error) {
+      ingestError = error instanceof Error ? error : new Error(String(error));
+      console.warn(`[query-engine] enterpriseContextProvider.load failed for user=${user.id}: ${ingestError.message}`);
+    }
+    await this.hooks?.emit("context_ingest", {
+      user_id: user.id,
+      session_id: sessionId,
+      run_id: runId,
+      stage: "ingest",
+      sources: summarizeIngestSources(enterpriseContext),
+      error: ingestError ? { name: ingestError.name, message: ingestError.message } : null,
+      degraded: ingestError !== null
     });
     const assembled = this.contextAssembler.assemble({
       user,
@@ -92,9 +108,13 @@ export class BusinessQueryEngine {
       sections: assembled.sections.map((section) => ({
         name: section.name,
         chars: section.chars,
-        priority: section.priority
+        priority: section.priority,
+        stage: section.stage
       })),
-      dropped: assembled.dropped
+      dropped: assembled.dropped,
+      estimated_tokens: assembled.estimated_tokens,
+      prompt_authority: assembled.prompt_authority,
+      stages: assembled.stages
     });
     const output = await this.agent.run({
       userId: input.userId,
@@ -192,6 +212,30 @@ function summarizeTaskRetrieval(enterpriseContext: unknown): JsonObject {
       reason: stringifyOrNull(task.reason)
     }))
   };
+}
+
+/**
+ * 把 enterpriseContext 顶层字段拍成 hook payload 用的"来源清单"。
+ * 不暴露原始 payload（可能很大也可能含 PII），只暴露每个 ingest 来源的形状/规模，
+ * 让监听方可以判断"是否拿到了 admin/memory/tasks"以及"哪一段最大"。
+ */
+function summarizeIngestSources(enterpriseContext: unknown): JsonObject {
+  const record = enterpriseContext && typeof enterpriseContext === "object" && !Array.isArray(enterpriseContext)
+    ? enterpriseContext as Record<string, unknown>
+    : {};
+  const summary: JsonObject = {};
+  for (const [key, value] of Object.entries(record)) {
+    summary[key] = describeIngestValue(value);
+  }
+  return summary;
+}
+
+function describeIngestValue(value: unknown): JsonObject {
+  if (value === null || value === undefined) return { kind: "empty", chars: 0 };
+  if (Array.isArray(value)) return { kind: "array", count: value.length, chars: JSON.stringify(value).length };
+  if (typeof value === "object") return { kind: "object", keys: Object.keys(value as object).length, chars: JSON.stringify(value).length };
+  if (typeof value === "string") return { kind: "string", chars: value.length };
+  return { kind: typeof value, chars: String(value).length };
 }
 
 function summarizeSourceAttribution(output: Record<string, unknown>): JsonObject {

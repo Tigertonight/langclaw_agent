@@ -6,3 +6,6 @@ logs/sessions/
 *.log
 dist/
 users/
+.tmp/
+.data/
+workspace/skills/registry.json

@@ -5,6 +5,8 @@ import { promisify } from "node:util";
 import path from "node:path";
 import { resolveProjectPath } from "../data/load-json.js";
 import { safeJoinWorkspace, type WorkspaceContext } from "./workspace-context.js";
+import { TaskStore } from "../tasks/task-store.js";
+import type { AgentTask } from "../tasks/task-types.js";
 import type { JsonObject } from "../types/agent-contracts.js";
 
 const execFileAsync = promisify(execFile);
@@ -60,9 +62,53 @@ interface MaintenanceSchedulerState {
 
 export class MaintenanceScheduler {
   private readonly jobs: MaintenanceJobDefinition[];
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
-  constructor(jobs: MaintenanceJobDefinition[] = [createDependencyVulnerabilityScanJob()]) {
+  constructor(jobs: MaintenanceJobDefinition[] = [createDependencyVulnerabilityScanJob(), createLongTaskProgressionJob()]) {
     this.jobs = jobs;
+  }
+
+  /**
+   * 自驱心跳：每 intervalMs 跑一次 runDue。不依赖 session_idle 钩子。
+   * 入参可以是单个 workspace，或一个返回 workspace 列表的函数（多用户场景）。
+   * 失败永远兜底——心跳不能因为单次报错就停。
+   * 返回的 stop() 用于显式停止；timer 内部已 unref，不会阻塞进程退出。
+   */
+  startHeartbeat({ intervalMs, getWorkspaces, onError }: {
+    intervalMs: number;
+    getWorkspaces: () => WorkspaceContext[] | Promise<WorkspaceContext[]>;
+    onError?: (err: unknown) => void;
+  }): { stop: () => void } {
+    if (this.heartbeatTimer) this.stopHeartbeat();
+    if (!Number.isFinite(intervalMs) || intervalMs <= 0) {
+      throw new Error("heartbeat_interval_invalid");
+    }
+    const tick = async () => {
+      try {
+        const workspaces = await getWorkspaces();
+        for (const workspace of workspaces) {
+          try {
+            await this.runDue(workspace);
+          } catch (err) {
+            onError?.(err);
+          }
+        }
+      } catch (err) {
+        onError?.(err);
+      }
+    };
+    this.heartbeatTimer = setInterval(() => { void tick(); }, intervalMs);
+    if (typeof this.heartbeatTimer === "object" && this.heartbeatTimer && typeof (this.heartbeatTimer as { unref?: () => void }).unref === "function") {
+      (this.heartbeatTimer as { unref: () => void }).unref();
+    }
+    return { stop: () => this.stopHeartbeat() };
+  }
+
+  stopHeartbeat(): void {
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
   }
 
   async list(workspace: WorkspaceContext): Promise<JsonObject> {
@@ -246,6 +292,80 @@ export function createDependencyVulnerabilityScanJob(): MaintenanceJobDefinition
       }
     }
   };
+}
+
+/**
+ * 长任务推进 job：扫描当前 workspace 的 active 任务，把"长时间没进展"的标记一笔进展信号
+ *   - stuck 判定：updated_at 距 now 超过 stuckMs（默认 6h）
+ *   - 推进动作（无 LLM）：把 task.metadata.progress_pings 数组追加一条 {at, source}
+ *   - 同时往 metadata.last_progress_ping_at 写时间戳，便于 UI / handler 后续读取
+ *
+ * 这里不直接发起新的 agentic 调用——把"哪条任务该 ping"和"怎么 ping"解耦，
+ * 后续把 ping 转成新消息塞进 agenticHandler 是 plugin/handler 层的事。
+ */
+export function createLongTaskProgressionJob({
+  taskStore = new TaskStore(),
+  stuckMs = 6 * 60 * 60 * 1000,
+  intervalMs = 30 * 60 * 1000,
+  now = () => Date.now()
+}: {
+  taskStore?: TaskStore;
+  stuckMs?: number;
+  intervalMs?: number;
+  now?: () => number;
+} = {}): MaintenanceJobDefinition {
+  return {
+    name: "recurring.long_task_progression",
+    description: "Scan active long-running tasks and emit a progress ping for ones that have been idle past stuckMs.",
+    intervalMs,
+    async run({ workspace }) {
+      const tasks = await taskStore.active(workspace, 50);
+      const stuck: Array<{ id: string; subject?: string; idle_ms: number }> = [];
+      const pinged: Array<{ id: string; subject?: string }> = [];
+      const nowMs = now();
+      for (const task of tasks) {
+        const updatedAt = Date.parse(task.updated_at ?? task.created_at ?? "");
+        if (!Number.isFinite(updatedAt)) continue;
+        const idleMs = nowMs - updatedAt;
+        if (idleMs < stuckMs) continue;
+        stuck.push({ id: task.id, subject: task.subject, idle_ms: idleMs });
+        try {
+          const updatedTask = await markProgressPing(taskStore, workspace, task, nowMs);
+          if (updatedTask) pinged.push({ id: updatedTask.id, subject: updatedTask.subject });
+        } catch {
+          // 单条 ping 失败不阻塞批次
+        }
+      }
+      return {
+        ok: true,
+        scanned: tasks.length,
+        stuck_count: stuck.length,
+        pinged_count: pinged.length,
+        stuck,
+        pinged,
+        stuck_threshold_ms: stuckMs
+      };
+    }
+  };
+}
+
+async function markProgressPing(taskStore: TaskStore, workspace: WorkspaceContext, task: AgentTask, nowMs: number): Promise<AgentTask | null> {
+  const existingPings = Array.isArray((task.metadata as JsonObject | undefined)?.progress_pings)
+    ? ((task.metadata as JsonObject).progress_pings as JsonObject[])
+    : [];
+  const ping: JsonObject = {
+    at: new Date(nowMs).toISOString(),
+    source: "scheduler.long_task_progression"
+  };
+  return taskStore.upsert(workspace, {
+    id: task.id,
+    task_list_id: task.task_list_id,
+    metadata: {
+      ...(task.metadata ?? {}),
+      progress_pings: [...existingPings, ping].slice(-50),
+      last_progress_ping_at: ping.at
+    }
+  });
 }
 
 function isDue(job: MaintenanceJobDefinition, state: MaintenanceJobState | undefined, now: Date): boolean {
