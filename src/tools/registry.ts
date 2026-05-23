@@ -117,8 +117,9 @@ export class ToolRegistry {
     }
 
     await this.emitGovernance(call, context, tool, "allowed", "tool execution allowed");
+    const timeoutMs = resolveToolTimeoutMs(tool);
     try {
-      return await tool.execute(call.args ?? {}, context);
+      return await runWithTimeout(tool.execute(call.args ?? {}, context), timeoutMs, call.name);
     } catch (error) {
       const folded = buildToolErrorResult(call.name, error);
       await this.emitGovernance(call, context, tool, "execution_failed", folded.message, folded.code);
@@ -178,6 +179,45 @@ export function buildToolErrorResult(toolName: string, error: unknown): ToolResu
     code,
     message
   };
+}
+
+/**
+ * 工具执行的硬超时上限。优先级：
+ *   1. tool.metadata.timeout_ms（每个工具可单独声明）
+ *   2. 环境变量 TOOL_EXECUTION_TIMEOUT_MS
+ *   3. 默认 20000ms
+ *
+ * 0 或负数视为"不限制"，但生产环境建议不要这么用。
+ */
+const DEFAULT_TOOL_TIMEOUT_MS = 20_000;
+
+function resolveToolTimeoutMs(tool: ToolDefinition): number {
+  const metadataValue = tool.metadata?.timeout_ms;
+  if (typeof metadataValue === "number" && Number.isFinite(metadataValue) && metadataValue > 0) {
+    return metadataValue;
+  }
+  const envValue = Number(process.env.TOOL_EXECUTION_TIMEOUT_MS);
+  if (Number.isFinite(envValue) && envValue > 0) return envValue;
+  return DEFAULT_TOOL_TIMEOUT_MS;
+}
+
+/**
+ * 给一个 promise 套硬超时。超时后抛 TimeoutError，让上层 try/catch 折叠成
+ * ToolResult(isError=true, code="timeout")。原 promise 不会被取消（JS 没有
+ * 通用的 cancel），只是结果被丢弃——工具实现应自带 AbortController 才能真停掉。
+ */
+function runWithTimeout<T>(promise: Promise<T> | T, timeoutMs: number, toolName: string): Promise<T> {
+  if (timeoutMs <= 0) return Promise.resolve(promise);
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      const err = new Error(`tool "${toolName}" timed out after ${timeoutMs}ms`);
+      err.name = "TimeoutError";
+      reject(err);
+    }, timeoutMs);
+    Promise.resolve(promise)
+      .then((value) => { clearTimeout(timer); resolve(value); })
+      .catch((error) => { clearTimeout(timer); reject(error); });
+  });
 }
 
 function classifyToolError(error: unknown): { code: string; message: string } {

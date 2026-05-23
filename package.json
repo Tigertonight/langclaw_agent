@@ -13,6 +13,7 @@
     "eval:router": "tsc -p tsconfig.build.json && node dist/eval/router-poc.js",
     "router:governance": "tsc -p tsconfig.build.json && node dist/eval/router-governance.js",
     "router:commands": "tsc -p tsconfig.build.json && node dist/eval/router-commands.js",
+    "tool:timeout": "tsc -p tsconfig.build.json && node dist/eval/tool-timeout.js",
     "arch:smoke": "tsc -p tsconfig.build.json && node dist/eval/architecture-smoke.js",
     "session:smoke": "tsc -p tsconfig.build.json && node dist/eval/session-recovery.js",
     "workspace:isolation": "tsc -p tsconfig.build.json && node dist/eval/workspace-isolation.js",
