@@ -895,8 +895,11 @@ export function renderChatPage(): string {
           })
         });
         await readSse(response, assistantId);
+        // 流正常结束后，把还没收到 end 的 item 视为"未完成"，避免 spinner 残留
+        finalizeRunningItems(getMsg(assistantId), "\\u6d41\\u5df2\\u7ed3\\u675f\\u4f46\\u672a\\u6536\\u5230 end \\u4e8b\\u4ef6");
       } catch (error) {
         const message = error.name === "AbortError" ? STR.requestTimeout : STR.failed + (error.message || "unknown error");
+        finalizeRunningItems(getMsg(assistantId), message);
         patch(assistantId, { text: message, error: true, streaming: false, thinking: false });
         touchActiveSession();
       } finally {
@@ -2062,6 +2065,8 @@ export function renderChatPage(): string {
         }
       }
     }
+    // 单个 item 的 end 丢包保护时长：60s。超过则标记为失败而不是永久 spinner。
+    const ITEM_WATCHDOG_MS = 60000;
     function applyToolItemEvent(msg, ev) {
       const itemId = ev.itemId;
       const existing = msg.bizPairsByItemId[itemId];
@@ -2071,12 +2076,23 @@ export function renderChatPage(): string {
         const pair = toolItemToBizPair(ev) || { icon: "loader", summary: "\\u8c03\\u7528\\u5de5\\u5177\\u4e2d", narrative: "" };
         pair.itemId = itemId;
         pair.status = "running";
+        pair.watchdogTimer = window.setTimeout(function() {
+          if (pair.status === "running") {
+            pair.status = "failed";
+            pair.errorMessage = "\\u54cd\\u5e94\\u8d85\\u65f6\\uff08\\u672a\\u6536\\u5230 end \\u4e8b\\u4ef6\\uff09";
+            render();
+          }
+        }, ITEM_WATCHDOG_MS);
         msg.bizPairs.push(pair);
         msg.bizPairsByItemId[itemId] = pair;
         return;
       }
       if (ev.phase === "end") {
-        // end 阶段：合并到已有 pair；如果没有 start 过（理论上不应该），就 push 一张
+        // end 阶段：清掉 watchdog；合并到已有 pair；如果没有 start 过（理论上不应该），就 push 一张
+        if (existing && existing.watchdogTimer) {
+          window.clearTimeout(existing.watchdogTimer);
+          existing.watchdogTimer = null;
+        }
         const updated = toolItemToBizPair(ev) || existing || { icon: "circle", summary: "", narrative: "" };
         if (existing) {
           existing.icon = updated.icon || existing.icon;
@@ -2091,6 +2107,23 @@ export function renderChatPage(): string {
           msg.bizPairs.push(updated);
           msg.bizPairsByItemId[itemId] = updated;
         }
+      }
+    }
+    /**
+     * 当 SSE 流结束/中断时，把所有还在 running 的 item 强制收尾。
+     * 防御场景：后端 emit end 之前进程崩溃 / 网络断开 / SSE 提前 close。
+     * 没有这层兜底，UI 会卡在 spinner 永不结束。
+     */
+    function finalizeRunningItems(msg, reason) {
+      if (!msg || !msg.bizPairs) return;
+      for (const pair of msg.bizPairs) {
+        if (pair.status !== "running") continue;
+        if (pair.watchdogTimer) {
+          window.clearTimeout(pair.watchdogTimer);
+          pair.watchdogTimer = null;
+        }
+        pair.status = "failed";
+        pair.errorMessage = reason || "\\u8fde\\u63a5\\u4e2d\\u65ad\\uff0c\\u672a\\u6536\\u5230\\u5b8c\\u6574\\u54cd\\u5e94";
       }
     }
     // 把 agentic_item 翻译成业务 bizPair（与 toolEventToBizPair 等价但读 item 字段）
