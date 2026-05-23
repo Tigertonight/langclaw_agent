@@ -57,6 +57,68 @@ export function nextAgentItemId(prefix = "item"): string {
 }
 
 /**
+ * 构造 phase=start 的 item 事件。配合 pushTool/pushLifecycle 等推送使用。
+ * 调用方拿到 itemId 后，自己保存，等到 end 阶段再用同一个 itemId 发 end 事件。
+ */
+export function buildItemStartEvent(input: {
+  itemId: string;
+  stream: AgentEventStream;
+  kind: AgentItemKind;
+  title: string;
+  summary?: string;
+  meta?: JsonObject;
+  toolCallId?: string;
+  ts: number;
+}): AgentItemEvent {
+  const { itemId, stream, kind, title, summary, meta, toolCallId, ts } = input;
+  return {
+    itemId,
+    stream,
+    phase: "start",
+    kind,
+    status: "running",
+    title,
+    summary: summary ?? `${title} 开始`,
+    meta,
+    toolCallId,
+    ts,
+    startedAt: new Date().toISOString()
+  };
+}
+
+/**
+ * 构造 phase=end 的 item 事件。失败可通过 status: "failed" + error 字段表达。
+ */
+export function buildItemEndEvent(input: {
+  itemId: string;
+  stream: AgentEventStream;
+  kind: AgentItemKind;
+  status: AgentItemStatus;
+  title: string;
+  summary?: string;
+  meta?: JsonObject;
+  toolCallId?: string;
+  ts: number;
+  error?: { code: string; message: string };
+}): AgentItemEvent {
+  const { itemId, stream, kind, status, title, summary, meta, toolCallId, ts, error } = input;
+  return {
+    itemId,
+    stream,
+    phase: "end",
+    kind,
+    status,
+    title,
+    summary: summary ?? `${title} 结束`,
+    meta,
+    toolCallId,
+    ts,
+    endedAt: new Date().toISOString(),
+    error
+  };
+}
+
+/**
  * 把一次工具调用浓缩成一组 item 事件（start + end）。
  * 调用方拿到这两个事件后可以直接 push 给 onEmit，也可以拆开做更细的 update。
  */

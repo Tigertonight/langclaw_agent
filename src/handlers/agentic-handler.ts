@@ -15,7 +15,7 @@
  *     由系统决定是否实现。本期不做，但 normalizeAction 已经预留了分支。
  */
 import { applyPromptCache } from "../llm/prompt-cache.js";
-import { nextAgentItemId, type AgentItemEvent } from "../runtime/agent-events.js";
+import { buildItemStartEvent, buildItemEndEvent, nextAgentItemId } from "../runtime/agent-events.js";
 import { RuntimeHooks } from "../runtime/hooks.js";
 import type { IntentManifest, IntentRegistry, JsonObject, JsonValue, Route, ToolCall, ToolResult, UserContext } from "../types/agent-contracts.js";
 
@@ -126,6 +126,7 @@ interface DagNode {
 type EmitFn = (event: Record<string, unknown>) => Promise<void> | void;
 type LifecyclePush = (event: string, extra?: Record<string, unknown>) => void;
 type StreamPush = (entry: Record<string, unknown>) => void;
+type ToolStartPush = (input: { tool: string; args?: JsonValue; step?: number; dagNode?: string }) => string;
 
 interface AgenticExecuteInput {
   user?: UserContext;
@@ -189,6 +190,31 @@ export class AgenticHandler {
       streams.assistant.push(full);
       if (safeEmit) safeEmit({ kind: "agentic_assistant", ...full });
     };
+    /**
+     * 在工具真正调用前发 phase=start 的 item 事件。
+     * 返回 itemId，调用方在 pushTool 时回填，让 start/end 共享同一个 id。
+     */
+    const pushToolStart: ToolStartPush = (input) => {
+      const itemId = nextAgentItemId("tool");
+      const ts = Date.now() - startedAt;
+      if (safeEmit) {
+        const item = buildItemStartEvent({
+          itemId,
+          stream: "tool",
+          kind: "tool",
+          title: input.tool,
+          summary: `调用 ${input.tool}`,
+          meta: {
+            args: input.args ?? null,
+            step: input.step ?? null,
+            dag_node: input.dagNode ?? null
+          },
+          ts
+        });
+        safeEmit({ kind: "agentic_item", ...item });
+      }
+      return itemId;
+    };
     const pushTool: StreamPush = (entry) => {
       const ts = Date.now() - startedAt;
       const full = { ts, ...entry };
@@ -198,16 +224,19 @@ export class AgenticHandler {
       // 时间流）能用同一个 itemId 串联同一次工具调用。不改 streams.tool 形态，纯增量。
       if (safeEmit && entry && typeof entry.type === "string" && entry.type === "tool_call") {
         const toolName = String(entry.tool ?? "");
-        const itemId = nextAgentItemId("tool");
+        // 优先使用调用方传入的 itemId（pushToolStart 返回的），让 start/end 共享同一个 id；
+        // 调用方未传时回退到新生成 id（兼容旧路径）。
+        const itemId = typeof entry.item_id === "string" && entry.item_id
+          ? entry.item_id
+          : nextAgentItemId("tool");
         const observation = (entry.observation_summary ?? entry.observation) as JsonObject | undefined;
         const failedFromObs = !!observation && (observation.ok === false || observation.isError === true);
         const summary = typeof entry.observation_summary === "object" && entry.observation_summary
           ? `${toolName} ${failedFromObs ? "失败" : "完成"}`
           : `调用 ${toolName}`;
-        const item: AgentItemEvent = {
+        const item = buildItemEndEvent({
           itemId,
           stream: "tool",
-          phase: "end",
           kind: "tool",
           status: failedFromObs ? "failed" : "completed",
           title: toolName,
@@ -218,11 +247,10 @@ export class AgenticHandler {
             dag_node: entry.dag_node as JsonValue ?? null
           },
           ts,
-          endedAt: new Date().toISOString(),
           error: failedFromObs
             ? { code: String(observation?.code ?? observation?.error ?? "execution_failed"), message: String(observation?.message ?? "") }
             : undefined
-        };
+        });
         safeEmit({ kind: "agentic_item", ...item });
       }
     };
@@ -256,7 +284,7 @@ export class AgenticHandler {
 
     const apiKey = process.env.LLM_DECISION_API_KEY ?? process.env.LLM_API_KEY ?? process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      const localResult = await this.tryLocalAgenticFallback({ user, workspace, message, route, session, streams, pushLifecycle, pushTool });
+      const localResult = await this.tryLocalAgenticFallback({ user, workspace, message, route, session, streams, pushLifecycle, pushTool, pushToolStart });
       if (localResult) return localResult;
       pushLifecycle("fallback", { reason: "no_api_key" });
       return this.buildFallback({ message, route, reason: "未配置 LLM_API_KEY，agentic 直接兜底返回。", streams });
@@ -291,7 +319,7 @@ export class AgenticHandler {
       if (stepErr) {
         lastError = stepErr instanceof Error ? stepErr.message : String(stepErr);
         pushLifecycle("step_failed", { step, error: lastError, attempts: attemptsUsed });
-        const localResult = await this.tryLocalAgenticFallback({ user, workspace, message, route, session, streams, pushLifecycle, pushTool });
+        const localResult = await this.tryLocalAgenticFallback({ user, workspace, message, route, session, streams, pushLifecycle, pushTool, pushToolStart });
         if (localResult) return localResult;
         break;
       }
@@ -312,7 +340,7 @@ export class AgenticHandler {
         break;
       }
       if (decision.action === "plan" || decision.action === "dag_plan") {
-        const dagResult = await this.executeDagPlan({ plan: decision.plan ?? decision.steps, user, workspace, session, step, pushLifecycle, pushTool });
+        const dagResult = await this.executeDagPlan({ plan: decision.plan ?? decision.steps, user, workspace, session, step, pushLifecycle, pushTool, pushToolStart });
         if (!dagResult.ok) {
           lastError = dagResult.message;
           pushLifecycle("step_failed", { step, error: lastError });
@@ -341,10 +369,11 @@ export class AgenticHandler {
         }
         pushLifecycle("parallel_tools_started", { step, count: calls.length });
         const observations = await Promise.all(calls.map(async (call) => {
+          const itemId = pushToolStart({ tool: call.tool_name, args: call.args, step });
           const observation = await this.callTool({ callName: call.tool_name, args: call.args, user, workspace, session });
-          return { call, observation };
+          return { call, observation, itemId };
         }));
-        for (const { call, observation } of observations) {
+        for (const { call, observation, itemId } of observations) {
           executedToolResults.push({
             ok: observation?.ok !== false,
             tool: call.tool_name,
@@ -353,7 +382,7 @@ export class AgenticHandler {
             message: observation.message
           });
           plannerState = recordEvidence(plannerState, { call, observation });
-          pushTool({ step, type: "tool_call", tool: call.tool_name, args: call.args, observation_summary: summarizeObservation(observation) });
+          pushTool({ step, type: "tool_call", tool: call.tool_name, args: call.args, observation_summary: summarizeObservation(observation), item_id: itemId });
         }
         conversation.push({ role: "user", content: buildObservationMessage({ observations, plannerState }) });
         continue;
@@ -587,7 +616,8 @@ export class AgenticHandler {
     session,
     streams,
     pushLifecycle,
-    pushTool
+    pushTool,
+    pushToolStart
   }: {
     user?: UserContext;
     workspace?: unknown;
@@ -597,6 +627,7 @@ export class AgenticHandler {
     streams: AgenticStreams;
     pushLifecycle: LifecyclePush;
     pushTool: StreamPush;
+    pushToolStart?: ToolStartPush;
   }) {
     const text = String(message ?? "");
     if (!/(维修工单|工单|售后).*(上周|对比|相比|环比|跟上周比|和上周比)/.test(text)) return null;
@@ -607,9 +638,10 @@ export class AgenticHandler {
     pushLifecycle("local_fallback_started", { reason: "repair_week_over_week" });
     const observations: AgenticObservationItem[] = [];
     for (const [index, call] of calls.entries()) {
+      const itemId = pushToolStart?.({ tool: call.tool_name, args: call.args as JsonValue, step: index });
       const observation = await this.callTool({ callName: call.tool_name, args: call.args, user, workspace, session });
       observations.push({ call, observation });
-      pushTool({ step: index, type: "tool_call", tool: call.tool_name, args: call.args, observation_summary: summarizeObservation(observation) });
+      pushTool({ step: index, type: "tool_call", tool: call.tool_name, args: call.args, observation_summary: summarizeObservation(observation), item_id: itemId });
     }
     const current = observations[0]?.observation?.answer ?? "本周暂无数据";
     const previous = observations[1]?.observation?.answer ?? "上周暂无数据";
@@ -639,7 +671,7 @@ export class AgenticHandler {
     };
   }
 
-  async executeDagPlan({ plan, user, workspace, session, step, pushLifecycle, pushTool }: {
+  async executeDagPlan({ plan, user, workspace, session, step, pushLifecycle, pushTool, pushToolStart }: {
     plan?: unknown;
     user?: UserContext;
     workspace?: unknown;
@@ -647,6 +679,7 @@ export class AgenticHandler {
     step: number;
     pushLifecycle: LifecyclePush;
     pushTool: StreamPush;
+    pushToolStart?: ToolStartPush;
   }): Promise<{ ok: boolean; message?: string; results: AgenticObservationItem[] }> {
     const nodes = normalizeDagPlan(plan);
     if (!nodes.length) return { ok: false, message: "agentic DAG plan 为空", results: [] };
@@ -659,14 +692,15 @@ export class AgenticHandler {
       pushLifecycle("dag_wave_started", { step, wave, count: ready.length, node_ids: ready.map((node) => node.id) });
       const waveResults = await Promise.all(ready.map(async (node) => {
         const args = resolveDagArgs(node.args, completed);
+        const itemId = pushToolStart?.({ tool: node.tool_name, args: args as JsonValue, step, dagNode: node.id });
         const observation = await this.callTool({ callName: node.tool_name, args, user, workspace, session });
-        return { call: { tool_name: node.tool_name, args, id: node.id }, observation };
+        return { call: { tool_name: node.tool_name, args, id: node.id }, observation, itemId };
       }));
       for (const result of waveResults) {
         completed.set(result.call.id, result.observation);
         pending.delete(result.call.id);
         results.push(result);
-        pushTool({ step, type: "tool_call", tool: result.call.tool_name, args: result.call.args, observation_summary: summarizeObservation(result.observation), dag_node: result.call.id });
+        pushTool({ step, type: "tool_call", tool: result.call.tool_name, args: result.call.args, observation_summary: summarizeObservation(result.observation), dag_node: result.call.id, item_id: result.itemId });
       }
     }
     return { ok: true, results };
