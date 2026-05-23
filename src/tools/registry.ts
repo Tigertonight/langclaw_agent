@@ -118,12 +118,22 @@ export class ToolRegistry {
 
     await this.emitGovernance(call, context, tool, "allowed", "tool execution allowed");
     const timeoutMs = resolveToolTimeoutMs(tool);
+    const controller = new AbortController();
+    const upstream = context?.signal;
+    const onUpstreamAbort = () => controller.abort(upstream?.reason);
+    if (upstream) {
+      if (upstream.aborted) controller.abort(upstream.reason);
+      else upstream.addEventListener("abort", onUpstreamAbort, { once: true });
+    }
+    const childContext: ToolExecutionContext = { ...(context ?? {}), signal: controller.signal };
     try {
-      return await runWithTimeout(tool.execute(call.args ?? {}, context), timeoutMs, call.name);
+      return await runWithTimeout(tool.execute(call.args ?? {}, childContext), timeoutMs, call.name, controller);
     } catch (error) {
       const folded = buildToolErrorResult(call.name, error);
       await this.emitGovernance(call, context, tool, "execution_failed", folded.message, folded.code);
       return folded;
+    } finally {
+      if (upstream) upstream.removeEventListener("abort", onUpstreamAbort);
     }
   }
 
@@ -206,12 +216,14 @@ function resolveToolTimeoutMs(tool: ToolDefinition): number {
  * ToolResult(isError=true, code="timeout")。原 promise 不会被取消（JS 没有
  * 通用的 cancel），只是结果被丢弃——工具实现应自带 AbortController 才能真停掉。
  */
-function runWithTimeout<T>(promise: Promise<T> | T, timeoutMs: number, toolName: string): Promise<T> {
+function runWithTimeout<T>(promise: Promise<T> | T, timeoutMs: number, toolName: string, controller?: AbortController): Promise<T> {
   if (timeoutMs <= 0) return Promise.resolve(promise);
   return new Promise<T>((resolve, reject) => {
     const timer = setTimeout(() => {
       const err = new Error(`tool "${toolName}" timed out after ${timeoutMs}ms`);
       err.name = "TimeoutError";
+      // 让监听 signal 的工具实现感知到取消，释放底层 fetch/db 等资源
+      controller?.abort(err);
       reject(err);
     }, timeoutMs);
     Promise.resolve(promise)
