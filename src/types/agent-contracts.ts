@@ -180,6 +180,12 @@ export interface ToolDefinition {
 
 export interface ToolResult {
   ok?: boolean;
+  /**
+   * 显式失败标记。等价语义于 ok === false，但保留出来是为了与 LLM 的
+   * function-calling 协议（如 Anthropic tool_result 的 is_error）对齐，
+   * 让模型在 transcript 里能直接读到"工具失败"信号并自行决策。
+   */
+  isError?: boolean;
   tool?: string;
   error?: string;
   code?: string;
