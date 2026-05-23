@@ -1,4 +1,5 @@
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
+import { createHash } from "node:crypto";
 import { createApp } from "../app.js";
 import { createA2UIModule } from "../a2ui/module.js";
 import { A2UIBadRequestError } from "../a2ui/dto.js";
@@ -124,6 +125,11 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
 
   if (req.method === "GET" && pathname === "/api/handlers") {
     try {
+      const auth = await authorizeHandlersInspect(req, url);
+      if (!auth.ok) {
+        sendJson(res, auth.status, { error: auth.code, message: auth.message });
+        return;
+      }
       const handlers = handlerManifestRegistry.list();
       const intents = intentRegistry.listCodes().map((manifest) => ({
         intent_code: manifest.intent_code,
@@ -136,14 +142,28 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
         list.push(item.intent_code);
         intentsByHandler.set(item.handler_type, list);
       }
-      sendJson(res, 200, {
+      const payload = {
         handlers: handlers.map((manifest) => ({
           ...manifest,
           bound_intent_codes: intentsByHandler.get(manifest.handler_type) ?? []
         })),
         intent_codes: intents,
         commands: intentRouter.commands.list().map((command) => ({ id: command.id }))
+      };
+      const body = JSON.stringify(payload, null, 2);
+      const etag = `"W/${createHash("sha1").update(body).digest("hex").slice(0, 16)}"`;
+      const ifNoneMatch = req.headers["if-none-match"];
+      if (typeof ifNoneMatch === "string" && ifNoneMatch === etag) {
+        res.writeHead(304, { ETag: etag });
+        res.end();
+        return;
+      }
+      res.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        ETag: etag,
+        "Cache-Control": "private, max-age=60"
       });
+      res.end(body);
     } catch (error) {
       sendJson(res, 500, {
         error: "internal_error",
@@ -313,4 +333,35 @@ async function readJson(req: IncomingMessage): Promise<RequestBody> {
 
 function isBadRequestError(error: unknown): boolean {
   return error instanceof A2UIBadRequestError || (Boolean(error) && typeof error === "object" && (error as { code?: unknown }).code === "bad_request");
+}
+
+interface AuthorizeResult {
+  ok: boolean;
+  status: number;
+  code?: string;
+  message?: string;
+}
+
+/**
+ * 鉴权策略（生产可用，三档）：
+ *   1. HANDLERS_API_PUBLIC=true → 任何人都能读（仅供本地调试）
+ *   2. HANDLERS_API_USERS 包含 user_id（逗号分隔）→ 直接放行
+ *   3. user.permissions 含 "runtime:inspect" → 放行
+ * 都不命中 → 401 / 403。
+ */
+async function authorizeHandlersInspect(req: IncomingMessage, url: URL): Promise<AuthorizeResult> {
+  if (process.env.HANDLERS_API_PUBLIC === "true") return { ok: true, status: 200 };
+  const userId = (typeof req.headers["x-user-id"] === "string" ? req.headers["x-user-id"] : url.searchParams.get("user_id")) || "";
+  if (!userId) return { ok: false, status: 401, code: "unauthorized", message: "请提供 X-User-Id 或 ?user_id=" };
+  const allowlist = (process.env.HANDLERS_API_USERS ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+  if (allowlist.includes(userId)) return { ok: true, status: 200 };
+  try {
+    const user = await userContextResolver.resolve({ userId });
+    if (Array.isArray(user.permissions) && user.permissions.includes("runtime:inspect")) {
+      return { ok: true, status: 200 };
+    }
+    return { ok: false, status: 403, code: "forbidden", message: `用户 ${userId} 缺少 runtime:inspect 权限。` };
+  } catch (error) {
+    return { ok: false, status: 401, code: "unauthorized", message: error instanceof Error ? error.message : "unknown user" };
+  }
 }

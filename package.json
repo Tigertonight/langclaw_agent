@@ -19,6 +19,7 @@
     "prompt:authority-alert": "tsc -p tsconfig.build.json && node dist/eval/prompt-authority-alert.js",
     "context:ingest-hook": "tsc -p tsconfig.build.json && node dist/eval/context-ingest-hook.js",
     "ingest:failure": "tsc -p tsconfig.build.json && node dist/eval/ingest-failure.js",
+    "handlers:auth": "tsc -p tsconfig.build.json && node dist/eval/handlers-auth.js",
     "arch:smoke": "tsc -p tsconfig.build.json && node dist/eval/architecture-smoke.js",
     "session:smoke": "tsc -p tsconfig.build.json && node dist/eval/session-recovery.js",
     "workspace:isolation": "tsc -p tsconfig.build.json && node dist/eval/workspace-isolation.js",
