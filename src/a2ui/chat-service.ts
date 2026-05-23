@@ -90,8 +90,11 @@ export class A2UIChatService {
     this.actionRegistry.register(definition);
   }
 
-  async decorateChatResult<T extends Record<string, unknown>>(result: T, options: { clientCapabilities?: ClientCapabilities } = {}): Promise<T & { a2ui: A2UIEnvelope[]; a2ui_pipe: JsonObject[] }> {
-    const a2ui = await this.pipeLogService.withRetry("translate_agent_result", () => this.translatorService.translateAgentResult(result, { clientCapabilities: options.clientCapabilities }), 2);
+  async decorateChatResult<T extends Record<string, unknown>>(result: T, options: { clientCapabilities?: ClientCapabilities; includeRuntime?: boolean } = {}): Promise<T & { a2ui: A2UIEnvelope[]; a2ui_pipe: JsonObject[] }> {
+    const a2ui = await this.pipeLogService.withRetry("translate_agent_result", () => this.translatorService.translateAgentResult(result, {
+      clientCapabilities: options.clientCapabilities,
+      includeRuntime: options.includeRuntime === true
+    }), 2);
     return {
       ...result,
       a2ui,

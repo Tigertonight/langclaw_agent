@@ -4,6 +4,7 @@ import { A2UIIncrementalEnvelopeParser } from "../a2ui/incremental-envelope-pars
 import { createA2UIModule } from "../a2ui/module.js";
 
 const messages = buildA2UIResponse({
+  includeRuntime: true,
   result: {
     run_id: "run_eval",
     sources: [{
@@ -47,6 +48,20 @@ const messages = buildA2UIResponse({
           relevance: 0.8,
           reason: "continue_request"
         }]
+      }
+    }
+  }
+});
+
+const nonDebugMessages = buildA2UIResponse({
+  result: {
+    run_id: "run_non_debug_eval",
+    debug: {
+      route: {
+        intent_code: "knowledge.policy_qa",
+        execution_class: "controlled_execution",
+        handler_type: "knowledge_lookup",
+        confidence: "high"
       }
     }
   }
@@ -152,6 +167,7 @@ assert(messages.some((message) => message.createSurface?.surfaceId.includes("sou
 assert(wrappedMessages.some((message) => message.createSurface?.surfaceId.includes("sources")), "should create sources surface from wrapped output");
 assert(messages.some((message) => message.createSurface?.surfaceId.includes("task_resume")), "should create task resume surface");
 assert(messages.some((message) => message.createSurface?.surfaceId.includes("runtime")), "should create runtime surface");
+assert(!nonDebugMessages.some((message) => message.createSurface?.surfaceId.includes("runtime")), "runtime surface should be debug-only");
 assert(vehicleMessages.some((message) => message.createSurface?.surfaceId.includes("vehicle_progress")), "should create vehicle progress surface");
 assert(agenticVehicleMessages.some((message) => message.createSurface?.surfaceId.includes("vehicle_progress")), "should create vehicle progress surface from agentic tool results");
 assert(expenseMessages.some((message) => message.createSurface?.surfaceId.includes("expense_estimate")), "should create expense estimate surface");

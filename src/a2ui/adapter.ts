@@ -19,6 +19,8 @@ interface BuildA2UIInput {
   namespace?: string;
   /** 客户端能力（versioning + 支持的组件列表）；不传则不做降级 */
   clientCapabilities?: ClientCapabilities;
+  /** debug 模式才输出 runtime summary，避免普通用户看到执行细节。 */
+  includeRuntime?: boolean;
 }
 
 export interface ClientCapabilities {
@@ -31,12 +33,13 @@ export interface ClientCapabilities {
  * 调度器只负责 1) 取 plugin、2) 调 extract、3) 调 build、4) 拼 createSurface/updateDataModel/updateComponents 三件套。
  * 业务规则全部下沉到 src/a2ui/plugins/*。
  */
-export function buildA2UIResponse({ result, surfacePrefix = "agent", plugins, namespace, clientCapabilities }: BuildA2UIInput): A2UIEnvelope[] {
+export function buildA2UIResponse({ result, surfacePrefix = "agent", plugins, namespace, clientCapabilities, includeRuntime = false }: BuildA2UIInput): A2UIEnvelope[] {
   const record = toRecord(result) ?? {};
   const runId = stringOr(record.run_id, `run_${Date.now()}`);
   const ctx = { runId, surfacePrefix, record };
   const messages: A2UIEnvelope[] = [];
-  for (const plugin of plugins ?? defaultSurfacePlugins()) {
+  const activePlugins = (plugins ?? defaultSurfacePlugins()).filter((plugin) => includeRuntime || plugin.kind !== "runtime");
+  for (const plugin of activePlugins) {
     let data: unknown;
     try {
       data = plugin.extract(ctx);
