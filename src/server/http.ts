@@ -4,6 +4,10 @@ import { createA2UIModule } from "../a2ui/module.js";
 import { A2UIBadRequestError } from "../a2ui/dto.js";
 import { loadJson } from "../data/load-json.js";
 import { renderChatPage } from "./chat-page.js";
+import { basicLiveness, checkReadiness } from "./health.js";
+import { TokenAuthenticator, AuthError, type AuthContext } from "../security/auth.js";
+import { RateLimiter, RateLimitError, readClientIp } from "../security/rate-limiter.js";
+import { sharedMetrics, logEvent, newTraceId, startRequest, type RequestContext } from "../security/observability.js";
 import type { JsonObject } from "../types/agent-contracts.js";
 
 interface WecomUserRecord extends JsonObject {
@@ -44,11 +48,33 @@ const { chatController: a2uiChatController } = createA2UIModule({
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "0.0.0.0";
 const chatStreamTimeoutMs = readPositiveNumberEnv("CHAT_STREAM_TIMEOUT_MS", 60000);
+const sseHeartbeatMs = readPositiveNumberEnv("SSE_HEARTBEAT_MS", 15_000);
+const shutdownDrainMs = readPositiveNumberEnv("SHUTDOWN_DRAIN_MS", 30_000);
+
+let draining = false;
+const inFlight = new Set<ServerResponse>();
+
+const auth = new TokenAuthenticator();
+const rateLimiter = new RateLimiter(
+  60_000,
+  readPositiveNumberEnv("A2UI_USER_QPM", 30),
+  readPositiveNumberEnv("A2UI_IP_QPM", 60),
+  readPositiveNumberEnv("A2UI_STREAMS_PER_USER", 3)
+);
+const metrics = sharedMetrics;
+const PROTECTED_PATHS = new Set([
+  "/api/chat",
+  "/api/chat/stream",
+  "/api/a2ui/action",
+  "/api/a2ui/history"
+]);
 
 const server = http.createServer(async (req: IncomingMessage, res: ServerResponse) => {
   setCors(res);
   const url = new URL(req.url ?? "/", "http://localhost");
   const pathname = url.pathname;
+  const ctx = startRequest();
+  res.setHeader("X-Trace-Id", ctx.traceId);
 
   if (req.method === "OPTIONS") {
     res.writeHead(204);
@@ -57,7 +83,17 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
   }
 
   if (req.method === "GET" && pathname === "/health") {
-    sendJson(res, 200, { ok: true });
+    sendJson(res, 200, basicLiveness());
+    return;
+  }
+
+  if (req.method === "GET" && pathname === "/ready") {
+    if (draining) {
+      sendJson(res, 503, { ok: false, draining: true, checks: { shutdown: { ok: false, detail: "draining" } } });
+      return;
+    }
+    const result = await checkReadiness(auth);
+    sendJson(res, result.ok ? 200 : 503, result);
     return;
   }
 
@@ -107,16 +143,68 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
     return;
   }
 
+  if (req.method === "GET" && pathname === "/api/metrics") {
+    sendJson(res, 200, {
+      metrics: metrics.snapshot(),
+      rate_limiter: rateLimiter.snapshot()
+    });
+    return;
+  }
+
+  if (req.method === "GET" && pathname === "/metrics") {
+    res.writeHead(200, { "Content-Type": "text/plain; version=0.0.4; charset=utf-8" });
+    res.end(metrics.toPrometheus());
+    return;
+  }
+
+  if (req.method === "POST" && pathname === "/api/admin/auth/reload") {
+    if (!auth.isAdminToken(req)) {
+      sendJson(res, 403, { error: "admin_required", message: "需要 admin token。" });
+      return;
+    }
+    const result = auth.reload();
+    sendJson(res, result.ok ? 200 : 400, result);
+    return;
+  }
+
+  if (req.method === "GET" && pathname === "/api/a2ui/history") {
+    try {
+      const userId = url.searchParams.get("user_id") ?? "";
+      const sessionId = url.searchParams.get("session_id") ?? "";
+      const runId = url.searchParams.get("run_id") ?? undefined;
+      const sinceParam = url.searchParams.get("since_seq");
+      const sinceSeq = sinceParam !== null ? Number(sinceParam) : undefined;
+      if (!userId || !sessionId) {
+        sendJson(res, 400, { error: "bad_request", message: "user_id 和 session_id 必填。" });
+        return;
+      }
+      const result = await a2uiChatController.history({
+        userId, sessionId, runId,
+        sinceSeq: Number.isFinite(sinceSeq) ? Number(sinceSeq) : undefined
+      });
+      sendJson(res, 200, result);
+    } catch (error) {
+      sendJson(res, 500, {
+        error: "a2ui_history_failed",
+        message: error instanceof Error ? error.message : "unknown error",
+        trace_id: ctx.traceId
+      });
+    }
+    return;
+  }
+
   if (req.method === "POST" && pathname === "/api/a2ui/action") {
     try {
       const body = await readJson(req);
+      const authCtx = guardRequest(req, body, pathname, ctx);
+      metrics.inc("action_invoked_total", { tenant: authCtx.tenantId });
       const result = await a2uiChatController.action(body);
-      sendJson(res, result.ok === false ? 400 : 200, result);
+      if (result.ok === false) {
+        metrics.inc("action_forbidden_total", { tenant: authCtx.tenantId, reason: stringFromUnknown(result.error) });
+      }
+      sendJson(res, result.ok === false ? 400 : 200, { ...result, trace_id: ctx.traceId });
     } catch (error) {
-      sendJson(res, isBadRequestError(error) ? 400 : 500, {
-        error: isBadRequestError(error) ? "bad_request" : "a2ui_action_failed",
-        message: error instanceof Error ? error.message : "unknown error"
-      });
+      handleError(error, res, ctx, { path: pathname });
     }
     return;
   }
@@ -190,34 +278,76 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
   if (req.method === "POST" && pathname === "/api/chat") {
     try {
       const body = await readJson(req);
-      sendJson(res, 200, await a2uiChatController.chat(body));
+      const authCtx = guardRequest(req, body, pathname, ctx);
+      metrics.inc("chat_request_total", { tenant: authCtx.tenantId });
+      const result = await a2uiChatController.chat(body);
+      sendJson(res, 200, { ...result, trace_id: ctx.traceId });
     } catch (error) {
-      sendJson(res, isBadRequestError(error) ? 400 : 500, {
-        error: isBadRequestError(error) ? "bad_request" : "internal_error",
-        message: error instanceof Error ? error.message : "unknown error"
-      });
+      metrics.inc("chat_request_failed", { reason: errorReason(error) });
+      handleError(error, res, ctx, { path: pathname });
     }
     return;
   }
 
   if (req.method === "POST" && pathname === "/api/chat/stream") {
     let streamClosed = false;
+    let releaseStream: (() => void) | null = null;
+    let authCtx: AuthContext | null = null;
+    let heartbeatTimer: NodeJS.Timeout | null = null;
+    const startedAt = Date.now();
+    inFlight.add(res);
     try {
       const body = await readJson(req);
+      authCtx = guardRequest(req, body, pathname, ctx, { skipUserQuota: true });
+      releaseStream = rateLimiter.acquireStream(authCtx.userId);
+      metrics.inc("chat_stream_total", { tenant: authCtx.tenantId });
+
+      const lastEventId = readLastEventId(req);
+      const sinceSeq = lastEventId ? parseInt(lastEventId.split(":").pop() ?? "0", 10) : undefined;
+      // body 里也允许传 since_seq，作为 fetch 场景下显式重连的等价物
+      const explicitSince = typeof body.since_seq === "number" ? body.since_seq : undefined;
+      const resumeSince = sinceSeq && Number.isFinite(sinceSeq) ? sinceSeq : explicitSince;
+
       res.writeHead(200, {
         "Content-Type": "text/event-stream; charset=utf-8",
         "Cache-Control": "no-cache, no-transform",
-        Connection: "keep-alive"
+        Connection: "keep-alive",
+        "X-Trace-Id": ctx.traceId
       });
 
-      await withTimeout(a2uiChatController.stream(body, async (event) => {
-          if (!streamClosed && !res.destroyed) sendSse(res, event.type, event);
-      }), chatStreamTimeoutMs, "chat_stream_timeout");
+      // SSE 心跳：每 15s 发一个 ping comment line（: 开头的行被 EventSource 忽略，但能保活 LB/proxy）。
+      heartbeatTimer = setInterval(() => {
+        if (streamClosed || res.destroyed) return;
+        try {
+          res.write(`: ping ${Date.now()}\n\n`);
+        } catch { /* socket already closed */ }
+      }, sseHeartbeatMs);
+
+      await withTimeout(
+        a2uiChatController.stream(body, async (event, sseId) => {
+          if (!streamClosed && !res.destroyed) sendSse(res, event.type, event, sseId);
+          if (event.type === "a2ui_envelope") {
+            metrics.inc("envelope_emitted_total", { tenant: authCtx?.tenantId });
+          }
+        }, { traceId: ctx.traceId, namespace: authCtx.tenantId, sinceSeq: resumeSince }),
+        chatStreamTimeoutMs,
+        "chat_stream_timeout"
+      );
       streamClosed = true;
       res.end();
     } catch (error) {
       streamClosed = true;
+      metrics.inc("chat_request_failed", { reason: errorReason(error) });
       if (!res.headersSent) {
+        if (error instanceof AuthError) {
+          sendJson(res, error.status, { error: "unauthorized", message: error.message, trace_id: ctx.traceId });
+          return;
+        }
+        if (error instanceof RateLimitError) {
+          res.setHeader("Retry-After", Math.ceil(error.retryAfterMs / 1000).toString());
+          sendJson(res, 429, { error: "rate_limited", message: error.message, retry_after_ms: error.retryAfterMs, trace_id: ctx.traceId });
+          return;
+        }
         res.writeHead(200, {
           "Content-Type": "text/event-stream; charset=utf-8",
           "Cache-Control": "no-cache, no-transform",
@@ -227,9 +357,15 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
       sendSse(res, "error", {
         type: "error",
         error: isBadRequestError(error) ? "bad_request" : "stream_error",
-        message: error instanceof Error ? error.message : "unknown error"
+        message: error instanceof Error ? error.message : "unknown error",
+        trace_id: ctx.traceId
       });
       res.end();
+    } finally {
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      inFlight.delete(res);
+      releaseStream?.();
+      metrics.observe("stream_duration_ms", Date.now() - startedAt, { tenant: authCtx?.tenantId });
     }
     return;
   }
@@ -241,10 +377,49 @@ server.listen(port, host, () => {
   console.log(`Enterprise Agent MVP listening on http://${host}:${port}`);
 });
 
+let shuttingDown = false;
+async function gracefulShutdown(signal: string): Promise<void> {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  draining = true;
+  logEvent("info", "shutdown_started", { signal, in_flight: inFlight.size });
+
+  // 1. 停止接收新连接（已建立的请求继续跑直到完成或超时）
+  server.close(() => {
+    logEvent("info", "shutdown_listener_closed", {});
+  });
+
+  // 2. 等待 in-flight SSE 流自然结束，最多 shutdownDrainMs
+  const deadline = Date.now() + shutdownDrainMs;
+  while (inFlight.size > 0 && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 200));
+  }
+
+  // 3. 还没结束的强制断开，并下发一个 shutdown 事件让客户端走重连路径
+  if (inFlight.size > 0) {
+    logEvent("warn", "shutdown_forcing_streams", { remaining: inFlight.size });
+    for (const res of inFlight) {
+      try {
+        if (!res.destroyed) {
+          sendSse(res, "shutdown", { type: "shutdown", reason: "server_draining" });
+          res.end();
+        }
+      } catch { /* already closed */ }
+    }
+  }
+
+  logEvent("info", "shutdown_complete", { signal });
+  process.exit(0);
+}
+
+process.on("SIGTERM", () => { void gracefulShutdown("SIGTERM"); });
+process.on("SIGINT", () => { void gracefulShutdown("SIGINT"); });
+
 function setCors(res: ServerResponse): void {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, Last-Event-ID");
+  res.setHeader("Access-Control-Expose-Headers", "X-Trace-Id");
 }
 
 function sendJson(res: ServerResponse, status: number, payload: unknown): void {
@@ -252,7 +427,8 @@ function sendJson(res: ServerResponse, status: number, payload: unknown): void {
   res.end(JSON.stringify(payload, null, 2));
 }
 
-function sendSse(res: ServerResponse, event: unknown, payload: unknown): void {
+function sendSse(res: ServerResponse, event: unknown, payload: unknown, sseId?: string): void {
+  if (sseId) res.write(`id: ${sseId}\n`);
   res.write(`event: ${event}\n`);
   res.write(`data: ${JSON.stringify(payload)}\n\n`);
 }
@@ -279,6 +455,76 @@ async function readJson(req: IncomingMessage): Promise<RequestBody> {
   return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as RequestBody : {};
 }
 
+function readLastEventId(req: IncomingMessage): string {
+  const value = req.headers["last-event-id"];
+  if (typeof value === "string") return value;
+  if (Array.isArray(value) && value.length) return value[0];
+  return "";
+}
+
 function isBadRequestError(error: unknown): boolean {
   return error instanceof A2UIBadRequestError || (Boolean(error) && typeof error === "object" && (error as { code?: unknown }).code === "bad_request");
+}
+
+function errorReason(error: unknown): string {
+  if (error instanceof AuthError) return "auth";
+  if (error instanceof RateLimitError) return "rate_limited";
+  if (isBadRequestError(error)) return "bad_request";
+  return "internal";
+}
+
+function stringFromUnknown(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function guardRequest(
+  req: IncomingMessage,
+  body: Record<string, unknown>,
+  path: string,
+  ctx: RequestContext,
+  options: { skipUserQuota?: boolean } = {}
+): AuthContext {
+  const ip = readClientIp(req);
+  try {
+    rateLimiter.acquireIp(ip);
+  } catch (error) {
+    metrics.inc("rate_limited_total", { scope: "ip" });
+    throw error;
+  }
+  let authCtx: AuthContext;
+  try {
+    authCtx = auth.authenticate(req, body);
+  } catch (error) {
+    metrics.inc("auth_failed_total", {});
+    if (PROTECTED_PATHS.has(path)) throw error;
+    throw error;
+  }
+  if (!options.skipUserQuota) {
+    try {
+      rateLimiter.acquireUser(authCtx.userId);
+    } catch (error) {
+      metrics.inc("rate_limited_total", { scope: "user", tenant: authCtx.tenantId });
+      throw error;
+    }
+  }
+  logEvent("info", "request_authorized", { trace_id: ctx.traceId, path, user_id: authCtx.userId, tenant: authCtx.tenantId });
+  return authCtx;
+}
+
+function handleError(error: unknown, res: ServerResponse, ctx: RequestContext, fields: Record<string, unknown>): void {
+  if (error instanceof AuthError) {
+    sendJson(res, error.status, { error: "unauthorized", message: error.message, trace_id: ctx.traceId });
+    return;
+  }
+  if (error instanceof RateLimitError) {
+    res.setHeader("Retry-After", Math.ceil(error.retryAfterMs / 1000).toString());
+    sendJson(res, 429, { error: "rate_limited", message: error.message, retry_after_ms: error.retryAfterMs, trace_id: ctx.traceId });
+    return;
+  }
+  if (isBadRequestError(error)) {
+    sendJson(res, 400, { error: "bad_request", message: error instanceof Error ? error.message : "bad request", trace_id: ctx.traceId });
+    return;
+  }
+  logEvent("error", "request_failed", { trace_id: ctx.traceId, ...fields, error: error instanceof Error ? error.message : String(error) });
+  sendJson(res, 500, { error: "internal_error", message: error instanceof Error ? error.message : "unknown error", trace_id: ctx.traceId });
 }

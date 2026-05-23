@@ -1,7 +1,5 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { existsSync } from "node:fs";
-import path from "node:path";
 import { safeJoinWorkspace, type WorkspaceContext } from "./workspace-context.js";
+import { defaultJsonFileStore, type JsonFileStore } from "./store-adapter.js";
 import type { JsonObject, ToolCall } from "../types/agent-contracts.js";
 
 export interface PendingAction extends JsonObject {
@@ -19,6 +17,12 @@ export interface PendingAction extends JsonObject {
 }
 
 export class PendingActionStore {
+  private readonly store: JsonFileStore;
+
+  constructor(store: JsonFileStore = defaultJsonFileStore()) {
+    this.store = store;
+  }
+
   async create(workspace: WorkspaceContext, input: {
     userId: string;
     sessionId?: string;
@@ -41,22 +45,17 @@ export class PendingActionStore {
       updated_at: now.toISOString(),
       expires_at: new Date(now.getTime() + (input.ttlMs ?? 15 * 60 * 1000)).toISOString()
     };
-    const actions = await this.list(workspace, { includeExpired: true });
-    actions.push(action);
-    await this.writeAll(workspace, actions);
+    await this.store.mutate<PendingAction[]>(this.filePath(workspace), [], (actions) => {
+      actions.push(action);
+      return actions;
+    });
     return action;
   }
 
   async list(workspace: WorkspaceContext, { includeExpired = false }: { includeExpired?: boolean } = {}): Promise<PendingAction[]> {
-    const file = this.filePath(workspace);
-    if (!existsSync(file)) return [];
-    try {
-      const parsed = JSON.parse(await readFile(file, "utf8"));
-      const actions = Array.isArray(parsed) ? parsed.map(normalizePendingAction).filter(Boolean) as PendingAction[] : [];
-      return includeExpired ? actions : actions.filter((action) => !isExpired(action) && action.status === "pending");
-    } catch {
-      return [];
-    }
+    const raw = await this.store.read<unknown[]>(this.filePath(workspace), []);
+    const actions = Array.isArray(raw) ? raw.map(normalizePendingAction).filter(Boolean) as PendingAction[] : [];
+    return includeExpired ? actions : actions.filter((action) => !isExpired(action) && action.status === "pending");
   }
 
   async get(workspace: WorkspaceContext, id: string): Promise<PendingAction | null> {
@@ -64,23 +63,20 @@ export class PendingActionStore {
   }
 
   async mark(workspace: WorkspaceContext, id: string, status: PendingAction["status"]): Promise<PendingAction | null> {
-    const actions = await this.list(workspace, { includeExpired: true });
-    const action = actions.find((item) => item.id === id);
-    if (!action) return null;
-    action.status = status;
-    action.updated_at = new Date().toISOString();
-    await this.writeAll(workspace, actions);
-    return action;
+    let updated: PendingAction | null = null;
+    await this.store.mutate<PendingAction[]>(this.filePath(workspace), [], (actions) => {
+      const action = actions.find((item) => item.id === id);
+      if (!action) return actions;
+      action.status = status;
+      action.updated_at = new Date().toISOString();
+      updated = action;
+      return actions;
+    });
+    return updated;
   }
 
   filePath(workspace: WorkspaceContext): string {
     return safeJoinWorkspace(workspace.root, "runtime", "pending-actions.json");
-  }
-
-  private async writeAll(workspace: WorkspaceContext, actions: PendingAction[]): Promise<void> {
-    const file = this.filePath(workspace);
-    await mkdir(path.dirname(file), { recursive: true });
-    await writeFile(file, JSON.stringify(actions, null, 2), "utf8");
   }
 }
 

@@ -22,9 +22,16 @@
     "business:runtime": "tsc -p tsconfig.build.json && node dist/eval/business-agent-runtime.js",
     "trace:maturity": "tsc -p tsconfig.build.json && node dist/eval/trace-maturity.js",
     "a2ui:adapter": "tsc -p tsconfig.build.json && node dist/eval/a2ui-adapter.js",
+    "a2ui:resilience": "tsc -p tsconfig.build.json && node dist/eval/a2ui-resilience.js",
+    "a2ui:regression": "tsc -p tsconfig.build.json && node dist/eval/a2ui-regression.js",
     "skill:curator": "tsc -p tsconfig.build.json && node dist/eval/skill-curator-maintenance.js",
     "task:smoke": "tsc -p tsconfig.build.json && node dist/eval/task-store.js",
     "config:check": "tsc -p tsconfig.build.json && node dist/eval/config-check.js",
+    "tool:validation": "tsc -p tsconfig.build.json && node dist/eval/tool-input-validation.js",
+    "tool:timeout": "tsc -p tsconfig.build.json && node dist/eval/tool-timeout.js",
+    "tool:error-msg": "tsc -p tsconfig.build.json && node dist/eval/tool-error-message.js",
+    "store:concurrency": "tsc -p tsconfig.build.json && node dist/eval/store-concurrency.js",
+    "ops:endpoints": "tsc -p tsconfig.build.json && node dist/eval/ops-endpoints.js",
     "typecheck": "tsc -p tsconfig.json",
     "build:ts": "tsc -p tsconfig.build.json"
   },
@@ -34,5 +41,8 @@
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
   }
 }

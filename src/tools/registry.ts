@@ -2,7 +2,17 @@ import { checkToolPermission } from "../auth/permissions.js";
 import { PendingActionStore } from "../runtime/pending-action-store.js";
 import { RuntimeHooks } from "../runtime/hooks.js";
 import { resolveUserWorkspace, type WorkspaceContext } from "../runtime/workspace-context.js";
+import { logEvent, sharedMetrics } from "../security/observability.js";
+import {
+  formatConfirmationRequired,
+  formatExecuteFailed,
+  formatInvalidInputMessage,
+  formatToolUnavailable,
+  formatUnknownTool
+} from "./tool-error-formatter.js";
+import type { ZodTypeAny } from "zod";
 import type {
+  JsonObject,
   ToolCall,
   ToolDefinition,
   ToolExecutionContext,
@@ -18,15 +28,24 @@ export interface ToolDescription {
   metadata?: ToolMetadata;
 }
 
+const DEFAULT_TOOL_TIMEOUT_MS = readPositiveNumberEnv("TOOL_EXECUTE_TIMEOUT_MS", 30_000);
+
+function readPositiveNumberEnv(name: string, fallback: number): number {
+  const value = Number(process.env[name]);
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
 export class ToolRegistry {
   private readonly tools: Map<string, ToolDefinition>;
   private readonly hooks?: RuntimeHooks;
   private readonly pendingActionStore: PendingActionStore;
+  private readonly defaultTimeoutMs: number;
 
-  constructor(tools: ToolDefinition[], { hooks, pendingActionStore = new PendingActionStore() }: { hooks?: RuntimeHooks; pendingActionStore?: PendingActionStore } = {}) {
+  constructor(tools: ToolDefinition[], { hooks, pendingActionStore = new PendingActionStore(), defaultTimeoutMs }: { hooks?: RuntimeHooks; pendingActionStore?: PendingActionStore; defaultTimeoutMs?: number } = {}) {
     this.tools = new Map(tools.map((tool) => [tool.name, tool]));
     this.hooks = hooks;
     this.pendingActionStore = pendingActionStore;
+    this.defaultTimeoutMs = defaultTimeoutMs ?? DEFAULT_TOOL_TIMEOUT_MS;
   }
 
   list(context: ToolExecutionContext = {}): ToolDescription[] {
@@ -62,7 +81,7 @@ export class ToolRegistry {
         ok: false,
         tool: call.name,
         error: "unknown_tool",
-        message: `工具 ${call.name} 不存在。`
+        message: formatUnknownTool(call.name)
       } satisfies ToolResult;
     }
 
@@ -85,23 +104,25 @@ export class ToolRegistry {
     }
 
     if (!isToolAvailable(tool, context)) {
-      await this.emitGovernance(call, context, tool, "tool_unavailable", `工具 ${call.name} 当前上下文不可用。`);
+      const unavailableMsg = formatToolUnavailable(call.name);
+      await this.emitGovernance(call, context, tool, "tool_unavailable", unavailableMsg);
       return {
         ok: false,
         tool: call.name,
         error: "tool_unavailable",
-        message: `工具 ${call.name} 当前上下文不可用。`
+        message: unavailableMsg
       } satisfies ToolResult;
     }
 
     if (tool.metadata?.requires_confirmation === true && context?.confirmed !== true) {
       const pendingAction = await this.createPendingAction(call, context, tool);
-      await this.emitGovernance(call, context, tool, "confirmation_required", `工具 ${call.name} 需要用户确认后才能执行。`, undefined, pendingAction?.id);
+      const confirmMsg = formatConfirmationRequired(call.name);
+      await this.emitGovernance(call, context, tool, "confirmation_required", confirmMsg, undefined, pendingAction?.id);
       return {
         ok: false,
         tool: call.name,
         error: "confirmation_required",
-        message: `工具 ${call.name} 需要用户确认后才能执行。`,
+        message: confirmMsg,
         data: pendingAction ? {
           pending_action_id: pendingAction.id,
           tool: pendingAction.tool,
@@ -113,7 +134,116 @@ export class ToolRegistry {
     }
 
     await this.emitGovernance(call, context, tool, "allowed", "tool execution allowed");
-    return tool.execute(call.args ?? {}, context);
+
+    const inputArgs = call.args ?? {};
+    const validatedArgs = this.validateInput(tool, inputArgs);
+    if (validatedArgs.invalid === true) {
+      await this.emitGovernance(call, context, tool, "invalid_input", validatedArgs.message);
+      return {
+        ok: false,
+        tool: call.name,
+        error: "invalid_input",
+        message: validatedArgs.message,
+        data: { issues: validatedArgs.issues } as JsonObject
+      } satisfies ToolResult;
+    }
+
+    const timeoutMs = typeof tool.metadata?.timeout_ms === "number" && tool.metadata.timeout_ms > 0
+      ? tool.metadata.timeout_ms
+      : this.defaultTimeoutMs;
+    const abortController = new AbortController();
+    const parentSignal = context?.signal;
+    const onParentAbort = (): void => abortController.abort(parentSignal?.reason);
+    if (parentSignal) {
+      if (parentSignal.aborted) abortController.abort(parentSignal.reason);
+      else parentSignal.addEventListener("abort", onParentAbort, { once: true });
+    }
+    const timer = setTimeout(() => abortController.abort(new Error("tool_execute_timeout")), timeoutMs);
+
+    let result: unknown;
+    try {
+      const childContext: ToolExecutionContext = { ...(context ?? {}), signal: abortController.signal };
+      const execPromise = Promise.resolve(tool.execute(validatedArgs.value, childContext));
+      const abortPromise = new Promise<never>((_, reject) => {
+        abortController.signal.addEventListener("abort", () => {
+          const reason = abortController.signal.reason;
+          reject(reason instanceof Error ? reason : new Error(typeof reason === "string" ? reason : "tool_aborted"));
+        }, { once: true });
+      });
+      result = await Promise.race([execPromise, abortPromise]);
+    } catch (error) {
+      const isTimeout = error instanceof Error && error.message === "tool_execute_timeout";
+      if (isTimeout) {
+        sharedMetrics.inc("tool_execute_timeout", { tool: call.name });
+        logEvent("warn", "tool_execute_timeout", {
+          tool: call.name,
+          user_id: context?.user?.id,
+          timeout_ms: timeoutMs
+        });
+      } else {
+        sharedMetrics.inc("tool_execute_failed", { tool: call.name });
+        logEvent("error", "tool_execute_failed", {
+          tool: call.name,
+          user_id: context?.user?.id,
+          error: error instanceof Error ? error.message : String(error)
+        });
+      }
+      const rawMessage = isTimeout
+        ? `工具执行超时（${timeoutMs}ms）`
+        : (error instanceof Error ? error.message : "tool execution failed");
+      return {
+        ok: false,
+        tool: call.name,
+        error: isTimeout ? "execute_timeout" : "execute_failed",
+        message: isTimeout ? rawMessage : formatExecuteFailed(call.name, rawMessage)
+      } satisfies ToolResult;
+    } finally {
+      clearTimeout(timer);
+      if (parentSignal) parentSignal.removeEventListener("abort", onParentAbort);
+    }
+
+    this.validateOutput(tool, result);
+    return result;
+  }
+
+  private validateInput(tool: ToolDefinition, args: JsonObject): { invalid: false; value: JsonObject } | { invalid: true; message: string; issues: JsonObject[] } {
+    const schema = tool.inputSchema as ZodTypeAny | undefined;
+    if (!schema || typeof (schema as { safeParse?: unknown }).safeParse !== "function") {
+      return { invalid: false, value: args };
+    }
+    const parsed = schema.safeParse(args);
+    if (parsed.success) return { invalid: false, value: parsed.data as JsonObject };
+    const issues = parsed.error.issues.map((issue) => ({
+      path: issue.path.join("."),
+      code: issue.code,
+      message: issue.message
+    })) as JsonObject[];
+    sharedMetrics.inc("tool_input_invalid", { tool: tool.name });
+    logEvent("warn", "tool_input_invalid", { tool: tool.name, issues });
+    const rawIssues = parsed.error.issues.map((issue) => ({
+      ...issue,
+      path: issue.path
+    })) as unknown as JsonObject[];
+    return {
+      invalid: true,
+      message: formatInvalidInputMessage(tool.name, rawIssues),
+      issues
+    };
+  }
+
+  private validateOutput(tool: ToolDefinition, result: unknown): void {
+    const schema = tool.outputSchema as ZodTypeAny | undefined;
+    if (!schema || typeof (schema as { safeParse?: unknown }).safeParse !== "function") return;
+    const parsed = schema.safeParse(result);
+    if (parsed.success) return;
+    const issues = parsed.error.issues.map((issue) => ({
+      path: issue.path.join("."),
+      code: issue.code,
+      message: issue.message
+    }));
+    sharedMetrics.inc("tool_output_invalid", { tool: tool.name });
+    logEvent("warn", "tool_output_invalid", { tool: tool.name, issues });
+    // 不阻断 —— 仅观测，避免一上线就把所有现有 tool 全锁死
   }
 
   private async emitGovernance(call: ToolCall, context: ToolExecutionContext | undefined, tool: ToolDefinition, decision: string, message?: string, code?: string, pendingActionId?: string): Promise<void> {
@@ -142,7 +272,7 @@ export class ToolRegistry {
       sessionId: typeof context?.session_id === "string" ? context.session_id : undefined,
       call,
       riskLevel: typeof tool.metadata?.risk_level === "string" ? tool.metadata.risk_level : "write",
-      reason: `工具 ${call.name} 需要用户确认后才能执行。`
+      reason: formatConfirmationRequired(call.name)
     });
   }
 }

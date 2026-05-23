@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { resolveProjectPath } from "../data/load-json.js";
 import { resolveUserWorkspace, safeJoinWorkspace, type WorkspaceContext } from "../runtime/workspace-context.js";
 import type { JsonObject, JsonValue, ToolDefinition, ToolExecutionContext } from "../types/agent-contracts.js";
+import { defineTool, z, ToolResultBaseSchema } from "./zod-helpers.js";
 
 const DEFAULT_TIMEOUT_MS = 1000;
 const MAX_TIMEOUT_MS = 3000;
@@ -54,8 +55,17 @@ interface NormalizedWorkerResult extends JsonObject {
 }
 
 export function createSandboxTools(): ToolDefinition[] {
+  const SafeComputeInputSchema = z.object({
+    code: z.string().min(1).max(MAX_CODE_CHARS),
+    mode: z.enum(["expression", "script"]).optional(),
+    input: z.unknown().optional(),
+    timeout_ms: z.number().int().min(50).max(MAX_TIMEOUT_MS).optional()
+  }).strict();
+
+  const SafeComputeOutputSchema = ToolResultBaseSchema;
+
   return [
-    {
+    defineTool({
       name: "safe_compute",
       description: "Run deterministic calculations in an isolated per-user sandbox. expression 模式只支持纯数字表达式（+-*/%）。script 模式：『result』已经被运行时声明为 let，你的代码需要用 result = ... 赋值，而不是 const result = ... / let result = ... / var result = ...。最后一行不需要返回。No shell, filesystem, process, imports, require, or network APIs are exposed.",
       metadata: {
@@ -63,7 +73,6 @@ export function createSandboxTools(): ToolDefinition[] {
         risk_level: "sandboxed_compute",
         requires_confirmation: false,
         intents: ["data_query", "mixed"],
-        // 允许 agentic 跨意图规划器把它当成"算数底座"调用。
         expose_to_agentic: true,
         sandbox: {
           per_user: true,
@@ -75,32 +84,12 @@ export function createSandboxTools(): ToolDefinition[] {
           audited: true
         }
       },
-      schema: {
-        type: "object",
-        required: ["code"],
-        properties: {
-          code: {
-            type: "string",
-            description: "expression 模式：纯数字表达式（如 (98+21+37+8)/4）。script 模式：多步 JS，最后把答案赋值给 result（**不要再写 const/let/var result**，运行时已声明）。"
-          },
-          mode: {
-            type: "string",
-            enum: ["expression", "script"],
-            description: "Use expression for simple formulas and script for multi-step calculations."
-          },
-          input: {
-            description: "Optional JSON-serializable input data available as input inside the sandbox."
-          },
-          timeout_ms: {
-            type: "number",
-            description: "Execution timeout, capped at 3000 ms."
-          }
-        }
-      },
+      inputSchema: SafeComputeInputSchema,
+      outputSchema: SafeComputeOutputSchema,
       async execute(args, context) {
-        return executeSafeCompute(args as SafeComputeArgs | undefined, context);
+        return executeSafeCompute(args as SafeComputeArgs, context);
       }
-    }
+    })
   ];
 }
 

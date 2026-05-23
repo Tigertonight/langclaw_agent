@@ -363,6 +363,22 @@ export function renderChatPage(): string {
     }
     .a2ui-button.secondary { background: #fff; color: #27272a; }
     .a2ui-button:disabled { opacity: .55; cursor: not-allowed; }
+    .a2ui-progress {
+      border: 1px solid var(--border); border-radius: 8px; background: #fafafa;
+      padding: 9px 11px; display: grid; gap: 4px;
+    }
+    .a2ui-progress-title { font-size: 13px; font-weight: 600; color: #202020; }
+    .a2ui-progress-detail { font-size: 12px; color: #6a6a6a; line-height: 1.55; }
+    .a2ui-progress-running { background: #f4f7ff; border-color: #d8e0ff; }
+    .a2ui-progress-done { background: #f4faf4; border-color: #d8e8d8; }
+    .a2ui-progress-warn { background: #fdf6ed; border-color: #f0d9a8; }
+    .a2ui-skeleton { position: relative; overflow: hidden; }
+    .a2ui-skeleton::after {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.55) 50%, transparent 100%);
+      animation: a2uiShimmer 1.4s infinite;
+    }
+    @keyframes a2uiShimmer { 0% { transform: translateX(-100%);} 100% { transform: translateX(100%);} }
     .material-card {
       border: 1px solid var(--border); border-radius: 8px; background: #fff; padding: 11px;
       display: grid; gap: 10px; color: #27272a;
@@ -951,6 +967,29 @@ export function renderChatPage(): string {
       } else if (event === "agentic_event") {
         // 后端 agentic-handler 的三流事件实时透传：tool_call -> 业务视角的 summary+narrative 配对
         applyAgenticEvent(assistantId, payload.event);
+      } else if (event === "a2ui_envelope") {
+        // 流式 a2UI：streaming-translator 把 lifecycle/tool_call 实时翻译成 envelope
+        const msg = getMsg(assistantId);
+        if (msg && payload.envelope) {
+          const state = ensureA2UIState(msg);
+          applyA2UIEnvelopeToState(state, payload.envelope);
+          state.hasIncrement = true;
+          if (typeof payload.seq === "number") {
+            state.lastSeq = payload.seq;
+            if (payload.run_id) state.runId = payload.run_id;
+            if (payload.session_id) state.sessionId = payload.session_id;
+          }
+        }
+      } else if (event === "a2ui_run_started") {
+        const msg = getMsg(assistantId);
+        if (msg) {
+          const state = ensureA2UIState(msg);
+          state.runId = payload.run_id;
+          state.sessionId = payload.session_id;
+          state.traceId = payload.trace_id;
+        }
+      } else if (event === "a2ui_replay_done" || event === "a2ui_replay_empty") {
+        // 续传完成的标记，前端无需特殊处理
       } else if (event === "delta") {
         appendText(assistantId, payload.text || "");
       } else if (event === "route") {
@@ -1575,6 +1614,11 @@ export function renderChatPage(): string {
       pendingDoneEvents.delete(id);
       const msg = getMsg(id);
       if (!msg) return;
+      // 兜底：如果流式期间没有收到 a2ui_envelope，则把 done 全量数组喂入累积态。
+      const state = ensureA2UIState(msg);
+      if (!state.hasIncrement && Array.isArray(payload.a2ui) && payload.a2ui.length) {
+        applyA2UIEnvelopesToState(state, payload.a2ui);
+      }
       patch(id, {
         text: payload.answer || msg.text,
         steps: msg.steps.length ? msg.steps : (payload.debug?.steps || []),
@@ -1606,35 +1650,103 @@ export function renderChatPage(): string {
     function renderA2UISurfaces(msg) {
       const wrap = document.createElement("div");
       wrap.className = "a2ui-surfaces";
-      const surfaces = materializeA2UI(msg.a2ui || []);
+      const surfaces = collectA2UISurfaces(msg);
       for (const surface of surfaces) {
-        const root = renderOpenUIView(surface)
+        const root = renderA2UIProgressSurface(surface)
+          || renderOpenUIView(surface)
           || (isA2UISourceSurface(surface) ? renderA2UISourceDisclosure(surface) : renderA2UIComponent(surface, surface.root));
-        if (root) wrap.appendChild(root);
+        if (root) {
+          if (surface.data && surface.data._skeleton) root.classList.add("a2ui-skeleton");
+          wrap.appendChild(root);
+        }
       }
       return wrap;
     }
-    function materializeA2UI(envelopes) {
-      const map = new Map();
-      for (const envelope of envelopes || []) {
-        if (envelope.createSurface) {
-          const s = envelope.createSurface;
-          map.set(s.surfaceId, { id: s.surfaceId, root: s.root, data: {}, components: new Map() });
-        }
-        if (envelope.updateDataModel) {
-          const u = envelope.updateDataModel;
-          const surface = map.get(u.surfaceId) || { id: u.surfaceId, root: "", data: {}, components: new Map() };
-          surface.data = u.value || {};
-          map.set(u.surfaceId, surface);
-        }
-        if (envelope.updateComponents) {
-          const u = envelope.updateComponents;
-          const surface = map.get(u.surfaceId) || { id: u.surfaceId, root: "", data: {}, components: new Map() };
-          for (const item of u.components || []) surface.components.set(item.id, item.component || {});
-          map.set(u.surfaceId, surface);
+    function ensureA2UIState(msg) {
+      if (!msg.a2uiState) msg.a2uiState = { surfaces: new Map(), order: [], hasIncrement: false };
+      return msg.a2uiState;
+    }
+    function collectA2UISurfaces(msg) {
+      const state = ensureA2UIState(msg);
+      // 优先使用增量累积态；done 兜底时再 merge 全量 envelopes（避免没接到 a2ui_envelope 的旧路径退化）。
+      if (!state.hasIncrement && (msg.a2ui || []).length) {
+        applyA2UIEnvelopesToState(state, msg.a2ui);
+      }
+      const out = [];
+      for (const id of state.order) {
+        const surface = state.surfaces.get(id);
+        if (!surface || surface.deleted) continue;
+        if (!surface.root || surface.components.size === 0) continue;
+        out.push(surface);
+      }
+      return out;
+    }
+    function applyA2UIEnvelopesToState(state, envelopes) {
+      for (const envelope of envelopes || []) applyA2UIEnvelopeToState(state, envelope);
+    }
+    function applyA2UIEnvelopeToState(state, envelope) {
+      if (envelope.createSurface) {
+        const s = envelope.createSurface;
+        let surface = state.surfaces.get(s.surfaceId);
+        if (!surface) {
+          surface = { id: s.surfaceId, root: s.root, data: {}, components: new Map(), deleted: false };
+          state.surfaces.set(s.surfaceId, surface);
+          state.order.push(s.surfaceId);
+        } else {
+          surface.root = s.root;
+          surface.deleted = false;
         }
       }
-      return Array.from(map.values()).filter((surface) => surface.root && surface.components.size);
+      if (envelope.updateDataModel) {
+        const u = envelope.updateDataModel;
+        let surface = state.surfaces.get(u.surfaceId);
+        if (!surface) {
+          surface = { id: u.surfaceId, root: "", data: {}, components: new Map(), deleted: false };
+          state.surfaces.set(u.surfaceId, surface);
+          state.order.push(u.surfaceId);
+        }
+        if (!u.path) {
+          surface.data = u.value || {};
+        } else {
+          const segments = String(u.path).split(/[./]/).filter(Boolean);
+          let cursor = surface.data;
+          for (let i = 0; i < segments.length - 1; i++) {
+            const key = segments[i];
+            if (!cursor[key] || typeof cursor[key] !== "object") cursor[key] = {};
+            cursor = cursor[key];
+          }
+          cursor[segments[segments.length - 1]] = u.value;
+        }
+      }
+      if (envelope.updateComponents) {
+        const u = envelope.updateComponents;
+        let surface = state.surfaces.get(u.surfaceId);
+        if (!surface) {
+          surface = { id: u.surfaceId, root: "", data: {}, components: new Map(), deleted: false };
+          state.surfaces.set(u.surfaceId, surface);
+          state.order.push(u.surfaceId);
+        }
+        for (const item of u.components || []) surface.components.set(item.id, item.component || {});
+      }
+      if (envelope.deleteSurface) {
+        const surface = state.surfaces.get(envelope.deleteSurface.surfaceId);
+        if (surface) surface.deleted = true;
+      }
+    }
+    function renderA2UIProgressSurface(surface) {
+      if (surface.root !== "progress_root") return null;
+      const data = surface.data || {};
+      const tone = String(data.tone || "info");
+      const card = document.createElement("div");
+      card.className = "a2ui-card a2ui-progress a2ui-progress-" + tone;
+      const title = document.createElement("div");
+      title.className = "a2ui-progress-title";
+      title.textContent = String(data.title || "处理中");
+      const detail = document.createElement("div");
+      detail.className = "a2ui-progress-detail";
+      detail.textContent = String(data.detail || "");
+      card.append(title, detail);
+      return card;
     }
     function hasA2UISourceSurface(msg) {
       return (msg.a2ui || []).some((envelope) => {

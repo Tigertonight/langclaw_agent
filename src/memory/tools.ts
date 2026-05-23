@@ -1,119 +1,93 @@
 import { resolveUserWorkspace, type WorkspaceContext } from "../runtime/workspace-context.js";
-import { TranscriptStore } from "../transcript/transcript-store.js";
-import type { JsonObject, ToolDefinition, ToolExecutionContext } from "../types/agent-contracts.js";
+import { TranscriptStore, type TranscriptEventType } from "../transcript/transcript-store.js";
+import type { ToolDefinition, ToolExecutionContext } from "../types/agent-contracts.js";
 import { MemoryRetriever } from "./memory-retriever.js";
+import { defineTool, z, ToolResultBaseSchema } from "../tools/zod-helpers.js";
 
 const memoryRetriever = new MemoryRetriever();
 const transcriptStore = new TranscriptStore();
 
+const TRANSCRIPT_EVENT_TYPES = [
+  "turn_start", "context_assembly", "user_message", "assistant_answer",
+  "tool_call", "tool_result", "agent_step", "task_claimed", "task_updated",
+  "route_decision", "tool_governance", "error", "interruption", "turn_end"
+] as const;
+const idSchema = z.string().min(1).max(128).regex(/^[A-Za-z0-9_.\-:]+$/);
+
 export function createMemoryTools(): ToolDefinition[] {
   return [
-    {
+    defineTool({
       name: "memory.retrieve",
       description: "Retrieve relevant user-scoped memory from memory items, episodes, tasks, and transcripts.",
-      metadata: {
-        required_permissions: [],
-        risk_level: "read",
-        expose_to_agentic: true
-      },
-      schema: {
-        type: "object",
-        properties: {
-          query: { type: "string", description: "Current user request or search query." },
-          session_id: { type: "string", description: "Optional session id to prioritize current transcript." },
-          limit: { type: "number", description: "Maximum items to return." }
-        },
-        required: ["query"]
-      },
+      metadata: { required_permissions: [], risk_level: "read", expose_to_agentic: true },
+      inputSchema: z.object({
+        query: z.string().min(1).max(500).describe("Current user request or search query."),
+        session_id: idSchema.optional(),
+        limit: z.number().int().min(1).max(100).optional()
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
       async execute(args, context) {
         const workspace = getWorkspace(context);
-        const query = typeof args?.query === "string" ? args.query : "";
-        if (!query.trim()) return { ok: false, tool: "memory.retrieve", error: "missing_query" };
-        const items = await memoryRetriever.retrieve(workspace, query, {
-          sessionId: typeof args?.session_id === "string" ? args.session_id : undefined,
-          limit: readLimit(args?.limit, 12)
+        const items = await memoryRetriever.retrieve(workspace, args.query, {
+          sessionId: args.session_id,
+          limit: args.limit ?? 12
         });
         return { ok: true, tool: "memory.retrieve", data: { items } };
       }
-    },
-    {
+    }),
+    defineTool({
       name: "transcript.search",
       description: "Search persisted session transcript events in the current user workspace.",
-      metadata: {
-        required_permissions: [],
-        risk_level: "read",
-        expose_to_agentic: true
-      },
-      schema: {
-        type: "object",
-        properties: {
-          query: { type: "string", description: "Search query." },
-          limit: { type: "number", description: "Maximum transcript events to return." }
-        },
-        required: ["query"]
-      },
+      metadata: { required_permissions: [], risk_level: "read", expose_to_agentic: true },
+      inputSchema: z.object({
+        query: z.string().min(1).max(500),
+        limit: z.number().int().min(1).max(100).optional()
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
       async execute(args, context) {
         const workspace = getWorkspace(context);
-        const query = typeof args?.query === "string" ? args.query : "";
-        if (!query.trim()) return { ok: false, tool: "transcript.search", error: "missing_query" };
-        const events = await transcriptStore.search(workspace, query, readLimit(args?.limit, 20));
+        const events = await transcriptStore.search(workspace, args.query, args.limit ?? 20);
         return { ok: true, tool: "transcript.search", data: { events } };
       }
-    },
-    {
+    }),
+    defineTool({
       name: "session_search",
       description: "FTS5 search across persisted transcript sessions, returning bookends and message windows around matches.",
-      metadata: {
-        required_permissions: [],
-        risk_level: "read",
-        expose_to_agentic: true
-      },
-      schema: {
-        type: "object",
-        properties: {
-          query: { type: "string", description: "Search query." },
-          limit: { type: "number", description: "Maximum sessions/events to return." },
-          window: { type: "number", description: "Number of events around the match." }
-        },
-        required: ["query"]
-      },
+      metadata: { required_permissions: [], risk_level: "read", expose_to_agentic: true },
+      inputSchema: z.object({
+        query: z.string().min(1).max(500),
+        limit: z.number().int().min(1).max(50).optional(),
+        window: z.number().int().min(1).max(50).optional()
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
       async execute(args, context) {
         const workspace = getWorkspace(context);
-        const query = typeof args?.query === "string" ? args.query : "";
-        if (!query.trim()) return { ok: false, tool: "session_search", error: "missing_query" };
-        const results = await transcriptStore.sessionSearch(workspace, query, {
-          limit: readLimit(args?.limit, 5),
-          window: readLimit(args?.window, 5)
+        const results = await transcriptStore.sessionSearch(workspace, args.query, {
+          limit: args.limit ?? 5,
+          window: args.window ?? 5
         });
         return { ok: true, tool: "session_search", data: { results } };
       }
-    },
-    {
+    }),
+    defineTool({
       name: "transcript.replay",
       description: "Replay persisted transcript events for a session, optionally filtered by event types.",
-      metadata: {
-        required_permissions: [],
-        risk_level: "read",
-        expose_to_agentic: true
-      },
-      schema: {
-        type: "object",
-        properties: {
-          session_id: { type: "string", description: "Session id to replay." },
-          types: { type: "array", description: "Optional transcript event types." },
-          limit: { type: "number", description: "Maximum events to return." }
-        },
-        required: ["session_id"]
-      },
+      metadata: { required_permissions: [], risk_level: "read", expose_to_agentic: true },
+      inputSchema: z.object({
+        session_id: idSchema,
+        types: z.array(z.enum(TRANSCRIPT_EVENT_TYPES)).max(14).optional(),
+        limit: z.number().int().min(1).max(500).optional()
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
       async execute(args, context) {
         const workspace = getWorkspace(context);
-        const sessionId = typeof args?.session_id === "string" ? args.session_id : "";
-        if (!sessionId) return { ok: false, tool: "transcript.replay", error: "missing_session_id" };
-        const types = Array.isArray(args?.types) ? args.types.map(String) as Parameters<TranscriptStore["replay"]>[2]["types"] : undefined;
-        const events = await transcriptStore.replay(workspace, sessionId, { types, limit: readLimit(args?.limit, 200) });
+        const events = await transcriptStore.replay(workspace, args.session_id, {
+          types: args.types as TranscriptEventType[] | undefined,
+          limit: args.limit ?? 200
+        });
         return { ok: true, tool: "transcript.replay", data: { events } };
       }
-    }
+    })
   ];
 }
 
@@ -123,9 +97,4 @@ function getWorkspace(context: ToolExecutionContext = {}): WorkspaceContext {
     return workspace as WorkspaceContext;
   }
   return resolveUserWorkspace(context.user?.id ?? "anonymous");
-}
-
-function readLimit(value: unknown, fallback: number): number {
-  const limit = Number(value);
-  return Number.isFinite(limit) && limit > 0 ? Math.min(limit, 100) : fallback;
 }

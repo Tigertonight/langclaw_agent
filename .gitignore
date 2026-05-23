@@ -5,3 +5,4 @@ logs/*.jsonl
 logs/sessions/
 *.log
 dist/
+users/
