@@ -8,6 +8,7 @@ export interface StreamingEmitContext {
   surfacePrefix?: string;
   runId?: string;
   clientCapabilities?: ClientCapabilities;
+  includeRuntime?: boolean;
 }
 
 export type StreamingEnvelopeListener = (envelope: A2UIEnvelope, snapshot: SurfaceSnapshot[]) => void | Promise<void>;
@@ -106,7 +107,12 @@ export class A2UIStreamingTranslator {
     if (this.finalized) return this.parser.snapshot().map(snapshotToCreateEnvelope);
     this.finalized = true;
 
-    const final = buildA2UIResponse({ result, surfacePrefix: this.ctx.surfacePrefix, clientCapabilities: this.ctx.clientCapabilities });
+    const final = buildA2UIResponse({
+      result,
+      surfacePrefix: this.ctx.surfacePrefix,
+      clientCapabilities: this.ctx.clientCapabilities,
+      includeRuntime: this.ctx.includeRuntime === true
+    });
     const ingest = this.parser.ingest(final);
     for (const envelope of ingest.accepted) {
       await this.listener(envelope, ingest.snapshot);

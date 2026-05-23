@@ -53,7 +53,10 @@ export class A2UIChatController {
   async chat(body: Record<string, unknown>): Promise<JsonObject> {
     const dto = parseA2UIChatRequest(body);
     const result = await this.queryEngine.submitMessage(toQueryInput(dto));
-    return await this.chatService.decorateChatResult(result, { clientCapabilities: dto.client_capabilities }) as JsonObject;
+    return await this.chatService.decorateChatResult(result, {
+      clientCapabilities: dto.client_capabilities,
+      includeRuntime: dto.debug === true
+    }) as JsonObject;
   }
 
   async action(body: Record<string, unknown>): Promise<JsonObject> {
@@ -80,7 +83,12 @@ export class A2UIChatController {
     const parser = new A2UIIncrementalEnvelopeParser();
     const translator = new A2UIStreamingTranslator(parser, async (envelope) => {
       await this.persistAndEmit(user, sessionId, runId, traceId, envelope, emit);
-    }, { surfacePrefix: options.namespace ? `${options.namespace}_agent` : "agent", runId, clientCapabilities: dto.client_capabilities });
+    }, {
+      surfacePrefix: options.namespace ? `${options.namespace}_agent` : "agent",
+      runId,
+      clientCapabilities: dto.client_capabilities,
+      includeRuntime: dto.debug === true
+    });
 
     await emit({ type: "a2ui_run_started", run_id: runId, session_id: sessionId, trace_id: traceId } as unknown as A2UISseEventDto);
 
@@ -111,7 +119,10 @@ export class A2UIChatController {
             debug: { ...(event as { debug?: JsonObject }).debug, route: lastRoute ?? (event as { debug?: { route?: unknown } }).debug?.route ?? null }
           };
           await translator.finalize(enriched);
-          const decorated = await this.chatService.decorateChatResult(enriched, { clientCapabilities: dto.client_capabilities });
+          const decorated = await this.chatService.decorateChatResult(enriched, {
+            clientCapabilities: dto.client_capabilities,
+            includeRuntime: dto.debug === true
+          });
           await emit({ ...decorated, trace_id: traceId, session_id: sessionId, run_id: runId } as A2UISseEventDto);
           return;
         }

@@ -5,7 +5,11 @@ import type { A2UIEnvelope } from "./types.js";
 export class A2UITranslatorService {
   constructor(private readonly parser = new A2UIIncrementalEnvelopeParser()) {}
 
-  translateAgentResult(result: unknown, options: { clientCapabilities?: ClientCapabilities } = {}): A2UIEnvelope[] {
-    return this.parser.parse(buildA2UIResponse({ result, clientCapabilities: options.clientCapabilities }));
+  translateAgentResult(result: unknown, options: { clientCapabilities?: ClientCapabilities; includeRuntime?: boolean } = {}): A2UIEnvelope[] {
+    return this.parser.parse(buildA2UIResponse({
+      result,
+      clientCapabilities: options.clientCapabilities,
+      includeRuntime: options.includeRuntime === true
+    }));
   }
 }

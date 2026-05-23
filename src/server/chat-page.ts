@@ -1810,6 +1810,7 @@ export function renderChatPage(): string {
       wrap.className = "a2ui-surfaces";
       const surfaces = collectA2UISurfaces(msg);
       for (const surface of surfaces) {
+        if (!els.debug.checked && isA2UIRuntimeSurface(surface)) continue;
         const root = renderA2UIProgressSurface(surface)
           || renderOpenUIView(surface)
           || (isA2UISourceSurface(surface) ? renderA2UISourceDisclosure(surface) : renderA2UIComponent(surface, surface.root));
@@ -1914,6 +1915,12 @@ export function renderChatPage(): string {
     }
     function isA2UISourceSurface(surface) {
       return String(surface.id || "").includes("_sources") || surface.root === "sources_root";
+    }
+    function isA2UIRuntimeSurface(surface) {
+      return String(surface.id || "").includes("_runtime")
+        || surface.root === "runtime_root"
+        || surface.data?.business_surface?.kind === "runtime_summary"
+        || surface.data?.openui?.component === "RuntimeSummary";
     }
     function renderA2UISourceDisclosure(surface) {
       const sources = Array.isArray(surface.data?.sources) ? surface.data.sources : [];
