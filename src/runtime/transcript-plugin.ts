@@ -16,6 +16,16 @@ export function createTranscriptPlugin({ transcriptStore = new TranscriptStore()
           message_preview: String(event.message ?? "").slice(0, 300)
         });
       });
+      hooks.on("context_ingest", async (event) => {
+        const userId = typeof event.user_id === "string" ? event.user_id : "";
+        const sessionId = typeof event.session_id === "string" ? event.session_id : "";
+        if (!userId || !sessionId) return;
+        await transcriptStore.append(resolveUserWorkspace(userId), sessionId, "context_ingest", {
+          run_id: typeof event.run_id === "string" ? event.run_id : undefined,
+          stage: typeof event.stage === "string" ? event.stage : "ingest",
+          sources: event.sources && typeof event.sources === "object" && !Array.isArray(event.sources) ? event.sources as JsonObject : {}
+        });
+      });
       hooks.on("context_assembly", async (event) => {
         const userId = typeof event.user_id === "string" ? event.user_id : "";
         const sessionId = typeof event.session_id === "string" ? event.session_id : "";

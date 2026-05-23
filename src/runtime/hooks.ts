@@ -4,6 +4,7 @@ import { resolveUserWorkspace } from "./workspace-context.js";
 
 export type RuntimeHookName =
   | "turn_start"
+  | "context_ingest"
   | "context_assembly"
   | "route_decision"
   | "agentic_prepare"

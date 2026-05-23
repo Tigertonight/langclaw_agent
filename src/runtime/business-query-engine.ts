@@ -78,6 +78,13 @@ export class BusinessQueryEngine {
       message: input.message,
       sessionId
     });
+    await this.hooks?.emit("context_ingest", {
+      user_id: user.id,
+      session_id: sessionId,
+      run_id: runId,
+      stage: "ingest",
+      sources: summarizeIngestSources(enterpriseContext)
+    });
     const assembled = this.contextAssembler.assemble({
       user,
       workspace,
@@ -196,6 +203,30 @@ function summarizeTaskRetrieval(enterpriseContext: unknown): JsonObject {
       reason: stringifyOrNull(task.reason)
     }))
   };
+}
+
+/**
+ * 把 enterpriseContext 顶层字段拍成 hook payload 用的"来源清单"。
+ * 不暴露原始 payload（可能很大也可能含 PII），只暴露每个 ingest 来源的形状/规模，
+ * 让监听方可以判断"是否拿到了 admin/memory/tasks"以及"哪一段最大"。
+ */
+function summarizeIngestSources(enterpriseContext: unknown): JsonObject {
+  const record = enterpriseContext && typeof enterpriseContext === "object" && !Array.isArray(enterpriseContext)
+    ? enterpriseContext as Record<string, unknown>
+    : {};
+  const summary: JsonObject = {};
+  for (const [key, value] of Object.entries(record)) {
+    summary[key] = describeIngestValue(value);
+  }
+  return summary;
+}
+
+function describeIngestValue(value: unknown): JsonObject {
+  if (value === null || value === undefined) return { kind: "empty", chars: 0 };
+  if (Array.isArray(value)) return { kind: "array", count: value.length, chars: JSON.stringify(value).length };
+  if (typeof value === "object") return { kind: "object", keys: Object.keys(value as object).length, chars: JSON.stringify(value).length };
+  if (typeof value === "string") return { kind: "string", chars: value.length };
+  return { kind: typeof value, chars: String(value).length };
 }
 
 function summarizeSourceAttribution(output: Record<string, unknown>): JsonObject {
