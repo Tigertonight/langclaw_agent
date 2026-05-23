@@ -36,8 +36,16 @@ export class RuntimeHooks {
     this.handlers.set(name, list);
   }
 
+  /**
+   * 永不抛错。即使 dispatch 内部 governance / 插件 / 内存写入全部炸掉，
+   * 也只 console.warn 并返回。emit 是旁路通道，绝不能拖累主对话主循环。
+   */
   async emit(name: RuntimeHookName, event: JsonObject): Promise<void> {
-    await this.dispatch(name, event);
+    try {
+      await this.dispatch(name, event);
+    } catch (error) {
+      console.warn(`[hooks] emit ${name} crashed: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   async dispatch(name: RuntimeHookName, event: JsonObject): Promise<JsonObject> {
@@ -47,15 +55,28 @@ export class RuntimeHooks {
     const merged: JsonObject = {};
     for (const handler of this.handlers.get(name) ?? []) {
       const pluginName = handler.pluginName ?? "anonymous";
-      const workspace = typeof record.user_id === "string" ? resolveUserWorkspace(record.user_id) : null;
-      if (workspace && !this.governance.isEnabled(workspace, pluginName)) continue;
+      const workspace = typeof record.user_id === "string" ? safeResolveWorkspace(record.user_id) : null;
+      if (workspace) {
+        try {
+          if (!this.governance.isEnabled(workspace, pluginName)) continue;
+        } catch (governanceErr) {
+          console.warn(`[hooks] governance.isEnabled crashed for ${pluginName}: ${governanceErr instanceof Error ? governanceErr.message : String(governanceErr)}`);
+        }
+      }
       try {
         const result = await handler(record);
         if (result && typeof result === "object" && !Array.isArray(result)) {
           Object.assign(merged, result);
         }
       } catch (error) {
-        if (workspace) await this.governance.recordFailure(workspace, pluginName, name, error);
+        console.warn(`[hooks] handler ${pluginName} for ${name} threw: ${error instanceof Error ? error.message : String(error)}`);
+        if (workspace) {
+          try {
+            await this.governance.recordFailure(workspace, pluginName, name, error);
+          } catch (recordErr) {
+            console.warn(`[hooks] governance.recordFailure crashed: ${recordErr instanceof Error ? recordErr.message : String(recordErr)}`);
+          }
+        }
       }
     }
     return merged;
@@ -87,5 +108,14 @@ export class RuntimeHooks {
       listeners: Object.fromEntries(Array.from(this.handlers.entries()).map(([name, list]) => [name, list.length])),
       recent: this.recent(20)
     };
+  }
+}
+
+function safeResolveWorkspace(userId: string): ReturnType<typeof resolveUserWorkspace> | null {
+  try {
+    return resolveUserWorkspace(userId);
+  } catch (err) {
+    console.warn(`[hooks] resolveUserWorkspace crashed for user=${userId}: ${err instanceof Error ? err.message : String(err)}`);
+    return null;
   }
 }
