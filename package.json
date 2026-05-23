@@ -21,6 +21,7 @@
     "ingest:failure": "tsc -p tsconfig.build.json && node dist/eval/ingest-failure.js",
     "handlers:auth": "tsc -p tsconfig.build.json && node dist/eval/handlers-auth.js",
     "item:watchdog": "tsc -p tsconfig.build.json && node dist/eval/item-watchdog.js",
+    "metrics:smoke": "tsc -p tsconfig.build.json && node dist/eval/metrics-collector.js",
     "arch:smoke": "tsc -p tsconfig.build.json && node dist/eval/architecture-smoke.js",
     "session:smoke": "tsc -p tsconfig.build.json && node dist/eval/session-recovery.js",
     "workspace:isolation": "tsc -p tsconfig.build.json && node dist/eval/workspace-isolation.js",

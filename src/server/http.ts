@@ -36,7 +36,7 @@ interface SkillListItem extends JsonObject {
 
 type RequestBody = Record<string, unknown>;
 
-const { agent, queryEngine, skillRegistry, skillLoader, userContextResolver, toolRegistry, intentRegistry, intentRouter } = createApp();
+const { agent, queryEngine, skillRegistry, skillLoader, userContextResolver, toolRegistry, intentRegistry, intentRouter, metricsCollector } = createApp();
 const { chatController: a2uiChatController } = createA2UIModule({
   queryEngine,
   streamAgent: agent,
@@ -164,6 +164,27 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
         "Cache-Control": "private, max-age=60"
       });
       res.end(body);
+    } catch (error) {
+      sendJson(res, 500, {
+        error: "internal_error",
+        message: error instanceof Error ? error.message : "unknown error"
+      });
+    }
+    return;
+  }
+
+  if (req.method === "GET" && pathname === "/api/metrics") {
+    try {
+      const auth = await authorizeHandlersInspect(req, url);
+      if (!auth.ok) {
+        sendJson(res, auth.status, { error: auth.code, message: auth.message });
+        return;
+      }
+      const range = url.searchParams.get("range");
+      const windowMs = parseRangeMs(range);
+      const end = Date.now();
+      const start = windowMs === null ? undefined : end - windowMs;
+      sendJson(res, 200, metricsCollector.aggregate({ windowStart: start, windowEnd: end }));
     } catch (error) {
       sendJson(res, 500, {
         error: "internal_error",
@@ -329,6 +350,20 @@ async function readJson(req: IncomingMessage): Promise<RequestBody> {
   const raw = Buffer.concat(chunks).toString("utf8");
   const parsed = raw ? JSON.parse(raw) : {};
   return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed as RequestBody : {};
+}
+
+/**
+ * 解析 ?range=1h|6h|30m，无值返回 null 表示用 collector 默认窗口。
+ */
+function parseRangeMs(range: string | null): number | null {
+  if (!range) return null;
+  const match = /^(\d+)(ms|s|m|h|d)$/.exec(range.trim());
+  if (!match) return null;
+  const value = Number(match[1]);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  const unit = match[2];
+  const factor = unit === "ms" ? 1 : unit === "s" ? 1000 : unit === "m" ? 60_000 : unit === "h" ? 3_600_000 : 86_400_000;
+  return value * factor;
 }
 
 function isBadRequestError(error: unknown): boolean {
