@@ -19,6 +19,7 @@ import {
 } from "./agent-task-state.js";
 import type { KnowledgeSearchResult } from "../rag/local-knowledge-base.js";
 import type { ToolDescription, ToolRegistry } from "../tools/registry.js";
+import { buildToolErrorResult } from "../tools/registry.js";
 import type { JsonObject, JsonValue, Route, SkillDefinition, ToolCall, ToolResult, UserContext } from "../types/agent-contracts.js";
 
 interface AgenticLoopOptions {
@@ -374,18 +375,23 @@ export class AgenticLoop {
 async function executeToolCalls({ toolRegistry, user, workspace, calls }: { toolRegistry: ToolRegistry; user: UserContext; workspace?: unknown; calls: ToolCall[] }): Promise<ToolResult[]> {
   const results: ToolResult[] = [];
   for (const call of calls) {
-    const permission = await checkToolPermission(user, call);
-    if (!permission.allow) {
-      results.push({
-        ok: false,
-        tool: call.name,
-        error: "permission_denied",
-        code: permission.code,
-        message: permission.message
-      });
-      continue;
+    try {
+      const permission = await checkToolPermission(user, call);
+      if (!permission.allow) {
+        results.push({
+          ok: false,
+          isError: true,
+          tool: call.name,
+          error: "permission_denied",
+          code: permission.code,
+          message: permission.message
+        });
+        continue;
+      }
+      results.push(await toolRegistry.execute(call, { user, workspace }) as ToolResult);
+    } catch (error) {
+      results.push(buildToolErrorResult(call.name, error));
     }
-    results.push(await toolRegistry.execute(call, { user, workspace }) as ToolResult);
   }
   return results;
 }

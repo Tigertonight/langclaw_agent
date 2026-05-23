@@ -60,6 +60,7 @@ export class ToolRegistry {
     if (!tool) {
       return {
         ok: false,
+        isError: true,
         tool: call.name,
         error: "unknown_tool",
         message: `工具 ${call.name} 不存在。`
@@ -77,6 +78,7 @@ export class ToolRegistry {
       await this.emitGovernance(call, context, tool, "permission_denied", permission.message, permission.code);
       return {
         ok: false,
+        isError: true,
         tool: call.name,
         error: "permission_denied",
         code: permission.code,
@@ -88,6 +90,7 @@ export class ToolRegistry {
       await this.emitGovernance(call, context, tool, "tool_unavailable", `工具 ${call.name} 当前上下文不可用。`);
       return {
         ok: false,
+        isError: true,
         tool: call.name,
         error: "tool_unavailable",
         message: `工具 ${call.name} 当前上下文不可用。`
@@ -99,6 +102,7 @@ export class ToolRegistry {
       await this.emitGovernance(call, context, tool, "confirmation_required", `工具 ${call.name} 需要用户确认后才能执行。`, undefined, pendingAction?.id);
       return {
         ok: false,
+        isError: true,
         tool: call.name,
         error: "confirmation_required",
         message: `工具 ${call.name} 需要用户确认后才能执行。`,
@@ -113,7 +117,13 @@ export class ToolRegistry {
     }
 
     await this.emitGovernance(call, context, tool, "allowed", "tool execution allowed");
-    return tool.execute(call.args ?? {}, context);
+    try {
+      return await tool.execute(call.args ?? {}, context);
+    } catch (error) {
+      const folded = buildToolErrorResult(call.name, error);
+      await this.emitGovernance(call, context, tool, "execution_failed", folded.message, folded.code);
+      return folded;
+    }
   }
 
   private async emitGovernance(call: ToolCall, context: ToolExecutionContext | undefined, tool: ToolDefinition, decision: string, message?: string, code?: string, pendingActionId?: string): Promise<void> {
@@ -152,6 +162,45 @@ function resolveContextWorkspace(context?: ToolExecutionContext): WorkspaceConte
   return workspace && typeof workspace === "object" && !Array.isArray(workspace) && typeof (workspace as { root?: unknown }).root === "string"
     ? workspace as WorkspaceContext
     : null;
+}
+
+/**
+ * 把工具运行时异常折叠成 ToolResult(isError=true)，让 LLM 在 transcript 里
+ * 直接读到失败信号，自己决定继续/换路。永远不要把异常 throw 出主循环。
+ */
+export function buildToolErrorResult(toolName: string, error: unknown): ToolResult {
+  const { code, message } = classifyToolError(error);
+  return {
+    ok: false,
+    isError: true,
+    tool: toolName,
+    error: "execution_failed",
+    code,
+    message
+  };
+}
+
+function classifyToolError(error: unknown): { code: string; message: string } {
+  if (error instanceof Error) {
+    const name = error.name || "Error";
+    let code: string;
+    if (name === "AbortError" || /aborted|canceled|cancelled/i.test(error.message)) {
+      code = "aborted";
+    } else if (name === "TimeoutError" || /timeout|timed out/i.test(error.message)) {
+      code = "timeout";
+    } else if (/permission|forbidden|unauthor/i.test(error.message)) {
+      code = "permission";
+    } else if (/network|fetch|ECONN|ENOTFOUND|ETIMEDOUT/i.test(error.message)) {
+      code = "network";
+    } else {
+      code = "internal_error";
+    }
+    return { code, message: error.message || String(error) };
+  }
+  if (typeof error === "string") {
+    return { code: "internal_error", message: error };
+  }
+  return { code: "internal_error", message: "工具执行抛出未知异常。" };
 }
 
 export function isToolAvailable(tool: ToolDefinition, context: ToolExecutionContext = {}): boolean {
