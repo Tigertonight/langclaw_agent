@@ -17,6 +17,7 @@
     "tool:abort": "tsc -p tsconfig.build.json && node dist/eval/tool-abort.js",
     "emit:resilience": "tsc -p tsconfig.build.json && node dist/eval/emit-resilience.js",
     "prompt:authority-alert": "tsc -p tsconfig.build.json && node dist/eval/prompt-authority-alert.js",
+    "prompt:alert-dedup": "tsc -p tsconfig.build.json && node dist/eval/prompt-alert-dedup.js",
     "context:ingest-hook": "tsc -p tsconfig.build.json && node dist/eval/context-ingest-hook.js",
     "ingest:failure": "tsc -p tsconfig.build.json && node dist/eval/ingest-failure.js",
     "handlers:auth": "tsc -p tsconfig.build.json && node dist/eval/handlers-auth.js",
