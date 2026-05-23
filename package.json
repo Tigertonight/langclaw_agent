@@ -38,6 +38,7 @@
     "skill:curator": "tsc -p tsconfig.build.json && node dist/eval/skill-curator-maintenance.js",
     "task:smoke": "tsc -p tsconfig.build.json && node dist/eval/task-store.js",
     "config:check": "tsc -p tsconfig.build.json && node dist/eval/config-check.js",
+    "regress:batch2": "tsc -p tsconfig.build.json && node dist/eval/batch2-regression.js",
     "typecheck": "tsc -p tsconfig.json",
     "build:ts": "tsc -p tsconfig.build.json"
   },
