@@ -48,6 +48,7 @@ import { createPendingActionTools } from "./tools/pending-action-tools.js";
 import { createRuntimeInspectionTools } from "./tools/runtime-inspection-tools.js";
 import { createSandboxTools } from "./tools/sandbox-tools.js";
 import { ToolRegistry } from "./tools/registry.js";
+import { loadToolPolicyStore } from "./tools/tool-policy.js";
 import type { JsonValue } from "./types/agent-contracts.js";
 
 loadEnvFile();
@@ -102,7 +103,8 @@ export function createApp() {
     ...createTaskTools(),
     ...createEvolutionTools({ evolutionRuntime })
   ];
-  const toolRegistry = new ToolRegistry(baseTools, { hooks, pendingActionStore });
+  const toolPolicyStore = loadToolPolicyStore();
+  const toolRegistry = new ToolRegistry(baseTools, { hooks, pendingActionStore, policyStore: toolPolicyStore });
   for (const tool of createPendingActionTools({ pendingActionStore, toolRegistry })) {
     toolRegistry.register(tool);
   }

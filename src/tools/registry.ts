@@ -2,6 +2,7 @@ import { checkToolPermission } from "../auth/permissions.js";
 import { PendingActionStore } from "../runtime/pending-action-store.js";
 import { RuntimeHooks } from "../runtime/hooks.js";
 import { resolveUserWorkspace, type WorkspaceContext } from "../runtime/workspace-context.js";
+import { ToolPolicyStore, isRetriableErrorCode, type ToolPolicy } from "./tool-policy.js";
 import type {
   ToolCall,
   ToolDefinition,
@@ -22,11 +23,13 @@ export class ToolRegistry {
   private readonly tools: Map<string, ToolDefinition>;
   private readonly hooks?: RuntimeHooks;
   private readonly pendingActionStore: PendingActionStore;
+  private readonly policyStore: ToolPolicyStore;
 
-  constructor(tools: ToolDefinition[], { hooks, pendingActionStore = new PendingActionStore() }: { hooks?: RuntimeHooks; pendingActionStore?: PendingActionStore } = {}) {
+  constructor(tools: ToolDefinition[], { hooks, pendingActionStore = new PendingActionStore(), policyStore }: { hooks?: RuntimeHooks; pendingActionStore?: PendingActionStore; policyStore?: ToolPolicyStore } = {}) {
     this.tools = new Map(tools.map((tool) => [tool.name, tool]));
     this.hooks = hooks;
     this.pendingActionStore = pendingActionStore;
+    this.policyStore = policyStore ?? new ToolPolicyStore();
   }
 
   list(context: ToolExecutionContext = {}): ToolDescription[] {
@@ -117,30 +120,45 @@ export class ToolRegistry {
     }
 
     await this.emitGovernance(call, context, tool, "allowed", "tool execution allowed");
-    const timeoutMs = resolveToolTimeoutMs(tool);
-    const controller = new AbortController();
-    const upstream = context?.signal;
-    const onUpstreamAbort = () => controller.abort(upstream?.reason);
-    if (upstream) {
-      if (upstream.aborted) controller.abort(upstream.reason);
-      else upstream.addEventListener("abort", onUpstreamAbort, { once: true });
-    }
-    const childContext: ToolExecutionContext = { ...(context ?? {}), signal: controller.signal };
-    const startedAt = Date.now();
-    try {
-      const result = await runWithTimeout(tool.execute(call.args ?? {}, childContext), timeoutMs, call.name, controller);
-      await this.emitGovernance(call, context, tool, "completed", undefined, undefined, undefined, Date.now() - startedAt);
-      return result;
-    } catch (error) {
-      const folded = buildToolErrorResult(call.name, error);
-      await this.emitGovernance(call, context, tool, "execution_failed", folded.message, folded.code, undefined, Date.now() - startedAt);
-      return folded;
-    } finally {
-      if (upstream) upstream.removeEventListener("abort", onUpstreamAbort);
-    }
+    const policy = this.policyStore.resolve(call.name, typeof tool.metadata?.timeout_ms === "number" ? tool.metadata.timeout_ms : undefined);
+    return this.executeWithRetry(call, context, tool, policy);
   }
 
-  private async emitGovernance(call: ToolCall, context: ToolExecutionContext | undefined, tool: ToolDefinition, decision: string, message?: string, code?: string, pendingActionId?: string, latencyMs?: number): Promise<void> {
+  private async executeWithRetry(call: ToolCall, context: ToolExecutionContext | undefined, tool: ToolDefinition, policy: ToolPolicy): Promise<ToolResult | unknown> {
+    const upstream = context?.signal;
+    let lastFailure: ToolResult | null = null;
+    const maxAttempts = Math.max(1, policy.retries + 1);
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      if (upstream?.aborted) {
+        const aborted: ToolResult = { ok: false, isError: true, tool: call.name, error: "execution_failed", code: "aborted", message: "调用方已取消。" };
+        await this.emitGovernance(call, context, tool, "execution_failed", aborted.message, aborted.code, undefined, 0, attempt);
+        return aborted;
+      }
+      const controller = new AbortController();
+      const onUpstreamAbort = () => controller.abort(upstream?.reason);
+      if (upstream) upstream.addEventListener("abort", onUpstreamAbort, { once: true });
+      const childContext: ToolExecutionContext = { ...(context ?? {}), signal: controller.signal };
+      const startedAt = Date.now();
+      try {
+        const result = await runWithTimeout(tool.execute(call.args ?? {}, childContext), policy.timeoutMs, call.name, controller);
+        await this.emitGovernance(call, context, tool, "completed", undefined, undefined, undefined, Date.now() - startedAt, attempt);
+        return result;
+      } catch (error) {
+        const folded = buildToolErrorResult(call.name, error);
+        const isLastAttempt = attempt === maxAttempts - 1;
+        const retriable = isRetriableErrorCode(folded.code) && !upstream?.aborted;
+        await this.emitGovernance(call, context, tool, "execution_failed", folded.message, folded.code, undefined, Date.now() - startedAt, attempt);
+        lastFailure = folded;
+        if (isLastAttempt || !retriable) return folded;
+        await sleep(policy.retryBackoffMs * Math.pow(2, attempt), upstream);
+      } finally {
+        if (upstream) upstream.removeEventListener("abort", onUpstreamAbort);
+      }
+    }
+    return lastFailure ?? { ok: false, isError: true, tool: call.name, error: "execution_failed", code: "internal_error", message: "tool retry loop exited without result" } satisfies ToolResult;
+  }
+
+  private async emitGovernance(call: ToolCall, context: ToolExecutionContext | undefined, tool: ToolDefinition, decision: string, message?: string, code?: string, pendingActionId?: string, latencyMs?: number, attempt?: number): Promise<void> {
     const userId = context?.user?.id;
     if (!this.hooks || !userId) return;
     await this.hooks.emit("tool_result", {
@@ -153,6 +171,7 @@ export class ToolRegistry {
       message,
       pending_action_id: pendingActionId,
       latency_ms: typeof latencyMs === "number" ? latencyMs : undefined,
+      attempt: typeof attempt === "number" ? attempt : undefined,
       at: new Date().toISOString(),
       risk_level: typeof tool.metadata?.risk_level === "string" ? tool.metadata.risk_level : "read",
       requires_confirmation: tool.metadata?.requires_confirmation === true
@@ -197,23 +216,19 @@ export function buildToolErrorResult(toolName: string, error: unknown): ToolResu
 }
 
 /**
- * 工具执行的硬超时上限。优先级：
- *   1. tool.metadata.timeout_ms（每个工具可单独声明）
- *   2. 环境变量 TOOL_EXECUTION_TIMEOUT_MS
- *   3. 默认 20000ms
- *
- * 0 或负数视为"不限制"，但生产环境建议不要这么用。
+ * 退避用 sleep。如果 upstream signal 中途 abort，立刻 resolve（不抛错），
+ * 让上层的 abort 检查自然地落到下一轮 isLastAttempt 判断里。
  */
-const DEFAULT_TOOL_TIMEOUT_MS = 20_000;
-
-function resolveToolTimeoutMs(tool: ToolDefinition): number {
-  const metadataValue = tool.metadata?.timeout_ms;
-  if (typeof metadataValue === "number" && Number.isFinite(metadataValue) && metadataValue > 0) {
-    return metadataValue;
-  }
-  const envValue = Number(process.env.TOOL_EXECUTION_TIMEOUT_MS);
-  if (Number.isFinite(envValue) && envValue > 0) return envValue;
-  return DEFAULT_TOOL_TIMEOUT_MS;
+function sleep(ms: number, upstream?: AbortSignal | null): Promise<void> {
+  if (!Number.isFinite(ms) || ms <= 0) return Promise.resolve();
+  return new Promise<void>((resolve) => {
+    const timer = setTimeout(() => {
+      if (upstream) upstream.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    const onAbort = () => { clearTimeout(timer); resolve(); };
+    if (upstream) upstream.addEventListener("abort", onAbort, { once: true });
+  });
 }
 
 /**
