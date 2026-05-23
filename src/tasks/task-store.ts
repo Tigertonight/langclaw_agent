@@ -2,11 +2,18 @@ import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { safeJoinWorkspace, safeUserId, type WorkspaceContext } from "../runtime/workspace-context.js";
+import { defaultJsonFileStore, type JsonFileStore } from "../runtime/store-adapter.js";
 import type { AgentTask, TaskStatus, TaskUpsertInput } from "./task-types.js";
 
 const ACTIVE_STATUSES: TaskStatus[] = ["pending", "in_progress", "waiting_user", "blocked"];
 
 export class TaskStore {
+  private readonly store: JsonFileStore;
+
+  constructor(store: JsonFileStore = defaultJsonFileStore()) {
+    this.store = store;
+  }
+
   listIdForUser(workspace: WorkspaceContext, sessionId = "default"): string {
     return safeUserId(`${workspace.user_id}_${sessionId}`.slice(0, 120));
   }
@@ -90,11 +97,11 @@ export class TaskStore {
 
   async updateActiveIndex(workspace: WorkspaceContext): Promise<void> {
     const active = await this.active(workspace, 20);
-    await mkdir(this.root(workspace), { recursive: true });
-    await writeFile(
-      safeJoinWorkspace(workspace.root, "tasks", "active.json"),
-      JSON.stringify({ updated_at: new Date().toISOString(), tasks: active.map(summarizeTask) }, null, 2),
-      "utf8"
+    const indexPath = safeJoinWorkspace(workspace.root, "tasks", "active.json");
+    await this.store.mutate<{ updated_at: string; tasks: ReturnType<typeof summarizeTask>[] }>(
+      indexPath,
+      { updated_at: new Date().toISOString(), tasks: [] },
+      () => ({ updated_at: new Date().toISOString(), tasks: active.map(summarizeTask) })
     );
   }
 

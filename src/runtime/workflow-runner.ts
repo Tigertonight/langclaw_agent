@@ -56,6 +56,7 @@ export class WorkflowRunner {
   shouldContinueActive({ activeIntent, route, message }: { activeIntent?: string | null; route: Route; message?: string }): boolean {
     if (route.intent === activeIntent) return true;
     if (isScenarioControlMessage(message)) return true;
+    if (isScenarioContinueMessage(message)) return true;
     if (activeIntent === "leave_request" && looksLikeLeaveSlotUpdate(message)) return true;
     return false;
   }
@@ -93,6 +94,14 @@ export class WorkflowRunner {
 
 function isScenarioControlMessage(message?: string): boolean {
   return /^(确认|提交|确定|是的|可以|不|否|先不|不用|不要|修改|取消|退出|算了|停止|不办了|先不办了|不用了)$/i.test(String(message ?? "").trim());
+}
+
+// 用户用自然语言表达"继续/接着/恢复"当前未完成流程，应优先续做不要清状态
+function isScenarioContinueMessage(message?: string): boolean {
+  const text = String(message ?? "").trim();
+  if (!text) return false;
+  return /^(继续|接着|续上|继续刚才|继续上次|刚才那个|上次那个|继续之前|接着上次|继续做|继续办|继续填)/.test(text)
+      || /^(继续|接着).{0,8}(那个|刚才|上次|之前|未完成|流程|表单|申请)/.test(text);
 }
 
 function looksLikeLeaveSlotUpdate(message?: string): boolean {

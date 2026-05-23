@@ -2,6 +2,14 @@ import { ContextAssembler } from "../runtime/context-assembler.js";
 import { resolveUserWorkspace, type WorkspaceContext } from "../runtime/workspace-context.js";
 import { TranscriptStore, type TranscriptEventType } from "../transcript/transcript-store.js";
 import type { JsonObject, ToolDefinition, ToolExecutionContext, ToolMetadata } from "../types/agent-contracts.js";
+import { defineTool, z, ToolResultBaseSchema } from "./zod-helpers.js";
+
+const TRANSCRIPT_EVENT_TYPES = [
+  "turn_start", "context_assembly", "user_message", "assistant_answer",
+  "tool_call", "tool_result", "agent_step", "task_claimed", "task_updated",
+  "route_decision", "tool_governance", "error", "interruption", "turn_end"
+] as const;
+const idSchema = z.string().min(1).max(128).regex(/^[A-Za-z0-9_.\-:]+$/);
 
 interface EnterpriseContextProviderLike {
   load(input: { user: NonNullable<ToolExecutionContext["user"]>; workspace: WorkspaceContext; message?: string; sessionId?: string }): Promise<unknown>;
@@ -22,25 +30,22 @@ export function createRuntimeInspectionTools({
 }): ToolDefinition[] {
   const assembler = new ContextAssembler();
   return [
-    {
+    defineTool({
       name: "runtime.trace.replay",
       description: "Replay a session trace from transcript events for debugging business agent decisions.",
       metadata: { required_permissions: [], risk_level: "read", expose_to_agentic: true },
-      schema: {
-        type: "object",
-        properties: {
-          session_id: { type: "string" },
-          run_id: { type: "string" },
-          types: { type: "array" },
-          limit: { type: "number" }
-        },
-        required: ["session_id"]
-      },
+      inputSchema: z.object({
+        session_id: idSchema,
+        run_id: idSchema.optional(),
+        types: z.array(z.enum(TRANSCRIPT_EVENT_TYPES)).max(14).optional(),
+        limit: z.number().int().min(1).max(500).optional()
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
       async execute(args, context) {
         const workspace = getWorkspace(context);
-        const sessionId = String(args?.session_id ?? "");
-        const runId = typeof args?.run_id === "string" ? args.run_id : "";
-        const options = { types: normalizeTypes(args?.types), limit: readLimit(args?.limit, 200) };
+        const sessionId = args.session_id;
+        const runId = args.run_id ?? "";
+        const options = { types: args.types as TranscriptEventType[] | undefined, limit: args.limit ?? 200 };
         const events = runId
           ? await transcriptStore.replayRun(workspace, sessionId, runId, options)
           : await transcriptStore.replay(workspace, sessionId, options);
@@ -55,27 +60,25 @@ export function createRuntimeInspectionTools({
           }
         };
       }
-    },
-    {
+    }),
+    defineTool({
       name: "runtime.context.inspect",
       description: "Inspect context assembly and token/character budget for a business agent turn.",
       metadata: { required_permissions: [], risk_level: "read", expose_to_agentic: true },
-      schema: {
-        type: "object",
-        properties: {
-          message: { type: "string" },
-          session_id: { type: "string" }
-        }
-      },
+      inputSchema: z.object({
+        message: z.string().max(4000).optional(),
+        session_id: idSchema.optional()
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
       async execute(args, context) {
         const user = context.user ?? { id: "anonymous", role: "anonymous" };
         const workspace = getWorkspace(context);
-        const message = typeof args?.message === "string" ? args.message : "";
+        const message = args.message ?? "";
         const enterpriseContext = await enterpriseContextProvider.load({
           user,
           workspace,
           message,
-          sessionId: typeof args?.session_id === "string" ? args.session_id : undefined
+          sessionId: args.session_id
         });
         return {
           ok: true,
@@ -83,12 +86,13 @@ export function createRuntimeInspectionTools({
           data: assembler.assemble({ user, workspace, message, enterpriseContext })
         };
       }
-    },
-    {
+    }),
+    defineTool({
       name: "runtime.tool.governance",
       description: "List tool governance metadata: risk level, permissions, exposure, and confirmation requirements.",
       metadata: { required_permissions: [], risk_level: "read", expose_to_agentic: true },
-      schema: { type: "object", properties: {} },
+      inputSchema: z.object({}).strict(),
+      outputSchema: ToolResultBaseSchema,
       execute(_args, context) {
         return {
           ok: true,
@@ -106,7 +110,7 @@ export function createRuntimeInspectionTools({
           }
         };
       }
-    }
+    })
   ];
 }
 
@@ -116,17 +120,6 @@ function getWorkspace(context: ToolExecutionContext = {}): WorkspaceContext {
     return workspace as WorkspaceContext;
   }
   return resolveUserWorkspace(context.user?.id ?? "anonymous");
-}
-
-function normalizeTypes(value: unknown): TranscriptEventType[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  const allowed = new Set(["turn_start", "context_assembly", "user_message", "assistant_answer", "tool_call", "tool_result", "agent_step", "task_claimed", "task_updated", "route_decision", "tool_governance", "error", "interruption", "turn_end"]);
-  return value.map(String).filter((item): item is TranscriptEventType => allowed.has(item)) as TranscriptEventType[];
-}
-
-function readLimit(value: unknown, fallback: number): number {
-  const limit = Number(value);
-  return Number.isFinite(limit) && limit > 0 ? Math.min(limit, 500) : fallback;
 }
 
 function buildTraceReport(events: Array<{ at: string; type: TranscriptEventType; data: JsonObject }>): JsonObject {

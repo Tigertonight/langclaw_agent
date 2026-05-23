@@ -167,6 +167,8 @@ export interface ToolMetadata {
   intents?: string[];
   scenarios?: string[];
   steps?: string[];
+  /** 单工具执行超时（ms），不设则用 ToolRegistry 默认值。 */
+  timeout_ms?: number;
   [key: string]: unknown;
 }
 
@@ -174,6 +176,9 @@ export interface ToolDefinition {
   name: string;
   description: string;
   schema?: JsonObject;
+  /** 可选 zod schema：定义后 ToolRegistry 会在执行前后做 safeParse 校验。新工具用 defineTool() 自动赋值。 */
+  inputSchema?: unknown;
+  outputSchema?: unknown;
   metadata?: ToolMetadata;
   execute(args?: JsonObject, context?: ToolExecutionContext): Promise<unknown> | unknown;
 }
@@ -203,6 +208,7 @@ export interface ToolExecutionContext {
   intent?: string;
   scenario?: string;
   step?: string;
+  signal?: AbortSignal;
   [key: string]: unknown;
 }
 

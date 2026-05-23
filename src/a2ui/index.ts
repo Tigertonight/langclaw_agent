@@ -7,6 +7,7 @@ export * from "./incremental-envelope-parser.js";
 export * from "./module.js";
 export * from "./payload-fixer.js";
 export * from "./pipe-log-service.js";
+export * from "./streaming-translator.js";
 export * from "./translator-service.js";
 export * from "./types.js";
 export * from "./validators.js";

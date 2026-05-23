@@ -1,70 +1,99 @@
 import { resolveUserWorkspace, type WorkspaceContext } from "../runtime/workspace-context.js";
-import type { JsonObject, ToolDefinition, ToolExecutionContext } from "../types/agent-contracts.js";
+import type { ToolDefinition, ToolExecutionContext } from "../types/agent-contracts.js";
 import { TaskRetriever } from "./task-retriever.js";
 import { TaskStore, summarizeTask } from "./task-store.js";
 import type { TaskStatus } from "./task-types.js";
+import { defineTool, z, ToolResultBaseSchema } from "../tools/zod-helpers.js";
 
 const taskStore = new TaskStore();
 const taskRetriever = new TaskRetriever({ taskStore });
 
+const TASK_STATUSES = ["pending", "in_progress", "waiting_user", "blocked", "completed", "archived"] as const;
+const TASK_PRIORITIES = ["high", "medium", "low"] as const;
+const TASK_OWNERS = ["agent", "user", "system"] as const;
+const idSchema = z.string().min(1).max(128).regex(/^[A-Za-z0-9_.\-:]+$/);
+
 export function createTaskTools(): ToolDefinition[] {
   return [
-    {
+    defineTool({
       name: "task.list",
       description: "List active or filtered user-workspace tasks.",
       metadata: { required_permissions: [], expose_to_agentic: true, risk_level: "read" },
-      schema: { type: "object", properties: { status: { type: "string" }, limit: { type: "number" } } },
+      inputSchema: z.object({
+        status: z.enum(TASK_STATUSES).optional(),
+        limit: z.number().int().min(1).max(50).optional()
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
       async execute(args, context) {
         const workspace = getWorkspace(context);
-        const statuses = typeof args?.status === "string" ? [args.status as TaskStatus] : undefined;
-        const tasks = (await taskStore.list(workspace, { statuses })).slice(0, readLimit(args?.limit, 20)).map(summarizeTask);
+        const statuses = args.status ? [args.status as TaskStatus] : undefined;
+        const tasks = (await taskStore.list(workspace, { statuses })).slice(0, args.limit ?? 20).map(summarizeTask);
         return { ok: true, tool: "task.list", data: { tasks } };
       }
-    },
-    {
+    }),
+    defineTool({
       name: "task.retrieve",
       description: "Retrieve tasks relevant to the current user message, including continue-last-task requests.",
       metadata: { required_permissions: [], expose_to_agentic: true, risk_level: "read" },
-      schema: { type: "object", properties: { query: { type: "string" }, limit: { type: "number" } }, required: ["query"] },
+      inputSchema: z.object({
+        query: z.string().min(1).max(500),
+        limit: z.number().int().min(1).max(50).optional()
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
       async execute(args, context) {
         const workspace = getWorkspace(context);
-        const tasks = await taskRetriever.retrieve(workspace, String(args?.query ?? ""), readLimit(args?.limit, 5));
+        const tasks = await taskRetriever.retrieve(workspace, args.query, args.limit ?? 5);
         return { ok: true, tool: "task.retrieve", data: { tasks } };
       }
-    },
-    {
+    }),
+    defineTool({
       name: "task.create",
       description: "Create a structured long-running task in the current user workspace.",
       metadata: { required_permissions: [], expose_to_agentic: true, risk_level: "write" },
-      schema: { type: "object", properties: { id: { type: "string" }, title: { type: "string" }, goal: { type: "string" }, next_action: { type: "string" }, priority: { type: "string" } }, required: ["title"] },
+      inputSchema: z.object({
+        id: idSchema.optional(),
+        title: z.string().min(1).max(200),
+        goal: z.string().max(1000).optional(),
+        next_action: z.string().max(500).optional(),
+        priority: z.enum(TASK_PRIORITIES).optional()
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
       async execute(args, context) {
         const workspace = getWorkspace(context);
         const task = await taskStore.upsert(workspace, {
-          id: stringOrUndefined(args?.id),
-          subject: String(args?.title ?? args?.goal ?? "task"),
-          goal: stringOrUndefined(args?.goal),
-          next_action: stringOrUndefined(args?.next_action),
-          priority: args?.priority === "high" || args?.priority === "low" ? args.priority : "medium",
+          id: args.id,
+          subject: args.title,
+          goal: args.goal,
+          next_action: args.next_action,
+          priority: args.priority ?? "medium",
           status: "in_progress",
           metadata: { source: "task_tool" }
         });
         return { ok: true, tool: "task.create", data: { task: summarizeTask(task) } };
       }
-    },
-    {
+    }),
+    defineTool({
       name: "task.update",
       description: "Update task state, next action, facts, or open questions.",
       metadata: { required_permissions: [], expose_to_agentic: true, risk_level: "write" },
-      schema: { type: "object", properties: { id: { type: "string" }, title: { type: "string" }, status: { type: "string" }, next_action: { type: "string" }, known_facts: { type: "array" }, open_questions: { type: "array" } }, required: ["id"] },
+      inputSchema: z.object({
+        id: idSchema,
+        title: z.string().min(1).max(200).optional(),
+        status: z.enum(TASK_STATUSES).optional(),
+        next_action: z.string().max(500).optional(),
+        known_facts: z.array(z.string().max(500)).max(50).optional(),
+        open_questions: z.array(z.string().max(500)).max(50).optional()
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
       async execute(args, context) {
         const workspace = getWorkspace(context);
         const task = await taskStore.upsert(workspace, {
-          id: String(args?.id ?? "task"),
-          subject: stringOrUndefined(args?.title),
-          status: normalizeStatus(args?.status),
-          next_action: stringOrUndefined(args?.next_action),
-          open_questions: normalizeStringArray(args?.open_questions),
-          evidence: normalizeStringArray(args?.known_facts).map((fact, index) => ({
+          id: args.id,
+          subject: args.title,
+          status: args.status,
+          next_action: args.next_action,
+          open_questions: args.open_questions ?? [],
+          evidence: (args.known_facts ?? []).map((fact, index) => ({
             id: `tool_fact_${Date.now()}_${index + 1}`,
             kind: "note",
             summary: fact,
@@ -74,50 +103,64 @@ export function createTaskTools(): ToolDefinition[] {
         });
         return { ok: true, tool: "task.update", data: { task: summarizeTask(task) } };
       }
-    },
-    {
+    }),
+    defineTool({
       name: "task.complete",
       description: "Mark a task as completed.",
       metadata: { required_permissions: [], expose_to_agentic: true, risk_level: "write" },
-      schema: { type: "object", properties: { id: { type: "string" }, task_list_id: { type: "string" } }, required: ["id"] },
+      inputSchema: z.object({
+        id: idSchema,
+        task_list_id: idSchema.optional()
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
       async execute(args, context) {
         const workspace = getWorkspace(context);
-        const taskListId = String(args?.task_list_id ?? taskStore.listIdForUser(workspace));
-        const task = await taskStore.setStatus(workspace, taskListId, String(args?.id ?? "task"), "completed");
+        const taskListId = args.task_list_id ?? taskStore.listIdForUser(workspace);
+        const task = await taskStore.setStatus(workspace, taskListId, args.id, "completed");
         return { ok: Boolean(task), tool: "task.complete", data: { task: task ? summarizeTask(task) : null } };
       }
-    },
-    {
+    }),
+    defineTool({
       name: "task.claim",
       description: "Claim a task for active business-agent work and mark it in progress.",
       metadata: { required_permissions: [], expose_to_agentic: true, risk_level: "write" },
-      schema: { type: "object", properties: { id: { type: "string" }, task_list_id: { type: "string" }, owner: { type: "string" } }, required: ["id"] },
+      inputSchema: z.object({
+        id: idSchema,
+        task_list_id: idSchema.optional(),
+        owner: z.enum(TASK_OWNERS).optional()
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
       async execute(args, context) {
         const workspace = getWorkspace(context);
         const task = await taskStore.upsert(workspace, {
-          id: String(args?.id ?? "task"),
-          task_list_id: stringOrUndefined(args?.task_list_id),
-          owner: normalizeOwner(args?.owner),
+          id: args.id,
+          task_list_id: args.task_list_id,
+          owner: args.owner ?? "agent",
           status: "in_progress",
           metadata: {
             claimed_at: new Date().toISOString(),
-            claimed_by: stringOrUndefined(args?.owner) ?? context.user?.id ?? "agent"
+            claimed_by: args.owner ?? context.user?.id ?? "agent"
           }
         });
         return { ok: true, tool: "task.claim", data: { task: summarizeTask(task) } };
       }
-    },
-    {
+    }),
+    defineTool({
       name: "task.release",
       description: "Release a claimed task back to pending or waiting_user.",
       metadata: { required_permissions: [], expose_to_agentic: true, risk_level: "write" },
-      schema: { type: "object", properties: { id: { type: "string" }, task_list_id: { type: "string" }, status: { type: "string" } }, required: ["id"] },
+      inputSchema: z.object({
+        id: idSchema,
+        task_list_id: idSchema.optional(),
+        status: z.enum(TASK_STATUSES).optional()
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
       async execute(args, context) {
         const workspace = getWorkspace(context);
         const task = await taskStore.upsert(workspace, {
-          id: String(args?.id ?? "task"),
-          task_list_id: stringOrUndefined(args?.task_list_id),
-          status: normalizeStatus(args?.status) ?? "pending",
+          id: args.id,
+          task_list_id: args.task_list_id,
+          status: (args.status as TaskStatus | undefined) ?? "pending",
           metadata: {
             released_at: new Date().toISOString(),
             released_by: context.user?.id ?? "agent"
@@ -125,20 +168,26 @@ export function createTaskTools(): ToolDefinition[] {
         });
         return { ok: true, tool: "task.release", data: { task: summarizeTask(task) } };
       }
-    },
-    {
+    }),
+    defineTool({
       name: "task.block",
       description: "Mark a task as blocked and link blocker task ids or an open question.",
       metadata: { required_permissions: [], expose_to_agentic: true, risk_level: "write" },
-      schema: { type: "object", properties: { id: { type: "string" }, blocked_by: { type: "array" }, reason: { type: "string" }, task_list_id: { type: "string" } }, required: ["id"] },
+      inputSchema: z.object({
+        id: idSchema,
+        blocked_by: z.array(idSchema).max(20).optional(),
+        reason: z.string().max(500).optional(),
+        task_list_id: idSchema.optional()
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
       async execute(args, context) {
         const workspace = getWorkspace(context);
-        const reason = stringOrUndefined(args?.reason);
+        const reason = args.reason?.trim() || undefined;
         const task = await taskStore.upsert(workspace, {
-          id: String(args?.id ?? "task"),
-          task_list_id: stringOrUndefined(args?.task_list_id),
+          id: args.id,
+          task_list_id: args.task_list_id,
           status: "blocked",
-          blocked_by: normalizeStringArray(args?.blocked_by),
+          blocked_by: args.blocked_by ?? [],
           open_questions: reason ? [reason] : [],
           metadata: {
             blocked_at: new Date().toISOString(),
@@ -147,19 +196,24 @@ export function createTaskTools(): ToolDefinition[] {
         });
         return { ok: true, tool: "task.block", data: { task: summarizeTask(task) } };
       }
-    },
-    {
+    }),
+    defineTool({
       name: "task.unblock",
       description: "Unblock a task and move it back to in_progress.",
       metadata: { required_permissions: [], expose_to_agentic: true, risk_level: "write" },
-      schema: { type: "object", properties: { id: { type: "string" }, task_list_id: { type: "string" }, next_action: { type: "string" } }, required: ["id"] },
+      inputSchema: z.object({
+        id: idSchema,
+        task_list_id: idSchema.optional(),
+        next_action: z.string().max(500).optional()
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
       async execute(args, context) {
         const workspace = getWorkspace(context);
         const task = await taskStore.upsert(workspace, {
-          id: String(args?.id ?? "task"),
-          task_list_id: stringOrUndefined(args?.task_list_id),
+          id: args.id,
+          task_list_id: args.task_list_id,
           status: "in_progress",
-          next_action: stringOrUndefined(args?.next_action),
+          next_action: args.next_action,
           blocked_by: [],
           metadata: {
             unblocked_at: new Date().toISOString(),
@@ -171,12 +225,13 @@ export function createTaskTools(): ToolDefinition[] {
         await taskStore.updateActiveIndex(workspace);
         return { ok: true, tool: "task.unblock", data: { task: summarizeTask(task) } };
       }
-    },
-    {
+    }),
+    defineTool({
       name: "task.busy",
       description: "Check whether this workspace has in-progress or blocked business tasks.",
       metadata: { required_permissions: [], expose_to_agentic: true, risk_level: "read" },
-      schema: { type: "object", properties: {} },
+      inputSchema: z.object({}).strict(),
+      outputSchema: ToolResultBaseSchema,
       async execute(_args, context) {
         const workspace = getWorkspace(context);
         const tasks = await taskStore.active(workspace, 20);
@@ -189,22 +244,26 @@ export function createTaskTools(): ToolDefinition[] {
           }
         };
       }
-    },
-    {
+    }),
+    defineTool({
       name: "task.link_artifact",
       description: "Link an artifact path or URL to an existing task.",
       metadata: { required_permissions: [], expose_to_agentic: true, risk_level: "write" },
-      schema: { type: "object", properties: { id: { type: "string" }, artifact: { type: "string" } }, required: ["id", "artifact"] },
+      inputSchema: z.object({
+        id: idSchema,
+        artifact: z.string().min(1).max(1000)
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
       async execute(args, context) {
         const workspace = getWorkspace(context);
         const task = await taskStore.upsert(workspace, {
-          id: String(args?.id ?? "task"),
-          artifacts: [String(args?.artifact ?? "")].filter(Boolean),
+          id: args.id,
+          artifacts: [args.artifact],
           metadata: { source: "task_tool" }
         });
         return { ok: true, tool: "task.link_artifact", data: { task: summarizeTask(task) } };
       }
-    }
+    })
   ];
 }
 
@@ -214,27 +273,4 @@ function getWorkspace(context: ToolExecutionContext = {}): WorkspaceContext {
     return workspace as WorkspaceContext;
   }
   return resolveUserWorkspace(context.user?.id ?? "anonymous");
-}
-
-function readLimit(value: unknown, fallback: number): number {
-  const limit = Number(value);
-  return Number.isFinite(limit) && limit > 0 ? Math.min(limit, 50) : fallback;
-}
-
-function stringOrUndefined(value: unknown): string | undefined {
-  return typeof value === "string" && value.trim() ? value.trim() : undefined;
-}
-
-function normalizeStringArray(value: unknown): string[] {
-  return Array.isArray(value) ? value.map((item) => String(item ?? "").trim()).filter(Boolean) : [];
-}
-
-function normalizeStatus(value: unknown): TaskStatus | undefined {
-  const text = String(value ?? "");
-  return ["pending", "in_progress", "waiting_user", "blocked", "completed", "archived"].includes(text) ? text as TaskStatus : undefined;
-}
-
-function normalizeOwner(value: unknown): "agent" | "user" | "system" {
-  const text = String(value ?? "");
-  return text === "user" || text === "system" ? text : "agent";
 }

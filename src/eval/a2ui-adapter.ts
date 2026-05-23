@@ -262,6 +262,120 @@ await module.chatController.stream({ user_id: "eval", message: "流式" }, async
 });
 assert(streamedDone, "controller should decorate stream done event");
 
+// ---- 流式 fixture：parser stateful 累积、streaming-translator 行为、与 batch 等价性 ----
+
+import { A2UIStreamingTranslator } from "../a2ui/streaming-translator.js";
+import type { A2UIEnvelope } from "../a2ui/types.js";
+
+// 1) parser ingest 容错：非法 envelope 进 rejected，不影响后续累积
+{
+  const parser = new A2UIIncrementalEnvelopeParser();
+  const result = parser.ingest([
+    { version: "v0.9", createSurface: { surfaceId: "s1", root: "root", catalogId: "cat", sendDataModel: true } },
+    { version: "v0.9" }, // 缺 surfaceId/kind，应被拒
+    { version: "v0.9", updateComponents: { surfaceId: "s1", components: [{ id: "root", component: { Card: { children: [] } } }] } },
+    { version: "v0.9", updateDataModel: { surfaceId: "s1", value: { hello: "world" } } }
+  ]);
+  assert(result.accepted.length === 3, "ingest should accept 3 envelopes");
+  assert(result.rejected.length === 1, "ingest should reject 1 envelope");
+  assert(result.snapshot.length === 1, "snapshot should contain 1 surface");
+  assert(result.snapshot[0].surfaceId === "s1", "snapshot surface id");
+  assert(readPath(result.snapshot[0].data, ["hello"]) === "world", "data model merged");
+  assert(result.snapshot[0].components[0]?.id === "root", "components captured");
+}
+
+// 2) parser stateful：多次 ingest 应累积；deleteSurface 应隐藏
+{
+  const parser = new A2UIIncrementalEnvelopeParser();
+  parser.ingest([{ version: "v0.9", createSurface: { surfaceId: "s2", root: "r", catalogId: "c", sendDataModel: true } }]);
+  parser.ingest([{ version: "v0.9", updateComponents: { surfaceId: "s2", components: [{ id: "r", component: { Card: { children: [] } } }] } }]);
+  parser.ingest([{ version: "v0.9", updateDataModel: { surfaceId: "s2", path: "stats.count", value: 7 } }]);
+  let snap = parser.snapshot();
+  assert(snap.length === 1 && readPath(snap[0].data, ["stats", "count"]) === 7, "path-based data merge works");
+  parser.ingest([{ version: "v0.9", deleteSurface: { surfaceId: "s2" } }]);
+  snap = parser.snapshot();
+  assert(snap.length === 0, "deleteSurface hides surface from snapshot");
+}
+
+// 3) streaming-translator：lifecycle/tool 事件 → progress envelope；finalize 后清理 progress
+{
+  const parser = new A2UIIncrementalEnvelopeParser();
+  const captured: A2UIEnvelope[] = [];
+  const translator = new A2UIStreamingTranslator(parser, async (env) => { captured.push(env); }, { runId: "run_x" });
+  await translator.onAgenticEvent({ kind: "agentic_lifecycle", event: "start" });
+  await translator.onAgenticEvent({ kind: "agentic_lifecycle", event: "decided", action: "tool_call", planner_state: { last_tool: "task.list" } });
+  await translator.onAgenticEvent({ kind: "agentic_tool", type: "tool_call", tool: "task.list", observation_summary: { count: 3 } });
+
+  const before = parser.snapshot();
+  assert(before.length === 1, "during streaming progress surface visible");
+  assert(before[0].root === "progress_root", "progress surface root");
+  assert(before[0].data._skeleton === false, "tool returned tone=done -> skeleton off");
+
+  await translator.finalize({ run_id: "run_x", debug: { route: { intent_code: "x", execution_class: "y", handler_type: "z", confidence: "high" } } });
+  const after = parser.snapshot();
+  assert(after.every((s) => s.root !== "progress_root"), "progress surface cleaned after finalize");
+  assert(captured.some((e) => e.deleteSurface?.surfaceId.includes("progress")), "deleteSurface emitted on finalize");
+}
+
+// 4) 等价性：流式累积 snapshot 与 batch parse 后从同一 result finalize 等价
+{
+  const result = {
+    run_id: "run_eq",
+    sources: [{ id: "s", source: "p.md", title: "T", heading: "H", score: 0.5, quote: "Q" }],
+    debug: { route: { intent_code: "k.policy_qa", execution_class: "controlled_execution", handler_type: "knowledge_lookup", confidence: "high" } }
+  };
+  const batchParser = new A2UIIncrementalEnvelopeParser();
+  batchParser.ingest(buildA2UIResponse({ result }));
+  const batchSnap = batchParser.snapshot();
+
+  const streamParser = new A2UIIncrementalEnvelopeParser();
+  const streamTranslator = new A2UIStreamingTranslator(streamParser, async () => {}, { runId: "run_eq" });
+  await streamTranslator.onAgenticEvent({ kind: "agentic_lifecycle", event: "start" });
+  await streamTranslator.finalize(result);
+  const streamSnap = streamParser.snapshot();
+
+  assert(streamSnap.length === batchSnap.length, "stream finalize == batch surface count");
+  const surfaceIds = (snap: typeof streamSnap) => snap.map((s) => s.surfaceId).sort();
+  assert(JSON.stringify(surfaceIds(streamSnap)) === JSON.stringify(surfaceIds(batchSnap)), "surface ids match");
+}
+
+// 5) catalog contract：所有插件 build 出来的 component 必须落在 BASIC_COMPONENTS 内；
+//    所有 Button action.event.name 必须出现在 capabilities.actions 列表里
+{
+  const allMessages = [
+    ...messages,
+    ...wrappedMessages,
+    ...vehicleMessages,
+    ...agenticVehicleMessages,
+    ...expenseMessages,
+    ...leaveMessages
+  ];
+  const BASIC = new Set(["Text", "Image", "Icon", "Video", "AudioPlayer", "Row", "Column", "List", "Card", "Tabs", "Button"]);
+  for (const env of allMessages) {
+    if (!env.updateComponents) continue;
+    for (const item of env.updateComponents.components) {
+      const componentNames = Object.keys(item.component);
+      for (const name of componentNames) {
+        assert(BASIC.has(name), `component "${name}" must be in BASIC catalog (instance=${item.id})`);
+      }
+    }
+  }
+
+  const capServer = chatService.capabilities().server_capabilities as { actions?: unknown };
+  const declaredActions = Array.isArray(capServer?.actions) ? capServer.actions as string[] : [];
+  for (const env of allMessages) {
+    if (!env.updateComponents) continue;
+    for (const item of env.updateComponents.components) {
+      const actionName = readButtonActionName(item);
+      if (!actionName) continue;
+      assert(
+        declaredActions.includes(actionName),
+        `button action "${actionName}" must be declared in capabilities.actions`
+      );
+    }
+  }
+}
+
 console.log("PASS a2ui adapter");
 
 function assert(condition: boolean, message: string): void {

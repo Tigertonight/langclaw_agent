@@ -1,10 +1,13 @@
 import { PendingActionStore } from "../runtime/pending-action-store.js";
 import { resolveUserWorkspace, type WorkspaceContext } from "../runtime/workspace-context.js";
 import type { JsonObject, ToolDefinition, ToolExecutionContext, ToolResult } from "../types/agent-contracts.js";
+import { defineTool, z, ToolResultBaseSchema } from "./zod-helpers.js";
 
 interface ToolRegistryLike {
   execute(call: { name: string; args?: JsonObject }, context?: ToolExecutionContext): Promise<unknown>;
 }
+
+const idSchema = z.string().min(1).max(128).regex(/^[A-Za-z0-9_.\-:]+$/);
 
 export function createPendingActionTools({
   pendingActionStore = new PendingActionStore(),
@@ -14,36 +17,39 @@ export function createPendingActionTools({
   toolRegistry: ToolRegistryLike;
 }): ToolDefinition[] {
   return [
-    {
+    defineTool({
       name: "runtime.pending_action.list",
       description: "List pending tool actions that are waiting for user approval in the current workspace.",
       metadata: { required_permissions: [], risk_level: "read", expose_to_agentic: true },
-      schema: { type: "object", properties: {} },
+      inputSchema: z.object({}).strict(),
+      outputSchema: ToolResultBaseSchema,
       async execute(_args, context) {
         const workspace = getWorkspace(context);
         const actions = await pendingActionStore.list(workspace);
         return { ok: true, tool: "runtime.pending_action.list", data: { actions: actions.map(summarizeAction) } };
       }
-    },
-    {
+    }),
+    defineTool({
       name: "runtime.pending_action.reject",
       description: "Reject a pending tool action.",
       metadata: { required_permissions: [], risk_level: "write", expose_to_agentic: true },
-      schema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
+      inputSchema: z.object({ id: idSchema }).strict(),
+      outputSchema: ToolResultBaseSchema,
       async execute(args, context) {
         const workspace = getWorkspace(context);
-        const action = await pendingActionStore.mark(workspace, String(args?.id ?? ""), "rejected");
+        const action = await pendingActionStore.mark(workspace, args.id, "rejected");
         return { ok: Boolean(action), tool: "runtime.pending_action.reject", data: { action: action ? summarizeAction(action) : null } };
       }
-    },
-    {
+    }),
+    defineTool({
       name: "runtime.pending_action.confirm",
       description: "Approve and execute a pending tool action using the original tool call payload.",
       metadata: { required_permissions: [], risk_level: "write", expose_to_agentic: false, requires_confirmation: true },
-      schema: { type: "object", properties: { id: { type: "string" } }, required: ["id"] },
+      inputSchema: z.object({ id: idSchema }).strict(),
+      outputSchema: ToolResultBaseSchema,
       async execute(args, context) {
         const workspace = getWorkspace(context);
-        const action = await pendingActionStore.get(workspace, String(args?.id ?? ""));
+        const action = await pendingActionStore.get(workspace, args.id);
         if (!action || action.status !== "pending") {
           return { ok: false, tool: "runtime.pending_action.confirm", error: "pending_action_not_found", message: "没有找到可确认的待执行动作。" };
         }
@@ -67,7 +73,7 @@ export function createPendingActionTools({
           }
         };
       }
-    }
+    })
   ];
 }
 

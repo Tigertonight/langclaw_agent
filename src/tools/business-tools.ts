@@ -4,6 +4,7 @@ import path from "node:path";
 import { resolveProjectPath } from "../data/load-json.js";
 import { buildDealerMetrics } from "../dealer/dealer-metrics.js";
 import type { JsonObject, JsonValue, QueryFilter, QuerySort, ToolDefinition, ToolExecutionContext } from "../types/agent-contracts.js";
+import { defineTool, z, ToolResultBaseSchema } from "./zod-helpers.js";
 
 interface QueryArgs extends JsonObject {
   filters?: QueryFilter[];
@@ -67,6 +68,43 @@ interface QueryDerivedExpression extends JsonObject {
 function normalize(text: unknown): string {
   return String(text ?? "").trim();
 }
+
+const FilterValueSchema = z.union([
+  z.string().max(200),
+  z.number(),
+  z.boolean(),
+  z.null(),
+  z.array(z.union([z.string().max(200), z.number(), z.boolean()])).max(50)
+]);
+
+const BusinessQuerySchema = z.object({
+  resource: z.string().min(1).max(64),
+  operation: z.enum(["search", "aggregate"]).optional(),
+  filters: z.array(z.object({
+    field: z.string().max(64),
+    op: z.enum(["eq", "neq", "contains", "in", "gte", "lte"]),
+    value: FilterValueSchema
+  }).strict()).max(20).optional(),
+  metrics: z.array(z.object({
+    type: z.enum(["count", "sum", "avg", "min", "max", "distinct_count"]),
+    field: z.string().max(64),
+    as: z.string().max(64).optional()
+  }).strict()).max(10).optional(),
+  aggregations: z.array(z.object({
+    type: z.enum(["count", "sum", "avg", "min", "max", "distinct_count"]),
+    field: z.string().max(64),
+    as: z.string().max(64).optional()
+  }).strict()).max(10).optional(),
+  derived: z.array(z.record(z.string(), z.unknown())).max(20).optional(),
+  group_by: z.union([z.string().max(64), z.array(z.string().max(64)).max(5)]).optional(),
+  sort: z.array(z.object({
+    field: z.string().max(64),
+    direction: z.enum(["asc", "desc"]).optional()
+  }).strict()).max(5).optional(),
+  fields: z.array(z.string().max(64)).max(30).optional(),
+  limit: z.number().int().min(1).max(100).optional(),
+  display: z.unknown().optional()
+}).strict();
 
 const RESOURCE_CONFIG: Record<string, ResourceConfig> = {
   customers: {
@@ -842,7 +880,7 @@ function sanitizeQuery(args: BusinessQueryArgs): Record<string, unknown> {
 
 export function createBusinessTools(): ToolDefinition[] {
   return [
-    {
+    defineTool({
       name: "query_business_data",
       description: "通用业务数据查询工具。支持资源、筛选、聚合、排序、字段选择和分页限制，工具内部会自动按当前用户权限注入数据范围。",
       metadata: {
@@ -851,56 +889,13 @@ export function createBusinessTools(): ToolDefinition[] {
         requires_confirmation: false,
         intents: ["data_query", "mixed"]
       },
-      schema: {
-        type: "object",
-        required: ["resource"],
-        properties: {
-          resource: { type: "string", enum: Object.keys(RESOURCE_CONFIG) },
-          operation: { type: "string", enum: ["search", "aggregate"] },
-          filters: {
-            type: "array",
-            items: {
-              type: "object",
-              required: ["field", "op", "value"],
-              properties: {
-                field: { type: "string" },
-                op: { type: "string", enum: ["eq", "neq", "contains", "in", "gte", "lte"] },
-                value: {}
-              }
-            }
-          },
-          metrics: {
-            type: "array",
-            items: {
-              type: "object",
-              required: ["type", "field"],
-              properties: {
-                type: { type: "string", enum: ["count", "sum", "avg"] },
-                field: { type: "string" },
-                as: { type: "string" }
-              }
-            }
-          },
-          sort: {
-            type: "array",
-            items: {
-              type: "object",
-              required: ["field"],
-              properties: {
-                field: { type: "string" },
-                direction: { type: "string", enum: ["asc", "desc"] }
-              }
-            }
-          },
-          fields: { type: "array", items: { type: "string" } },
-          limit: { type: "number" }
-        }
-      },
-      async execute(args: JsonObject = {}, context: ToolExecutionContext = {}) {
-        return executeBusinessDataQuery(args as BusinessQueryArgs, context as BusinessToolContext);
+      inputSchema: BusinessQuerySchema,
+      outputSchema: ToolResultBaseSchema,
+      async execute(args, context = {}) {
+        return executeBusinessDataQuery(args as unknown as BusinessQueryArgs, context as BusinessToolContext);
       }
-    },
-    {
+    }),
+    defineTool({
       name: "list_my_customers",
       description: "列出当前登录员工权限范围内可访问的客户列表。",
       metadata: {
@@ -909,12 +904,9 @@ export function createBusinessTools(): ToolDefinition[] {
         requires_confirmation: false,
         intents: ["data_query", "mixed"]
       },
-      schema: {
-        type: "object",
-        required: [],
-        properties: {}
-      },
-      async execute(_args: JsonObject = {}, context: ToolExecutionContext = {}) {
+      inputSchema: z.object({}).strict(),
+      outputSchema: ToolResultBaseSchema,
+      async execute(_args, context = {}) {
         const user = (context as BusinessToolContext).user;
         const customers = await loadJson("data/customers.json") as DataRow[];
         const allowed = new Set(user.accessible_customer_ids ?? []);
@@ -938,8 +930,8 @@ export function createBusinessTools(): ToolDefinition[] {
           }
         };
       }
-    },
-    {
+    }),
+    defineTool({
       name: "query_customer",
       description: "查询客户基础信息，例如客户等级、行业、负责人范围内的年度成交额。",
       metadata: {
@@ -948,14 +940,11 @@ export function createBusinessTools(): ToolDefinition[] {
         requires_confirmation: false,
         intents: ["data_query", "mixed"]
       },
-      schema: {
-        type: "object",
-        required: ["customer_name"],
-        properties: {
-          customer_name: { type: "string", description: "客户名称" }
-        }
-      },
-      async execute(args: JsonObject = {}) {
+      inputSchema: z.object({
+        customer_name: z.string().min(1).max(80).describe("客户名称")
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
+      async execute(args) {
         const customer = await findCustomerByName(args.customer_name);
         if (!customer) {
           return { ok: false, tool: "query_customer", error: "not_found", message: "未找到该客户。" };
@@ -973,8 +962,8 @@ export function createBusinessTools(): ToolDefinition[] {
           }
         };
       }
-    },
-    {
+    }),
+    defineTool({
       name: "query_order",
       description: "查询客户最近订单状态、金额和预计交付时间。",
       metadata: {
@@ -983,15 +972,12 @@ export function createBusinessTools(): ToolDefinition[] {
         requires_confirmation: false,
         intents: ["data_query", "mixed"]
       },
-      schema: {
-        type: "object",
-        required: ["customer_name"],
-        properties: {
-          customer_name: { type: "string", description: "客户名称" },
-          period: { type: "string", enum: ["latest"], description: "当前只支持 latest" }
-        }
-      },
-      async execute(args: JsonObject = {}) {
+      inputSchema: z.object({
+        customer_name: z.string().min(1).max(80).describe("客户名称"),
+        period: z.literal("latest").optional().describe("当前只支持 latest")
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
+      async execute(args) {
         const orders = await loadJson("data/orders.json") as DataRow[];
         const normalized = normalize(args.customer_name);
         const matched = orders
@@ -1008,8 +994,8 @@ export function createBusinessTools(): ToolDefinition[] {
           data: matched[0]
         };
       }
-    },
-    {
+    }),
+    defineTool({
       name: "query_sales_report",
       description: "查询部门销售报表，只返回聚合指标。",
       metadata: {
@@ -1018,15 +1004,12 @@ export function createBusinessTools(): ToolDefinition[] {
         requires_confirmation: false,
         intents: ["data_query", "mixed"]
       },
-      schema: {
-        type: "object",
-        required: ["department"],
-        properties: {
-          department: { type: "string", description: "部门名称" },
-          period: { type: "string", description: "周期，例如 2026Q2" }
-        }
-      },
-      async execute(args: JsonObject = {}, context: ToolExecutionContext = {}) {
+      inputSchema: z.object({
+        department: z.string().min(1).max(80).describe("部门名称"),
+        period: z.string().regex(/^\d{4}Q[1-4]$/).optional().describe("周期，例如 2026Q2")
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
+      async execute(args, context = {}) {
         const user = (context as BusinessToolContext).user;
         const reports = await loadJson("data/sales_reports.json") as DataRow[];
         const department = args.department ?? user.department;
@@ -1041,8 +1024,8 @@ export function createBusinessTools(): ToolDefinition[] {
           data: report
         };
       }
-    },
-    {
+    }),
+    defineTool({
       name: "submit_leave_request",
       description: "提交员工请假申请，需要请假类型、开始时间、结束时间和请假事由。",
       metadata: {
@@ -1052,26 +1035,23 @@ export function createBusinessTools(): ToolDefinition[] {
         scenarios: ["leave_request"],
         steps: ["awaiting_confirmation"]
       },
-      schema: {
-        type: "object",
-        required: ["leave_type", "start_time", "end_time", "reason"],
-        properties: {
-          leave_type: { type: "string", enum: ["年假", "病假", "事假", "调休", "其他"] },
-          start_time: { type: "string", description: "请假开始时间" },
-          end_time: { type: "string", description: "请假结束时间" },
-          reason: { type: "string", description: "请假事由" }
-        }
-      },
-      async execute(args: JsonObject = {}, context: ToolExecutionContext = {}) {
+      inputSchema: z.object({
+        leave_type: z.enum(["年假", "病假", "事假", "调休", "其他"]),
+        start_time: z.string().regex(/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$/, "format YYYY-MM-DD or YYYY-MM-DD HH:MM"),
+        end_time: z.string().regex(/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$/, "format YYYY-MM-DD or YYYY-MM-DD HH:MM"),
+        reason: z.string().min(1).max(500)
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
+      async execute(args, context) {
         const user = (context as BusinessToolContext).user;
         const request = normalizeLeaveRequestRecord({
           id: `LR-${Date.now()}`,
           applicant_user_id: user.id,
           applicant_name: user.name,
           department: user.department,
-          leave_duration: inferLeaveDuration(args),
+          leave_duration: inferLeaveDuration(args as JsonObject),
           status: "submitted",
-          ...args,
+          ...(args as JsonObject),
           submitted_at: new Date().toISOString()
         });
         const tableFile = "data/leave-requests.json";
@@ -1083,10 +1063,10 @@ export function createBusinessTools(): ToolDefinition[] {
         return {
           ok: true,
           tool: "submit_leave_request",
-          data: request
+          data: request as JsonObject
         };
       }
-    }
+    })
   ];
 }
 
