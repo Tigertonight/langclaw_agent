@@ -72,18 +72,27 @@ export class BusinessQueryEngine {
     });
     const workspace = resolveUserWorkspace(user);
     const sessionId = input.sessionId ?? createDefaultSessionId(user.id);
-    const enterpriseContext = await this.enterpriseContextProvider.load({
-      user,
-      workspace,
-      message: input.message,
-      sessionId
-    });
+    let enterpriseContext: unknown = {};
+    let ingestError: Error | null = null;
+    try {
+      enterpriseContext = await this.enterpriseContextProvider.load({
+        user,
+        workspace,
+        message: input.message,
+        sessionId
+      });
+    } catch (error) {
+      ingestError = error instanceof Error ? error : new Error(String(error));
+      console.warn(`[query-engine] enterpriseContextProvider.load failed for user=${user.id}: ${ingestError.message}`);
+    }
     await this.hooks?.emit("context_ingest", {
       user_id: user.id,
       session_id: sessionId,
       run_id: runId,
       stage: "ingest",
-      sources: summarizeIngestSources(enterpriseContext)
+      sources: summarizeIngestSources(enterpriseContext),
+      error: ingestError ? { name: ingestError.name, message: ingestError.message } : null,
+      degraded: ingestError !== null
     });
     const assembled = this.contextAssembler.assemble({
       user,
