@@ -1,4 +1,5 @@
 import type { ExecutionClass } from "../types/agent-contracts.js";
+import { handlerManifestRegistry } from "../handlers/handler-manifest.js";
 
 export const EXECUTION_CLASSES: {
   CONTROLLED: ExecutionClass;
@@ -8,12 +9,9 @@ export const EXECUTION_CLASSES: {
   AUTONOMOUS: "autonomous_planning"
 };
 
-const CONTROLLED_HANDLERS = new Set(["chitchat", "intent_query", "knowledge_lookup", "workflow"]);
-const AUTONOMOUS_HANDLERS = new Set(["agentic"]);
-
 export function executionClassForHandler(handlerType?: string): ExecutionClass {
-  if (CONTROLLED_HANDLERS.has(String(handlerType))) return EXECUTION_CLASSES.CONTROLLED;
-  if (AUTONOMOUS_HANDLERS.has(String(handlerType))) return EXECUTION_CLASSES.AUTONOMOUS;
+  const manifest = handlerManifestRegistry.get(handlerType);
+  if (manifest) return manifest.execution_class;
   return EXECUTION_CLASSES.AUTONOMOUS;
 }
 
