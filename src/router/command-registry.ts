@@ -31,6 +31,14 @@ export interface CommandDefinition {
   /** 唯一标识，便于日志/调试定位是哪条命令命中 */
   id: string;
   /**
+   * 静态声明：该命令最终会路由到哪个 intent_code，以及面向用户的标题/触发词。
+   * 仅用于 /api/commands 这类"展示给前端"的清单渲染——不影响 match 逻辑。
+   * 命令可以不声明（动态路由的命令仍能通过 match 正常工作）。
+   */
+  intentCode?: string;
+  title?: string;
+  triggers?: string[];
+  /**
    * 匹配函数：返回 CommandMatch 表示命中、null 表示跳过。
    * 把"是否命中 + 命中后的参数"放在同一个函数里，避免 prefix 匹配 + 二次 parse 的拆分。
    */

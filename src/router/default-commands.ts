@@ -10,10 +10,15 @@ import type { CommandDefinition } from "./command-registry.js";
  *
  * 这是"用户能立即看到效果"的能力——在聊天框里输入 /help、/库存预警 这些
  * 短指令，秒响应而不走 LLM 路由。
+ *
+ * intentCode / title / triggers 是给 /api/commands 看的元数据，不参与 match 逻辑。
  */
 export const DEFAULT_COMMANDS: CommandDefinition[] = [
   {
     id: "help",
+    intentCode: "system.smalltalk",
+    title: "查看帮助",
+    triggers: ["/help", "/?", "/帮助", "帮助"],
     match: ({ message }) => {
       const text = message.trim().toLowerCase();
       if (text === "/help" || text === "/?" || text === "帮助" || text === "/帮助") {
@@ -29,6 +34,9 @@ export const DEFAULT_COMMANDS: CommandDefinition[] = [
   },
   {
     id: "today_orders",
+    intentCode: "dealer.query.sales_orders",
+    title: "今日订单",
+    triggers: ["/今日订单", "/今天的订单", "/today"],
     match: ({ message }) => {
       const text = message.trim();
       if (text === "/今日订单" || text === "/今天的订单" || text === "/today") {
@@ -44,6 +52,9 @@ export const DEFAULT_COMMANDS: CommandDefinition[] = [
   },
   {
     id: "inventory_alert",
+    intentCode: "dealer.query.inventory",
+    title: "库存预警",
+    triggers: ["/库存预警", "/inventory-alert"],
     match: ({ message }) => {
       const text = message.trim();
       if (text === "/库存预警" || text === "/inventory-alert") {
@@ -59,6 +70,9 @@ export const DEFAULT_COMMANDS: CommandDefinition[] = [
   },
   {
     id: "my_leads",
+    intentCode: "dealer.query.leads",
+    title: "我的销售线索",
+    triggers: ["/我的线索", "/我的客户线索", "/leads"],
     match: ({ message }) => {
       const text = message.trim();
       if (text === "/我的线索" || text === "/我的客户线索" || text === "/leads") {
@@ -74,6 +88,9 @@ export const DEFAULT_COMMANDS: CommandDefinition[] = [
   },
   {
     id: "warranty_claims",
+    intentCode: "dealer.query.warranty_claims",
+    title: "三包索赔",
+    triggers: ["/三包", "/三包索赔", "/warranty"],
     match: ({ message }) => {
       const text = message.trim();
       if (text === "/三包" || text === "/三包索赔" || text === "/warranty") {

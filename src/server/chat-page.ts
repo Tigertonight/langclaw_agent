@@ -167,6 +167,24 @@ export function renderChatPage(): string {
     .send { height: 36px; min-width: 72px; border: 0; border-radius: 6px; background: #111; color: #fff; font-weight: 600; cursor: pointer; }
     .send:disabled { background: #cfcfcf; cursor: not-allowed; }
     .hint { width: min(820px, calc(100vw - 40px)); margin: 7px auto 0; color: var(--faint); font-size: 12px; }
+    .composer-suggest {
+      width: min(820px, calc(100vw - 40px)); margin: 0 auto; position: relative;
+    }
+    .composer-suggest .suggest-popup {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      background: #fff; border: 1px solid #d4d4d4; border-radius: 8px;
+      box-shadow: 0 18px 44px rgba(0,0,0,.12); padding: 6px; z-index: 5;
+      max-height: 260px; overflow-y: auto; display: none;
+    }
+    .composer-suggest .suggest-popup.open { display: block; }
+    .suggest-item {
+      display: grid; grid-template-columns: max-content 1fr; align-items: baseline;
+      gap: 10px; padding: 8px 10px; border-radius: 6px; cursor: pointer;
+    }
+    .suggest-item:hover, .suggest-item.active { background: #f4f4f5; }
+    .suggest-trigger { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; color: #111; font-weight: 600; }
+    .suggest-title { font-size: 12.5px; color: #6b6b6b; }
+    .suggest-empty { padding: 10px; color: var(--faint); font-size: 12.5px; text-align: center; }
     /* 业务视角（默认）：仿 GPT 段落叙述风格，方案 1 配对（先 summary 后 narrative） */
     .biz { margin: 0 0 12px; color: #6b6b6b; font-size: 14px; line-height: 1.7; }
     .assistant-body.has-answer .biz.collapsed { margin-bottom: 4px; }
@@ -534,12 +552,13 @@ export function renderChatPage(): string {
         </div>
       </div>
       <div id="messages" class="messages"></div>
+      <div class="composer-suggest"><div id="suggestPopup" class="suggest-popup" role="listbox" aria-label="&#x547D;&#x4EE4;&#x5EFA;&#x8BAE;"></div></div>
       <form id="form" class="composer">
         <div class="composer-inner">
-          <textarea id="input" rows="1" placeholder="&#x8F93;&#x5165;&#x95EE;&#x9898;&#x6216;&#x4E1A;&#x52A1;&#x6307;&#x4EE4;"></textarea>
+          <textarea id="input" rows="1" placeholder="&#x8F93;&#x5165;&#x95EE;&#x9898;&#x6216;&#x4E1A;&#x52A1;&#x6307;&#x4EE4;&#xFF08;&#x6309; / &#x67E5;&#x770B;&#x5FEB;&#x6377;&#x547D;&#x4EE4;&#xFF09;"></textarea>
           <button id="send" class="send" type="submit">&#x53D1;&#x9001;</button>
         </div>
-        <div class="hint">Enter &#x53D1;&#x9001; &#183; Shift+Enter &#x6362;&#x884C;</div>
+        <div class="hint">Enter &#x53D1;&#x9001; &#183; Shift+Enter &#x6362;&#x884C; &#183; / &#x547D;&#x4EE4;&#x8865;&#x5168;</div>
       </form>
     </section>
     <div id="personModalBackdrop" class="person-modal-backdrop" aria-hidden="true">
@@ -591,6 +610,7 @@ export function renderChatPage(): string {
       form: document.querySelector("#form"),
       input: document.querySelector("#input"),
       send: document.querySelector("#send"),
+      suggestPopup: document.querySelector("#suggestPopup"),
       personPicker: document.querySelector("#personPicker"),
       personTrigger: document.querySelector("#personTrigger"),
       personAvatar: document.querySelector("#personAvatar"),
@@ -853,12 +873,28 @@ export function renderChatPage(): string {
     els.input.addEventListener("input", () => {
       els.input.style.height = "auto";
       els.input.style.height = Math.max(36, Math.min(180, els.input.scrollHeight)) + "px";
+      updateCommandSuggest();
     });
     els.input.addEventListener("keydown", (event) => {
+      if (commandSuggest.open) {
+        if (event.key === "ArrowDown") { event.preventDefault(); moveSuggest(1); return; }
+        if (event.key === "ArrowUp") { event.preventDefault(); moveSuggest(-1); return; }
+        if (event.key === "Tab" || (event.key === "Enter" && !event.shiftKey)) {
+          event.preventDefault();
+          acceptSuggest();
+          return;
+        }
+        if (event.key === "Escape") { event.preventDefault(); closeSuggest(); return; }
+      }
       if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
         els.form.requestSubmit();
       }
+    });
+    els.input.addEventListener("blur", () => { setTimeout(closeSuggest, 120); });
+    els.suggestPopup.addEventListener("mousedown", (event) => {
+      // 阻止 textarea blur 抢先关闭弹层
+      event.preventDefault();
     });
     els.form.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -922,6 +958,108 @@ export function renderChatPage(): string {
       const ctx = data.user_context;
       userContextCache.set(userId, ctx);
       return ctx;
+    }
+    /**
+     * /命令自动补全：当输入以 / 开头且光标在第一行时，弹出基于 /api/commands
+     * 的过滤列表（按权限过滤）。Tab/Enter 接受、Esc 关闭。
+     */
+    const commandSuggest = { open: false, items: [], active: 0, fetched: new Map(), inflight: null };
+    async function loadCommandsForUser(userId) {
+      if (commandSuggest.fetched.has(userId)) return commandSuggest.fetched.get(userId);
+      if (commandSuggest.inflight && commandSuggest.inflight.userId === userId) return commandSuggest.inflight.promise;
+      const promise = (async () => {
+        try {
+          const res = await fetch("/api/commands?user_id=" + encodeURIComponent(userId));
+          if (!res.ok) return [];
+          const data = await res.json();
+          const list = Array.isArray(data.commands) ? data.commands : [];
+          commandSuggest.fetched.set(userId, list);
+          return list;
+        } catch (_err) {
+          return [];
+        }
+      })();
+      commandSuggest.inflight = { userId, promise };
+      const result = await promise;
+      commandSuggest.inflight = null;
+      return result;
+    }
+    function updateCommandSuggest() {
+      const value = els.input.value;
+      // 只在第一行、以 / 开头时触发
+      const firstLine = value.split("\\n")[0] || "";
+      if (!firstLine.startsWith("/")) { closeSuggest(); return; }
+      const query = firstLine.toLowerCase();
+      loadCommandsForUser(currentUserId).then((commands) => {
+        // 比较时机：用户可能已经把 / 删掉了，重新检查
+        const stillFirst = (els.input.value.split("\\n")[0] || "").toLowerCase();
+        if (!stillFirst.startsWith("/")) { closeSuggest(); return; }
+        const matches = commands.filter((cmd) => {
+          const triggers = Array.isArray(cmd.triggers) && cmd.triggers.length ? cmd.triggers : ["/" + cmd.id];
+          return triggers.some((trigger) => trigger.toLowerCase().startsWith(stillFirst));
+        }).slice(0, 8);
+        renderSuggest(matches);
+      });
+    }
+    function renderSuggest(items) {
+      commandSuggest.items = items;
+      commandSuggest.active = 0;
+      if (!items.length) {
+        els.suggestPopup.innerHTML = '<div class="suggest-empty">没有匹配的命令</div>';
+        els.suggestPopup.classList.add("open");
+        commandSuggest.open = true;
+        return;
+      }
+      const html = items.map((cmd, idx) => {
+        const triggers = Array.isArray(cmd.triggers) && cmd.triggers.length ? cmd.triggers : ["/" + cmd.id];
+        const primary = triggers[0];
+        return '<div class="suggest-item' + (idx === 0 ? ' active' : '') + '" role="option" data-idx="' + idx + '">'
+          + '<span class="suggest-trigger">' + escapeHtml(primary) + '</span>'
+          + '<span class="suggest-title">' + escapeHtml(cmd.title || cmd.id) + '</span>'
+          + '</div>';
+      }).join("");
+      els.suggestPopup.innerHTML = html;
+      els.suggestPopup.classList.add("open");
+      commandSuggest.open = true;
+      els.suggestPopup.querySelectorAll(".suggest-item").forEach((node) => {
+        node.addEventListener("click", () => {
+          commandSuggest.active = Number(node.dataset.idx) || 0;
+          acceptSuggest();
+        });
+      });
+    }
+    function moveSuggest(delta) {
+      if (!commandSuggest.items.length) return;
+      const total = commandSuggest.items.length;
+      commandSuggest.active = (commandSuggest.active + delta + total) % total;
+      const nodes = els.suggestPopup.querySelectorAll(".suggest-item");
+      nodes.forEach((node) => node.classList.remove("active"));
+      const target = nodes[commandSuggest.active];
+      if (target) {
+        target.classList.add("active");
+        target.scrollIntoView({ block: "nearest" });
+      }
+    }
+    function acceptSuggest() {
+      const cmd = commandSuggest.items[commandSuggest.active];
+      if (!cmd) { closeSuggest(); return; }
+      const triggers = Array.isArray(cmd.triggers) && cmd.triggers.length ? cmd.triggers : ["/" + cmd.id];
+      els.input.value = triggers[0];
+      els.input.focus();
+      els.input.style.height = "auto";
+      els.input.style.height = Math.max(36, Math.min(180, els.input.scrollHeight)) + "px";
+      closeSuggest();
+    }
+    function closeSuggest() {
+      if (!commandSuggest.open) return;
+      commandSuggest.open = false;
+      commandSuggest.items = [];
+      commandSuggest.active = 0;
+      els.suggestPopup.classList.remove("open");
+      els.suggestPopup.innerHTML = "";
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (ch) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
     }
     async function readSse(response, assistantId) {
       if (!response.ok || !response.body) throw new Error("stream failed");
