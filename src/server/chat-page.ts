@@ -256,6 +256,12 @@ export function renderChatPage(): string {
       animation: bizGlyphPulse 4.16s ease-in-out infinite;
     }
     .biz-narrative:last-child, .biz-summary-line:last-child { margin-bottom: 0; }
+    /* item 状态视觉：运行中转圈、失败红字 */
+    .biz-pair-status-running .biz-summary-line .glyph svg { animation: bizSpin 1.2s linear infinite; }
+    .biz-pair-status-failed .biz-summary-line .glyph { color: #c0392b; opacity: 1; }
+    .biz-pair-status-failed .biz-summary-line .summary-text { color: #c0392b; }
+    .biz-error { color: #c0392b !important; font-size: 12.5px !important; }
+    @keyframes bizSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .biz-fadein { animation: bizFadein .28s ease both; }
     @keyframes bizFadein { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes bizCollapse {
@@ -1189,12 +1195,17 @@ export function renderChatPage(): string {
       const activeIndex = !msg.failed && (msg.streaming || msg.thinking) ? pairs.length - 1 : -1;
       pairs.forEach((pair, index) => {
         const item = document.createElement("div");
-        item.className = "biz-pair biz-fadein" + (index === activeIndex ? " active" : "");
-        if (pair.summary) {
+        const statusClass = pair.status ? " biz-pair-status-" + pair.status : "";
+        const isActive = index === activeIndex || pair.status === "running";
+        item.className = "biz-pair biz-fadein" + (isActive ? " active" : "") + statusClass;
+        if (pair.summary || pair.status === "running") {
           const s = document.createElement("p");
           s.className = "biz-summary-line";
-          s.innerHTML = '<span class="glyph"><i data-lucide="' + (pair.icon || "circle") + '"></i></span><span class="summary-text"></span>';
-          s.querySelector(".summary-text").textContent = pair.summary;
+          // 运行中的卡片用 loader 图标，失败的用 alert-circle，完成的用原图标
+          const icon = pair.status === "running" ? "loader" : (pair.status === "failed" ? "alert-circle" : (pair.icon || "circle"));
+          s.innerHTML = '<span class="glyph"><i data-lucide="' + icon + '"></i></span><span class="summary-text"></span>';
+          const summaryText = pair.status === "running" && !pair.summary ? "\\u8c03\\u7528\\u5de5\\u5177\\u4e2d\\u2026" : (pair.summary || "");
+          s.querySelector(".summary-text").textContent = summaryText;
           item.appendChild(s);
         }
         if (pair.narrative) {
@@ -1202,6 +1213,12 @@ export function renderChatPage(): string {
           n.className = "biz-narrative";
           n.textContent = pair.narrative;
           item.appendChild(n);
+        }
+        if (pair.errorMessage) {
+          const e = document.createElement("p");
+          e.className = "biz-narrative biz-error";
+          e.textContent = pair.errorMessage;
+          item.appendChild(e);
         }
         body.appendChild(item);
       });
@@ -2026,7 +2043,16 @@ export function renderChatPage(): string {
       if (!msg || !ev) return;
       if (msg.processFinalized) return;
       msg.bizPairs = msg.bizPairs || [];
+      msg.bizPairsByItemId = msg.bizPairsByItemId || Object.create(null);
+      // 优先消费强类型 agentic_item 事件：按 itemId 合并 start/end，避免同一次工具
+      // 调用渲染成两张卡片。旧的 agentic_tool 事件保留作 fallback。
+      if (ev.kind === "agentic_item" && ev.kind === "agentic_item" && ev.stream === "tool" && ev.itemId) {
+        applyToolItemEvent(msg, ev);
+        return;
+      }
       if (ev.kind === "agentic_tool" && ev.type === "tool_call") {
+        // 后端已携带 item_id 的 tool_call，对应的 item start/end 已经处理过了，跳过避免重复。
+        if (ev.item_id && msg.bizPairsByItemId[ev.item_id]) return;
         const pair = toolEventToBizPair(ev);
         if (pair) msg.bizPairs.push(pair);
       } else if (ev.kind === "agentic_lifecycle") {
@@ -2035,6 +2061,50 @@ export function renderChatPage(): string {
           msg.failedReason = ev.reason || ev.error || ev.event;
         }
       }
+    }
+    function applyToolItemEvent(msg, ev) {
+      const itemId = ev.itemId;
+      const existing = msg.bizPairsByItemId[itemId];
+      if (ev.phase === "start") {
+        if (existing) return; // 重复 start，忽略
+        // 用 args/tool 名构造一张"运行中"卡片，先占位，等 end 再覆盖
+        const pair = toolItemToBizPair(ev) || { icon: "loader", summary: "\\u8c03\\u7528\\u5de5\\u5177\\u4e2d", narrative: "" };
+        pair.itemId = itemId;
+        pair.status = "running";
+        msg.bizPairs.push(pair);
+        msg.bizPairsByItemId[itemId] = pair;
+        return;
+      }
+      if (ev.phase === "end") {
+        // end 阶段：合并到已有 pair；如果没有 start 过（理论上不应该），就 push 一张
+        const updated = toolItemToBizPair(ev) || existing || { icon: "circle", summary: "", narrative: "" };
+        if (existing) {
+          existing.icon = updated.icon || existing.icon;
+          existing.summary = updated.summary || existing.summary;
+          existing.narrative = updated.narrative || existing.narrative;
+          existing.status = ev.status || "completed";
+          if (ev.error) existing.errorMessage = ev.error.message || ev.error.code;
+        } else {
+          updated.itemId = itemId;
+          updated.status = ev.status || "completed";
+          if (ev.error) updated.errorMessage = ev.error.message || ev.error.code;
+          msg.bizPairs.push(updated);
+          msg.bizPairsByItemId[itemId] = updated;
+        }
+      }
+    }
+    // 把 agentic_item 翻译成业务 bizPair（与 toolEventToBizPair 等价但读 item 字段）
+    function toolItemToBizPair(ev) {
+      const tool = ev.title || "";
+      const meta = ev.meta || {};
+      // 复用旧的字典：构造一个伪 ev 给 toolEventToBizPair
+      return toolEventToBizPair({
+        tool: tool,
+        observation_summary: ev.error
+          ? { ok: false, message: ev.error.message }
+          : (ev.phase === "end" ? { ok: ev.status !== "failed" } : null),
+        args: meta.args
+      });
     }
     // 把 agentic-handler 的 tool_call 事件翻译成业务视角的 {icon, summary, narrative}
     // 不改 manifest，先在前端做映射；后续 A 阶段再下放到 manifest.display
