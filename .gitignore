@@ -5,3 +5,6 @@ logs/*.jsonl
 logs/sessions/
 *.log
 dist/
+.tmp/
+users/
+workspace/skills/registry.json

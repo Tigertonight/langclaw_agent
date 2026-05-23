@@ -28,7 +28,14 @@ const SMOKES: SmokeSpec[] = [
   { label: "metrics:smoke", script: "dist/eval/metrics-collector.js" },
   { label: "prompt:alert-dedup", script: "dist/eval/prompt-alert-dedup.js" },
   { label: "tool:retry", script: "dist/eval/tool-retry.js" },
-  { label: "commands:api", script: "dist/eval/commands-api.js" }
+  { label: "commands:api", script: "dist/eval/commands-api.js" },
+  { label: "skill:install-e2e", script: "dist/eval/skill-install-e2e.js" },
+  { label: "evolution:auto-compact", script: "dist/eval/auto-compaction-smoke.js" },
+  { label: "scheduler:self-driving", script: "dist/eval/scheduler-self-driving.js" },
+  { label: "mcp:smoke", script: "dist/eval/mcp-client-smoke.js" },
+  { label: "agent:spawn", script: "dist/eval/spawn-agent-smoke.js" },
+  { label: "cron:smoke", script: "dist/eval/cron-smoke.js" },
+  { label: "terminal:smoke", script: "dist/eval/terminal-smoke.js" }
 ];
 
 async function main(): Promise<void> {

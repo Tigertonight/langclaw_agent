@@ -1,9 +1,10 @@
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import { createHash } from "node:crypto";
-import { createApp } from "../app.js";
+import { attachMcpServers, createApp } from "../app.js";
 import { createA2UIModule } from "../a2ui/module.js";
 import { A2UIBadRequestError } from "../a2ui/dto.js";
 import { loadJson } from "../data/load-json.js";
+import { resolveUserWorkspace, type WorkspaceContext } from "../runtime/workspace-context.js";
 import { renderChatPage } from "./chat-page.js";
 import { handlerManifestRegistry } from "../handlers/handler-manifest.js";
 import type { JsonObject } from "../types/agent-contracts.js";
@@ -36,7 +37,9 @@ interface SkillListItem extends JsonObject {
 
 type RequestBody = Record<string, unknown>;
 
-const { agent, queryEngine, skillRegistry, skillLoader, userContextResolver, toolRegistry, intentRegistry, intentRouter, metricsCollector } = createApp();
+const app = createApp();
+const mcp = await attachMcpServers(app.toolRegistry);
+const { agent, queryEngine, skillRegistry, skillLoader, userContextResolver, toolRegistry, intentRegistry, intentRouter, metricsCollector, cronRunner } = app;
 const { chatController: a2uiChatController } = createA2UIModule({
   queryEngine,
   streamAgent: agent,
@@ -46,6 +49,7 @@ const { chatController: a2uiChatController } = createA2UIModule({
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "0.0.0.0";
 const chatStreamTimeoutMs = readPositiveNumberEnv("CHAT_STREAM_TIMEOUT_MS", 60000);
+const cronHeartbeat = startCronHeartbeat();
 
 const server = http.createServer(async (req: IncomingMessage, res: ServerResponse) => {
   setCors(res);
@@ -356,7 +360,14 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
 
 server.listen(port, host, () => {
   console.log(`Enterprise Agent MVP listening on http://${host}:${port}`);
+  const connectedMcp = mcp.statuses.filter((status) => status.connected).length;
+  if (mcp.statuses.length) {
+    console.log(`MCP servers: ${connectedMcp}/${mcp.statuses.length} connected`);
+  }
 });
+
+process.once("SIGINT", () => { void shutdown("SIGINT"); });
+process.once("SIGTERM", () => { void shutdown("SIGTERM"); });
 
 function setCors(res: ServerResponse): void {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -377,6 +388,46 @@ function sendSse(res: ServerResponse, event: unknown, payload: unknown): void {
 function readPositiveNumberEnv(name: string, fallback: number): number {
   const value = Number(process.env[name]);
   return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function startCronHeartbeat(): NodeJS.Timeout | null {
+  if (process.env.CRON_HEARTBEAT_DISABLED === "true") return null;
+  const intervalMs = readPositiveNumberEnv("CRON_HEARTBEAT_MS", 60_000);
+  const tick = async () => {
+    const workspaces = await cronWorkspaces();
+    for (const workspace of workspaces) {
+      try {
+        await cronRunner.runDue(workspace);
+      } catch (error) {
+        console.warn(`[cron] runDue failed for ${workspace.user_id}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+  };
+  const timer = setInterval(() => { void tick(); }, intervalMs);
+  timer.unref();
+  return timer;
+}
+
+async function cronWorkspaces(): Promise<WorkspaceContext[]> {
+  try {
+    const users = await loadJson<WecomUserRecord[]>("data/users.json");
+    return users
+      .filter((user) => typeof user.id === "string" && user.id.length > 0)
+      .map((user) => resolveUserWorkspace(user.id as string));
+  } catch (error) {
+    console.warn(`[cron] failed to load users: ${error instanceof Error ? error.message : String(error)}`);
+    return [];
+  }
+}
+
+async function shutdown(signal: string): Promise<void> {
+  if (cronHeartbeat) clearInterval(cronHeartbeat);
+  await mcp.registry.stop().catch(() => undefined);
+  server.close(() => {
+    console.log(`Enterprise Agent MVP stopped (${signal})`);
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(0), 3000).unref();
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number, code: string): Promise<T> {
