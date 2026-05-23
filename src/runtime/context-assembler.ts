@@ -17,13 +17,18 @@ export interface ContextAssemblyInput {
   enterpriseContext?: unknown;
   conversationContext?: unknown;
   budget?: Partial<ContextBudget>;
+  tokenBudget?: number;
 }
+
+export type PromptAuthority = "assembled" | "preassembly_may_overflow";
 
 export interface ContextAssemblyResult extends JsonObject {
   context: JsonObject;
   budget: JsonObject;
   sections: JsonObject[];
   dropped: JsonObject[];
+  estimated_tokens: number;
+  prompt_authority: PromptAuthority;
 }
 
 const DEFAULT_BUDGET: ContextBudget = {
@@ -81,6 +86,12 @@ export class ContextAssembler {
       }
     }
 
+    const usedChars = sections.reduce((sum, section) => sum + Number(section.chars ?? 0), 0);
+    const preTrimChars = totalChars;
+    const estimatedTokens = estimateTokensFromChars(usedChars);
+    const preTrimEstimatedTokens = estimateTokensFromChars(preTrimChars);
+    const promptAuthority: PromptAuthority = dropped.length > 0 ? "preassembly_may_overflow" : "assembled";
+
     return {
       context: {
         runtime: parseSection(runtime),
@@ -91,13 +102,28 @@ export class ContextAssembler {
       },
       budget: {
         max_chars: budget.maxChars,
-        used_chars: sections.reduce((sum, section) => sum + Number(section.chars ?? 0), 0),
+        used_chars: usedChars,
+        pre_trim_chars: preTrimChars,
+        token_budget: input.tokenBudget ?? null,
+        estimated_tokens: estimatedTokens,
+        pre_trim_estimated_tokens: preTrimEstimatedTokens,
         sections: sections.map(({ name, chars, priority }) => ({ name, chars, priority }))
       },
       sections,
-      dropped
+      dropped,
+      estimated_tokens: estimatedTokens,
+      prompt_authority: promptAuthority
     };
   }
+}
+
+/**
+ * 粗估 token 数。中文 ~1.5 字符/token，英文 ~4 字符/token，混排取保守值 2 字符/token。
+ * 当且仅当下游需要近似预算判断时使用，不替代真正的 tokenizer。
+ */
+function estimateTokensFromChars(chars: number): number {
+  if (!Number.isFinite(chars) || chars <= 0) return 0;
+  return Math.ceil(chars / 2);
 }
 
 function trimSection(name: string, value: JsonValue, maxChars: number, dropped: JsonObject[]): string {

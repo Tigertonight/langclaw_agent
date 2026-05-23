@@ -94,7 +94,9 @@ export class BusinessQueryEngine {
         chars: section.chars,
         priority: section.priority
       })),
-      dropped: assembled.dropped
+      dropped: assembled.dropped,
+      estimated_tokens: assembled.estimated_tokens,
+      prompt_authority: assembled.prompt_authority
     });
     const output = await this.agent.run({
       userId: input.userId,
