@@ -1,30 +1,105 @@
-# Enterprise Agent · 汽车经销垂类
+# Enterprise Agent — 汽车经销垂类 · Claude Code 级 Agent 框架
 
-面向汽车 4S 店内部使用的企业 Agent。围绕"店总 / 区域 / 销售顾问 / 售后顾问 / 财务"几类岗位，把零散的业务问题——线索漏斗、库存压力、订单毛利、维修工单、保修索赔、财务汇总——拢成一个会话入口。
+> 面向汽车 4S 店内部使用的企业级 Agent，对标 **Claude Code / OpenClaw / Hermes Agent**，覆盖从意图路由到多 Agent 协作的完整生命周期。
 
-技术上是 **workflow + tool-calling** 架构，不依赖 LangChain / OpenClaw，但对外接口稳定（LLM client / KnowledgeBase / Tool / Orchestrator），后续要迁也不难。
+---
 
-## 当前能做什么
+## 架构总览
 
-- **Intent Router**：高确定性的本地受控规则优先处理闲聊、dealer 查询、知识制度问答和短句修参；其余请求再由单次 LLM 调用判别 `{execution_class, intent_code, handler_type, params}`。意图清单从 `data/intent-codes/*.json` 加载；执行 manifest 校验、置信度阈值、参数 schema 校验；无可用路由时 fail closed，不回退旧业务规则
-- **两类路由执行层**：
-  - `controlled_execution` — 边界明确、可预测完成：闲聊、单次结构化查询/聚合、知识检索、受控工作流
-  - `autonomous_planning` — 开放多步规划：跨意图分析、原因诊断、报告/行动计划、低置信度兜底
-- **五类已落地 handler**：
-  - `intent_query` — 一个意图 + 一组参数 → 一次工具执行
-  - `knowledge_lookup` — 制度 / 流程 / 手册问题 → 权限过滤后的知识库检索
-  - `workflow` — 请假等受控多轮流程 → slot 收集、确认、提交
-  - `chitchat` — 直接回答的小聊
-  - `agentic` — 跨意图的 LLM tool-calling 循环（最多 7 步、单步 35s、整体 180s 超时）
-- **Manifest 驱动查询**：简单查询筛选规则优先写在 intent manifest 的 `filter_mapping`，`IntentQueryHandler` 只保留少量通用 transform / domain hook
-- **三类工具（agentic 路径）**：
-  - `intent.*` — 每个 intent_code 自动暴露成工具
-  - `tool.*` — 标了 `expose_to_agentic` 的原子能力，目前主要是 `safe_compute`（沙箱里跑 JS 算精确指标）
-  - `skill.*` — 注入式"写作/汇报包"，调用后把 `SKILL.md` + 模板 + 示例塞进上下文，下一步直接 answer
-- **流式 UI**：`/` 自带聊天页。默认业务视角——顶部"处理中… X.Xs" 100ms 跳一次，每步出一对"动作量化 + 解读叙述"；右上角 Debug 开关切回完整 phase 列表
-- **RBAC + 多人身份**：本地 mock + 企业微信（可选真实接入），按权限决定哪些工具可见
-- **会话持久化**：文件存储，重启不丢上下文
-- **OpenAI-compatible LLM**：默认接 MiniMax，也可换成任何 OpenAI 兼容端点
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    EnterpriseGateway (Phase 7)               │
+│   Web · WeCom · Feishu · DingTalk · Webhook · Cron 统一接入  │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ GatewayInbound
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│              BusinessQueryEngine (Phase 1)                   │
+│  resolve_user → load_session → ingest_context               │
+│  → assemble_context → run_orchestrator → schedule_evolution  │
+│  → track_usage                                               │
+└───────────┬──────────────┬──────────────────────────────────┘
+            │              │
+            ▼              ▼
+    ┌───────────┐   ┌──────────────┐
+    │ Intent    │   │ RuntimeHooks │ (Phase 8) 12 个 hook 点
+    │ Router    │   │ + Plugins    │ SubagentPlugin / TranscriptPlugin
+    └─────┬─────┘   └──────────────┘
+          │
+    ┌─────▼──────────────────────────────────────────┐
+    │           Handler 执行层                        │
+    │  intent_query · knowledge_lookup · workflow     │
+    │  chitchat · agentic (AgentRunner, Phase 8)      │
+    └─────┬──────────────────────────────────────────┘
+          │
+    ┌─────▼──────────────────────────────────────────┐
+    │           工具层 (Phase 4)                      │
+    │  ToolCatalog (11 域) · PlanModeGuard            │
+    │  task.* · cron.* · memory.* · evolution.*       │
+    │  transcript.* · gateway.* · spawn_agent          │
+    └─────┬──────────────────────────────────────────┘
+          │
+    ┌─────▼──────────────────────────────────────────┐
+    │        持久化 & 演化层                           │
+    │  TranscriptStore · MemoryIndex · EpisodeStore   │
+    │  TaskStore · UserCronStore · EvolutionRuntime   │
+    │  CompactBoundary · MicroCompact · SessionCompact│
+    └────────────────────────────────────────────────┘
+```
+
+---
+
+## 功能模块
+
+### Phase 1 — Transcript + QueryEngine
+- **BusinessQueryEngine**：统一消息入口，管理 `submitMessage` / `submitStream` 生命周期
+- **TranscriptStore**：JSONL 格式会话记录，16 种事件类型（turn_start / tool_call / turn_end 等）
+- **SQLiteTranscriptIndex**：FTS5 全文检索，`sessionSearch()` 返回上下文窗口
+
+### Phase 2 — Memory Index + Retriever
+- **MemoryIndex**：维护用户 workspace 下的 `MEMORY.md`，7 分类（user/feedback/project/reference/procedure/fact/episode）
+- **MemoryRetriever**：top-k 关键词召回，`retrieve()` 返回相关记忆条目
+- **EpisodeStore**：重要会话摘要持久化
+
+### Phase 3 — Compaction + Token Budget
+- **TokenBudget**：上下文预算管理，`BudgetConfig` 可配置各节预算
+- **MicroCompact**：单轮轻量压缩（最近 N 轮保留，其余摘要）
+- **SessionCompact**：全会话压缩（35 事件 → 3 轮摘要）
+- **CompactBoundary**：transcript 边界事件标记，支持断点恢复
+- **ContextAssembler**：集成 TokenBudget，返回 `token_budget_usage` + `compaction_needed` 信号
+
+### Phase 4 — Tool Catalog + Plan Mode + A2UI
+- **ToolCatalog**：11 域分类（memory/task/cron/transcript/evolution/gateway/agent/dealer/knowledge/workflow/system），三级权限（read/ask/deny）
+- **PlanModeGuard**：计划模式守卫，`plan_only` / `strict` / `auto_confirm` 三种策略
+- **A2UI Workbench**：6 个 Surface builder（card/table/timeline/form/chart/markdown）
+
+### Phase 5 — Task Tools + Cron Automation
+- **TaskStore + readHighwatermark**：高水位标记，按 `taskListId` 分别追踪已处理任务
+- **Task Tools**：9 个工具（task.list/get/create/update/complete/link_evidence/block/claim/release）
+- **CronTemplates**：5 个预置汽车经销商场景（日报/库存巡检/工单提醒/线索清零/财务异常）
+- **扩展 Cron Tools**：`cron.templates` / `cron.status` / `cron.apply_template`
+
+### Phase 6 — Skill Governance
+- **evolution.diff**：查看 skill patch 前后差异（original/override/candidate 三向对比）
+- **evolution.disable**：语义明确版 rollback（禁用指定 skill）
+- **memory.inspect**：精确/fuzzy 查找 memory 条目
+- **memory.remove**：移除 memory key（支持审计 reason）
+
+### Phase 7 — Enterprise Gateway
+- **EnterpriseGateway**：统一入口，resolve sender → submitMessage → deliver → writeAudit
+- **ChannelAdapterRegistry**：管理 6 个渠道适配器
+- **WebChannelAdapter**：Web 渠道，deliverSink 可注入
+- **WeComChannelAdapter**：企业微信 IM（需 `WECOM_CORP_ID` / `WECOM_AGENT_SECRET`）
+- **FeishuChannelAdapter**：飞书 IM 事件订阅 v2 格式
+- **DingTalkChannelAdapter**：钉钉自定义 Webhook 机器人（支持签名）
+- **WebhookChannelAdapter**：通用 Webhook，自定义 payloadExtractor
+- **CronChannelAdapter**：Cron 任务结果通知，`deliverCronResult()` 快捷方法
+
+### Phase 8 — Hook Runtime + Subagent 协作
+- **RuntimeHookName**：12 个 hook 点（message_received / before_route / after_route / before_tool_call / after_tool_call / agent_finish / session_end / before_prompt_build / before_evolution_judge / after_evolution_apply / subagent_spawn / subagent_finish）
+- **SubagentPlugin**：监听 6 个 hook 点，实现 subagent evidence 追踪、evolution signal 注入、MemoryIndex 重建旁路
+
+---
 
 ## 快速开始
 
@@ -32,144 +107,350 @@
 # 安装依赖
 npm install
 
-# TypeScript 编译与类型检查
+# 配置环境变量（至少需要 LLM_API_KEY）
+cp .env.example .env
+# 编辑 .env，填入：
+#   LLM_BASE_URL=https://api.minimaxi.com/v1
+#   LLM_API_KEY=你的_key
+#   LLM_MODEL=MiniMax-M2.7
+
+# 编译 + 类型检查
 npm run build:ts
 npm run typecheck
 
-# 自检 + 冒烟
+# 配置自检
 npm run config:check
-npm run smoke
 
-# 启 HTTP 服务（含聊天页）
+# 启动 HTTP 服务（含内置聊天页）
 npm run server
-# 浏览器打开 http://localhost:3000
+# 打开 http://localhost:3000
 
 # CLI 调试
 npm run chat -- sales_001 "汉EV 卖得还行但毛利好像不太行，看下原因"
 ```
 
-接 MiniMax（或任何 OpenAI 兼容服务）：
-
-```bash
-cp .env.example .env
-# 填入：
-# LLM_BASE_URL=https://api.minimaxi.com/v1
-# LLM_API_KEY=你的_key
-# LLM_MODEL=MiniMax-M2.7
-# LLM_PROMPT_CACHE=auto
-```
+---
 
 ## 关键环境变量
 
-| 变量 | 说明 |
-|---|---|
-| `LLM_API_KEY` / `LLM_BASE_URL` / `LLM_MODEL` | 默认 LLM（OpenAI 兼容） |
-| `LLM_DECISION_*` / `LLM_ANSWER_*` / `LLM_STREAM_*` | 分阶段独立模型覆盖（路由判别 / 最终回答 / 流式） |
-| `LLM_PROMPT_CACHE` | 大模型请求缓存开关：`auto` 默认开启。MiniMax / DeepSeek 走服务端自动 prompt cache；OpenAI 注入 `prompt_cache_key` |
-| `LLM_PROMPT_CACHE_RETENTION` | 可选，仅对支持的 OpenAI-compatible 服务注入：`in_memory` / `24h` |
-| `LLM_PROMPT_CACHE_KEY_PREFIX` | prompt cache key 前缀，默认 `openclaw-agent` |
-| `WECOM_MODE` | `real` 接企业微信通讯录，`mock`（默认）走本地 |
-| `WECOM_CORP_ID` / `WECOM_CONTACT_SECRET` | 企业微信真实接入所需 |
-| `TENCENT_DOCS_MODE` | `real` 接腾讯文档，`mock`（默认）走本地 |
-| `AGENTIC_DEBUG=1` | agentic handler 多打调试日志 |
-| `PORT` / `HOST` | 默认 3000 / 0.0.0.0 |
+| 变量 | 说明 | 默认值 |
+|---|---|---|
+| `LLM_API_KEY` | LLM 调用凭证 | — |
+| `LLM_BASE_URL` | OpenAI 兼容端点 | `https://api.minimaxi.com/v1` |
+| `LLM_MODEL` | 默认模型 | `MiniMax-M2.7` |
+| `LLM_DECISION_*` | 路由判别阶段独立模型 | 继承 LLM_* |
+| `LLM_ANSWER_*` | 最终回答阶段独立模型 | 继承 LLM_* |
+| `LLM_PROMPT_CACHE` | Prompt cache：`auto`（默认开）/ `off` | `auto` |
+| `WECOM_MODE` | `real` 接企业微信 / `mock` 走本地 | `mock` |
+| `WECOM_CORP_ID` | 企业微信 Corp ID（real 模式必填） | — |
+| `WECOM_AGENT_SECRET` | 企业微信 Agent Secret | — |
+| `WECOM_AGENT_ID` | 企业微信 AgentId | — |
+| `FEISHU_APP_ID` | 飞书 App ID | — |
+| `FEISHU_APP_SECRET` | 飞书 App Secret | — |
+| `AGENTIC_DEBUG` | `1` 开启 agentic handler 详细日志 | — |
+| `PORT` / `HOST` | HTTP 服务监听 | `3000` / `0.0.0.0` |
+
+---
 
 ## 目录结构
 
 ```text
 src/
-  agent/        Orchestrator（run + runStream）+ session store
-  router/       Intent Router（LLM 判别） + intent registry
-  handlers/     intent-query / chitchat / agentic 三类 handler
-  skills/       AgenticSkillView（注入式 skill 加载） + workflow skill runtime
-  tools/        ToolRegistry + 业务工具 + sandbox（safe_compute）
-  runtime/      conversation-context / free-agent-loop / workflow-runner
-  auth/         UserContextResolver + WeCom + RBAC
-  rag/          LocalKnowledgeBase + 腾讯文档 source
-  llm/          OpenAILLMClient（OpenAI 兼容）
-  server/       HTTP / SSE 入口 + 自带聊天页
-  scenarios/    请假/工作流场景
-  eval/         所有自动化验证脚本
-  types/        共享 TypeScript contract / JSON / Route / Tool 类型
+  agent/          Orchestrator（run + runStream）+ SessionStore
+  agentic/        AgentRunner（子 Agent 轻量循环）
+  a2ui/           A2UI Workbench + Adapter + ChatController
+  context/        TokenBudget + MicroCompact + SessionCompact + CompactBoundary
+  cron/           UserCronStore + CronExpression + CronTemplates + AgentJobRunner
+  dealer/         DealerMetrics + DealerEvidence + DealerReportComposer
+  evolution/      EvolutionRuntime + MemoryLearner + Governance + Tools
+  eval/           所有自动化验证脚本（见"验证脚本"节）
+  gateway/        EnterpriseGateway + ChannelAdapterRegistry + 6 个渠道适配器
+  handlers/       IntentQueryHandler · KnowledgeLookup · Workflow · Chitchat · Agentic
+  llm/            OpenAILLMClient + PromptCache + LocalLLM
+  logs/           Logger
+  mcp/            MCP Registry（Model Context Protocol 工具接入）
+  memory/         MemoryIndex + MemoryRetriever + Tools
+  rag/            LocalKnowledgeBase + DocumentLoader + DocumentSources
+  router/         IntentRouter + CommandRegistry + DeterministicRuleRegistry
+  runtime/        BusinessQueryEngine + ContextAssembler + WorkspaceContext
+              + RuntimeHooks + SubagentPlugin
+  sandbox/        TerminalRunner + CommandBlacklist（safe_compute 沙箱）
+  scenarios/      LeaveRequest + Router 场景
+  security/       AuthService
+  tools/          ToolCatalog + ZodHelpers + 各领域工具（cron/task/memory/evolution/gateway）
+  transcript/     TranscriptStore + SQLiteTranscriptIndex
+  types/          共享 TypeScript 合约类型
 
-skills/agentic/
-  summarize-alert/           告警摘要 skill 包（SKILL.md + template + examples）
-  gross-margin-attribution/  毛利率归因 skill 包
+skills/           Skill 包目录（manifest.json + SKILL.md）
+  business-query/ dealer-after-sales/ dealer-analysis/
+  dealer-inventory/ dealer-sales/ knowledge-qa/
+  leave-records/ leave-request/
 
 data/
-  dealer-*.json              门店/库存/线索/订单/维修/财务等 mock 业务数据
-  intent-codes/*.json        Intent Router 的意图字典（dealer.query.* / dealer.aggregate.* …）
-  wecom-*.json               组织架构 mock
-  users.json                 账户 + RBAC
+  dealer-*.json          门店/库存/线索/订单/维修/财务/保修 mock 数据
+  intent-codes/*.json    Intent Router 意图字典（14 个意图域）
+  wecom-*.json           组织架构 mock
+  users.json             账户 + RBAC
+  tool-policies.json     工具权限策略
 
 docs/
-  architecture.md                     长期架构
-  architecture-intent-router.md       Intent Router 设计演进文档
-  router-poc-cases.md                 router-poc 用例清单
-  mockups/*.html                      agentic 流式 UI 设计 mockup
+  claude-code-upgrade-plan.md     Phase 0-8 路线图（本次迭代依据）
+  architecture.md                 长期架构设计
+  architecture-intent-router.md  Intent Router 设计演进
+  operations-runbook.md           运维手册
+  a2ui-*.md                       A2UI 流式设计文档
+  knowledge/                      业务知识库（制度/手册/销售手册/安全策略）
+  mockups/                        A2UI 流式 UI mockup（HTML 原型）
 ```
+
+---
 
 ## HTTP 接口
 
 ```bash
-# 单轮
+# 非流式单轮对话
 curl -X POST http://127.0.0.1:3000/api/chat \
   -H "Content-Type: application/json" \
   -d '{"user_id":"sales_001","message":"汉EV 卖得还行但毛利好像不太行，看下原因","debug":true}'
 
-# 流式（SSE，浏览器聊天页用的就是这个）
+# 流式（SSE，浏览器聊天页使用）
 curl -N -X POST http://127.0.0.1:3000/api/chat/stream \
   -H "Content-Type: application/json" \
   -d '{"user_id":"store_gm_001","message":"门店本月库存压力如何？"}'
 
-# 用 wecom_userid 直接发
+# 通过企业微信 user_id 发起（需配置 WECOM_MODE=real）
 curl -X POST http://127.0.0.1:3000/api/chat \
   -H "Content-Type: application/json" \
   -d '{"wecom_userid":"sales_001","message":"差旅报销标准是什么？"}'
 ```
 
-多轮在请求里带同一个 `session_id` 即可。
+多轮对话：在请求 body 里带同一个 `session_id`。
+
+---
 
 ## 验证脚本
 
+### 核心回归（必跑）
+
 ```bash
-npm run build:ts        # 编译 src/*.ts 到 dist/
-npm run typecheck       # 仅类型检查，不输出
-npm run config:check    # env / 集成自检
-npm run smoke           # 通用冒烟
-npm run arch:smoke      # 架构冒烟
-npm run session:smoke   # session 持久化恢复
-npm run eval            # 基础 eval 集
-npm run eval:dealer     # 汽车经销冒烟
-npm run eval:router     # Intent Router POC（100 用例，含跨意图三类工具）
+npm run session:smoke        # Session 持久化恢复（Phase 1）
+npm run evolution:smoke      # Evolution Runtime 冒烟
+npm run business:runtime     # BusinessQueryEngine 全流程
+npm run task:smoke           # TaskStore + 高水位机制
+npm run cron:smoke           # Cron 任务调度
 ```
 
-当前仓库已迁移到 TypeScript。运行类脚本会先执行 `build:ts`，再从 `dist/` 启动；`dist/` 属于生成产物，不提交。离线无 LLM Key 时，dealer 路由和知识制度问答覆盖在确定性规则内；历史 `npm run eval` 中部分通用业务/组织架构用例仍依赖旧业务路由或远端 Router LLM，迁移期间优先以 `typecheck`、`eval:router`、`eval:dealer` 作为 TS 迁移回归门禁。
+### Phase 1-8 专项 eval
+
+```bash
+npm run eval:query-engine-transcript  # QueryEngine + Transcript 生命周期
+npm run eval:memory-index    # MemoryIndex rebuild + load + scanCategories  (8 tests)
+npm run eval:compaction      # TokenBudget + MicroCompact + SessionCompact  (9 tests)
+npm run eval:tool-catalog    # ToolCatalog 权限过滤 + PlanModeGuard         (7 tests)
+npm run eval:tool-catalog-http # /api/tools/catalog HTTP 契约
+npm run eval:task-tools      # task.* 工具 + readHighwatermark              (18 tests)
+npm run eval:cron-automation # CronTemplates + cron.templates/status/apply  (36 tests)
+npm run eval:skill-governance# evolution.diff/disable + memory.inspect/remove (36 tests)
+npm run eval:gateway         # EnterpriseGateway + 5 渠道适配器 + 审计     (37 tests)
+npm run eval:subagent-hooks  # SubagentPlugin + 12 个 RuntimeHook           (30 tests)
+```
+
+### 其他专项
+
+```bash
+npm run smoke                # 通用冒烟
+npm run arch:smoke           # 架构冒烟
+npm run eval:router          # Intent Router POC（100 用例）
+npm run eval:dealer          # 汽车经销冒烟
+npm run a2ui:regression      # A2UI 回归
+npm run evolution:governance # Evolution Governance
+npm run store:concurrency    # Store 并发安全
+npm run eval:query-engine-transcript  # Transcript 事件完整性
+```
+
+### 一键全量回归
+
+```bash
+npm run build:ts && \
+  npm run session:smoke && \
+  npm run evolution:smoke && \
+  npm run business:runtime && \
+  npm run task:smoke && \
+  npm run cron:smoke && \
+  npm run eval:memory-index && \
+  npm run eval:compaction && \
+  npm run eval:tool-catalog && \
+  npm run eval:tool-catalog-http && \
+  npm run eval:task-tools && \
+  npm run eval:cron-automation && \
+  npm run eval:skill-governance && \
+  npm run eval:gateway && \
+  npm run eval:subagent-hooks
+```
+
+---
 
 ## Tool 元数据规范
 
-业务能力包成 tool 注册到 `ToolRegistry`，除了 `name`/`description`/`schema`/`execute`，还要声明治理元数据：
+业务能力包装成 `ToolDefinition` 注册到 `ToolCatalog`。除基础字段外，还需声明治理元数据：
 
-```js
-metadata: {
-  required_permissions: ["sales:query"],
-  risk_level: "read",                  // read / write
-  requires_confirmation: false,
-  expose_to_agentic: true,              // 是否允许 agentic 路径直接调用
-  scenarios: ["dealer_alert"],
-  steps: ["awaiting_confirmation"]
-}
+```typescript
+defineTool({
+  name: "dealer.query.inventory",
+  description: "查询门店库存",
+  metadata: {
+    required_permissions: ["inventory:read"],
+    risk_level: "read",           // "read" | "write"
+    expose_to_agentic: true,      // 是否暴露给 agentic 路径
+    plan_only: false,             // true 时仅 PlanMode 可调用
+    requires_confirmation: false  // true 时调用前弹确认
+  },
+  inputSchema: z.object({ store_id: z.string() }),
+  outputSchema: ToolResultBaseSchema,
+  async execute(args, context) { ... }
+});
 ```
 
-`ToolRegistry` 会按用户权限、当前 intent、scenario 步骤动态决定哪些工具可见。比如确认前不会暴露写操作的 tool。
+`ToolCatalog` 按用户权限、当前 intent、PlanMode 状态动态决定哪些工具可见；`PlanModeGuard` 保证写操作在未确认时不执行。
 
-## 占位 / 还没做
+---
 
-- `agentic-skills/compose-followup/` — 占位，未实现
-- AgenticHandler 的 `propose_tool` 动作分支 — dynamic planning hook，记录但不执行
-- 腾讯文档真实接入 — Source 类已写，默认仍是 mock
-- 请假 workflow — 已接入 Intent Router 的 `workflow` handler
+## EnterpriseGateway 接入
+
+### Web 渠道（开发/测试）
+
+```typescript
+import { EnterpriseGateway } from "./src/gateway/gateway.js";
+import { WebChannelAdapter } from "./src/gateway/channels/web.js";
+
+const gateway = new EnterpriseGateway({ queryEngine });
+gateway.register(new WebChannelAdapter({
+  deliverSink: async (outbound) => {
+    console.log("[web]", outbound.text);
+  }
+}));
+
+const result = await gateway.processInbound({
+  channel: "web",
+  message_id: "msg_001",
+  sender_id: "user_001",
+  text: "本月销售汇总",
+  session_id: "sess_001"
+});
+```
+
+### 企业微信渠道
+
+```typescript
+import { WeComChannelAdapter } from "./src/gateway/channels/wecom.js";
+
+gateway.register(new WeComChannelAdapter({
+  corpId: process.env.WECOM_CORP_ID!,
+  agentSecret: process.env.WECOM_AGENT_SECRET!,
+  agentId: process.env.WECOM_AGENT_ID!
+}));
+```
+
+### Cron 任务结果通知
+
+```typescript
+import { CronChannelAdapter } from "./src/gateway/channels/cron.js";
+
+const cronAdapter = new CronChannelAdapter();
+gateway.register(cronAdapter);
+
+// 在 cron job 完成后通知
+await cronAdapter.deliverCronResult(cronSpec, cronEntry);
+```
+
+---
+
+## SubagentPlugin 接入
+
+```typescript
+import { createSubagentPlugin } from "./src/runtime/subagent-plugin.js";
+import { RuntimeHooks } from "./src/runtime/hooks.js";
+
+const hooks = new RuntimeHooks();
+const subagentPlugin = createSubagentPlugin({
+  taskStore,
+  memoryIndex,
+  enableEvidenceTracking: true,  // after_tool_call 自动追踪 evidence
+  enableMemoryIndexRebuild: true // after_evolution_apply 旁路重建 MEMORY.md
+});
+
+hooks.use(subagentPlugin);
+```
+
+监听的 hook 点：
+- `subagent_spawn` → 父 task evidence 追加 spawn 记录
+- `subagent_finish` → 父 task evidence 追加 result 记录
+- `after_tool_call` → active task evidence 自动追踪
+- `before_evolution_judge` → 注入 active task snapshot 作为 evolution signal
+- `after_evolution_apply` → 旁路触发 `memoryIndex.rebuild()`
+- `message_received` → 占位 handler，仅记录 recent 日志
+
+---
+
+## 性能优化说明
+
+### MemoryIndex 增量写入
+`MemoryIndex.rebuild()` 在 `changed > 0` 时才触发，且以 **fire-and-forget** 方式异步执行（`.catch(() => undefined)`），不阻塞主流程。
+
+内置的增量更新机制（`rebuildIncremental`）：仅当 items diff（新增/修改/删除）时才重写 `MEMORY.md`，避免频繁全量 IO：
+- 先读取当前 `MEMORY.md` 的 frontmatter `item_count` + `updated_at`
+- 对比 items 数量和最新 `updated_at`，未变化时直接跳过
+- 仅在实际变更时调用 `writeFile`
+
+### EnterpriseGateway 并发 deliver + 审计异步化
+- `deliver` 和 `writeAudit` 并发执行（`Promise.allSettled`），减少串行等待
+- 审计写入失败不影响 deliver 结果（独立 try-catch）
+- 审计目录 `mkdir` 只在首次调用时执行（带 `recursive: true`，幂等）
+
+### CompactBoundary 懒判断
+`CompactBoundary.shouldCompact()` 先做廉价的事件计数判断，仅超过阈值时才加载完整 transcript 进行 token 估算，避免每轮都做 IO。
+
+---
 
 ## 接 MiniMax 之外的模型
 
-LLM 客户端是 OpenAI 兼容的，把 `LLM_BASE_URL` / `LLM_MODEL` 指到对应服务即可。决策、最终回答可以分配不同的 key/model（用 `LLM_DECISION_*` / `LLM_ANSWER_*` 这组 env），方便给路由用便宜模型、给回答用贵模型。
+LLM 客户端是 OpenAI 兼容接口，修改以下环境变量即可切换：
+
+```bash
+# 接 DeepSeek
+LLM_BASE_URL=https://api.deepseek.com/v1
+LLM_MODEL=deepseek-chat
+
+# 接 OpenAI
+LLM_BASE_URL=https://api.openai.com/v1
+LLM_MODEL=gpt-4o
+
+# 路由用便宜模型，回答用贵模型
+LLM_DECISION_MODEL=deepseek-chat
+LLM_DECISION_BASE_URL=https://api.deepseek.com/v1
+LLM_ANSWER_MODEL=gpt-4o
+LLM_ANSWER_BASE_URL=https://api.openai.com/v1
+```
+
+---
+
+## 扩展点
+
+| 扩展点 | 说明 |
+|---|---|
+| `RuntimeHooks.use(plugin)` | 注册 RuntimePlugin，监听任意 hook 点 |
+| `ChannelAdapterRegistry.register(adapter)` | 接入新的消息渠道 |
+| `ToolCatalog.register(tool)` | 注册新工具到对应域 |
+| `CRON_TEMPLATES` | 在 `src/cron/cron-templates.ts` 追加新的 Cron 模板 |
+| `skills/` | 新增 Skill 包（manifest.json + SKILL.md） |
+| `data/intent-codes/` | 扩展意图字典（JSON 格式，自动加载） |
+
+---
+
+## 已知限制
+
+- `agentic-skills/compose-followup/` — 占位，未实现
+- 腾讯文档真实接入 — Source 类已写，默认仍是 mock（`TENCENT_DOCS_MODE=mock`）
+- 多租户 tenant 路由 — Gateway 层预留了 `resolveUserId` 钩子，但 tenant 隔离尚未实现
+- 限流 / 去重 — Gateway 层预留 RateLimiter 插件接入点，当前未实现
+- `AgentRunner` 决策函数需自行注入真实 LLM 调用（测试时可 mock）

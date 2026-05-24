@@ -218,9 +218,13 @@ export function createApp() {
   });
   const queryEngine = new BusinessQueryEngine({
     agent,
+    streamAgent: agent,
     userContextResolver,
     enterpriseContextProvider,
-    hooks
+    hooks,
+    transcriptStore,
+    evolutionRuntime,
+    sessionStore
   });
   return { agent, queryEngine, llm, integrations, documentSource, knowledgeBase, toolRegistry, primitiveRegistry, skillRegistry, skillLoader, skillRuntime, agenticSkillView, enterpriseContextProvider, sessionStore, scenarioRouter, userContextResolver, intentRegistry, intentRouter, intentQueryHandler, chitchatHandler, agenticHandler, evolutionRuntime, transcriptStore, pendingActionStore, hooks, metricsCollector, cronStore, cronRunner, messageGateway };
 }

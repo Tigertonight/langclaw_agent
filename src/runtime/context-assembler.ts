@@ -1,5 +1,6 @@
 import type { JsonObject, JsonValue, UserContext } from "../types/agent-contracts.js";
 import type { WorkspaceContext } from "./workspace-context.js";
+import { TokenBudget, DEFAULT_BUDGET_CONFIG, type BudgetUsage } from "../context/token-budget.js";
 
 export interface ContextBudget {
   maxChars: number;
@@ -53,6 +54,8 @@ export interface ContextAssemblyResult extends JsonObject {
   prompt_authority: PromptAuthority;
   /** 按生命周期阶段聚合的字符占用，便于 hook 消费者按阶段做统计/告警。 */
   stages: JsonObject;
+  /** Phase 3: TokenBudget 预算使用情况（含 compaction_needed 信号） */
+  token_budget_usage: BudgetUsage | null;
 }
 
 const DEFAULT_BUDGET: ContextBudget = {
@@ -65,6 +68,12 @@ const DEFAULT_BUDGET: ContextBudget = {
 };
 
 export class ContextAssembler {
+  private readonly tokenBudget: TokenBudget;
+
+  constructor(tokenBudgetConfig?: Partial<typeof DEFAULT_BUDGET_CONFIG>) {
+    this.tokenBudget = new TokenBudget(tokenBudgetConfig);
+  }
+
   assemble(input: ContextAssemblyInput): ContextAssemblyResult {
     const budget = { ...DEFAULT_BUDGET, ...(input.budget ?? {}) };
     const enterprise = toRecord(input.enterpriseContext);
@@ -117,6 +126,11 @@ export class ContextAssembler {
     const promptAuthority: PromptAuthority = dropped.length > 0 ? "preassembly_may_overflow" : "assembled";
     const stages = summarizeStages(sections);
 
+    // Phase 3: TokenBudget 预算检查，输出 compaction_needed 信号
+    const tokenBudgetUsage = this.tokenBudget.checkUsage(
+      sections.map((section) => ({ name: String(section.name ?? ""), content: String(section.content ?? "") }))
+    );
+
     return {
       context: {
         runtime: parseSection(runtime),
@@ -132,13 +146,15 @@ export class ContextAssembler {
         token_budget: input.tokenBudget ?? null,
         estimated_tokens: estimatedTokens,
         pre_trim_estimated_tokens: preTrimEstimatedTokens,
-        sections: sections.map(({ name, chars, priority, stage }) => ({ name, chars, priority, stage }))
+        sections: sections.map(({ name, chars, priority, stage }) => ({ name, chars, priority, stage })),
+        compaction_needed: tokenBudgetUsage.compaction_needed
       },
       sections,
       dropped,
       estimated_tokens: estimatedTokens,
       prompt_authority: promptAuthority,
-      stages
+      stages,
+      token_budget_usage: tokenBudgetUsage
     };
   }
 }

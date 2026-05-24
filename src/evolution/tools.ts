@@ -1,6 +1,6 @@
 import { resolveUserWorkspace, type WorkspaceContext } from "../runtime/workspace-context.js";
 import type { ToolDefinition, ToolExecutionContext } from "../types/agent-contracts.js";
-import { inspectEvolution, restoreEvolution, rollbackEvolution } from "./governance.js";
+import { inspectEvolution, restoreEvolution, rollbackEvolution, diffEvolutionSkill } from "./governance.js";
 import { MemoryCompactor } from "./memory-compactor.js";
 import type { EvolutionRuntime } from "./runtime.js";
 import { SkillCurator, toPublicEntry } from "./skill-curator.js";
@@ -229,15 +229,28 @@ export function createEvolutionTools({ evolutionRuntime }: { evolutionRuntime: E
     }),
     defineTool({
       name: "evolution.rollback",
-      description: "Disable an evolution artifact by id/path/key so future runtime code can ignore it. This is a governance safety brake.",
+      description: [
+        "回滚一个 evolution 产物：",
+        "- 若 target 以 'skill:' 开头（如 'skill:summarize-alert'）：真正恢复 SKILL.md 旧版本（从 bak 文件），这是 Phase 6 路线图要求的文件级回滚。",
+        "- 否则（memory key / task id 等）：禁用该目标，下次 evolution 周期不再写入，等同于原 evolution.disable。",
+        "两种语义都可审计，可通过 evolution.inspect 查看记录。"
+      ].join(" "),
       metadata: { required_permissions: [], risk_level: "write", requires_confirmation: false, expose_to_agentic: true },
       inputSchema: z.object({
-        target: z.string().min(1).max(300).describe("Evolution target id, memory key, task id, or skill path to disable."),
-        reason: z.string().max(1000).optional()
+        target: z.string().min(1).max(300).describe("skill:{skillId}（文件级回滚）或 memory:{key} / task:{id}（禁用目标）。"),
+        reason: z.string().max(1000).optional(),
+        version: z.string().max(50).optional().describe("仅对 skill 回滚有效：指定要恢复的 bak 版本时间戳（不填则恢复最新 bak）。")
       }).strict(),
       outputSchema: ToolResultBaseSchema,
       async execute(args, context) {
         const workspace = getWorkspace(context);
+        // skill 回滚：真正恢复 SKILL.md 文件
+        if (args.target.startsWith("skill:")) {
+          const skillId = args.target.slice("skill:".length).trim();
+          const result = await skillPatchSubagent.rollback({ workspace, skillId, version: args.version, reason: args.reason });
+          return { ok: result.ok === true, tool: "evolution.rollback", data: result };
+        }
+        // 其余：沿用原禁用语义
         return {
           ok: true,
           tool: "evolution.rollback",
@@ -389,6 +402,39 @@ export function createEvolutionTools({ evolutionRuntime }: { evolutionRuntime: E
         const workspace = getWorkspace(context);
         const result = await skillPatchSubagent.approve({ workspace, skillId: args.skill_id, approvedBy: context.user?.id });
         return { ok: result.ok === true, tool: "evolution.skill_patch.approve", data: result };
+      }
+    }),
+
+    /* ──────────────────── Phase 6 新增工具 ──────────────────── */
+
+    defineTool({
+      name: "evolution.diff",
+      description: "查看某个 skill 的 evolution patch 前后差异：原始 SKILL.md vs 已应用的 override vs 待审批的 candidate。用于 governance 审查。",
+      metadata: { required_permissions: [], risk_level: "read", expose_to_agentic: true },
+      inputSchema: z.object({
+        skill_id: idSchema.describe("要查看 diff 的 skill id")
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
+      async execute(args, context) {
+        const workspace = getWorkspace(context);
+        const data = await diffEvolutionSkill(workspace, args.skill_id);
+        return { ok: true, tool: "evolution.diff", data };
+      }
+    }),
+
+    defineTool({
+      name: "evolution.disable",
+      description: "将某个 evolution 目标（memory key / skill id / task id）标记为禁用，下次 evolution 周期中该目标不会被写入或注入。语义等同于 evolution.rollback，但更明确表达「禁用」而非「回滚」。",
+      metadata: { required_permissions: [], risk_level: "write", requires_confirmation: false, expose_to_agentic: true },
+      inputSchema: z.object({
+        target: z.string().min(1).max(300).describe("禁用目标：memory:{key} / skill:{id} / task:{id}"),
+        reason: z.string().max(1000).optional().describe("禁用原因（用于审计）")
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
+      async execute(args, context) {
+        const workspace = getWorkspace(context);
+        const data = await rollbackEvolution(workspace, { target: args.target, reason: args.reason ?? "evolution.disable" });
+        return { ok: true, tool: "evolution.disable", data };
       }
     })
   ];

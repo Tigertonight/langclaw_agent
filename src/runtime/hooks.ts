@@ -13,7 +13,20 @@ export type RuntimeHookName =
   | "turn_end"
   | "session_idle"
   | "task_change"
-  | "evolution_applied";
+  | "evolution_applied"
+  /* ── Phase 8 新增钩子点 ── */
+  | "message_received"       // 消息进入 Gateway 后（归一化完成，处理前）
+  | "before_route"           // 路由决策前
+  | "after_route"            // 路由决策后
+  | "before_tool_call"       // 工具调用前（支持 plan mode 拦截）
+  | "after_tool_call"        // 工具调用后（支持 evidence 追踪）
+  | "agent_finish"           // agent 主流程完成（answer 写入）
+  | "session_end"            // 会话结束（idle 超时或显式结束）
+  | "before_prompt_build"    // 拼 prompt 前（可注入额外上下文）
+  | "before_evolution_judge" // evolution 判断前（可抑制或补充 signal）
+  | "after_evolution_apply"  // evolution 应用后（可触发通知或 compaction）
+  | "subagent_spawn"         // 子 agent 创建（workspace 隔离前）
+  | "subagent_finish";       // 子 agent 完成（结果写回 parent task）
 
 export type RuntimeHookHandler = ((event: JsonObject) => Promise<void | JsonObject> | void | JsonObject) & { pluginName?: string };
 
