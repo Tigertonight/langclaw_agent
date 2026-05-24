@@ -99,6 +99,8 @@ export interface DomainPack {
   id: string;
   name: string;
   description?: string;
+  dependencies?: string[];
+  optionalDependencies?: string[];
 
   resources?: ResourceConfig[];
   tools?: ToolDefinition[];
@@ -109,7 +111,9 @@ export interface DomainPack {
   surfaces?: DomainSurfaceBuilder[];
   catalogDomains?: CatalogDomainDefinition[];
 
+  init?(ctx: DomainInitContext): void | Promise<void>;
   register?(ctx: DomainRegistrationContext): void | Promise<void>;
+  dispose?(ctx: DomainDisposeContext): void | Promise<void>;
 }
 
 export interface DomainRegistrationContext {
@@ -120,6 +124,27 @@ export interface DomainRegistrationContext {
   catalogRegistry: ToolCatalogDomainRegistry;
   surfaceRegistry: A2UISurfaceRegistry;
 }
+```
+
+设计约束：
+
+```text
+1. 能声明式注册的能力，不放进 register()。
+2. register() 只处理远程初始化、条件注册、复杂依赖注入等逃生口。
+3. toy domain 禁止使用 register()，用于验证声明式接口是否足够。
+4. dependencies 用于声明强依赖，optionalDependencies 用于声明可选增强。
+5. init / dispose 只处理生命周期，不承载业务注册。
+```
+
+权限命名建议统一为：
+
+```text
+<domain>:<resource>:<action>
+
+dealer:inventory:read
+dealer:finance:read
+attendance:leave:write
+knowledge:policy:read
 ```
 
 ## 目录结构
@@ -296,7 +321,7 @@ export interface DeterministicRuleDefinition {
   priority?: number;
   patterns?: string[];
   negativePatterns?: string[];
-  extractors?: Record<string, string>;
+  extractors?: Record<string, string | ExtractorSpec | ExtractorFn>;
   params?: JsonObject;
   match?: (input: RuleInput) => RuleMatch | null;
 }
@@ -305,6 +330,37 @@ export interface DomainExtractor {
   name: string;
   extract(text: string, ctx: ExtractorContext): JsonValue | undefined;
 }
+
+export interface ExtractorSpec {
+  use: string;
+  default?: JsonValue;
+  args?: JsonObject;
+}
+```
+
+Extractor 设计原则：
+
+```text
+1. 字符串引用用于最常见场景：store: "dealer.store"。
+2. ExtractorSpec 用于组合：leave_time_range: { use: "attendance.leave_time_range", default: "近三个月" }。
+3. ExtractorFn 是 TypeScript domain pack 的逃生口，不进入 JSON manifest。
+4. JSON manifest 中只允许 string / ExtractorSpec，不允许函数。
+```
+
+规则合并排序必须保留当前行为语义：
+
+```text
+priority ASC
+domainOrder ASC
+declarationIndex ASC
+```
+
+说明：
+
+```text
+priority 控制跨业务域的显式优先级。
+domainOrder 来自 DomainRegistry.registerMany([...]) 的注册顺序。
+declarationIndex 保留同一个 domain 内数组声明顺序，避免迁移后 eval:router 退化。
 ```
 
 迁移顺序：
@@ -405,12 +461,34 @@ export interface DomainQueryAdapter {
 }
 ```
 
+`AnswerPostProcessInput` 必须包含最终 answer 和工具上下文，确保现有依赖答案内容的补丁逻辑可以完整迁出：
+
+```ts
+export interface AnswerPostProcessInput {
+  answer: string;
+  rows: DataRecord[];
+  toolResult?: ToolResult;
+  params: JsonObject;
+  route: Route;
+  manifest: IntentManifest;
+  user?: UserContext;
+  message?: string;
+}
+```
+
+典型迁移对象：
+
+```text
+dealer_metrics 同时问库存和线索时，如果 answer 漏掉线索维度，则由 DealerQueryAdapter.postProcessAnswer() 补说明。
+attendance.leave_query 的默认范围、部门、人群过滤由 AttendanceQueryAdapter.buildFilters() 接管。
+```
+
 迁移顺序：
 
 ```text
 1. 新增 DomainQueryAdapterRegistry
-2. 把 attendance.leave_query 逻辑迁到 AttendanceQueryAdapter
-3. 把 dealer.query.* 逻辑迁到 DealerQueryAdapter
+2. Milestone 4a：把 attendance.leave_query 逻辑迁到 AttendanceQueryAdapter
+3. Milestone 4b：把 dealer.query.* 逻辑迁到 DealerQueryAdapter
 4. IntentQueryHandler 中只保留 fallback generic mapping
 ```
 
@@ -553,6 +631,49 @@ npm run eval:router
 npm run eval:task-tools
 ```
 
+### Milestone 2.5：retail-demo Toy Domain
+
+目标：在迁移复杂 dealer 规则前，用一个极小业务域验证 DomainPack 声明式注册真的可用。
+
+约束：
+
+```text
+1. 禁止使用 register() 逃生口。
+2. 只能使用 resources / commands / deterministicRules / intentManifests 声明式字段。
+3. 不允许修改 router / handler / ToolRegistry core。
+```
+
+能力范围：
+
+```text
+查询门店销量
+查询库存告警
+```
+
+建议目录：
+
+```text
+src/domains/retail-demo/
+  domain-pack.ts
+  resources.ts
+  commands.ts
+  deterministic-rules.ts
+  intent-manifests.ts
+  eval/retail-demo-smoke.ts
+
+data/domains/retail-demo/
+  stores.json
+  sales.json
+  inventory-alerts.json
+```
+
+验收：
+
+```text
+npm run build:ts
+npm run eval:domain:retail-demo
+```
+
 ### Milestone 3：Commands + Rules
 
 目标：把命令和确定性规则迁入 domain。
@@ -574,16 +695,33 @@ npm run router:commands
 npm run eval:router
 ```
 
-### Milestone 4：QueryAdapter
+### Milestone 4a：AttendanceQueryAdapter
 
-目标：把 `IntentQueryHandler` 里的业务特例迁出。
+目标：先迁最小业务特例，验证 QueryAdapterRegistry 接口。
 
 改动：
 
 ```text
 src/domains/query-adapter.ts
-src/domains/dealer/query-adapter.ts
 src/domains/attendance/query-adapter.ts
+src/handlers/intent-query-handler.ts
+```
+
+验收：
+
+```text
+npm run leave-skill-regression
+npm run eval
+```
+
+### Milestone 4b：DealerQueryAdapter
+
+目标：把 `IntentQueryHandler` 里的 dealer 业务特例迁出。
+
+改动：
+
+```text
+src/domains/dealer/query-adapter.ts
 src/handlers/intent-query-handler.ts
 ```
 
@@ -676,8 +814,10 @@ toy domain 只需要支持：
 | 风险 | 说明 | 缓解 |
 |---|---|---|
 | 大规模迁移导致 router 退化 | dealer 用例多，regex 迁移容易漏 | 每个 milestone 都跑 `eval:router` |
+| 规则优先级漂移 | 当前 hardcoded rules 数组顺序有隐性语义 | 合并规则时按 priority / domainOrder / declarationIndex 排序 |
 | 过度抽象 | 还没第二个真实业务就抽太复杂 | 只抽当前明确耦合点，保留兼容层 |
 | manifest 表达力不足 | filter/default/transform 不能全配置化 | 用 DomainQueryAdapter 作为逃生口 |
+| extractor 表达力不足 | 仅字符串引用无法表达默认值和组合 | 支持 ExtractorSpec；函数只作为 TS escape hatch |
 | A2UI surface 分散 | 每个 domain 都乱造 surface | 保留通用 Workbench builder，domain 只做 data mapping |
 | 旧路径兼容 | data/intent-codes 和 data/domains/* 并存 | 设三阶段迁移，不一次性删除旧路径 |
 
@@ -694,3 +834,11 @@ toy domain 只需要支持：
 6. 跑 build:ts + eval:dealer + eval:router。
 ```
 
+完成 Milestone 1 + 2 后，立即插入 Milestone 2.5：
+
+```text
+1. 新增 retail-demo toy domain。
+2. 只使用声明式注册，不使用 register()。
+3. 证明新增业务不改 core 也能跑通。
+4. 再进入 Commands + Rules 迁移。
+```
