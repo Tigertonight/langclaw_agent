@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { JsonObject, JsonValue } from "../types/agent-contracts.js";
 
 /**
@@ -58,6 +59,23 @@ export interface AgentRunnerResult {
   lastError?: string;
 }
 
+/**
+ * workspaceGuard —— workspace 隔离选项（Phase 8）。
+ *
+ * 若配置了 allowedWorkspaceRoot，runAgent 在每次 callTool 之前会检查
+ * args 中所有路径字段（path / file / workspace / dir / root / src / dest / target）
+ * 是否都在 allowedWorkspaceRoot 内，越界调用直接拒绝，不发起实际工具调用。
+ *
+ * 这是一条防御性边界，补充（而非替代）工具层自身的权限校验。
+ * 当 args 中无路径字段时，视为安全，照常调用。
+ */
+export interface WorkspaceGuardOptions {
+  /** 允许的 workspace 根目录绝对路径，例如 "/home/user/myproject" */
+  allowedWorkspaceRoot: string;
+  /** 额外允许的目录列表（如 tmpdir），默认为空 */
+  extraAllowedRoots?: string[];
+}
+
 export interface AgentRunnerOptions {
   systemPrompt: string;
   userMessage: string;
@@ -74,11 +92,50 @@ export interface AgentRunnerOptions {
   callTool: (toolName: string, args: JsonObject) => Promise<unknown>;
   maxIterations?: number;
   totalTimeoutMs?: number;
+  /**
+   * Phase 8 workspace 隔离选项。
+   * 配置后，每次工具调用前会检查 args 中的路径参数是否在允许的根目录内。
+   * 越界调用返回 { ok: false, error: "workspace_boundary_violation" }，不执行实际调用。
+   */
+  workspaceGuard?: WorkspaceGuardOptions;
 }
 
 const DEFAULT_MAX_ITERATIONS = 5;
 const DEFAULT_TOTAL_TIMEOUT_MS = 60_000;
 const OBSERVATION_PREVIEW_CHARS = 400;
+
+/** workspace 边界校验路径参数名（大小写均识别） */
+const PATH_ARG_KEYS = new Set([
+  "path", "file", "workspace", "dir", "root", "src", "dest", "target",
+  "filepath", "file_path", "workspacepath", "workspace_path", "directory",
+  "source", "output", "outputpath", "output_path"
+]);
+
+/**
+ * checkWorkspaceBoundary() —— 检查工具 args 中所有路径字段是否在允许的根目录内。
+ *
+ * 返回 null 表示通过；返回字符串表示违规描述。
+ * 只检查字符串类型且以 / 开头（绝对路径）的值，相对路径不检查（交由工具层处理）。
+ */
+function checkWorkspaceBoundary(
+  args: JsonObject,
+  guard: WorkspaceGuardOptions
+): string | null {
+  const allowed = [
+    path.resolve(guard.allowedWorkspaceRoot),
+    ...(guard.extraAllowedRoots ?? []).map((r) => path.resolve(r))
+  ];
+  for (const [key, value] of Object.entries(args)) {
+    if (typeof value !== "string" || !value.startsWith("/")) continue;
+    if (!PATH_ARG_KEYS.has(key.toLowerCase())) continue;
+    const resolved = path.resolve(value);
+    const inBounds = allowed.some((root) => resolved === root || resolved.startsWith(root + path.sep));
+    if (!inBounds) {
+      return `工具参数 ${key}="${value}" 越出 workspace 边界（允许: ${allowed.join(", ")}）`;
+    }
+  }
+  return null;
+}
 
 export async function runAgent(opts: AgentRunnerOptions): Promise<AgentRunnerResult> {
   const maxIterations = opts.maxIterations ?? DEFAULT_MAX_ITERATIONS;
@@ -148,6 +205,23 @@ export async function runAgent(opts: AgentRunnerOptions): Promise<AgentRunnerRes
             ok: false
           });
           continue;
+        }
+        // Phase 8 workspace 边界检查
+        if (opts.workspaceGuard) {
+          const violation = checkWorkspaceBoundary(call.args, opts.workspaceGuard);
+          if (violation) {
+            observations.push({
+              tool: call.tool_name,
+              args: call.args,
+              observation: {
+                ok: false,
+                error: "workspace_boundary_violation",
+                message: violation
+              },
+              ok: false
+            });
+            continue;
+          }
         }
         try {
           const observation = await opts.callTool(call.tool_name, call.args);

@@ -8,6 +8,8 @@ import type { JsonObject } from "../types/agent-contracts.js";
 import { EpisodeStore } from "./episode-store.js";
 import { ConflictStore } from "../memory/conflict-store.js";
 import { MemoryLearner } from "./memory-learner.js";
+import { CompactBoundary } from "../context/compact-boundary.js";
+import { TranscriptStore } from "../transcript/transcript-store.js";
 
 const DEFAULT_TIMEOUT_MS = 30000;
 
@@ -36,33 +38,48 @@ export class MemoryCompactor {
   private readonly episodeStore: EpisodeStore;
   private readonly taskStore: TaskStore;
   private readonly conflictStore: ConflictStore;
+  private readonly compactBoundary: CompactBoundary;
 
   constructor({
     memoryLearner = new MemoryLearner(),
     episodeStore = new EpisodeStore(),
     taskStore = new TaskStore(),
-    conflictStore = new ConflictStore()
+    conflictStore = new ConflictStore(),
+    transcriptStore = new TranscriptStore()
   }: {
     memoryLearner?: MemoryLearner;
     episodeStore?: EpisodeStore;
     taskStore?: TaskStore;
     conflictStore?: ConflictStore;
+    /** 注入 TranscriptStore，用于压缩后写 compact_boundary 事件 */
+    transcriptStore?: TranscriptStore;
   } = {}) {
     this.memoryLearner = memoryLearner;
     this.episodeStore = episodeStore;
     this.taskStore = taskStore;
     this.conflictStore = conflictStore;
+    this.compactBoundary = new CompactBoundary(transcriptStore);
   }
 
-  async compact(workspace: WorkspaceContext, { episodeLimit = 80, dryRun = false }: { episodeLimit?: number; dryRun?: boolean } = {}): Promise<CompactionResult> {
+  async compact(
+    workspace: WorkspaceContext,
+    {
+      episodeLimit = 80,
+      dryRun = false,
+      /** 提供 sessionId 时，压缩完成后在该会话 transcript 写 compact_boundary 事件 */
+      sessionId
+    }: { episodeLimit?: number; dryRun?: boolean; sessionId?: string } = {}
+  ): Promise<CompactionResult> {
     const apiKey = process.env.EVOLUTION_LLM_API_KEY
       ?? process.env.LLM_DECISION_API_KEY
       ?? process.env.LLM_API_KEY
       ?? process.env.OPENAI_API_KEY;
+    const rawCharsBefore = await this.estimateRawChars(workspace, episodeLimit);
     const localStats = await this.applyLocalStrategy(workspace, dryRun);
+
     if (!apiKey) {
       await this.writeLocalReport(workspace, localStats, dryRun ? "dry-run" : "applied");
-      return {
+      const result: CompactionResult = {
         ok: true,
         status: "applied",
         mode: "local_strategy",
@@ -73,6 +90,16 @@ export class MemoryCompactor {
         conflicts_written: localStats.conflictsWritten,
         confidence_decayed: localStats.confidenceDecayed
       };
+      // 非 dry-run 时写 compact_boundary 事件（fire-and-forget）
+      if (!dryRun && sessionId) {
+        this.writeCompactBoundary(workspace, sessionId, {
+          covered_event_count: localStats.duplicatesMerged + localStats.memoryItemsWritten,
+          original_chars: rawCharsBefore,
+          saved_chars: Math.max(0, rawCharsBefore - Math.floor(rawCharsBefore * 0.8)),
+          reason: result.reason ?? "local_strategy"
+        }).catch(() => undefined);
+      }
+      return result;
     }
 
     const payload = await this.createPayload(workspace, episodeLimit);
@@ -115,18 +142,60 @@ export class MemoryCompactor {
       });
     }
     const compactedEpisodes = await this.episodeStore.compact(workspace, Math.max(20, Math.floor(episodeLimit / 2)));
-    return {
+    const summaryPath = path.relative(workspace.root, this.reportPath(workspace));
+    const result: CompactionResult = {
       ok: true,
       status: "applied",
       mode: "llm",
       reason: decision.reason,
-      summary_path: path.relative(workspace.root, this.reportPath(workspace)),
+      summary_path: summaryPath,
       memory_items_written: memoryItemsWritten,
       compacted_episodes: compactedEpisodes,
       duplicates_merged: localStats.duplicatesMerged,
       conflicts_written: localStats.conflictsWritten + (decision.contradictions ?? []).length,
       confidence_decayed: localStats.confidenceDecayed
     };
+    // 写 compact_boundary 事件（fire-and-forget，失败不影响主流程）
+    if (sessionId) {
+      const charsAfter = JSON.stringify(nextItems).length;
+      this.writeCompactBoundary(workspace, sessionId, {
+        covered_event_count: compactedEpisodes + memoryItemsWritten,
+        original_chars: rawCharsBefore,
+        saved_chars: Math.max(0, rawCharsBefore - charsAfter),
+        summary_ref: summaryPath,
+        reason: decision.reason
+      }).catch(() => undefined);
+    }
+    return result;
+  }
+
+  /** 异步写 compact_boundary transcript 事件（memory 类型） */
+  private async writeCompactBoundary(
+    workspace: WorkspaceContext,
+    sessionId: string,
+    info: { covered_event_count: number; original_chars: number; saved_chars: number; summary_ref?: string; reason?: string }
+  ): Promise<void> {
+    await this.compactBoundary.write(workspace, sessionId, {
+      compact_type: "memory",
+      session_id: sessionId,
+      covered_event_count: info.covered_event_count,
+      original_chars: info.original_chars,
+      compacted_chars: Math.max(0, info.original_chars - info.saved_chars),
+      saved_chars: info.saved_chars,
+      summary_ref: info.summary_ref,
+      reason: info.reason
+    });
+  }
+
+  /** 估算当前 memory + episodes 的原始字符量（用于计算压缩 saved_chars） */
+  private async estimateRawChars(workspace: WorkspaceContext, episodeLimit: number): Promise<number> {
+    try {
+      const memory = await this.memoryLearner.load(workspace);
+      const episodes = await this.episodeStore.recent(workspace, episodeLimit);
+      return JSON.stringify(memory.items ?? []).length + JSON.stringify(episodes).length;
+    } catch {
+      return 0;
+    }
   }
 
   private async applyLocalStrategy(workspace: WorkspaceContext, dryRun: boolean): Promise<LocalCompactionStats> {

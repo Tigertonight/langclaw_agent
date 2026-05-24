@@ -48,7 +48,7 @@ export interface EvolutionDecision {
 
 export interface MemoryAction extends JsonObject {
   op: "upsert" | "remove";
-  type: "preference" | "fact" | "procedure" | "episode";
+  type: "preference" | "fact" | "procedure" | "episode" | "feedback" | "project" | "reference" | "user";
   key: string;
   value?: string;
   confidence?: number;

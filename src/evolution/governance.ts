@@ -83,6 +83,47 @@ export async function restoreEvolution(workspace: WorkspaceContext, input: { tar
   return { target: input.target, restored: items.length !== nextItems.length, reason: input.reason ?? "manual_restore" };
 }
 
+/**
+ * Phase 6: diffEvolutionSkill —— 读取某个 skill 的 patch.md 或原 SKILL.md + override 对比。
+ * 返回 { skill_id, original, override, patch_report, candidate } 供 evolution.diff 工具展示。
+ */
+export async function diffEvolutionSkill(workspace: WorkspaceContext, skillId: string): Promise<JsonObject> {
+  const safeId = skillId.replace(/[^A-Za-z0-9_.\-:/]/g, "_").slice(0, 120);
+  const skillsRoot = safeJoinWorkspace(workspace.root, ".evolution", "skills");
+  const dir = path.join(skillsRoot, safeId);
+
+  // 原始 SKILL.md（来自项目 skills/ 目录）
+  const projectSkillFile = path.join(process.cwd(), "skills", safeId, "SKILL.md");
+  const original = await readIfExists(projectSkillFile, 8000);
+
+  // override（已应用的）
+  const overrideFile = path.join(dir, "SKILL.md");
+  const override = await readIfExists(overrideFile, 8000);
+
+  // candidate（待审批）
+  const candidateFile = path.join(dir, "candidate.SKILL.md");
+  const candidate = await readIfExists(candidateFile, 8000);
+
+  // patch 报告
+  const patchFile = path.join(dir, "patch.md");
+  const patchReport = await readIfExists(patchFile, 6000);
+
+  // approval 元数据
+  const approvalFile = path.join(dir, "approval.json");
+  const approvalMeta = await readJson(approvalFile);
+
+  const hasDiff = !!(override || candidate);
+  return {
+    skill_id: safeId,
+    has_diff: hasDiff,
+    original: original || "(原始 SKILL.md 未找到)",
+    override: override || null,
+    candidate: candidate || null,
+    patch_report: patchReport || null,
+    approval: approvalMeta
+  };
+}
+
 async function readJsonl(file: string, limit: number): Promise<JsonObject[]> {
   if (!existsSync(file)) return [];
   const lines = (await readFile(file, "utf8")).trim().split("\n").filter(Boolean);

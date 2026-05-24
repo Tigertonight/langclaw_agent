@@ -26,7 +26,12 @@ export class SkillPatchSubagent {
       ?? process.env.LLM_DECISION_API_KEY
       ?? process.env.LLM_API_KEY
       ?? process.env.OPENAI_API_KEY;
-    if (!apiKey) return { ok: false, error: "patch_subagent_unavailable:no_api_key" };
+    // Gap-6：无 LLM Key 时模板降级（Phase 6 完善）
+    // 不再直接报错，而是生成一个基于原始 SKILL.md + goal 注释的模板 candidate，
+    // 让用户可以在不配置 LLM 的情况下手动编辑后 approve + apply。
+    if (!apiKey) {
+      return this.generateFromTemplate(input.workspace, skillId, goal, input.evidence, input.dryRun);
+    }
 
     const baseUrl = (process.env.EVOLUTION_LLM_BASE_URL
       ?? process.env.LLM_DECISION_BASE_URL
@@ -136,6 +141,79 @@ export class SkillPatchSubagent {
     };
   }
 
+  /**
+   * rollback() — 真正回滚 SKILL.md：从 bak 文件恢复旧版，并更新 approval 记录。
+   *
+   * apply() 时会把当前 SKILL.md 备份为 `SKILL.{timestamp}.bak.md`，
+   * rollback() 找最新（或指定版本）的 bak 文件恢复，实现真正的文件级回滚。
+   * 若不存在 bak 文件，则删除 evolution 覆盖（恢复为项目原始 SKILL.md）。
+   */
+  async rollback(input: { workspace: WorkspaceContext; skillId: string; version?: string; reason?: string }): Promise<JsonObject> {
+    const skillId = safeUserId(input.skillId);
+    const dir = safeJoinWorkspace(input.workspace.root, ".evolution", "skills", skillId);
+    const target = path.join(dir, "SKILL.md");
+
+    if (!existsSync(dir)) {
+      return { ok: false, error: "no_evolution_dir", message: `skill ${skillId} 没有 evolution 目录，无需回滚` };
+    }
+
+    // 找所有 bak 文件（SKILL.{timestamp}.bak.md）
+    const { readdir, unlink } = await import("node:fs/promises");
+    const files = existsSync(dir) ? await readdir(dir) : [];
+    const baks = files
+      .filter((f) => /^SKILL\.\d+\.bak\.md$/.test(f))
+      .sort()  // 字典序 = 时间戳升序
+      .reverse();  // 最新在前
+
+    let bakFile: string | null = null;
+    if (input.version) {
+      const matched = baks.find((f) => f.includes(input.version!));
+      bakFile = matched ? path.join(dir, matched) : null;
+    } else {
+      bakFile = baks.length > 0 ? path.join(dir, baks[0]) : null;
+    }
+
+    if (!bakFile) {
+      // 无 bak：删除 evolution SKILL.md，让系统回退到项目原始版本
+      if (existsSync(target)) {
+        await unlink(target);
+      }
+      const approval = await readApproval(dir);
+      await writeApproval(dir, {
+        ...(approval ?? {}),
+        skill_id: skillId,
+        status: "rolled_back",
+        rolled_back_at: new Date().toISOString(),
+        rolled_back_reason: input.reason ?? "no_bak_available_removed_evolution_override",
+        from_bak: null
+      });
+      return {
+        ok: true,
+        skill_id: skillId,
+        rolled_back_to: "project_original",
+        message: "evolution override 已移除，系统将使用项目原始 SKILL.md"
+      };
+    }
+
+    // 恢复 bak → SKILL.md
+    await copyFile(bakFile, target);
+    const approval = await readApproval(dir);
+    await writeApproval(dir, {
+      ...(approval ?? {}),
+      skill_id: skillId,
+      status: "rolled_back",
+      rolled_back_at: new Date().toISOString(),
+      rolled_back_reason: input.reason ?? "user_requested_rollback",
+      from_bak: path.basename(bakFile)
+    });
+    return {
+      ok: true,
+      skill_id: skillId,
+      rolled_back_to: path.basename(bakFile),
+      path: path.relative(input.workspace.root, target)
+    };
+  }
+
   async approve(input: { workspace: WorkspaceContext; skillId: string; approvedBy?: string }): Promise<JsonObject> {
     const skillId = safeUserId(input.skillId);
     const dir = safeJoinWorkspace(input.workspace.root, ".evolution", "skills", skillId);
@@ -155,6 +233,97 @@ export class SkillPatchSubagent {
     await writeApproval(dir, next);
     await this.curator.recordUsage(input.workspace, skillId, "viewed");
     return { ok: true, skill_id: skillId, approval: next, validation };
+  }
+
+  /**
+   * generateFromTemplate() —— 无 LLM Key 时的模板降级路径（Gap-6 / Phase 6 完善）。
+   *
+   * 行为：
+   * 1. 读取当前 SKILL.md（优先 evolution override，其次 project 原始版）。
+   * 2. 在文件头插入 `<!-- EVOLUTION_GOAL -->` 注释块，告知手动编辑者需要改什么。
+   * 3. 把结果写入 `candidate.SKILL.md`（或 dry_run=false 时直接写 SKILL.md）。
+   * 4. approval.json 状态标为 `"template_pending"`，提示用户需要手动编辑后再 approve。
+   * 5. 返回带 `template_fallback: true` 标志的结果，调用方可据此提示用户。
+   */
+  private async generateFromTemplate(
+    workspace: WorkspaceContext,
+    skillId: string,
+    goal: string,
+    evidence: unknown,
+    dryRun?: boolean
+  ): Promise<JsonObject> {
+    const dir = safeJoinWorkspace(workspace.root, ".evolution", "skills", skillId);
+    await mkdir(dir, { recursive: true });
+    const target = path.join(dir, "SKILL.md");
+    const candidate = path.join(dir, "candidate.SKILL.md");
+    const patch = path.join(dir, "patch.md");
+
+    // 读取现有 SKILL.md（evolution override 优先，否则 project 原始）
+    const evolvedPath = target;
+    const basePath = resolveProjectPath("skills", "agentic", skillId, "SKILL.md");
+    const existing = await readFirstExisting([evolvedPath, basePath]);
+
+    // 构造模板：在头部注入 evolution goal 注释，提示手动编辑
+    const evidenceSummary = evidence
+      ? `Evidence:\n${JSON.stringify(evidence, null, 2).slice(0, 1000)}`
+      : "(no evidence provided)";
+    const goalComment = [
+      `<!-- EVOLUTION_GOAL`,
+      `  Generated by: SkillPatchSubagent (template fallback — no LLM key configured)`,
+      `  skill_id: ${skillId}`,
+      `  goal: ${goal}`,
+      `  generated_at: ${new Date().toISOString()}`,
+      `  ${evidenceSummary.split("\n").join("\n  ")}`,
+      ``,
+      `  ACTION REQUIRED: Review and edit the SKILL.md below to achieve the goal above.`,
+      `  Then run: evolution.skill_patch.approve skill_id=${skillId}`,
+      `            evolution.skill_patch.apply    skill_id=${skillId}`,
+      `-->`,
+      ``
+    ].join("\n");
+
+    const templateMd = existing
+      ? goalComment + existing
+      : goalComment + buildMinimalSkillTemplate(skillId, goal);
+
+    const writeDest = dryRun === false ? target : candidate;
+    await writeFile(writeDest, templateMd, "utf8");
+
+    const reason = "template_fallback_no_llm_key";
+    await writeApproval(dir, {
+      skill_id: skillId,
+      status: "template_pending",
+      generated_at: new Date().toISOString(),
+      goal,
+      reason,
+      template_fallback: true,
+      test_commands: selectSkillPatchTests(skillId),
+      instructions: "Edit candidate.SKILL.md, then call evolution.skill_patch.approve + apply."
+    });
+    await writeFile(patch, createPatchReport({
+      skillId,
+      goal,
+      reason,
+      before: existing,
+      after: templateMd
+    }), "utf8");
+
+    await this.curator.recordUsage(workspace, skillId, "patched");
+    return {
+      ok: true,
+      skill_id: skillId,
+      dry_run: dryRun !== false,
+      template_fallback: true,
+      path: path.relative(workspace.root, writeDest),
+      patch_path: path.relative(workspace.root, patch),
+      reason,
+      message: [
+        "LLM Key 未配置，已生成基于现有 SKILL.md 的模板 candidate。",
+        "请手动编辑该文件完成目标：" + goal,
+        "编辑完成后执行：evolution.skill_patch.approve → evolution.skill_patch.apply"
+      ].join(" "),
+      test_commands: selectSkillPatchTests(skillId)
+    };
   }
 
   private async createPayload(workspace: WorkspaceContext, skillId: string, goal: string, evidence: unknown): Promise<JsonObject> {
@@ -252,6 +421,35 @@ function sanitizeEvidence(value: unknown): JsonObject {
 function readPositiveNumberEnv(name: string, fallback: number): number {
   const value = Number(process.env[name]);
   return Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+/** 当 skill 没有任何现有 SKILL.md 时生成最小骨架模板 */
+function buildMinimalSkillTemplate(skillId: string, goal: string): string {
+  return [
+    `---`,
+    `name: ${skillId}`,
+    `description: [TODO] ${goal}`,
+    `version: 0.1.0-template`,
+    `---`,
+    ``,
+    `# ${skillId}`,
+    ``,
+    `> **NOTE**: This is a minimal template generated by SkillPatchSubagent (no-LLM fallback).`,
+    `> Edit this file to implement the evolution goal described in the comment above.`,
+    ``,
+    `## Overview`,
+    ``,
+    `[TODO] Describe the skill behavior and scope.`,
+    ``,
+    `## Instructions`,
+    ``,
+    `[TODO] Write the skill instructions / prompt here.`,
+    ``,
+    `## Examples`,
+    ``,
+    `[TODO] Add at least 2 input→output examples.`,
+    ``
+  ].join("\n");
 }
 
 const PATCH_SUBAGENT_PROMPT = [

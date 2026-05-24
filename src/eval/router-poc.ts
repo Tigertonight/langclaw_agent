@@ -1546,17 +1546,24 @@ for (const [index, c] of cases.entries()) {
       }
       verdict ??= { ok: true };
     } else {
-      result = await runAgentWithTimeout({ userId: USER_ID, message: c.message ?? "", sessionId, debug: true }, c.name);
-      verdict = c.expect ? c.expect(result) : { ok: true };
       // allowOneRetry：agentic 类用例偶发 LLM 抖动（超时 / JSON 解析失败 / 漏调工具），最多再补 3 次
       const retryBudget = c.allowOneRetry ? 3 : 0;
-      for (let attempt = 1; attempt <= retryBudget && !verdict.ok; attempt += 1) {
-        const retrySid = `${sessionId}_retry${attempt}`;
-        const retryResult = await runAgentWithTimeout({ userId: USER_ID, message: c.message ?? "", sessionId: retrySid, debug: true }, `${c.name}/retry${attempt}`);
-        const retryVerdict = c.expect ? c.expect(retryResult) : { ok: true };
-        if (retryVerdict.ok) {
-          result = retryResult;
-          verdict = retryVerdict;
+      for (let attempt = 0; attempt <= retryBudget; attempt += 1) {
+        const attemptSid = attempt === 0 ? sessionId : `${sessionId}_retry${attempt}`;
+        const attemptName = attempt === 0 ? c.name : `${c.name}/retry${attempt}`;
+        try {
+          const attemptResult = await runAgentWithTimeout({ userId: USER_ID, message: c.message ?? "", sessionId: attemptSid, debug: true }, attemptName);
+          const attemptVerdict = c.expect ? c.expect(attemptResult) : { ok: true };
+          result = attemptResult;
+          verdict = attemptVerdict;
+          if (attemptVerdict.ok) {
+            break;
+          }
+        } catch (err: unknown) {
+          const message = err instanceof Error ? err.message : String(err);
+          verdict = { ok: false, reason: `agent.run 抛错: ${message}` };
+        }
+        if (!c.allowOneRetry) {
           break;
         }
       }

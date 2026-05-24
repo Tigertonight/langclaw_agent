@@ -3,6 +3,7 @@ import { loadDisabledEvolutionTargets } from "../evolution/governance.js";
 import { MemoryLearner } from "../evolution/memory-learner.js";
 import { TaskStore, summarizeTask } from "../tasks/task-store.js";
 import { TranscriptStore } from "../transcript/transcript-store.js";
+import { MemoryIndex } from "./memory-index.js";
 import type { WorkspaceContext } from "../runtime/workspace-context.js";
 import type { JsonObject } from "../types/agent-contracts.js";
 
@@ -20,35 +21,45 @@ export class MemoryRetriever {
   private readonly episodeStore: EpisodeStore;
   private readonly taskStore: TaskStore;
   private readonly transcriptStore: TranscriptStore;
+  private readonly memoryIndex: MemoryIndex;
 
   constructor({
     memoryLearner = new MemoryLearner(),
     episodeStore = new EpisodeStore(),
     taskStore = new TaskStore(),
-    transcriptStore = new TranscriptStore()
+    transcriptStore = new TranscriptStore(),
+    memoryIndex = new MemoryIndex()
   }: {
     memoryLearner?: MemoryLearner;
     episodeStore?: EpisodeStore;
     taskStore?: TaskStore;
     transcriptStore?: TranscriptStore;
+    memoryIndex?: MemoryIndex;
   } = {}) {
     this.memoryLearner = memoryLearner;
     this.episodeStore = episodeStore;
     this.taskStore = taskStore;
     this.transcriptStore = transcriptStore;
+    this.memoryIndex = memoryIndex;
   }
 
   async retrieve(workspace: WorkspaceContext, query: string, { sessionId, limit = 12 }: { sessionId?: string; limit?: number } = {}): Promise<RetrievedMemory[]> {
     if (!query.trim()) return [];
     const disabled = await loadDisabledEvolutionTargets(workspace);
-    const memory = await this.memoryLearner.load(workspace);
-    const memoryItems: RetrievedMemory[] = memory.items
+
+    // Phase 2: 先扫 MEMORY.md 索引，判断哪些 category 可能有相关内容。
+    // 若索引存在且所有 category 数量为 0，可快速短路，不加载 memory.json。
+    const indexSummary = await this.memoryIndex.load(workspace);
+    const hasMemory = !indexSummary || indexSummary.item_count > 0;
+
+    const memory = hasMemory ? await this.memoryLearner.load(workspace) : { items: [] };
+    const memoryItems: RetrievedMemory[] = (memory.items as Array<{ key: string; type: string; value: string; confidence?: number; source?: string; created_at?: string; updated_at?: string }>)
       .filter((item) => !disabled.has(item.key) && !disabled.has(`memory:${item.key}`))
       .map((item) => withScore({
         source: "memory",
         id: item.key,
         text: `${item.type}: ${item.value}`,
-        payload: item
+        payload: item as unknown as JsonObject
       }, query, { source: "memory" }));
 
     const episodes = (await this.episodeStore.recent(workspace, 60)).map((episode) => withScore({

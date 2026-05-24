@@ -16,6 +16,52 @@ const idSchema = z.string().min(1).max(128).regex(/^[A-Za-z0-9_.\-:]+$/);
 export function createTaskTools(): ToolDefinition[] {
   return [
     defineTool({
+      name: "task.get",
+      description: "Get a single task by id. Returns full task details including evidence, plan steps, blocks/blocked_by.",
+      metadata: { required_permissions: [], expose_to_agentic: true, risk_level: "read" },
+      inputSchema: z.object({
+        id: idSchema,
+        task_list_id: idSchema.optional()
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
+      async execute(args, context) {
+        const workspace = getWorkspace(context);
+        const taskListId = args.task_list_id ?? taskStore.listIdForUser(workspace);
+        const task = await taskStore.get(workspace, taskListId, args.id);
+        if (!task) return { ok: false, tool: "task.get", error: "not_found", message: `Task "${args.id}" not found.` };
+        return { ok: true, tool: "task.get", data: { task } };
+      }
+    }),
+    defineTool({
+      name: "task.link_evidence",
+      description: "Attach an evidence item (tool result, artifact, note, or memory ref) to an existing task.",
+      metadata: { required_permissions: [], expose_to_agentic: true, risk_level: "write" },
+      inputSchema: z.object({
+        id: idSchema,
+        task_list_id: idSchema.optional(),
+        kind: z.enum(["tool_result", "artifact", "memory", "note"]),
+        summary: z.string().min(1).max(1000),
+        ref: z.string().max(500).optional()
+      }).strict(),
+      outputSchema: ToolResultBaseSchema,
+      async execute(args, context) {
+        const workspace = getWorkspace(context);
+        const task = await taskStore.upsert(workspace, {
+          id: args.id,
+          task_list_id: args.task_list_id,
+          evidence: [{
+            id: `ev_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+            kind: args.kind,
+            summary: args.summary,
+            ref: args.ref,
+            created_at: new Date().toISOString()
+          }],
+          metadata: { source: "task_tool" }
+        });
+        return { ok: true, tool: "task.link_evidence", data: { task: summarizeTask(task) } };
+      }
+    }),
+    defineTool({
       name: "task.list",
       description: "List active or filtered user-workspace tasks.",
       metadata: { required_permissions: [], expose_to_agentic: true, risk_level: "read" },

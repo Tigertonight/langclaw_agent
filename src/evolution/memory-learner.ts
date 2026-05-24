@@ -5,6 +5,7 @@ import type { WorkspaceContext } from "../runtime/workspace-context.js";
 import type { JsonObject } from "../types/agent-contracts.js";
 import type { MemoryAction } from "./types.js";
 import { loadDisabledEvolutionTargets } from "./governance.js";
+import { MemoryIndex } from "../memory/memory-index.js";
 
 interface MemoryFile extends JsonObject {
   owner_user_id: string;
@@ -25,6 +26,8 @@ interface MemoryItem extends JsonObject {
 }
 
 export class MemoryLearner {
+  private readonly memoryIndex = new MemoryIndex();
+
   async apply({ workspace, actions }: { workspace: WorkspaceContext; actions?: MemoryAction[] }): Promise<number> {
     const normalized = Array.isArray(actions) ? actions : [];
     if (!normalized.length) return 0;
@@ -68,6 +71,8 @@ export class MemoryLearner {
       memory.items = compactMemoryItems(memory.items).slice(-100);
       memory.updated_at = new Date().toISOString();
       await this.save(workspace, memory);
+      // Phase 2: 写入后重建 MEMORY.md 索引（异步，不阻塞返回）
+      this.memoryIndex.rebuild(workspace, memory.items).catch(() => undefined);
     }
     return changed;
   }
@@ -92,6 +97,9 @@ export class MemoryLearner {
   async save(workspace: WorkspaceContext, memory: MemoryFile): Promise<void> {
     await mkdir(workspace.memory_dir, { recursive: true });
     await writeFile(this.filePath(workspace), JSON.stringify(memory, null, 2), "utf8");
+    // 注意：rebuild 已在 apply() 的 changed 分支中触发，save() 是 apply() 的内部调用，
+    // 无需再次触发以避免重复 IO。若外部直接调用 save()（如测试/迁移脚本），
+    // 调用方应自行决定是否需要 rebuild。
   }
 
   filePath(workspace: WorkspaceContext): string {

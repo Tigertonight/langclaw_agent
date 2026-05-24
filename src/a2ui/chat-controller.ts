@@ -16,6 +16,16 @@ interface QueryEngineLike {
     sessionId?: string;
     debug?: boolean;
   }): Promise<Record<string, unknown>>;
+  /** Phase 1 新增：流式路径也通过 QueryEngine 管理生命周期 */
+  submitStream?(input: {
+    userId: string;
+    userContext?: JsonObject;
+    wecomUserId?: string;
+    message: string;
+    sessionId?: string;
+    debug?: boolean;
+    onEvent?: (event: JsonObject) => Promise<void> | void;
+  }): Promise<unknown>;
 }
 
 interface StreamAgentLike {
@@ -96,39 +106,53 @@ export class A2UIChatController {
     // 在流过程里把 route 事件存下来，done 时合进 record 里再喂 buildA2UIResponse。
     let lastRoute: JsonObject | null = null;
 
-    await this.streamAgent.runStream({
-      ...toQueryInput(dto),
-      onEvent: async (event) => {
-        if (event.type === "route") {
-          const route = (event as { route?: unknown }).route;
-          if (route && typeof route === "object" && !Array.isArray(route)) lastRoute = route as JsonObject;
-        }
-        if (event.type === "agentic_event") {
-          const inner = (event as JsonObject).event as Record<string, unknown> | undefined;
-          if (inner) await translator.onAgenticEvent(inner);
-          await emit({ ...event, trace_id: traceId } as A2UISseEventDto);
-          return;
-        }
-        if (event.type === "done") {
-          const enriched: Record<string, unknown> = {
-            ...event,
-            user_message: (event as { user_message?: unknown }).user_message ?? dto.message,
-            run_id: runId,
-            session_id: sessionId,
-            // runtime 插件读 record.debug.route 或 record.trace.route_summary，注入 lastRoute 让流式也能出 runtime surface
-            debug: { ...(event as { debug?: JsonObject }).debug, route: lastRoute ?? (event as { debug?: { route?: unknown } }).debug?.route ?? null }
-          };
-          await translator.finalize(enriched);
-          const decorated = await this.chatService.decorateChatResult(enriched, {
-            clientCapabilities: dto.client_capabilities,
-            includeRuntime: dto.debug === true
-          });
-          await emit({ ...decorated, trace_id: traceId, session_id: sessionId, run_id: runId } as A2UISseEventDto);
-          return;
-        }
-        await emit({ ...event, trace_id: traceId } as A2UISseEventDto);
+    const onEvent = async (event: JsonObject) => {
+      if (event.type === "route") {
+        const route = (event as { route?: unknown }).route;
+        if (route && typeof route === "object" && !Array.isArray(route)) lastRoute = route as JsonObject;
       }
-    });
+      if (event.type === "agentic_event") {
+        const inner = (event as JsonObject).event as Record<string, unknown> | undefined;
+        if (inner) await translator.onAgenticEvent(inner);
+        await emit({ ...event, trace_id: traceId } as A2UISseEventDto);
+        return;
+      }
+      if (event.type === "done") {
+        const enriched: Record<string, unknown> = {
+          ...event,
+          user_message: (event as { user_message?: unknown }).user_message ?? dto.message,
+          run_id: runId,
+          session_id: sessionId,
+          // runtime 插件读 record.debug.route 或 record.trace.route_summary，注入 lastRoute 让流式也能出 runtime surface
+          debug: { ...(event as { debug?: JsonObject }).debug, route: lastRoute ?? (event as { debug?: { route?: unknown } }).debug?.route ?? null }
+        };
+        await translator.finalize(enriched);
+        const decorated = await this.chatService.decorateChatResult(enriched, {
+          clientCapabilities: dto.client_capabilities,
+          includeRuntime: dto.debug === true
+        });
+        await emit({ ...decorated, trace_id: traceId, session_id: sessionId, run_id: runId } as A2UISseEventDto);
+        return;
+      }
+      await emit({ ...event, trace_id: traceId } as A2UISseEventDto);
+    };
+
+    // Phase 1 升级：优先通过 QueryEngine.submitStream() 管理流式生命周期
+    // （transcript 写入 + evolution 触发 + token 追踪）；
+    // 若 queryEngine 未实现 submitStream，则回退到直接调用 streamAgent。
+    if (typeof this.queryEngine.submitStream === "function") {
+      await this.queryEngine.submitStream({
+        ...toQueryInput(dto),
+        sessionId,
+        onEvent
+      });
+    } else {
+      await this.streamAgent.runStream({
+        ...toQueryInput(dto),
+        sessionId,
+        onEvent
+      });
+    }
   }
 
   async history(input: { userId: string; sessionId: string; runId?: string; sinceSeq?: number }): Promise<JsonObject> {

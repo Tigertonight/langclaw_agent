@@ -1,6 +1,13 @@
 import { resolveUserWorkspace, type WorkspaceContext } from "../runtime/workspace-context.js";
 import { UserCronStore, type MissedWindowPolicy } from "../cron/user-cron-store.js";
 import { AgentCronJobRunner } from "../cron/agent-job-runner.js";
+import {
+  CRON_TEMPLATES,
+  findTemplate,
+  filterTemplates,
+  applyTemplate,
+  summarizeTemplate
+} from "../cron/cron-templates.js";
 import type { JsonObject, ToolDefinition, ToolMetadata, UserContext } from "../types/agent-contracts.js";
 
 /**
@@ -25,7 +32,11 @@ export function createCronTools(
     createCronDisableTool(cronStore),
     createCronEnableTool(cronStore),
     createCronResumeTool(cronStore),
-    createCronHistoryTool(cronStore)
+    createCronHistoryTool(cronStore),
+    // Phase 5.2 新增：模板 + 状态查询 + 模板快速应用
+    createCronTemplatesTool(),
+    createCronStatusTool(cronStore),
+    createCronApplyTemplateTool(cronStore)
   ];
   // run_now 需要 runner；没注入就不挂这个工具，主路径不会拿到一个会爆的 tool。
   if (runner) tools.push(createCronRunNowTool(cronStore, runner));
@@ -356,6 +367,178 @@ function createCronHistoryTool(store: UserCronStore): ToolDefinition {
           entries: entries.slice().reverse()
         }
       };
+    }
+  };
+}
+
+/* ──────────────────────── Phase 5.2 新增工具 ──────────────────────── */
+
+/**
+ * cron.templates —— 列出预置业务场景模板（汽车经销商：日报/库存/工单/线索/财务）。
+ * 支持按 domain / tag / q 关键字过滤，无需任何用户上下文（read-only 静态数据）。
+ */
+function createCronTemplatesTool(): ToolDefinition {
+  return {
+    name: "cron.templates",
+    description: "列出所有预置的业务场景 cron 模板（汽车经销商：每日日报/库存巡检/超期工单/线索清零/财务异常）。支持按 domain/tag/关键字过滤。",
+    schema: {
+      type: "object",
+      properties: {
+        domain: { type: "string", description: "按业务域过滤：dealer_sales / dealer_inventory / dealer_aftersales / dealer_finance" },
+        tag: { type: "string", description: "按标签过滤：daily / weekly / urgent / report / risk 等" },
+        q: { type: "string", description: "关键字搜索（名称/描述/id）" }
+      }
+    },
+    metadata: READ_META,
+    async execute(args) {
+      const a = (args ?? {}) as JsonObject;
+      const templates = filterTemplates({
+        domain: typeof a.domain === "string" ? a.domain : undefined,
+        tag: typeof a.tag === "string" ? a.tag : undefined,
+        q: typeof a.q === "string" ? a.q : undefined
+      });
+      return {
+        ok: true,
+        tool: "cron.templates",
+        data: {
+          count: templates.length,
+          templates: templates.map(summarizeTemplate)
+        }
+      };
+    }
+  };
+}
+
+/**
+ * cron.status —— 查看某条 cron 的完整 runtime state + 最近执行历史摘要。
+ * 比 cron.history 多返回 runtime state，比 cron.list 更聚焦单条。
+ */
+function createCronStatusTool(store: UserCronStore): ToolDefinition {
+  return {
+    name: "cron.status",
+    description: "查看某条 cron spec 的完整 runtime state（是否暂停/连续失败次数/上次运行结果）和最近执行历史。",
+    schema: {
+      type: "object",
+      required: ["spec_id"],
+      properties: {
+        spec_id: { type: "string" },
+        history_limit: { type: "number", description: "返回最近多少条历史，默认 10，上限 50。" }
+      }
+    },
+    metadata: READ_META,
+    async execute(args, context) {
+      const resolved = resolveWorkspace(context);
+      if ("error" in resolved) return { ok: false, error: resolved.error };
+      const a = (args ?? {}) as JsonObject;
+      const id = String(a.spec_id ?? "");
+      if (!id) return { ok: false, tool: "cron.status", error: "missing_spec_id" };
+      const spec = await store.get(resolved.workspace, id);
+      if (!spec) return { ok: false, tool: "cron.status", error: "not_found", message: `cron spec "${id}" 不存在` };
+      if (spec.user_id !== resolved.userId) return { ok: false, tool: "cron.status", error: "forbidden" };
+      const limit = typeof a.history_limit === "number" ? Math.min(Math.max(1, Math.floor(a.history_limit)), 50) : 10;
+      const history = await store.readHistory(resolved.workspace, id, limit);
+      return {
+        ok: true,
+        tool: "cron.status",
+        data: {
+          spec: {
+            id: spec.id,
+            cron_expr: spec.cron_expr,
+            task: spec.task.slice(0, 120) + (spec.task.length > 120 ? "…" : ""),
+            enabled: spec.enabled,
+            allowed_tools: spec.allowed_tools,
+            max_steps: spec.max_steps,
+            created_at: spec.created_at
+          },
+          state: {
+            paused: spec.state?.paused ?? false,
+            running: spec.state?.running ?? false,
+            last_run_at: spec.state?.last_run_at ?? null,
+            last_status: spec.state?.last_status ?? null,
+            last_summary: spec.state?.last_summary?.slice(0, 300) ?? null,
+            consecutive_failures: spec.state?.consecutive_failures ?? 0
+          },
+          history: history.slice().reverse().map((h) => ({
+            started_at: h.started_at,
+            finished_at: h.finished_at,
+            status: h.status,
+            duration_ms: h.duration_ms,
+            iterations: h.iterations,
+            tool_calls_count: h.tool_calls_count,
+            summary: h.summary.slice(0, 300),
+            error: h.error?.slice(0, 200)
+          }))
+        }
+      };
+    }
+  };
+}
+
+/**
+ * cron.apply_template —— 基于预置模板一键创建 cron spec。
+ * 用户只需传 template_id 即可；支持覆盖 task / max_steps / allowed_tools 等字段。
+ */
+function createCronApplyTemplateTool(store: UserCronStore): ToolDefinition {
+  return {
+    name: "cron.apply_template",
+    description: "基于预置业务模板快速创建 cron spec（传 template_id 即可）。支持覆盖 task/max_steps/allowed_tools 等字段。用 cron.templates 查看可用模板。",
+    schema: {
+      type: "object",
+      required: ["template_id"],
+      properties: {
+        template_id: { type: "string", description: "模板 id，通过 cron.templates 工具查看可用列表" },
+        task: { type: "string", description: "覆盖模板的任务描述（可选）" },
+        allowed_tools: { type: "array", items: { type: "string" }, description: "覆盖工具白名单（可选）" },
+        max_steps: { type: "number", description: "覆盖最大步数（可选）" },
+        total_timeout_ms: { type: "number", description: "覆盖超时毫秒（可选）" },
+        missed_window: { type: "string", description: "skip / catch_up（可选）" }
+      }
+    },
+    metadata: WRITE_META,
+    async execute(args, context) {
+      const resolved = resolveWorkspace(context);
+      if ("error" in resolved) return { ok: false, error: resolved.error };
+      const a = (args ?? {}) as JsonObject;
+      const templateId = String(a.template_id ?? "");
+      if (!templateId) return { ok: false, tool: "cron.apply_template", error: "missing_template_id" };
+      const template = findTemplate(templateId);
+      if (!template) {
+        const availableIds = CRON_TEMPLATES.map((t) => t.id).join(", ");
+        return {
+          ok: false,
+          tool: "cron.apply_template",
+          error: "template_not_found",
+          message: `模板 "${templateId}" 不存在。可用：${availableIds}`
+        };
+      }
+      const overrides: Parameters<typeof applyTemplate>[2] = {};
+      if (typeof a.task === "string") overrides.task = a.task;
+      if (Array.isArray(a.allowed_tools)) overrides.allowed_tools = (a.allowed_tools as string[]).filter((s) => typeof s === "string");
+      if (typeof a.max_steps === "number") overrides.max_steps = Math.floor(a.max_steps);
+      if (typeof a.total_timeout_ms === "number") overrides.total_timeout_ms = Math.floor(a.total_timeout_ms);
+      if (a.missed_window === "catch_up") overrides.missed_window = "catch_up";
+      else if (a.missed_window === "skip") overrides.missed_window = "skip";
+      const input = applyTemplate(template, resolved.userId, overrides);
+      try {
+        const spec = await store.create(resolved.workspace, input);
+        return {
+          ok: true,
+          tool: "cron.apply_template",
+          data: {
+            template: summarizeTemplate(template),
+            spec_id: spec.id,
+            cron_expr: spec.cron_expr,
+            task: spec.task.slice(0, 120)
+          }
+        };
+      } catch (err) {
+        return {
+          ok: false,
+          tool: "cron.apply_template",
+          error: "create_failed",
+          message: err instanceof Error ? err.message : String(err)
+        };
+      }
     }
   };
 }

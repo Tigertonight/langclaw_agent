@@ -1078,7 +1078,20 @@ export function renderChatPage(): string {
       return String(s).replace(/[&<>"']/g, (ch) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
     }
     async function readSse(response, assistantId) {
-      if (!response.ok || !response.body) throw new Error("stream failed");
+      if (!response.ok || !response.body) {
+        let detail = "";
+        try {
+          const payload = await response.clone().json();
+          detail = payload?.message || payload?.error || "";
+        } catch {
+          try {
+            detail = await response.clone().text();
+          } catch {
+            detail = "";
+          }
+        }
+        throw new Error(detail ? "stream failed: " + detail : "stream failed (" + response.status + ")");
+      }
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -1936,8 +1949,317 @@ export function renderChatPage(): string {
       if (view.component === "LeaveRequestForm") return renderMaterialLeaveRequestForm(surface, props);
       if (view.component === "ApprovalFlow" || view.component === "ApprovalCard") return renderMaterialApproval(surface, props, view.actions || []);
       if (view.component === "TaskResumeCard") return renderMaterialTaskResume(surface, props);
+      /* ─── Phase 4 Workbench Surface 6 类 ─── */
+      if (view.component === "ToolCatalogSurface") return renderToolCatalogSurface(surface, props);
+      if (view.component === "RiskListSurface") return renderRiskListSurface(surface, props);
+      if (view.component === "MetricCardsSurface") return renderMetricCardsSurface(surface, props);
+      if (view.component === "EvidenceSurface") return renderEvidenceSurface(surface, props);
+      if (view.component === "TaskTrackingSurface") return renderTaskTrackingSurface(surface, props);
+      if (view.component === "PendingActionSurface") return renderPendingActionSurface(surface, props);
       return null;
     }
+    /* ──────────────────────────────────────────────────────────────
+     * Phase 4 Workbench：6 类 Surface 渲染函数
+     * ────────────────────────────────────────────────────────────── */
+
+    /**
+     * ToolCatalogSurface —— 工具目录卡片
+     * props: { title?, tools: [{name, description, risk_level?, category?}] }
+     */
+    function renderToolCatalogSurface(_surface, props) {
+      const tools = Array.isArray(props.tools) ? props.tools : [];
+      if (!tools.length) return null;
+      const card = materialCard(props.title || "可用工具", "已过滤当前用户权限");
+      const list = document.createElement("div");
+      list.className = "material-list";
+      tools.slice(0, 20).forEach((tool) => {
+        const item = document.createElement("div");
+        item.className = "material-item";
+        const title = document.createElement("div");
+        title.className = "material-item-title";
+        title.textContent = clean(tool.name || "-");
+        const row = document.createElement("div");
+        row.className = "material-row";
+        if (tool.category) row.appendChild(materialChip(clean(tool.category)));
+        if (tool.risk_level) {
+          const riskChip = materialChip(clean(tool.risk_level));
+          // 高风险用红色文字（内联 style 最轻量）
+          if (/high|危|拒|reject/i.test(tool.risk_level)) riskChip.style.color = "#c0392b";
+          row.appendChild(riskChip);
+        }
+        const desc = document.createElement("div");
+        desc.className = "material-subtle";
+        desc.textContent = clean(tool.description || "");
+        item.append(title, row);
+        if (tool.description) item.appendChild(desc);
+        list.appendChild(item);
+      });
+      card.appendChild(list);
+      return card;
+    }
+
+    /**
+     * RiskListSurface —— 风险列表卡片
+     * props: { title?, risks: [{id, level, message, tool?, mitigated?}] }
+     */
+    function renderRiskListSurface(_surface, props) {
+      const risks = Array.isArray(props.risks) ? props.risks : [];
+      if (!risks.length) return null;
+      const unmitigated = risks.filter((r) => !r.mitigated);
+      const card = materialCard(props.title || "风险提示", unmitigated.length ? unmitigated.length + " 项待处理" : "全部已处置");
+      const list = document.createElement("div");
+      list.className = "material-list";
+      risks.slice(0, 12).forEach((risk) => {
+        const item = document.createElement("div");
+        item.className = "material-item";
+        const row = document.createElement("div");
+        row.className = "material-row";
+        const levelChip = materialChip(clean(risk.level || "unknown"));
+        const RISK_COLORS = { high: "#c0392b", critical: "#c0392b", medium: "#d68910", low: "#27ae60" };
+        const color = RISK_COLORS[String(risk.level || "").toLowerCase()];
+        if (color) { levelChip.style.color = color; levelChip.style.borderColor = color + "44"; }
+        row.appendChild(levelChip);
+        if (risk.tool) row.appendChild(materialChip(clean(risk.tool)));
+        if (risk.mitigated) row.appendChild(materialChip("已处置"));
+        const msg = document.createElement("div");
+        msg.className = "material-subtle";
+        msg.textContent = clean(risk.message || risk.id || "");
+        item.append(row, msg);
+        list.appendChild(item);
+      });
+      card.appendChild(list);
+      return card;
+    }
+
+    /**
+     * MetricCardsSurface —— 指标卡片组
+     * props: { title?, metrics: [{label, value, unit?, trend?, delta?}] }
+     */
+    function renderMetricCardsSurface(_surface, props) {
+      const metrics = Array.isArray(props.metrics) ? props.metrics : [];
+      if (!metrics.length) return null;
+      const card = materialCard(props.title || "关键指标", "");
+      const grid = document.createElement("div");
+      grid.className = "material-metrics";
+      // MetricCards 支持最多 6 格
+      metrics.slice(0, 6).forEach((m) => {
+        const node = materialMetric(
+          (m.value !== undefined && m.value !== null ? String(m.value) : "-") + (m.unit ? m.unit : ""),
+          clean(m.label || "-")
+        );
+        // 趋势/变化量附在 label 下方
+        if (m.delta !== undefined || m.trend) {
+          const trend = document.createElement("span");
+          trend.className = "material-chip";
+          trend.style.marginTop = "4px";
+          const sign = Number(m.delta) > 0 ? "+" : "";
+          trend.textContent = m.trend ? clean(m.trend) : sign + String(m.delta);
+          trend.style.color = Number(m.delta) >= 0 ? "#27ae60" : "#c0392b";
+          node.appendChild(trend);
+        }
+        grid.appendChild(node);
+      });
+      card.appendChild(grid);
+      return card;
+    }
+
+    /**
+     * EvidenceSurface —— 证据/引用片段列表
+     * props: { title?, items: [{title, source, quote, score?}] }
+     */
+    function renderEvidenceSurface(_surface, props) {
+      const items = Array.isArray(props.items) ? props.items : [];
+      if (!items.length) return null;
+      // 复用 renderSourceDisclosure，注入 items
+      const sources = items.map((item) => ({
+        title: item.title,
+        source: item.source,
+        quote: item.quote,
+        score: typeof item.score === "number" ? item.score : undefined
+      }));
+      const card = materialCard(props.title || "参考依据", sources.length + " 条证据");
+      const disclosure = renderSourceDisclosure(sources);
+      if (disclosure) card.appendChild(disclosure);
+      return card;
+    }
+
+    /**
+     * TaskTrackingSurface —— 任务追踪看板
+     * props: { title?, tasks: [{id, subject, status, priority?, owner?, due_date?, progress?}] }
+     */
+    function renderTaskTrackingSurface(surface, props) {
+      const tasks = Array.isArray(props.tasks) ? props.tasks : [];
+      if (!tasks.length) return null;
+      const done = tasks.filter((t) => /done|completed|closed|已完成/.test(String(t.status || ""))).length;
+      const card = materialCard(props.title || "任务跟踪", done + "/" + tasks.length + " 已完成");
+      // 总进度条
+      const progress = document.createElement("div");
+      progress.className = "material-progress";
+      const bar = document.createElement("span");
+      bar.style.width = (tasks.length ? Math.round(done / tasks.length * 100) : 0) + "%";
+      progress.appendChild(bar);
+      card.appendChild(progress);
+      const list = document.createElement("div");
+      list.className = "material-list";
+      tasks.slice(0, 10).forEach((task) => {
+        const item = document.createElement("div");
+        item.className = "material-item";
+        const title = document.createElement("div");
+        title.className = "material-item-title";
+        title.textContent = clean(task.subject || task.id || "未命名任务");
+        const row = document.createElement("div");
+        row.className = "material-row";
+        const statusLabel = String(task.status || "unknown");
+        const statusChip = materialChip(clean(statusLabel));
+        if (/done|completed|已完成/i.test(statusLabel)) statusChip.style.color = "#27ae60";
+        else if (/blocked|阻塞/i.test(statusLabel)) statusChip.style.color = "#c0392b";
+        row.appendChild(statusChip);
+        if (task.priority) row.appendChild(materialChip(clean(task.priority)));
+        if (task.owner) row.appendChild(materialChip("负责人：" + clean(task.owner)));
+        if (task.due_date) row.appendChild(materialChip("截止：" + clean(task.due_date)));
+        item.append(title, row);
+        // 单任务进度条
+        if (typeof task.progress === "number") {
+          const tp = document.createElement("div");
+          tp.className = "material-progress";
+          const tb = document.createElement("span");
+          tb.style.width = Math.max(0, Math.min(100, task.progress)) + "%";
+          tp.appendChild(tb);
+          item.appendChild(tp);
+        }
+        // TaskTracking 支持继续/忽略动作按钮（可选）
+        if (task.id && (task.resumable || task.allow_resume)) {
+          const actionRow = document.createElement("div");
+          actionRow.className = "material-actions";
+          const ctx = { task_id: task.id, task_list_id: task.task_list_id || "" };
+          actionRow.append(
+            materialActionButton("继续", "task.resume.select", ctx, surface),
+            materialActionButton("忽略", "task.resume.ignore", ctx, surface, true)
+          );
+          item.appendChild(actionRow);
+        }
+        list.appendChild(item);
+      });
+      card.appendChild(list);
+      return card;
+    }
+    /**
+     * PendingActionSurface —— 待确认执行动作面板（Plan Mode / Ask 权限层入口）
+     * props: {
+     *   title?,
+     *   description?,
+     *   actions: [{
+     *     id, tool, args_summary?, risk_level?, reason?, expires_at?,
+     *     allow_confirm?, allow_reject?, allow_modify?
+     *   }]
+     * }
+     *
+     * 对标 Claude Code 的 ask/deny 权限层：中高风险操作不直接执行，
+     * 先展示在此面板，等待用户点击"确认执行"或"拒绝"。
+     * 点击后通过 dispatchA2UIAction 发到 /api/a2ui/action（runtime.pending_action.*）。
+     */
+    function renderPendingActionSurface(surface, props) {
+      const actions = Array.isArray(props.actions) ? props.actions : [];
+      if (!actions.length) return null;
+      const pendingCount = actions.filter((a) => !a.resolved).length;
+      const card = materialCard(
+        props.title || "待确认操作",
+        pendingCount ? pendingCount + " 项等待确认" : "全部已处理"
+      );
+      // 可选：面板描述文字（解释为何需要确认）
+      if (props.description) {
+        const desc = document.createElement("div");
+        desc.className = "material-subtle";
+        desc.style.lineHeight = "1.6";
+        desc.textContent = clean(String(props.description));
+        card.appendChild(desc);
+      }
+      const list = document.createElement("div");
+      list.className = "material-list";
+      actions.slice(0, 10).forEach((action) => {
+        const resolved = !!action.resolved;
+        const item = document.createElement("div");
+        item.className = "material-item";
+        if (resolved) item.style.opacity = "0.55";
+        // 工具名称行
+        const title = document.createElement("div");
+        title.className = "material-item-title";
+        title.textContent = clean(action.tool || "未知操作");
+        // 元信息 chip 行：risk_level + expires_at + action.id
+        const row = document.createElement("div");
+        row.className = "material-row";
+        if (action.risk_level) {
+          const riskChip = materialChip(clean(action.risk_level));
+          const RISK_COLORS = { high: "#c0392b", critical: "#c0392b", medium: "#d68910", low: "#27ae60" };
+          const color = RISK_COLORS[String(action.risk_level).toLowerCase()];
+          if (color) { riskChip.style.color = color; riskChip.style.borderColor = color + "44"; }
+          row.appendChild(riskChip);
+        }
+        if (action.expires_at) row.appendChild(materialChip("过期：" + clean(String(action.expires_at))));
+        if (action.id) row.appendChild(materialChip("ID：" + clean(String(action.id))));
+        item.append(title, row);
+        // 参数摘要（可选）
+        if (action.args_summary) {
+          const argSummary = document.createElement("div");
+          argSummary.className = "material-subtle";
+          argSummary.style.fontFamily = "ui-monospace, Menlo, Consolas, monospace";
+          argSummary.style.fontSize = "12px";
+          argSummary.textContent = clean(String(action.args_summary).slice(0, 200));
+          item.appendChild(argSummary);
+        }
+        // 原因说明
+        if (action.reason) {
+          const reasonEl = document.createElement("div");
+          reasonEl.className = "material-action";
+          reasonEl.textContent = "需要确认：" + clean(String(action.reason));
+          item.appendChild(reasonEl);
+        }
+        // 操作按钮（已处理则不再显示）
+        if (!resolved) {
+          const actionRow = document.createElement("div");
+          actionRow.className = "material-actions";
+          const actionId = String(action.id || "");
+          const canConfirm = action.allow_confirm !== false;
+          const canReject = action.allow_reject !== false;
+          if (canConfirm) {
+            actionRow.appendChild(
+              materialActionButton("确认执行", "runtime.pending_action.confirm", { pending_action_id: actionId }, surface)
+            );
+          }
+          if (action.allow_modify) {
+            actionRow.appendChild(
+              materialActionButton("修改参数", "runtime.pending_action.modify", { pending_action_id: actionId }, surface, true)
+            );
+          }
+          if (canReject) {
+            actionRow.appendChild(
+              materialActionButton("拒绝", "runtime.pending_action.reject", { pending_action_id: actionId }, surface, true)
+            );
+          }
+          item.appendChild(actionRow);
+        } else {
+          // 已处理状态标记
+          const resolvedBadge = document.createElement("div");
+          resolvedBadge.className = "material-chip";
+          resolvedBadge.style.color = "#27ae60";
+          resolvedBadge.textContent = action.resolved_status === "rejected" ? "已拒绝" : "已确认";
+          item.appendChild(resolvedBadge);
+        }
+        list.appendChild(item);
+      });
+      card.appendChild(list);
+      // 底部提示：Plan Mode 状态
+      if (props.plan_mode) {
+        const hint = document.createElement("div");
+        hint.className = "material-subtle";
+        hint.style.marginTop = "4px";
+        hint.style.fontSize = "12px";
+        hint.textContent = "当前处于 Plan Mode，写操作和外部副作用需要手动确认后执行。";
+        card.appendChild(hint);
+      }
+      return card;
+    }
+
     function renderMaterialVehicleProgress(surface, props) {
       const orders = Array.isArray(props.orders) ? props.orders : [];
       const summary = props.summary || {};

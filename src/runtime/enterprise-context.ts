@@ -8,6 +8,7 @@ import { TaskStore, summarizeTask } from "../tasks/task-store.js";
 import { TaskRetriever } from "../tasks/task-retriever.js";
 import { loadDisabledEvolutionTargets } from "../evolution/governance.js";
 import { MemoryRetriever } from "../memory/memory-retriever.js";
+import { MemoryIndex } from "../memory/memory-index.js";
 import type { JsonObject, UserContext } from "../types/agent-contracts.js";
 
 const ADMIN_FILES = ["AGENTS.md", "SOUL.md", "TOOLS.md", "POLICY.md"];
@@ -18,13 +19,15 @@ export class EnterpriseContextProvider {
   private readonly taskStore: TaskStore;
   private readonly taskRetriever: TaskRetriever;
   private readonly memoryRetriever: MemoryRetriever;
+  private readonly memoryIndex: MemoryIndex;
 
   constructor({ workspaceDir = "workspace" }: { workspaceDir?: string } = {}) {
     this.workspaceDir = resolveProjectPath(workspaceDir);
     this.memoryDir = path.join(this.workspaceDir, "memory");
     this.taskStore = new TaskStore();
     this.taskRetriever = new TaskRetriever({ taskStore: this.taskStore });
-    this.memoryRetriever = new MemoryRetriever({ taskStore: this.taskStore });
+    this.memoryIndex = new MemoryIndex();
+    this.memoryRetriever = new MemoryRetriever({ taskStore: this.taskStore, memoryIndex: this.memoryIndex });
   }
 
   async load({ user, workspace = resolveUserWorkspace(user), message, sessionId }: { user: UserContext; workspace?: WorkspaceContext; message?: string; sessionId?: string }): Promise<unknown> {
@@ -34,6 +37,10 @@ export class EnterpriseContextProvider {
     const evolution = await this.loadEvolutionContext(workspace);
     const disabled = await loadDisabledEvolutionTargets(workspace);
     userMemory.items = userMemory.items.filter((item) => !disabled.has(item.key) && !disabled.has(`memory:${item.key}`));
+
+    // Phase 2: 加载 MEMORY.md 索引摘要，用于 context 组装时快速了解记忆分类分布
+    const memoryIndexSummary = await this.memoryIndex.load(workspace);
+
     const activeTasks = await this.taskStore.active(workspace, 8);
     const relevantTasks = typeof message === "string" && message.trim()
       ? await this.taskRetriever.retrieve(workspace, message, 5)
@@ -49,6 +56,12 @@ export class EnterpriseContextProvider {
       user_memory: userMemory,
       memory: {
         relevant: relevantMemory,
+        // Phase 2: MEMORY.md 索引摘要，暴露给 context assembler 和 debug surface
+        index: memoryIndexSummary ? {
+          item_count: memoryIndexSummary.item_count,
+          updated_at: memoryIndexSummary.updated_at,
+          categories: memoryIndexSummary.categories
+        } : null,
         usage_grounding: {
           query: message ?? "",
           restored_memory_count: relevantMemory.filter((item) => item.source === "memory").length,

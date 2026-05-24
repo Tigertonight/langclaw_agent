@@ -12,6 +12,8 @@ import { TokenAuthenticator, AuthError, type AuthContext } from "../security/aut
 import { RateLimiter, RateLimitError, readClientIp } from "../security/rate-limiter.js";
 import { sharedMetrics, logEvent, newTraceId, startRequest, type RequestContext } from "../security/observability.js";
 import type { JsonObject } from "../types/agent-contracts.js";
+// Phase 4: Tool Catalog
+import { ToolCatalog } from "../tools/tool-catalog.js";
 
 interface WecomUserRecord extends JsonObject {
   userid?: string;
@@ -264,6 +266,68 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
     } catch (error) {
       sendJson(res, 500, {
         error: "internal_error",
+        message: error instanceof Error ? error.message : "unknown error"
+      });
+    }
+    return;
+  }
+
+  // Phase 4: Tool Catalog API
+  if (req.method === "GET" && pathname === "/api/tools/catalog") {
+    try {
+      const userId = (typeof req.headers["x-user-id"] === "string" ? req.headers["x-user-id"] : url.searchParams.get("user_id")) || undefined;
+      const domain = url.searchParams.get("domain") || undefined;
+      const planMode = url.searchParams.get("plan_mode") === "true";
+      const query = url.searchParams.get("q") || undefined;
+
+      let userCtx;
+      if (userId) {
+        try {
+          userCtx = await userContextResolver.resolve({ userId });
+        } catch {
+          // 匿名用户，仅返回无权限过滤的目录
+        }
+      }
+
+      const tools = toolRegistry.list({ user: userCtx });
+      const catalog = new ToolCatalog();
+      const result = catalog.build(tools, userCtx, { planMode });
+
+      // 可选：按业务域过滤
+      const filtered = domain
+        ? catalog.filter(result, { domain: domain as Parameters<ToolCatalog["filter"]>[1]["domain"] })
+        : result.entries;
+
+      const body = JSON.stringify({
+        ok: true,
+        plan_mode: planMode,
+        user_id: userId ?? null,
+        total: result.total,
+        filtered_count: domain ? filtered.length : result.total,
+        domains: result.domains,
+        plan_mode_allowed_count: result.plan_mode_allowed.length,
+        ask_tools_count: result.ask_tools.length,
+        deny_tools_count: result.deny_tools.length,
+        entries: domain ? filtered : result.entries,
+        ...(query ? { query_filtered: catalog.filter(result, { query }) } : {})
+      }, null, 2);
+
+      const etag = `"W/${createHash("sha1").update(body).digest("hex").slice(0, 16)}"`;
+      const ifNoneMatch = req.headers["if-none-match"];
+      if (typeof ifNoneMatch === "string" && ifNoneMatch === etag) {
+        res.writeHead(304, { ETag: etag });
+        res.end();
+        return;
+      }
+      res.writeHead(200, {
+        "Content-Type": "application/json; charset=utf-8",
+        ETag: etag,
+        "Cache-Control": "private, max-age=30"
+      });
+      res.end(body);
+    } catch (error) {
+      sendJson(res, 500, {
+        error: "catalog_failed",
         message: error instanceof Error ? error.message : "unknown error"
       });
     }
