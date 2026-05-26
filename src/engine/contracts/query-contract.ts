@@ -144,3 +144,18 @@ export interface QueryResourceSchema {
   /** 默认排序规则 */
   defaultSort: QuerySort[];
 }
+
+// ─── Scope Sentinel ──────────────────────────────────────────────────────────
+
+/**
+ * Scope sentinel 字符串。
+ *
+ * 业务域用于标记 filter value 表示"当前用户的某种作用域"的占位符，
+ * 例如 "__CURRENT_USER_REPORTS__"、"__CURRENT_USER_SUBORDINATES__"。
+ *
+ * agent-state / agent-task-state 在判断查询是否属于"按当前用户的下属范围"
+ * 时会检查 filter.value 是否命中任一已注册的 scope sentinel。
+ *
+ * 多个域的 sentinel 会合并去重。
+ */
+export type ScopeSentinel = string;

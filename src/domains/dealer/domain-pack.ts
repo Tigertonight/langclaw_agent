@@ -6,7 +6,7 @@
  * intent code 映射、fact key 映射、工具标签、路由提示词等。
  */
 
-import type { DomainPack, AgenticFallbackDefinition, ReportComposerDefinition, EvidenceInferenceDefinition, SkillMappingDefinition, IntentCodeInferenceFn } from "../types.js";
+import type { DomainPack, AgenticFallbackDefinition, ReportComposerDefinition, EvidenceInferenceDefinition, SkillMappingDefinition, IntentCodeInferenceFn, UserFieldSourceDefinition } from "../types.js";
 import { registerComponentMapping } from "../../a2ui/openui-bridge.js";
 import { DEALER_RESOURCES, DEALER_FIELD_LABELS } from "./resources.js";
 import { DEALER_COMMANDS } from "./commands.js";
@@ -558,6 +558,16 @@ export const dealerPack: DomainPack = {
         };
       },
     },
+  ],
+
+  // ── User field sources（intent manifest param_mapping source 注册） ──
+  userFieldSources: [
+    {
+      name: "default_store",
+      read(user) {
+        return (user as { default_store?: string } | undefined)?.default_store ?? null;
+      },
+    } satisfies UserFieldSourceDefinition,
   ],
 
   // ── 场景注册（通过 register() 逃生口） ──

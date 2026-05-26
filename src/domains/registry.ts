@@ -27,6 +27,7 @@ import type {
   AgenticFallbackDefinition,
   ReportComposerDefinition,
   EvidenceInferenceDefinition,
+  FactExtractorDefinition,
   RuntimePluginDefinition,
   LocalPolicyQuestionPattern,
   LocalPlannerHeuristic,
@@ -35,6 +36,7 @@ import type {
   FilterTransformFn,
   PermissionRuleFn,
   ToolPermissionPolicy,
+  UserFieldSourceDefinition,
   MutableIntentRegistry,
   DeterministicRuleCollector,
   CatalogDomainCollector,
@@ -165,6 +167,12 @@ export class DomainRegistry {
   readonly allKnowledgeChunkHeadingHints: import("./types.js").KnowledgeChunkHeadingHint[] = [];
   /** 所有 domain 注册的重要句关键词（去重） */
   readonly allImportantSentenceKeywords: string[] = [];
+  /** 所有 domain 注册的 fact extractor（按 resource 路由） */
+  readonly allFactExtractors: FactExtractorDefinition[] = [];
+  /** 所有 domain 注册的 scope sentinel（去重） */
+  readonly allScopeSentinels: string[] = [];
+  /** 所有 domain 注册的 user field source（按 name 路由） */
+  readonly allUserFieldSources: UserFieldSourceDefinition[] = [];
   /** 已注册 DomainPack 的元数据快照，用于动态加载和冲突诊断。 */
   readonly domainMetadata: Array<{ id: string; name: string; version: string; conflictPolicy: string; order: number }> = [];
 
@@ -483,6 +491,9 @@ export class DomainRegistry {
     this.allDangerousQuestionKeywords.length = 0;
     this.allKnowledgeChunkHeadingHints.length = 0;
     this.allImportantSentenceKeywords.length = 0;
+    this.allFactExtractors.length = 0;
+    this.allScopeSentinels.length = 0;
+    this.allUserFieldSources.length = 0;
     this.domainMetadata.length = 0;
     // 清空 object 类型的收集器
     for (const key of Object.keys(this.allExtractors)) delete this.allExtractors[key];
@@ -829,6 +840,25 @@ export class DomainRegistry {
             this.allImportantSentenceKeywords.push(word);
           }
         }
+      }
+
+      // Fact Extractors（按 resource 路由）
+      if (pack.factExtractors) {
+        this.allFactExtractors.push(...pack.factExtractors);
+      }
+
+      // Scope Sentinels（去重）
+      if (pack.scopeSentinels) {
+        for (const sentinel of pack.scopeSentinels) {
+          if (!this.allScopeSentinels.includes(sentinel)) {
+            this.allScopeSentinels.push(sentinel);
+          }
+        }
+      }
+
+      // User Field Sources（按 name 路由）
+      if (pack.userFieldSources) {
+        this.allUserFieldSources.push(...pack.userFieldSources);
       }
     }
 

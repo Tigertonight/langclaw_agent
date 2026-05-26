@@ -34,12 +34,14 @@ import type {
   ExtractorFn,
   IntentCodeInferenceFn,
   CorrectionDeltaRule,
+  UserFieldSourceDefinition,
 } from "./intent-contract.js";
 
 import type {
   DomainQueryAdapter,
   QueryResourceSchema,
   FilterTransformFn,
+  ScopeSentinel,
 } from "./query-contract.js";
 
 import type {
@@ -66,6 +68,7 @@ import type {
 
 import type {
   EvidenceInferenceDefinition,
+  FactExtractorDefinition,
 } from "./evidence-contract.js";
 
 import type {
@@ -245,6 +248,42 @@ export interface DomainPack {
    * DomainRegistry 会自动合并所有域的 factKeyMappings 到全局映射。
    */
   factKeyMappings?: Record<string, string>;
+
+  /**
+   * Fact 提取器列表（按 resource 路由）。
+   *
+   * 与 factKeyMappings（一个 resource 对应一个 fact key）互补：FactExtractor 用于
+   * 那些需要从一次工具结果中派生多个 fact 的 resource（例如 employees 同时产出
+   * direct_leader / direct_reports / org_profile）。
+   *
+   * runtime 在收到 query_business_data 结果时，先按 resource 查找已注册的
+   * FactExtractor；命中即由 extractor 接管，跳过通用 factKey 路径。
+   * DomainRegistry 会自动合并所有域的 factExtractors 到全局列表。
+   */
+  factExtractors?: FactExtractorDefinition[];
+
+  /**
+   * 作用域 sentinel 字符串列表。
+   *
+   * 业务用作 filter value 的占位符，标记"按当前用户的某种作用域过滤"。
+   * 例如 dealer/HR 的 "__CURRENT_USER_REPORTS__"、"__CURRENT_USER_SUBORDINATES__"。
+   *
+   * agent-state 在判断查询是否属于"按当前用户的下属范围"时会检查 filter.value
+   * 是否命中任一已注册 sentinel。多个域的 sentinel 会合并去重。
+   */
+  scopeSentinels?: ScopeSentinel[];
+
+  /**
+   * User Field Source 定义列表。
+   *
+   * intent manifest 的 param_mapping 支持 `source: "<name>"` 从用户上下文取值。
+   * 引擎内置 "message" / "user_id"；业务专属字段（dealer 的 default_store 等）
+   * 通过此契约由 DomainPack 声明。
+   *
+   * intent-query-handler 的 valueForMapping 在内置 source 不命中时按 name 查找
+   * 已注册的 UserFieldSource，调用其 read() 返回用户字段值。
+   */
+  userFieldSources?: UserFieldSourceDefinition[];
 
   /**
    * LLM 答案生成系统提示词片段。

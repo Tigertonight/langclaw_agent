@@ -25,6 +25,7 @@ export type {
   DeterministicRuleDefinition,
   IntentCodeInferenceFn,
   CorrectionDeltaRule,
+  UserFieldSourceDefinition,
 } from "../engine/contracts/intent-contract.js";
 
 // ── Query Contract ───────────────────────────────────────────────────────────
@@ -39,6 +40,7 @@ export type {
   AnswerPostProcessInput,
   DomainQueryAdapter,
   QueryResourceSchema,
+  ScopeSentinel,
 } from "../engine/contracts/query-contract.js";
 
 // ── Tool Contract ────────────────────────────────────────────────────────────
@@ -73,6 +75,9 @@ export type {
 // ── Evidence Contract ────────────────────────────────────────────────────────
 export type {
   EvidenceInferenceDefinition,
+  FactExtractorDefinition,
+  FactExtractionInput,
+  ExtractedFact,
 } from "../engine/contracts/evidence-contract.js";
 
 // ── Runtime Plugin Contract ──────────────────────────────────────────────────

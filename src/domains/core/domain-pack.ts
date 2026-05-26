@@ -5,7 +5,8 @@
  * 同时承载"核心业务"（组织架构、客户、订单、销售报表）的 intent 推断逻辑。
  */
 
-import type { DomainPack, IntentCodeInferenceFn, DomainQueryAdapter, EvidenceInferenceDefinition } from "../types.js";
+import type { DomainPack, IntentCodeInferenceFn, DomainQueryAdapter, EvidenceInferenceDefinition, FactExtractorDefinition, ExtractedFact } from "../types.js";
+import type { JsonObject } from "../../types/agent-contracts.js";
 import { CORE_RESOURCES, CORE_FIELD_LABELS } from "./resources.js";
 import { CORE_COMMANDS } from "./commands.js";
 import { CORE_DETERMINISTIC_RULES } from "./deterministic-rules.js";
@@ -153,6 +154,44 @@ export const corePack: DomainPack = {
   // ── 报告组装器（用于 generateAnswer 的 tool-specific 答案模板） ──
   reportComposers: CORE_REPORT_COMPOSERS,
 
+  // ── 作用域 sentinel（按当前用户作用域过滤的 filter value 占位符） ──
+  scopeSentinels: ["__CURRENT_USER_REPORTS__", "__CURRENT_USER_SUBORDINATES__"],
+
+  // ── Fact extractor（employees 资源的多 fact 派生） ──
+  factExtractors: [
+    {
+      resource: "employees",
+      extract({ data }) {
+        const rows = Array.isArray(data.rows) ? (data.rows as JsonObject[]).filter(isObject) : [];
+        const facts: ExtractedFact[] = [];
+        if (data.operation === "aggregate") {
+          facts.push({ key: "aggregate_metric", text: summarizeEmployeeData(data) });
+        }
+        const hasReportingProfile = rows.some((row) => {
+          const reporting = isObject(row.reporting) ? row.reporting : {};
+          const directLeaderProfiles = Array.isArray(row.direct_leader_profiles) ? row.direct_leader_profiles : [];
+          return directLeaderProfiles.length > 0 || reporting.manager_profile || reporting.store_manager_profile;
+        });
+        if (hasReportingProfile) {
+          facts.push({ key: "direct_leader", text: "已查询到直属上级或汇报关系信息。" });
+        }
+        const query = isObject(data.query) ? data.query : {};
+        const queryFilters = Array.isArray(query.filters) ? (query.filters as JsonObject[]).filter(isObject) : [];
+        if (rows.length > 1 || queryFilters.some((filter) => filter.field === "direct_leader")) {
+          facts.push({ key: "direct_reports", text: `已查询到 ${rows.length} 名下级或相关员工。` });
+        }
+        const hasOrgProfile = rows.some((row) => row.department_name || row.position || row.main_department || row.department);
+        if (hasOrgProfile) {
+          facts.push({ key: "org_profile", text: "已查询到员工所属组织、岗位或部门信息。" });
+        }
+        if (!facts.length) {
+          facts.push({ key: "org_profile", text: summarizeEmployeeData(data) });
+        }
+        return facts;
+      },
+    } satisfies FactExtractorDefinition,
+  ],
+
   // ── 证据推断函数（用于 agent-task-state 的 inferRequiredFacts） ──
   evidenceInferenceFns: [
     {
@@ -249,3 +288,13 @@ export const corePack: DomainPack = {
     { questionKeyword: "权限", matchHeadings: ["权限", "最小权限", "客户数据访问"] },
   ],
 };
+
+function isObject(value: unknown): value is JsonObject {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function summarizeEmployeeData(data: JsonObject): string {
+  if (data.operation === "aggregate") return `员工统计完成，匹配 ${data.total ?? 0} 条记录。`;
+  const rows = Array.isArray(data.rows) ? data.rows : [];
+  return `员工查询完成，匹配 ${data.total ?? 0} 条记录，返回 ${rows.length} 条。`;
+}

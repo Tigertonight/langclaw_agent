@@ -23,7 +23,7 @@ import type {
 } from "../types/agent-contracts.js";
 import type { QueryAdapterRegistry } from "../domains/query-adapter-registry.js";
 import type { FilterTransformFn, PermissionRuleFn } from "../domains/types.js";
-import { getFieldLabelFromRegistry } from "../domains/runtime-registry.js";
+import { getFieldLabelFromRegistry, readUserFieldFromRegistry } from "../domains/runtime-registry.js";
 import { translateTimeRangeToIso, formatLocalDate, extractMonthToken } from "../domains/shared/time-utils.js";
 
 interface AnswerLLM {
@@ -605,7 +605,10 @@ function valueForMapping({ paramName, params, message, user, rule }: {
 }): unknown {
   if (rule.source === "message") return params?.[paramName] ?? String(message ?? "");
   if (rule.source === "user_id") return user?.id ?? null;
-  if (rule.source === "default_store") return user?.default_store ?? null;
+  if (typeof rule.source === "string") {
+    const fromRegistry = readUserFieldFromRegistry(rule.source, user);
+    if (fromRegistry !== undefined) return fromRegistry ?? null;
+  }
   return params?.[paramName];
 }
 

@@ -6,7 +6,7 @@
  * DomainPack 通过此协议声明路由规则，Engine 的 IntentRouter 消费这些规则。
  */
 
-import type { JsonObject, JsonValue } from "./base-types.js";
+import type { JsonObject, JsonValue, UserContext } from "./base-types.js";
 
 // ─── Extractor ───────────────────────────────────────────────────────────────
 
@@ -117,4 +117,25 @@ export interface CorrectionDeltaRule {
   setValue?: JsonValue | null;
   /** 可选：匹配时设置的目标字段列表 */
   setFields?: string[];
+}
+
+// ─── User Field Source ───────────────────────────────────────────────────────
+
+/**
+ * User Field Source 定义。
+ *
+ * intent manifest 的 param_mapping 支持 `source: "<name>"` 形式从用户上下文取值
+ * （如 `source: "user_id"` → `user.id`，`source: "default_store"` → `user.default_store`）。
+ *
+ * 引擎内置 "message" / "user_id" 两个通用 source；业务专属字段（dealer 的
+ * default_store、其他域的部门、岗位等）通过此契约由 DomainPack 声明。
+ *
+ * intent-query-handler 的 valueForMapping 在内置 source 不命中时会按 name
+ * 查找已注册的 UserFieldSource，调用其 read() 返回对应的用户字段值。
+ */
+export interface UserFieldSourceDefinition {
+  /** mapping rule 中的 source 名称，如 "default_store" */
+  name: string;
+  /** 从用户上下文读取字段值。返回 undefined / null 表示无值。 */
+  read(user: UserContext | undefined): JsonValue | null | undefined;
 }

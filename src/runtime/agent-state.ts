@@ -1,4 +1,4 @@
-import { readableResourceNameFromRegistry, getFactKeyFromRegistry, isAnalysisIntentCode, inferEvidenceFactsFromRegistry } from "../domains/runtime-registry.js";
+import { readableResourceNameFromRegistry, getFactKeyFromRegistry, isAnalysisIntentCode, inferEvidenceFactsFromRegistry, extractFactsForResource, isScopedToCurrentUser } from "../domains/runtime-registry.js";
 import type { JsonObject, Route, SkillDefinition, ToolCall, ToolPlan, ToolResult, UserContext } from "../types/agent-contracts.js";
 import type { KnowledgeSearchResult } from "../rag/local-knowledge-base.js";
 
@@ -265,8 +265,9 @@ function extractFactsFromToolResult(result: ToolResult): AgentFact[] {
   }
   if (result.tool !== "query_business_data") return [];
   const data = result.data ?? {};
-  // employees 有特殊的多 fact 提取逻辑
-  if (data.resource === "employees") return extractEmployeeFacts(data);
+  // 优先使用 registry 中注册的 FactExtractor（域特定的多 fact 提取）
+  const extracted = extractFactsForResource(data);
+  if (extracted) return extracted;
   // 通用域资源 fact 提取：通过 registry 的 factKeyMappings 查找 factKey
   const resourceStr = String(data.resource ?? "");
   const factKey = getFactKeyFromRegistry(resourceStr);
@@ -275,7 +276,7 @@ function extractFactsFromToolResult(result: ToolResult): AgentFact[] {
     const label = readableResourceNameFromRegistry(resourceStr, "业务数据");
     const facts: AgentFact[] = [{ key: effectiveKey, text: summarizeBusinessData(data, label) }];
     const query = isObject(data.query) ? data.query : {};
-    if (isScopedToReports(query.filters)) {
+    if (isScopedToCurrentUser(query.filters)) {
       facts.push({ key: "direct_reports", text: `已按当前用户的下属范围查询${label}。` });
     }
     return facts;
@@ -286,44 +287,12 @@ function extractFactsFromToolResult(result: ToolResult): AgentFact[] {
     const key = data.operation === "aggregate" ? "aggregate_metric" : "business_status";
     const facts: AgentFact[] = [{ key, text: summarizeBusinessData(data, label) }];
     const query = isObject(data.query) ? data.query : {};
-    if (isScopedToReports(query.filters)) {
+    if (isScopedToCurrentUser(query.filters)) {
       facts.push({ key: "direct_reports", text: `已按当前用户的下属范围查询${label}。` });
     }
     return facts;
   }
   return [];
-}
-
-function isScopedToReports(filters: unknown = []): boolean {
-  if (!Array.isArray(filters)) return false;
-  return filters.some((filter) => (
-    isObject(filter)
-    && ["__CURRENT_USER_REPORTS__", "__CURRENT_USER_SUBORDINATES__"].includes(String(filter.value ?? ""))
-  ));
-}
-
-function extractEmployeeFacts(data: JsonObject): AgentFact[] {
-  const rows = Array.isArray(data.rows) ? data.rows.filter(isObject) : [];
-  const facts: AgentFact[] = [];
-  if (data.operation === "aggregate") {
-    facts.push({ key: "aggregate_metric", text: summarizeBusinessData(data, "员工") });
-  }
-  if (rows.some((row) => {
-    const reporting = isObject(row.reporting) ? row.reporting : {};
-    const directLeaderProfiles = Array.isArray(row.direct_leader_profiles) ? row.direct_leader_profiles : [];
-    return directLeaderProfiles.length > 0 || reporting.manager_profile || reporting.store_manager_profile;
-  })) {
-    facts.push({ key: "direct_leader", text: "已查询到直属上级或汇报关系信息。" });
-  }
-  const query = isObject(data.query) ? data.query : {};
-  const queryFilters = Array.isArray(query.filters) ? query.filters.filter(isObject) : [];
-  if (rows.length > 1 || queryFilters.some((filter) => filter.field === "direct_leader")) {
-    facts.push({ key: "direct_reports", text: `已查询到 ${rows.length} 名下级或相关员工。` });
-  }
-  if (rows.some((row) => row.department_name || row.position || row.main_department)) {
-    facts.push({ key: "org_profile", text: "已查询到员工所属组织、岗位或部门信息。" });
-  }
-  return facts;
 }
 
 function summarizeToolResult(result: ToolResult): string {

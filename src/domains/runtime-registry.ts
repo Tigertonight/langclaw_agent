@@ -11,8 +11,8 @@
  */
 
 import type { ResourceConfig } from "../resources/types.js";
-import type { QueryResourceSchema, DomainQueryAdapter, PermissionRuleFn, ToolPermissionPolicy, CronTemplateDefinition, CatalogDomainDefinition, AgenticFallbackDefinition, ReportComposerDefinition, EvidenceInferenceDefinition, SkillMappingDefinition, IntentCodeInferenceFn, CorrectionDeltaRule, LocalPolicyQuestionPattern, LocalPlannerHeuristic, KnowledgeChunkHeadingHint } from "./types.js";
-import type { Route, ToolResult } from "../types/agent-contracts.js";
+import type { QueryResourceSchema, DomainQueryAdapter, PermissionRuleFn, ToolPermissionPolicy, CronTemplateDefinition, CatalogDomainDefinition, AgenticFallbackDefinition, ReportComposerDefinition, EvidenceInferenceDefinition, FactExtractorDefinition, ExtractedFact, SkillMappingDefinition, IntentCodeInferenceFn, CorrectionDeltaRule, LocalPolicyQuestionPattern, LocalPlannerHeuristic, KnowledgeChunkHeadingHint, UserFieldSourceDefinition } from "./types.js";
+import type { JsonObject, JsonValue, UserContext, Route, ToolResult } from "../types/agent-contracts.js";
 
 /**
  * RuntimeRegistryAccessor：供 runtime 独立函数使用的只读查询接口。
@@ -102,6 +102,12 @@ export interface RuntimeRegistryAccessor {
   readonly allKnowledgeChunkHeadingHints: KnowledgeChunkHeadingHint[];
   /** 域特定的重要句关键词 */
   readonly allImportantSentenceKeywords: string[];
+  /** 域特定的 fact 提取器（按 resource 路由） */
+  readonly allFactExtractors: FactExtractorDefinition[];
+  /** 域特定的作用域 sentinel 字符串列表 */
+  readonly allScopeSentinels: string[];
+  /** 域特定的 user field source 定义 */
+  readonly allUserFieldSources: UserFieldSourceDefinition[];
 }
 
 let _accessor: RuntimeRegistryAccessor | null = null;
@@ -652,4 +658,57 @@ export function getKnowledgeChunkHeadingHints(): KnowledgeChunkHeadingHint[] {
  */
 export function getImportantSentenceKeywords(): string[] {
   return _accessor?.allImportantSentenceKeywords ?? [];
+}
+
+/**
+ * 调用第一个匹配 resource 的 FactExtractor，返回提取出的 fact 列表。
+ * 未命中任一 extractor 时返回 null（让调用方走通用 factKey 路径）。
+ *
+ * 用于 agent-state / agent-task-state 的工具结果 fact 提取，替代硬编码
+ * `if (data.resource === "employees") return extractEmployeeFacts(data);`。
+ */
+export function extractFactsForResource(data: JsonObject): ExtractedFact[] | null {
+  const resource = String(data.resource ?? "");
+  if (!resource) return null;
+  const extractors = _accessor?.allFactExtractors ?? [];
+  for (const extractor of extractors) {
+    if (extractor.resource === resource) {
+      return extractor.extract({ data, resource });
+    }
+  }
+  return null;
+}
+
+/**
+ * 判断给定的 filter 列表是否带有"按当前用户作用域过滤"的 sentinel。
+ *
+ * 用于 agent-state.extractFactsFromToolResult 替代硬编码的
+ * `["__CURRENT_USER_REPORTS__", "__CURRENT_USER_SUBORDINATES__"]` 检查。
+ */
+export function isScopedToCurrentUser(filters: unknown): boolean {
+  if (!Array.isArray(filters)) return false;
+  const sentinels = _accessor?.allScopeSentinels ?? [];
+  if (!sentinels.length) return false;
+  return filters.some((filter) => {
+    if (!filter || typeof filter !== "object") return false;
+    const value = String((filter as Record<string, unknown>).value ?? "");
+    return sentinels.includes(value);
+  });
+}
+
+/**
+ * 通过 registry 查找已注册的 user field source。
+ * 命中时返回 read() 结果；未命中返回 undefined（让调用方走 fallback）。
+ *
+ * 用于 intent-query-handler.valueForMapping 替代硬编码的
+ * `if (rule.source === "default_store") return user?.default_store ?? null;`。
+ */
+export function readUserFieldFromRegistry(name: string, user?: UserContext): JsonValue | null | undefined {
+  const sources = _accessor?.allUserFieldSources ?? [];
+  for (const source of sources) {
+    if (source.name === name) {
+      return source.read(user);
+    }
+  }
+  return undefined;
 }

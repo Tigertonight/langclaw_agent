@@ -1,5 +1,5 @@
 import type { JsonObject, JsonValue, Route, SkillDefinition, ToolCall, ToolResult, UserContext } from "../types/agent-contracts.js";
-import { readableResourceNameFromRegistry, getFactKeyFromRegistry, isAnalysisIntentCode, inferEvidenceFactsFromRegistry } from "../domains/runtime-registry.js";
+import { readableResourceNameFromRegistry, getFactKeyFromRegistry, isAnalysisIntentCode, inferEvidenceFactsFromRegistry, extractFactsForResource } from "../domains/runtime-registry.js";
 
 interface AgentFact extends JsonObject {
   key: string;
@@ -307,8 +307,9 @@ function extractFacts(result: ToolResult): AgentFact[] {
     return [];
   }
   const data = result.data ?? {};
-  // employees 有特殊的多 fact 提取逻辑
-  if (data.resource === "employees") return extractEmployeeFacts(data);
+  // 优先使用 registry 中注册的 FactExtractor（域特定的多 fact 提取）
+  const extracted = extractFactsForResource(data);
+  if (extracted) return extracted;
   // 通用域资源 fact 提取：通过 registry 的 factKeyMappings 查找 factKey
   const resourceStr = String(data.resource ?? "");
   const factKey = getFactKeyFromRegistry(resourceStr);
@@ -318,31 +319,6 @@ function extractFacts(result: ToolResult): AgentFact[] {
     return [{ key: effectiveKey, text: summarizeBusinessData(data, readableResourceNameFromRegistry(resourceStr, "业务数据")) }];
   }
   return [];
-}
-
-function extractEmployeeFacts(data: JsonObject): AgentFact[] {
-  const rows = Array.isArray(data.rows) ? data.rows.filter(isObject) : [];
-  const facts: AgentFact[] = [];
-  if (data.operation === "aggregate") {
-    facts.push({ key: "aggregate_metric", text: summarizeBusinessData(data, readableResourceNameFromRegistry("employees", "员工")) });
-  }
-  if (rows.some((row) => {
-    const reporting = isObject(row.reporting) ? row.reporting : {};
-    const directLeaderProfiles = Array.isArray(row.direct_leader_profiles) ? row.direct_leader_profiles : [];
-    return directLeaderProfiles.length > 0 || reporting.manager_profile || reporting.store_manager_profile;
-  })) {
-    facts.push({ key: "direct_leader", text: "已查询到直属上级或汇报关系信息。" });
-  }
-  const query = isObject(data.query) ? data.query : {};
-  const queryFilters = Array.isArray(query.filters) ? query.filters.filter(isObject) : [];
-  if (rows.length > 1 || queryFilters.some((filter) => filter.field === "direct_leader")) {
-    facts.push({ key: "direct_reports", text: `已查询到 ${rows.length} 名下级或相关员工。` });
-  }
-  if (rows.some((row) => row.department_name || row.department)) {
-    facts.push({ key: "org_profile", text: "已查询到员工组织和岗位信息。" });
-  }
-  if (!facts.length) facts.push({ key: "org_profile", text: summarizeBusinessData(data, "员工") });
-  return facts;
 }
 
 function addKnownFact(state: AgentTaskState, key: string, text: string): void {
