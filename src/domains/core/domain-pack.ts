@@ -14,6 +14,7 @@ import { CORE_COMMANDS } from "./commands.js";
 import { CORE_DETERMINISTIC_RULES } from "./deterministic-rules.js";
 import { CORE_QUERY_ADAPTER } from "./query-adapter.js";
 import { CORE_REPORT_COMPOSERS } from "./report-composers.js";
+import { CORE_TOOL_RESULT_SUMMARIZERS, CORE_TOOL_OBSERVATION_SANITIZERS } from "./tool-event-summarizers.js";
 import { createTaskContinuityPlugin } from "../../tasks/task-continuity-plugin.js";
 import { createSkillCuratorPlugin } from "../../evolution/skill-curator-plugin.js";
 import { createMaintenanceSchedulerPlugin } from "../../runtime/maintenance-scheduler-plugin.js";
@@ -155,6 +156,10 @@ export const corePack: DomainPack = {
 
   // ── 报告组装器（用于 generateAnswer 的 tool-specific 答案模板） ──
   reportComposers: CORE_REPORT_COMPOSERS,
+
+  // ── Tool 结果文案/observation 形状（runtime/agent-events 用） ──
+  toolResultSummarizers: CORE_TOOL_RESULT_SUMMARIZERS,
+  toolObservationSanitizers: CORE_TOOL_OBSERVATION_SANITIZERS,
 
   // ── 作用域 sentinel（按当前用户作用域过滤的 filter value 占位符） ──
   scopeSentinels: ["__CURRENT_USER_REPORTS__", "__CURRENT_USER_SUBORDINATES__"],

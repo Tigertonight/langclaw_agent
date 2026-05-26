@@ -36,6 +36,31 @@ export interface ReportComposerDefinition {
   compose(input: { question: string; route?: { intent_code?: string } | null; toolResults: ToolResult[] }): { answer: string; artifacts: JsonObject[] } | null;
 }
 
+// ─── Tool Result Summarizer ──────────────────────────────────────────────────
+
+/**
+ * Tool Result Summarizer 定义。
+ * 由 DomainPack 声明，用于在 runtime/agent-events 把 tool result 浓缩成一句中文摘要。
+ * 引擎按 toolName 分发；返回 null 则走通用 fallback。
+ */
+export interface ToolResultSummarizerDefinition {
+  /** 该 summarizer 负责的工具名（如 "query_business_data"） */
+  toolName: string;
+  /** 把 ok 的 ToolResult 浓缩成自然语言；返回 null/空串则跳过 */
+  summarize(result: ToolResult): string | null;
+}
+
+/**
+ * Tool Observation Sanitizer 定义。
+ * 由 DomainPack 声明，用于把 tool result 投影成 step.observation 字段。
+ * 引擎按 toolName 分发；返回 null 则走通用 fallback。
+ */
+export interface ToolObservationSanitizerDefinition {
+  toolName: string;
+  /** 投影 ok 的 ToolResult；返回 null 走通用 fallback */
+  sanitize(result: ToolResult): JsonObject | null;
+}
+
 // ─── Agentic Fallback ────────────────────────────────────────────────────────
 
 /**

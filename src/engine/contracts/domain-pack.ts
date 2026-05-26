@@ -48,6 +48,8 @@ import type {
   CatalogDomainDefinition,
   AgenticFallbackDefinition,
   ReportComposerDefinition,
+  ToolResultSummarizerDefinition,
+  ToolObservationSanitizerDefinition,
 } from "./tool-contract.js";
 
 import type {
@@ -339,6 +341,18 @@ export interface DomainPack {
    * DomainRegistry 会自动合并所有域的 reportComposers 到全局列表。
    */
   reportComposers?: ReportComposerDefinition[];
+
+  /**
+   * Tool Result Summarizer 定义列表（runtime/agent-events 用）。
+   * 按 toolName 聚合：同一个 toolName 仅保留首个声明（域加载顺序优先）。
+   */
+  toolResultSummarizers?: ToolResultSummarizerDefinition[];
+
+  /**
+   * Tool Observation Sanitizer 定义列表（runtime/agent-events 用）。
+   * 按 toolName 聚合：同一个 toolName 仅保留首个声明。
+   */
+  toolObservationSanitizers?: ToolObservationSanitizerDefinition[];
 
   /**
    * Evidence Inference 定义列表。

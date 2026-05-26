@@ -1,6 +1,9 @@
-import type { JsonObject, JsonValue, SkillDefinition, ToolPlan, ToolResult, UserContext } from "../types/agent-contracts.js";
-import type { KnowledgeSearchResult } from "../rag/local-knowledge-base.js";
-import { readableResourceNameFromRegistry, readableToolNameFromRegistry, readableFactNameFromRegistry } from "../domains/runtime-registry.js";
+import type { JsonObject, JsonValue, ToolResult, UserContext } from "../types/agent-contracts.js";
+import {
+  readableToolNameFromRegistry,
+  summarizeToolResultFromRegistry,
+  sanitizeToolObservationFromRegistry,
+} from "../domains/runtime-registry.js";
 
 export interface AgentStep {
   phase: string;
@@ -169,22 +172,11 @@ function summarizeToolResultText(result: ToolResult): string {
   if (result.ok === false || result.isError === true) {
     return `失败：${result.message ?? result.error ?? "未知错误"}`;
   }
-  if (result.tool === "query_business_data") {
-    const data = result.data ?? {};
-    if (data.operation === "aggregate") return `统计返回，匹配 ${data.total ?? 0} 条`;
-    return `返回 ${data.rows?.length ?? 0} 条记录`;
-  }
-  return "调用完成";
+  const summarized = summarizeToolResultFromRegistry(result);
+  return summarized ?? "调用完成";
 }
 
-interface AgentObservationState {
-  observations?: Array<{ summary?: string }>;
-  missing_facts?: string[];
-  known_facts?: JsonValue;
-  status?: string;
-}
-
-export function createSources(docs: KnowledgeSearchResult[]): Array<{ id: string; source: string; title: string; heading: string; score: number; quote: string }> {
+export function createSources(docs: Array<{ id: string; score: number; text?: string; metadata: { source: string; title: string; heading: string } }>): Array<{ id: string; source: string; title: string; heading: string; score: number; quote: string }> {
   return docs.map((doc) => ({
     id: doc.id,
     source: doc.metadata.source,
@@ -214,75 +206,7 @@ export function createIdentifyUserStep(user: UserContext): AgentStep {
   );
 }
 
-export function createSkillStep(skills: SkillDefinition[]): AgentStep {
-  if (!skills.length) {
-    return createAgentStep("load_skill", "加载技能说明", "未匹配到专用 skill，使用通用 Agent 运行规则。", {
-      observation: { skills: [] }
-    });
-  }
-
-  return createAgentStep(
-    "load_skill",
-    "加载技能说明",
-    `已加载 ${skills.length} 个 skill：${skills.map((skill) => skill.name).join("、")}。`,
-    {
-      observation: {
-        skills: skills.map((skill) => ({
-          name: skill.name,
-          path: skill.skill_path,
-          description: skill.description
-        }))
-      }
-    }
-  );
-}
-
-export function createKnowledgeStep(docs: KnowledgeSearchResult[]): AgentStep {
-  if (docs.length === 0) {
-    return createAgentStep("retrieve_knowledge", "检索知识库", "没有命中可直接引用的知识库片段。", {
-      observation: { hits: 0 }
-    });
-  }
-
-  const best = docs[0];
-  return createAgentStep(
-    "retrieve_knowledge",
-    "检索知识库",
-    `命中 ${docs.length} 个片段，优先参考「${best.metadata.title} / ${best.metadata.heading}」。`,
-    {
-      observation: {
-        hits: docs.length,
-        top_source: best.metadata.source,
-        top_title: best.metadata.title,
-        top_heading: best.metadata.heading,
-        top_score: best.score
-      }
-    }
-  );
-}
-
-export function createPlanStep(toolPlan: ToolPlan & { clarification?: string }): AgentStep {
-  const calls = toolPlan.calls ?? [];
-  if (toolPlan.clarification && calls.length === 0) {
-    return createAgentStep("plan_action", "规划下一步", "当前信息不足，需要先向用户追问。", {
-      action: { type: "ask_user" }
-    });
-  }
-  if (calls.length === 0) {
-    return createAgentStep("plan_action", "规划下一步", "当前问题不需要调用业务工具，直接基于已检索信息回答。", {
-      action: { type: "final_answer" }
-    });
-  }
-
-  return createAgentStep("plan_action", "规划下一步", `准备调用 ${calls.length} 个工具：${calls.map((call) => readableToolName(call.name)).join("、")}。`, {
-    action: {
-      type: "tool_call",
-      tools: calls.map((call) => call.name)
-    }
-  });
-}
-
-export function createToolSteps(toolPlan: ToolPlan, toolResults: ToolResult[]): AgentStep[] {
+export function createToolSteps(toolPlan: { calls?: Array<{ name: string; args?: JsonObject }> }, toolResults: ToolResult[]): AgentStep[] {
   const calls = toolPlan.calls ?? [];
   return calls.map((call, index) => {
     const result = toolResults[index];
@@ -308,24 +232,6 @@ export function createToolSteps(toolPlan: ToolPlan, toolResults: ToolResult[]): 
   });
 }
 
-export function createObservationStep(state: AgentObservationState): AgentStep {
-  const latest = state.observations?.slice(-3) ?? [];
-  const missing = state.missing_facts ?? [];
-  const summaries = latest.map((item) => item.summary).filter(Boolean);
-  const detail = [
-    summaries.length ? summaries.join("；") : "已整理当前执行结果。",
-    missing.length ? `还缺：${missing.map(readableFactName).join("、")}。` : "需要的关键信息已基本补齐。"
-  ].join(" ");
-
-  return createAgentStep("observe_result", "观察结果", detail, {
-    observation: {
-      known_facts: state.known_facts,
-      missing_facts: state.missing_facts,
-      status: state.status
-    }
-  });
-}
-
 export function splitForStreaming(text: unknown): string[] {
   return String(text ?? "").match(/.{1,4}/gs) ?? [];
 }
@@ -335,13 +241,11 @@ function readableToolName(name: string): string {
 }
 
 function summarizeToolResult(result: ToolResult): string {
-  if (result.tool === "query_business_data") {
-    const data = result.data ?? {};
-    const metrics = Array.isArray(data.metrics) ? data.metrics : [];
-    if (data.operation === "aggregate") return `得到 ${metrics.length} 个统计指标，匹配 ${data.total ?? 0} 条记录`;
-    return `返回 ${data.rows?.length ?? 0} 条${readableResourceNameFromRegistry(data.resource, "记录")}`;
-  }
-  // 通用：工具结果中包含列表字段时做计数摘要
+  // 域贡献的 tool-specific summarizer 优先
+  const fromRegistry = summarizeToolResultFromRegistry(result);
+  if (fromRegistry) return fromRegistry;
+
+  // 通用 fallback：工具结果中包含列表字段时做计数摘要
   if (result.data && typeof result.data === "object") {
     const listKey = Object.keys(result.data).find((k) => Array.isArray((result.data as Record<string, unknown>)[k]));
     if (listKey) {
@@ -362,10 +266,6 @@ function summarizeToolResult(result: ToolResult): string {
   return "已获得工具返回结果";
 }
 
-function readableFactName(name: string): string {
-  return readableFactNameFromRegistry(name);
-}
-
 function sanitizeObservation(result: ToolResult | undefined): JsonObject {
   if (!result?.ok) {
     return {
@@ -375,16 +275,9 @@ function sanitizeObservation(result: ToolResult | undefined): JsonObject {
       message: result?.message
     };
   }
-  if (result.tool === "query_business_data") {
-    return {
-      ok: true,
-      resource: result.data?.resource,
-      operation: result.data?.operation,
-      total: result.data?.total,
-      metrics: result.data?.metrics,
-      row_count: result.data?.rows?.length
-    };
-  }
+  // 域贡献的 tool-specific sanitizer 优先
+  const fromRegistry = sanitizeToolObservationFromRegistry(result);
+  if (fromRegistry) return fromRegistry;
   return {
     ok: true,
     tool: result.tool

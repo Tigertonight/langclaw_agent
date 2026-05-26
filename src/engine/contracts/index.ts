@@ -78,6 +78,8 @@ export type {
   CatalogDomainDefinition,
   ReportComposerDefinition,
   AgenticFallbackDefinition,
+  ToolResultSummarizerDefinition,
+  ToolObservationSanitizerDefinition,
 } from "./tool-contract.js";
 
 // ── Workflow Contract (stable) ───────────────────────────────────────────────

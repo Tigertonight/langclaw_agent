@@ -48,6 +48,8 @@ export type {
   CatalogDomainDefinition,
   ReportComposerDefinition,
   AgenticFallbackDefinition,
+  ToolResultSummarizerDefinition,
+  ToolObservationSanitizerDefinition,
 } from "../engine/contracts/tool-contract.js";
 
 // ── Workflow Contract ────────────────────────────────────────────────────────

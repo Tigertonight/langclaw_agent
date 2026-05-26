@@ -26,6 +26,8 @@ import type {
   DomainQueryAdapter,
   AgenticFallbackDefinition,
   ReportComposerDefinition,
+  ToolResultSummarizerDefinition,
+  ToolObservationSanitizerDefinition,
   EvidenceInferenceDefinition,
   FactExtractorDefinition,
   RuntimePluginDefinition,
@@ -112,6 +114,10 @@ export class DomainRegistry {
   readonly allAgenticFallbacks: AgenticFallbackDefinition[] = [];
   /** 所有 domain 注册的 reportComposers */
   readonly allReportComposers: ReportComposerDefinition[] = [];
+  /** 所有 domain 注册的 toolResultSummarizers（按 toolName 聚合，首注册者优先） */
+  readonly allToolResultSummarizers: Map<string, ToolResultSummarizerDefinition> = new Map();
+  /** 所有 domain 注册的 toolObservationSanitizers（按 toolName 聚合，首注册者优先） */
+  readonly allToolObservationSanitizers: Map<string, ToolObservationSanitizerDefinition> = new Map();
   /** 所有 domain 注册的 evidenceInferenceFns */
   readonly allEvidenceInferenceFns: EvidenceInferenceDefinition[] = [];
   /** 所有 domain 注册的 skillMappings */
@@ -482,6 +488,8 @@ export class DomainRegistry {
     this.allAnswerPromptHints.length = 0;
     this.allAgenticFallbacks.length = 0;
     this.allReportComposers.length = 0;
+    this.allToolResultSummarizers.clear();
+    this.allToolObservationSanitizers.clear();
     this.allEvidenceInferenceFns.length = 0;
     this.allSkillMappings.length = 0;
     this.allSkillContractEnforcers.length = 0;
@@ -703,6 +711,24 @@ export class DomainRegistry {
       // Report Composers
       if (pack.reportComposers) {
         this.allReportComposers.push(...pack.reportComposers);
+      }
+
+      // Tool Result Summarizers (按 toolName 首注册者优先)
+      if (pack.toolResultSummarizers) {
+        for (const def of pack.toolResultSummarizers) {
+          if (!this.allToolResultSummarizers.has(def.toolName)) {
+            this.allToolResultSummarizers.set(def.toolName, def);
+          }
+        }
+      }
+
+      // Tool Observation Sanitizers
+      if (pack.toolObservationSanitizers) {
+        for (const def of pack.toolObservationSanitizers) {
+          if (!this.allToolObservationSanitizers.has(def.toolName)) {
+            this.allToolObservationSanitizers.set(def.toolName, def);
+          }
+        }
       }
 
       // Evidence Inference Functions

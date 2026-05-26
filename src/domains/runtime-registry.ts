@@ -11,7 +11,7 @@
  */
 
 import type { ResourceConfig } from "../resources/types.js";
-import type { QueryResourceSchema, DomainQueryAdapter, PermissionRuleFn, ToolPermissionPolicy, CronTemplateDefinition, CatalogDomainDefinition, AgenticFallbackDefinition, ReportComposerDefinition, EvidenceInferenceDefinition, FactExtractorDefinition, ExtractedFact, SkillMappingDefinition, IntentCodeInferenceFn, CorrectionDeltaRule, LocalPolicyQuestionPattern, LocalPlannerHeuristic, FollowUpPlannerHeuristic, KnownEntityProbe, KnowledgeChunkHeadingHint, UserFieldSourceDefinition } from "./types.js";
+import type { QueryResourceSchema, DomainQueryAdapter, PermissionRuleFn, ToolPermissionPolicy, CronTemplateDefinition, CatalogDomainDefinition, AgenticFallbackDefinition, ReportComposerDefinition, ToolResultSummarizerDefinition, ToolObservationSanitizerDefinition, EvidenceInferenceDefinition, FactExtractorDefinition, ExtractedFact, SkillMappingDefinition, IntentCodeInferenceFn, CorrectionDeltaRule, LocalPolicyQuestionPattern, LocalPlannerHeuristic, FollowUpPlannerHeuristic, KnownEntityProbe, KnowledgeChunkHeadingHint, UserFieldSourceDefinition } from "./types.js";
 import type { JsonObject, JsonValue, UserContext, Route, ToolCall, ToolResult } from "../types/agent-contracts.js";
 
 /**
@@ -50,6 +50,10 @@ export interface RuntimeRegistryAccessor {
   readonly allAgenticFallbacks: AgenticFallbackDefinition[];
   /** Report Composer 定义列表 */
   readonly allReportComposers: ReportComposerDefinition[];
+  /** Tool Result Summarizer 映射（toolName → 定义） */
+  readonly allToolResultSummarizers: Map<string, ToolResultSummarizerDefinition>;
+  /** Tool Observation Sanitizer 映射（toolName → 定义） */
+  readonly allToolObservationSanitizers: Map<string, ToolObservationSanitizerDefinition>;
   /** Evidence Inference 定义列表 */
   readonly allEvidenceInferenceFns: EvidenceInferenceDefinition[];
   /** Skill Mapping 定义列表 */
@@ -306,6 +310,31 @@ export function composeReportFromRegistry(input: { question: string; route?: { i
     }
   }
   return null;
+}
+
+/**
+ * 按工具名分发到域贡献的 ToolResultSummarizer。
+ * 命中且返回非空字符串则使用，否则返回 null（runtime 自行 fallback）。
+ */
+export function summarizeToolResultFromRegistry(result: ToolResult): string | null {
+  const toolName = String(result?.tool ?? "");
+  if (!toolName) return null;
+  const def = _accessor?.allToolResultSummarizers.get(toolName);
+  if (!def) return null;
+  const summary = def.summarize(result);
+  return summary && summary.length > 0 ? summary : null;
+}
+
+/**
+ * 按工具名分发到域贡献的 ToolObservationSanitizer。
+ * 返回 null 时由 runtime 走通用 fallback。
+ */
+export function sanitizeToolObservationFromRegistry(result: ToolResult): import("../types/agent-contracts.js").JsonObject | null {
+  const toolName = String(result?.tool ?? "");
+  if (!toolName) return null;
+  const def = _accessor?.allToolObservationSanitizers.get(toolName);
+  if (!def) return null;
+  return def.sanitize(result);
 }
 
 /**
