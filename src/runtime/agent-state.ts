@@ -1,4 +1,4 @@
-import { readableResourceNameFromRegistry, getFactKeyFromRegistry, isAnalysisIntentCode, inferEvidenceFactsFromRegistry, extractFactsForResource, isScopedToCurrentUser } from "../domains/runtime-registry.js";
+import { readableResourceNameFromRegistry, getFactKeyFromRegistry, isAnalysisIntentCode, inferEvidenceFactsFromRegistry, extractFactsForResource, isScopedToCurrentUser, getToolCategoryFromRegistry } from "../domains/runtime-registry.js";
 import type { JsonObject, Route, SkillDefinition, ToolCall, ToolPlan, ToolResult, UserContext } from "../types/agent-contracts.js";
 import type { KnowledgeSearchResult } from "../rag/local-knowledge-base.js";
 
@@ -252,7 +252,8 @@ function observeToolResults(toolResults: ToolResult[]): AgentObservation[] {
 }
 
 function extractFactsFromToolResult(result: ToolResult): AgentFact[] {
-  if (result.tool === "retrieve_knowledge") {
+  const category = getToolCategoryFromRegistry(String(result.tool ?? ""));
+  if (category === "knowledge_search") {
     const docs = Array.isArray(result.data?.docs) ? result.data.docs as unknown[] : [];
     const hits = Number(result.data?.total ?? docs.length ?? 0);
     if (!hits) return [];
@@ -263,7 +264,7 @@ function extractFactsFromToolResult(result: ToolResult): AgentFact[] {
       : "可访问资料";
     return [{ key: "knowledge_context", text: `知识资料命中 ${hits} 个片段，优先参考「${source}」。` }];
   }
-  if (result.tool !== "query_business_data") return [];
+  if (category !== "business_query") return [];
   const data = result.data ?? {};
   // 优先使用 registry 中注册的 FactExtractor（域特定的多 fact 提取）
   const extracted = extractFactsForResource(data);
@@ -296,7 +297,8 @@ function extractFactsFromToolResult(result: ToolResult): AgentFact[] {
 }
 
 function summarizeToolResult(result: ToolResult): string {
-  if (result.tool === "query_business_data") {
+  const category = getToolCategoryFromRegistry(String(result.tool ?? ""));
+  if (category === "business_query") {
     return summarizeBusinessData(result.data ?? {}, readableResourceNameFromRegistry(result.data?.resource));
   }
   return `${result.tool} 已返回结果。`;

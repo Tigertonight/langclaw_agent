@@ -1,6 +1,6 @@
 import type { JsonObject } from "../types/agent-contracts.js";
 import type { AgentSession, SessionHistoryItem } from "../agent/session-store.js";
-import { inferTaskFromRegistry, getStandaloneTaskKeywords } from "../domains/runtime-registry.js";
+import { inferTaskFromRegistry, getStandaloneTaskKeywords, getToolCategoryFromRegistry } from "../domains/runtime-registry.js";
 
 interface ConversationTask {
   intent: string | null;
@@ -120,7 +120,7 @@ function taskFromMetadata(metadata?: JsonObject | null): ConversationTask | null
   if (!metadata?.route && !metadata?.selected_skill && !hasToolCalls) return null;
   const route = isObject(metadata.route) ? metadata.route : {};
   const toolCalls = Array.isArray(metadata.tool_calls) ? metadata.tool_calls.filter(isObject) : [];
-  const firstBusinessCall = toolCalls.find((call) => call.name === "query_business_data");
+  const firstBusinessCall = toolCalls.find((call) => getToolCategoryFromRegistry(String(call.name ?? "")) === "business_query");
   const args = isObject(firstBusinessCall?.args) ? firstBusinessCall.args : {};
   return {
     intent: stringOrNull(route.intent),

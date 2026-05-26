@@ -1,5 +1,5 @@
 import type { JsonObject, JsonValue, Route, SkillDefinition, ToolCall, ToolResult, UserContext } from "../types/agent-contracts.js";
-import { readableResourceNameFromRegistry, getFactKeyFromRegistry, isAnalysisIntentCode, inferEvidenceFactsFromRegistry, extractFactsForResource } from "../domains/runtime-registry.js";
+import { readableResourceNameFromRegistry, getFactKeyFromRegistry, isAnalysisIntentCode, inferEvidenceFactsFromRegistry, extractFactsForResource, getToolCategoryFromRegistry } from "../domains/runtime-registry.js";
 
 interface AgentFact extends JsonObject {
   key: string;
@@ -278,12 +278,13 @@ function summarizeToolObservation(result: ToolResult): JsonObject {
 }
 
 function summarizeToolResult(result: ToolResult): string {
-  if (result.tool === "retrieve_knowledge") {
+  const category = getToolCategoryFromRegistry(String(result.tool ?? ""));
+  if (category === "knowledge_search") {
     const docs = Array.isArray(result.data?.docs) ? result.data.docs : [];
     const hits = result.data?.total ?? docs.length ?? 0;
     return `知识库命中 ${hits} 个片段。`;
   }
-  if (result.tool !== "query_business_data") return "工具已返回结果。";
+  if (category !== "business_query") return "工具已返回结果。";
   const data = result.data ?? {};
   if (data.operation === "aggregate") return `查询到 ${data.total ?? 0} 条记录的统计结果。`;
   const rows = Array.isArray(data.rows) ? data.rows : [];
@@ -291,7 +292,8 @@ function summarizeToolResult(result: ToolResult): string {
 }
 
 function extractFacts(result: ToolResult): AgentFact[] {
-  if (result.tool === "retrieve_knowledge") {
+  const category = getToolCategoryFromRegistry(String(result.tool ?? ""));
+  if (category === "knowledge_search") {
     const docs = Array.isArray(result.data?.docs) ? result.data.docs as unknown[] : [];
     const hits = Number(result.data?.total ?? docs.length ?? 0);
     if (!hits) return [];
@@ -302,8 +304,8 @@ function extractFacts(result: ToolResult): AgentFact[] {
       : "可访问资料";
     return [{ key: "knowledge_context", text: `知识资料命中 ${hits} 个片段，优先参考「${source}」。` }];
   }
-  if (result.tool !== "query_business_data") {
-    if (result.tool === "safe_compute") return [{ key: "aggregate_metric", text: "安全计算工具已返回确定性结果。" }];
+  if (category !== "business_query") {
+    if (category === "compute") return [{ key: "aggregate_metric", text: "安全计算工具已返回确定性结果。" }];
     return [];
   }
   const data = result.data ?? {};

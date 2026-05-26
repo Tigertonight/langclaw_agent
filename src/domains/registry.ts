@@ -96,6 +96,8 @@ export class DomainRegistry {
   readonly allResources: Record<string, import("../resources/types.js").ResourceConfig> = {};
   /** 所有 domain 注册的 toolLabels（合并后的全局工具标签） */
   readonly allToolLabels: Record<string, string> = {};
+  /** 所有 domain 注册的 toolCategories（tool name → category，合并后） */
+  readonly allToolCategories: Record<string, string> = {};
   /** 所有 domain 注册的 cronTemplates */
   readonly allCronTemplates: CronTemplateDefinition[] = [];
   /** 所有 domain 注册的 routerPromptHints */
@@ -526,6 +528,7 @@ export class DomainRegistry {
     for (const key of Object.keys(this.allFieldLabels)) delete this.allFieldLabels[key];
     for (const key of Object.keys(this.allResources)) delete this.allResources[key];
     for (const key of Object.keys(this.allToolLabels)) delete this.allToolLabels[key];
+    for (const key of Object.keys(this.allToolCategories)) delete this.allToolCategories[key];
     for (const key of Object.keys(this.allIntentCodeMappings)) delete this.allIntentCodeMappings[key];
     for (const key of Object.keys(this.allFactKeyMappings)) delete this.allFactKeyMappings[key];
     for (const key of Object.keys(this.allQuerySchemas)) delete this.allQuerySchemas[key];
@@ -661,6 +664,11 @@ export class DomainRegistry {
       // Tool Labels
       if (pack.toolLabels) {
         Object.assign(this.allToolLabels, pack.toolLabels);
+      }
+
+      // Tool Categories
+      if (pack.toolCategories) {
+        Object.assign(this.allToolCategories, pack.toolCategories);
       }
 
       // Cron Templates

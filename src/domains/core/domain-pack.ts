@@ -71,6 +71,17 @@ export const corePack: DomainPack = {
     safe_compute: "安全计算",
   },
 
+  // ── 工具分类（用于 runtime 按 result 形状分发，避免硬编码工具名） ──
+  toolCategories: {
+    query_business_data: "business_query",
+    list_my_customers: "business_query",
+    query_customer: "business_query",
+    query_order: "business_query",
+    query_sales_report: "business_query",
+    retrieve_knowledge: "knowledge_search",
+    safe_compute: "compute",
+  },
+
   // ── 查询 schema ──
   querySchemas: {
     customers: {

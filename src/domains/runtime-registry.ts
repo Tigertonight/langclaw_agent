@@ -24,6 +24,8 @@ export interface RuntimeRegistryAccessor {
   readonly allFactKeyMappings: Record<string, string>;
   /** 工具标签映射 */
   readonly allToolLabels: Record<string, string>;
+  /** 工具分类映射（tool name → category） */
+  readonly allToolCategories: Record<string, string>;
   /** 字段标签映射 */
   readonly allFieldLabels: Record<string, string>;
   /** resource → intent_code 映射 */
@@ -156,6 +158,14 @@ export function readableResourceNameFromRegistry(resource: unknown, fallback = "
  */
 export function readableToolNameFromRegistry(toolName: string, fallback?: string): string {
   return _accessor?.allToolLabels[toolName] ?? fallback ?? toolName;
+}
+
+/**
+ * 通过 registry 查找工具的分类（business_query / knowledge_search / compute / ...）。
+ * 未注册时返回 null，调用方应对 null 走通用分支。
+ */
+export function getToolCategoryFromRegistry(toolName: string): string | null {
+  return _accessor?.allToolCategories[toolName] ?? null;
 }
 
 /**

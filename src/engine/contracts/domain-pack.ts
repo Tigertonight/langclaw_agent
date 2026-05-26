@@ -227,6 +227,21 @@ export interface DomainPack {
   toolLabels?: Record<string, string>;
 
   /**
+   * 工具分类映射（tool name → category）。
+   * 用于 runtime 按"工具产出形状"分发，而不是按工具名硬编码。
+   *
+   * 引擎约定的标准 category：
+   *   "business_query"   — 产出 { resource, operation, rows, total } 形态
+   *   "knowledge_search" — 产出 { docs, total } 形态
+   *   "compute"          — 产出确定性计算结果
+   *
+   * runtime/agent-state、runtime/agent-task-state、runtime/conversation-context
+   * 等需要按 result 形状走不同分支时，先查 category 再分发。
+   * DomainRegistry 会自动合并所有域的 toolCategories 到全局映射。
+   */
+  toolCategories?: Record<string, string>;
+
+  /**
    * Cron 模板定义。
    * 用于 cron-templates / cron-tools 等场景，替代硬编码模板。
    * DomainRegistry 会自动合并所有域的 cronTemplates 到全局列表。
