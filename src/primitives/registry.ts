@@ -8,6 +8,12 @@ interface PrimitiveDefinition {
   description: string;
   schema: JsonObject;
   metadata: JsonObject;
+  /**
+   * 该 primitive 不适用的 intent 列表。
+   * 例如 act primitive 不应在 knowledge_qa 路由下出现（知识问答只读）。
+   * 引擎层 isPrimitiveAvailable 用此列表做通用过滤，避免在 registry 中硬编码具体 intent。
+   */
+  unsupportedIntents?: string[];
 }
 
 interface PrimitiveDescription {
@@ -167,7 +173,8 @@ function defineActPrimitive(): PrimitiveDefinition {
     },
     metadata: {
       primitive_type: "act"
-    }
+    },
+    unsupportedIntents: [INTENTS.KNOWLEDGE_QA]
   };
 }
 
@@ -225,7 +232,8 @@ function buildArtifact(args: JsonObject = {}): JsonObject {
 
 function isPrimitiveAvailable(primitive: PrimitiveDefinition, context: ToolExecutionContext): boolean {
   const route = isJsonObject(context.route) ? context.route : {};
-  if (primitive.name === "act" && route.intent === INTENTS.KNOWLEDGE_QA) return false;
+  const intent = typeof route.intent === "string" ? route.intent : null;
+  if (intent && primitive.unsupportedIntents?.includes(intent)) return false;
   return true;
 }
 
