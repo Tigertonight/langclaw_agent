@@ -119,6 +119,9 @@ export type {
 export type {
   LocalPolicyQuestionPattern,
   LocalPlannerHeuristic,
+  FollowUpPlannerHeuristic,
+  KnownEntityProbe,
+  DataLookupHint,
   KnowledgeChunkHeadingHint,
   ImportantSentenceKeyword,
 } from "./llm-contract.js";

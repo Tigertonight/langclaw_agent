@@ -5,8 +5,10 @@
  * 同时承载"核心业务"（组织架构、客户、订单、销售报表）的 intent 推断逻辑。
  */
 
-import type { DomainPack, IntentCodeInferenceFn, DomainQueryAdapter, EvidenceInferenceDefinition, FactExtractorDefinition, ExtractedFact } from "../types.js";
-import type { JsonObject } from "../../types/agent-contracts.js";
+import type { DomainPack, IntentCodeInferenceFn, DomainQueryAdapter, EvidenceInferenceDefinition, FactExtractorDefinition, ExtractedFact, FollowUpPlannerHeuristic, KnownEntityProbe } from "../types.js";
+import type { JsonObject, ToolCall } from "../../types/agent-contracts.js";
+import { loadJson } from "../../data/load-json.js";
+import { getResourceDataPath } from "../runtime-registry.js";
 import { CORE_RESOURCES, CORE_FIELD_LABELS } from "./resources.js";
 import { CORE_COMMANDS } from "./commands.js";
 import { CORE_DETERMINISTIC_RULES } from "./deterministic-rules.js";
@@ -287,7 +289,82 @@ export const corePack: DomainPack = {
   knowledgeChunkHeadingHints: [
     { questionKeyword: "权限", matchHeadings: ["权限", "最小权限", "客户数据访问"] },
   ],
+
+  // ── 数据查找信号词（HR/组织域专属，用于 hasExplicitDataLookup 拼接） ──
+  dataLookupHints: ["上级", "下级", "下属", "负责人", "成交额", "销售额", "pipeline"],
+
+  // ── Follow-up planner 启发式：HR 上下级查询补充 ──
+  followUpPlannerHeuristics: [
+    {
+      id: "core.org-followup",
+      priority: 100,
+      plan({ question, previousCalls }) {
+        const calls: ToolCall[] = [];
+        const asksLeader = ["上级", "汇报", "直属", "领导", "主管"].some((word) => question.includes(word));
+        const asksSubordinates = ["下属", "下级", "下辖", "下面", "团队", "同学"].some((word) => question.includes(word));
+
+        if (asksLeader && !hasEmployeeFilterCall(previousCalls, "userid", "__CURRENT_USER__")) {
+          calls.push(buildEmployeeQueryCall({
+            filters: [{ field: "userid", op: "eq", value: "__CURRENT_USER__" }],
+            asksAggregate: false,
+            limit: 1,
+          }));
+        }
+
+        if (asksSubordinates && !hasEmployeeFilterCall(previousCalls, "direct_leader", "__CURRENT_USER__")) {
+          calls.push(buildEmployeeQueryCall({
+            filters: [{ field: "direct_leader", op: "contains", value: "__CURRENT_USER__" }],
+            asksAggregate: false,
+            limit: 50,
+          }));
+        }
+
+        return calls;
+      },
+    } satisfies FollowUpPlannerHeuristic,
+  ],
+
+  // ── 已知命名实体探针：员工名 ──
+  knownEntityProbes: [
+    {
+      id: "core.employee-name",
+      async probe(question: string) {
+        const path = getResourceDataPath("employees");
+        if (!path) return false;
+        const employees = await loadJson(path) as Array<{ name?: string }>;
+        return employees.some((employee) => typeof employee.name === "string" && question.includes(employee.name));
+      },
+    } satisfies KnownEntityProbe,
+  ],
 };
+
+interface BuildEmployeeQueryArgs {
+  filters: JsonObject[];
+  asksAggregate: boolean;
+  limit: number;
+}
+
+function buildEmployeeQueryCall({ filters, asksAggregate, limit }: BuildEmployeeQueryArgs): ToolCall {
+  return {
+    name: "query_business_data",
+    args: {
+      resource: "employees",
+      operation: asksAggregate ? "aggregate" : "search",
+      filters,
+      metrics: asksAggregate ? [{ type: "count", field: "userid", as: "employee_count" }] : [],
+      fields: ["userid", "name", "department_name", "position", "role", "direct_leader", "reporting", "main_department", "department"],
+      sort: [{ field: "main_department", direction: "asc" }, { field: "userid", direction: "asc" }],
+      limit,
+    },
+  };
+}
+
+function hasEmployeeFilterCall(calls: ToolCall[], field: string, value: unknown): boolean {
+  return calls.some((call) => call.name === "query_business_data"
+    && call.args?.resource === "employees"
+    && (call.args?.filters as Array<{ field?: string; value?: unknown }> | undefined)
+      ?.some((filter) => filter.field === field && filter.value === value));
+}
 
 function isObject(value: unknown): value is JsonObject {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);

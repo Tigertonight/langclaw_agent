@@ -57,6 +57,57 @@ export interface LocalPlannerHeuristic {
   };
 }
 
+// ─── Follow-Up Planner Heuristic ─────────────────────────────────────────────
+
+/**
+ * "本地兜底规划器 - 第二轮 follow-up"的启发式。
+ *
+ * 替代 local-llm.ts 中硬编码的 planFollowUpToolCalls 内的 HR 词汇分支
+ * （上级/汇报/下属/团队 等触发 employees 查询）。
+ *
+ * 域可声明：当 question 命中本域 follow-up 关键词时，规划一组工具调用补充查询。
+ * 实现方需自行处理 dedup-against-previous-calls。
+ */
+export interface FollowUpPlannerHeuristic {
+  /** 唯一标识 */
+  id: string;
+  /** 优先级（数值越小越优先），默认 100 */
+  priority?: number;
+  /**
+   * 给定 question 和已发出的 previousCalls，返回需要追加的工具调用。
+   * 返回空数组表示本启发式不接管。
+   */
+  plan(input: { question: string; previousCalls: ToolCall[] }): ToolCall[];
+}
+
+// ─── Known Entity Probe ──────────────────────────────────────────────────────
+
+/**
+ * "问题中是否提到本域已知命名实体"探针。
+ *
+ * 替代 local-llm.ts 中硬编码的 extractEmployeeName（按员工名表早退 follow-up
+ * planner，避免对显式问到的员工再发探查查询）。
+ *
+ * 任意一个域返回 true，runtime 就跳过 follow-up planner。
+ */
+export interface KnownEntityProbe {
+  /** 唯一标识 */
+  id: string;
+  /** 异步判断 question 是否提到本域已知命名实体 */
+  probe(question: string): Promise<boolean>;
+}
+
+// ─── Data Lookup Hint ────────────────────────────────────────────────────────
+
+/**
+ * "明确数据查找动词/名词"提示。
+ *
+ * 替代 local-llm.ts hasExplicitDataLookup 正则中硬编码的业务词
+ * （pipeline/成交额/销售额/上级/下级/下属/负责人）。引擎内置通用查询动词
+ * （查/查询/统计/多少/列表/有哪些/状态/报表 等），域贡献本域独有的"问数据"信号词。
+ */
+export type DataLookupHint = string;
+
 // ─── Knowledge Chunk Heading Hint ────────────────────────────────────────────
 
 /**

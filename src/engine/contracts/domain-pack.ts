@@ -78,6 +78,9 @@ import type {
 import type {
   LocalPolicyQuestionPattern,
   LocalPlannerHeuristic,
+  FollowUpPlannerHeuristic,
+  KnownEntityProbe,
+  DataLookupHint,
   KnowledgeChunkHeadingHint,
   ImportantSentenceKeyword,
 } from "./llm-contract.js";
@@ -500,6 +503,30 @@ export interface DomainPack {
    * buildPersonalCustomerOverviewPlan。
    */
   localPlannerHeuristics?: LocalPlannerHeuristic[];
+
+  /**
+   * 本地 LLM 启发式：第二轮 follow-up 工具调用规划。
+   * 替代 local-llm.ts planFollowUpToolCalls 中硬编码的 HR 词汇分支
+   * （"上级/下属/团队"等触发 employees 查询）。
+   * 多个域贡献的启发式按 priority 排序后依次执行，结果累加。
+   */
+  followUpPlannerHeuristics?: FollowUpPlannerHeuristic[];
+
+  /**
+   * 已知命名实体探针：判断 question 是否提到本域已知实体（如员工名）。
+   * 替代 local-llm.ts extractEmployeeName 早退逻辑。任意一个域返回 true，
+   * 引擎就跳过 follow-up planner（因为问题已经显式锁定了具体实体）。
+   */
+  knownEntityProbes?: KnownEntityProbe[];
+
+  /**
+   * 域贡献的"明确数据查找"信号词。
+   * 替代 local-llm.ts hasExplicitDataLookup 正则中硬编码的业务词。
+   * 引擎自带通用查询动词（查/查询/统计/列表/状态 等），各域贡献本域独有的
+   * "问数据"信号词（如 dealer 的 pipeline/成交额，core 的 上级/下级/负责人）。
+   * 多个域的提示词会合并去重。
+   */
+  dataLookupHints?: DataLookupHint[];
 
   /**
    * 知识库检索关键词。

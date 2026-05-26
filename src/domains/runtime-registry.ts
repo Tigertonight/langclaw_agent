@@ -11,8 +11,8 @@
  */
 
 import type { ResourceConfig } from "../resources/types.js";
-import type { QueryResourceSchema, DomainQueryAdapter, PermissionRuleFn, ToolPermissionPolicy, CronTemplateDefinition, CatalogDomainDefinition, AgenticFallbackDefinition, ReportComposerDefinition, EvidenceInferenceDefinition, FactExtractorDefinition, ExtractedFact, SkillMappingDefinition, IntentCodeInferenceFn, CorrectionDeltaRule, LocalPolicyQuestionPattern, LocalPlannerHeuristic, KnowledgeChunkHeadingHint, UserFieldSourceDefinition } from "./types.js";
-import type { JsonObject, JsonValue, UserContext, Route, ToolResult } from "../types/agent-contracts.js";
+import type { QueryResourceSchema, DomainQueryAdapter, PermissionRuleFn, ToolPermissionPolicy, CronTemplateDefinition, CatalogDomainDefinition, AgenticFallbackDefinition, ReportComposerDefinition, EvidenceInferenceDefinition, FactExtractorDefinition, ExtractedFact, SkillMappingDefinition, IntentCodeInferenceFn, CorrectionDeltaRule, LocalPolicyQuestionPattern, LocalPlannerHeuristic, FollowUpPlannerHeuristic, KnownEntityProbe, KnowledgeChunkHeadingHint, UserFieldSourceDefinition } from "./types.js";
+import type { JsonObject, JsonValue, UserContext, Route, ToolCall, ToolResult } from "../types/agent-contracts.js";
 
 /**
  * RuntimeRegistryAccessor：供 runtime 独立函数使用的只读查询接口。
@@ -112,6 +112,12 @@ export interface RuntimeRegistryAccessor {
   readonly allCancellationPhrases: string[];
   /** 域贡献的 router 抽参示例片段 */
   readonly allParamExtractionExamples: string[];
+  /** 域贡献的 follow-up planner 启发式（按 priority 排序） */
+  readonly allFollowUpPlannerHeuristics: FollowUpPlannerHeuristic[];
+  /** 域贡献的已知命名实体探针 */
+  readonly allKnownEntityProbes: KnownEntityProbe[];
+  /** 域贡献的"明确数据查找"信号词（已去重） */
+  readonly allDataLookupHints: string[];
 }
 
 let _accessor: RuntimeRegistryAccessor | null = null;
@@ -731,4 +737,38 @@ export function getCancellationPhrases(): string[] {
  */
 export function getParamExtractionExamples(): string[] {
   return _accessor?.allParamExtractionExamples ?? [];
+}
+
+/**
+ * 应用所有域注册的 follow-up planner 启发式。
+ * 按 priority 排序后依次执行，结果按顺序累加。
+ */
+export function applyFollowUpPlannersFromRegistry(question: string, previousCalls: ToolCall[]): ToolCall[] {
+  const heuristics = _accessor?.allFollowUpPlannerHeuristics ?? [];
+  const additions: ToolCall[] = [];
+  for (const heuristic of heuristics) {
+    const calls = heuristic.plan({ question, previousCalls: [...previousCalls, ...additions] });
+    if (calls.length) additions.push(...calls);
+  }
+  return additions;
+}
+
+/**
+ * 调用所有域注册的已知命名实体探针。
+ * 任意一个探针返回 true 即返回 true（短路求值）。
+ */
+export async function probeKnownEntityFromRegistry(question: string): Promise<boolean> {
+  const probes = _accessor?.allKnownEntityProbes ?? [];
+  for (const probe of probes) {
+    if (await probe.probe(question)) return true;
+  }
+  return false;
+}
+
+/**
+ * 获取所有 domain 注册的"明确数据查找"信号词。
+ * 用于 hasExplicitDataLookup 与引擎通用查询动词合并构造正则。
+ */
+export function getDataLookupHints(): string[] {
+  return _accessor?.allDataLookupHints ?? [];
 }

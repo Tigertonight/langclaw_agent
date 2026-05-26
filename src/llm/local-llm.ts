@@ -1,8 +1,7 @@
-import { loadJson } from "../data/load-json.js";
 import { composeReportFromRegistry } from "../domains/runtime-registry.js";
 import { inferIntentCode } from "../agent/intent-codes.js";
 import { INTENTS } from "../agent/ports.js";
-import { readableResourceNameFromRegistry, getRuntimeRegistry, isDomainDataQueryIntent, isAnyDomainDataQuestion, inferAnalysisIntentFromRegistry, getClassificationKeywords, getClassificationPatterns, getResourceDataPath, getLocalPolicyQuestionPatterns, getLocalPlannerHeuristics, getKnowledgeRetrievalKeywords, getDangerousQuestionKeywords, getKnowledgeChunkHeadingHints, getImportantSentenceKeywords } from "../domains/runtime-registry.js";
+import { readableResourceNameFromRegistry, getRuntimeRegistry, isDomainDataQueryIntent, isAnyDomainDataQuestion, inferAnalysisIntentFromRegistry, getClassificationKeywords, getClassificationPatterns, getLocalPolicyQuestionPatterns, getLocalPlannerHeuristics, getKnowledgeRetrievalKeywords, getDangerousQuestionKeywords, getKnowledgeChunkHeadingHints, getImportantSentenceKeywords, applyFollowUpPlannersFromRegistry, probeKnownEntityFromRegistry, getDataLookupHints } from "../domains/runtime-registry.js";
 import { compileBusinessQueryIR } from "../query/query-compiler.js";
 import {
   isBusinessDataQuestion,
@@ -28,11 +27,6 @@ function getDataKeywords(): string[] {
 /** 动态获取 knowledge_qa 关键词：全部从 registry 获取 */
 function getKBKeywords(): string[] {
   return getClassificationKeywords()["knowledge_qa"] ?? [];
-}
-
-/** 动态获取 leave_request 关键词：全部从 registry 获取 */
-function getLeaveKeywords(): string[] {
-  return getClassificationKeywords()["leave_request"] ?? [];
 }
 
 interface ConversationContext {
@@ -103,10 +97,9 @@ export class LocalLLMClient {
     const hasData = getDataKeywords().some((word) => question.includes(word)) || !!inferAnalysisIntentFromRegistry(question) || await isBusinessDataQuestion(question);
     const hasKb = getKBKeywords().some((word) => question.includes(word));
     const hasCompute = isComputeQuestion(question);
-    const hasLeave = isLeaveIntent(question);
-    const asksLeaveRecords = isAnyDomainDataQuestion(question);
+    const workflowIntent = matchWorkflowIntent(question);
+    const asksDomainData = isAnyDomainDataQuestion(question);
     const risky = isDangerousQuestion(question);
-    const hasOrgData = await isOrgDataQuestion(question);
     const policyMatch = matchLocalPolicyQuestion(question);
 
     if (/^(你好|hi|hello|在吗)/i.test(question.trim())) {
@@ -115,15 +108,14 @@ export class LocalLLMClient {
     if (policyMatch) {
       return { intent: INTENTS.KNOWLEDGE_QA, confidence: 0.88, reason: policyMatch.reason ?? "询问域特定制度或办理规则" };
     }
-    if (asksLeaveRecords) {
+    if (asksDomainData) {
       return { intent: INTENTS.DATA_QUERY, confidence: 0.9, reason: "查询域特定数据记录" };
     }
     if (hasKb && !hasExplicitDataLookup(question)) {
       return { intent: INTENTS.KNOWLEDGE_QA, confidence: 0.86, reason: "涉及制度、流程或知识库内容" };
     }
-    if (hasLeave) {
-      // 域特定 workflow intent（如 "leave_request"），由 DomainPack.classificationPatterns 声明
-      return { intent: "leave_request", confidence: 0.9, reason: "命中域特定 workflow 分类模式" };
+    if (workflowIntent) {
+      return { intent: workflowIntent, confidence: 0.9, reason: "命中域特定 workflow 分类模式" };
     }
     if (risky && !hasData && !hasKb) {
       return { intent: INTENTS.UNSUPPORTED, confidence: 0.85, reason: "可能涉及敏感或越权请求" };
@@ -131,10 +123,10 @@ export class LocalLLMClient {
     if (hasCompute && !hasKb) {
       return { intent: INTENTS.DATA_QUERY, confidence: 0.88, reason: "需要使用受限计算沙箱完成确定性运算" };
     }
-    if ((hasData || hasOrgData) && hasKb) {
+    if (hasData && hasKb) {
       return { intent: INTENTS.MIXED, confidence: 0.82, reason: "同时涉及业务数据和知识库内容" };
     }
-    if (hasData || hasOrgData) {
+    if (hasData) {
       return { intent: INTENTS.DATA_QUERY, confidence: 0.86, reason: "涉及业务数据或组织数据查询" };
     }
     if (hasKb) {
@@ -182,29 +174,8 @@ export class LocalLLMClient {
   }
 
   async planFollowUpToolCalls({ question = "", previousCalls = [] }: LLMInput): Promise<ToolPlanResult> {
-    const calls: ToolCall[] = [];
-    const employeeName = await extractEmployeeName(question);
-    if (employeeName) return { calls };
-
-    const asksSubordinates = ["下属", "下级", "下辖", "下面", "团队", "同学"].some((word) => question.includes(word));
-    const asksLeader = ["上级", "汇报", "直属", "领导", "主管"].some((word) => question.includes(word));
-
-    if (asksLeader && !hasEmployeeSelfQuery(previousCalls)) {
-      calls.push(buildEmployeeQueryCall({
-        filters: [{ field: "userid", op: "eq", value: "__CURRENT_USER__" }],
-        asksAggregate: false,
-        limit: 1
-      }));
-    }
-
-    if (asksSubordinates && !hasSubordinateQuery(previousCalls)) {
-      calls.push(buildEmployeeQueryCall({
-        filters: [{ field: "direct_leader", op: "contains", value: "__CURRENT_USER__" }],
-        asksAggregate: false,
-        limit: 50
-      }));
-    }
-
+    if (await probeKnownEntityFromRegistry(question)) return { calls: [] };
+    const calls = applyFollowUpPlannersFromRegistry(question, previousCalls);
     return { calls };
   }
 
@@ -400,46 +371,31 @@ function extractMathExpression(question: unknown): string | null {
   return safe;
 }
 
+// 引擎通用查询动词（不带业务色彩）；业务专属信号词由域通过 dataLookupHints 贡献。
+const GENERIC_DATA_LOOKUP_VERBS = ["查", "查询", "看一下", "看看", "统计", "多少", "几个", "列表", "有哪些", "都有谁", "状态", "报表"];
+
 function hasExplicitDataLookup(question: unknown): boolean {
-  return /(查|查询|看一下|看看|统计|多少|几个|列表|有哪些|都有谁|状态|报表|pipeline|成交额|销售额|上级|下级|下属|负责人)/.test(String(question ?? ""));
+  const text = String(question ?? "");
+  if (GENERIC_DATA_LOOKUP_VERBS.some((word) => text.includes(word))) return true;
+  return getDataLookupHints().some((word) => text.includes(word));
 }
 
-async function isOrgDataQuestion(question: string): Promise<boolean> {
-  const ir = await parseBusinessQuery({ user: { id: "local", role: "system", department: "" }, question, history: [] });
-  return ir?.domain === "organization";
-}
-
-function isLeaveIntent(question: string): boolean {
-  return getLeaveKeywords().some((word) => question.includes(word))
-    || (getClassificationPatterns()["leave_request"] ?? []).some((re) => re.test(question));
-}
-
-
-function buildEmployeeQueryCall({ filters, asksAggregate, limit }: { filters: JsonObject[]; asksAggregate: boolean; limit: number }): ToolCall {
-  return {
-    name: "query_business_data",
-    args: {
-      resource: "employees",
-      operation: asksAggregate ? "aggregate" : "search",
-      filters,
-      metrics: asksAggregate ? [{ type: "count", field: "userid", as: "employee_count" }] : [],
-      fields: ["userid", "name", "department_name", "position", "role", "direct_leader", "reporting", "main_department", "department"],
-      sort: [{ field: "main_department", direction: "asc" }, { field: "userid", direction: "asc" }],
-      limit
-    }
-  };
-}
-
-function hasEmployeeSelfQuery(calls: ToolCall[]): boolean {
-  return calls.some((call) => call.name === "query_business_data"
-    && call.args?.resource === "employees"
-    && (call.args?.filters as DataRecord[] | undefined)?.some((filter) => filter.field === "userid" && filter.value === "__CURRENT_USER__"));
-}
-
-function hasSubordinateQuery(calls: ToolCall[]): boolean {
-  return calls.some((call) => call.name === "query_business_data"
-    && call.args?.resource === "employees"
-    && (call.args?.filters as DataRecord[] | undefined)?.some((filter) => filter.field === "direct_leader" && filter.value === "__CURRENT_USER__"));
+/**
+ * 扫描 registry 中所有 classifierIntents，返回第一个命中本地分类规则的 intent name。
+ * 未命中返回 null。命中关键词或正则均算命中。
+ */
+function matchWorkflowIntent(question: string): string | null {
+  const intents = getRuntimeRegistry()?.allClassifierIntents ?? {};
+  const keywords = getClassificationKeywords();
+  const patterns = getClassificationPatterns();
+  for (const intent of Object.keys(intents)) {
+    if (intent === "data_query" || intent === "knowledge_qa") continue;
+    const hits = keywords[intent] ?? [];
+    const regs = patterns[intent] ?? [];
+    if (hits.some((word) => question.includes(word))) return intent;
+    if (regs.some((re) => re.test(question))) return intent;
+  }
+  return null;
 }
 
 function splitForStreaming(text: unknown): string[] {
@@ -505,12 +461,6 @@ function formatSafeComputeResult(data: DataRecord | undefined): string {
 function resourceName(resource: unknown): string {
   return readableResourceNameFromRegistry(resource, "记录");
 }
-
-async function extractEmployeeName(question: string): Promise<string | null> {
-  const employees = await loadJson(getResourceDataPath("employees") ?? "data/wecom-users.json") as DataRecord[];
-  return employees.find((employee) => question.includes(employee.name))?.name ?? null;
-}
-
 
 function summarizeChunk(text: string, question: string): string {
   const sentences = text

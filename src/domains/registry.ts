@@ -31,6 +31,8 @@ import type {
   RuntimePluginDefinition,
   LocalPolicyQuestionPattern,
   LocalPlannerHeuristic,
+  FollowUpPlannerHeuristic,
+  KnownEntityProbe,
   SkillMappingDefinition,
   ExtractorFn,
   FilterTransformFn,
@@ -177,6 +179,12 @@ export class DomainRegistry {
   readonly allCancellationPhrases: string[] = [];
   /** 所有 domain 注册的 router 抽参示例（按注册顺序） */
   readonly allParamExtractionExamples: string[] = [];
+  /** 所有 domain 注册的 follow-up planner 启发式（按 priority 排序后存储） */
+  readonly allFollowUpPlannerHeuristics: FollowUpPlannerHeuristic[] = [];
+  /** 所有 domain 注册的已知命名实体探针 */
+  readonly allKnownEntityProbes: KnownEntityProbe[] = [];
+  /** 所有 domain 注册的"明确数据查找"信号词（去重） */
+  readonly allDataLookupHints: string[] = [];
   /** 已注册 DomainPack 的元数据快照，用于动态加载和冲突诊断。 */
   readonly domainMetadata: Array<{ id: string; name: string; version: string; conflictPolicy: string; order: number }> = [];
 
@@ -500,6 +508,9 @@ export class DomainRegistry {
     this.allUserFieldSources.length = 0;
     this.allCancellationPhrases.length = 0;
     this.allParamExtractionExamples.length = 0;
+    this.allFollowUpPlannerHeuristics.length = 0;
+    this.allKnownEntityProbes.length = 0;
+    this.allDataLookupHints.length = 0;
     this.domainMetadata.length = 0;
     // 清空 object 类型的收集器
     for (const key of Object.keys(this.allExtractors)) delete this.allExtractors[key];
@@ -880,7 +891,29 @@ export class DomainRegistry {
       if (pack.paramExtractionExamples) {
         this.allParamExtractionExamples.push(...pack.paramExtractionExamples);
       }
+
+      // Follow-Up Planner Heuristics（按 priority 排序，priority ASC 优先）
+      if (pack.followUpPlannerHeuristics) {
+        this.allFollowUpPlannerHeuristics.push(...pack.followUpPlannerHeuristics);
+      }
+
+      // Known Entity Probes（按注册顺序合并）
+      if (pack.knownEntityProbes) {
+        this.allKnownEntityProbes.push(...pack.knownEntityProbes);
+      }
+
+      // Data Lookup Hints（去重）
+      if (pack.dataLookupHints) {
+        for (const hint of pack.dataLookupHints) {
+          if (hint && !this.allDataLookupHints.includes(hint)) {
+            this.allDataLookupHints.push(hint);
+          }
+        }
+      }
     }
+
+    // followUpPlannerHeuristics 全局按 priority 排序
+    this.allFollowUpPlannerHeuristics.sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
 
     // 规则排序：priority ASC → domainOrder ASC → declarationIndex ASC
     ruleEntries.sort((a, b) => {
