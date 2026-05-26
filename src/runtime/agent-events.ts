@@ -1,4 +1,4 @@
-import type { JsonObject, JsonValue, SkillDefinition, ToolPlan, ToolResult } from "../types/agent-contracts.js";
+import type { JsonObject, JsonValue, SkillDefinition, ToolPlan, ToolResult, UserContext } from "../types/agent-contracts.js";
 import type { KnowledgeSearchResult } from "../rag/local-knowledge-base.js";
 import { readableResourceNameFromRegistry, readableToolNameFromRegistry, readableFactNameFromRegistry } from "../domains/runtime-registry.js";
 
@@ -204,6 +204,14 @@ export function createAgentStep(phase: string, title: string, detail: string, ex
     at: new Date().toISOString(),
     ...extra
   };
+}
+
+export function createIdentifyUserStep(user: UserContext): AgentStep {
+  return createAgentStep(
+    "identify_user",
+    "确认员工身份",
+    `当前以 ${user.name}（${user.department} / ${user.role}）的身份处理请求。`
+  );
 }
 
 export function createSkillStep(skills: SkillDefinition[]): AgentStep {

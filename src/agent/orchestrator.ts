@@ -31,7 +31,7 @@ function pushRecentRoute(session: AgentSession | undefined, route: Route | Legac
   list.push({ intent_code: route.intent_code, params: route.params ?? {}, ts: now.toISOString() });
   return list.slice(-RECENT_ROUTES_LIMIT);
 }
-import { createAgentStep, createSources, createToolSteps, splitForStreaming } from "../runtime/agent-events.js";
+import { createAgentStep, createIdentifyUserStep, createSources, createToolSteps, splitForStreaming } from "../runtime/agent-events.js";
 import { buildConversationContext, summarizeConversationContext } from "../runtime/conversation-context.js";
 import { WorkflowRunner } from "../runtime/workflow-runner.js";
 import { resolveUserWorkspace, type WorkspaceContext } from "../runtime/workspace-context.js";
@@ -650,7 +650,7 @@ export class SimpleWorkflowOrchestrator {
     const result = await this.executeKnowledgeLookup({ user, workspace, message, sessionId, runId, route, enterpriseContext, conversationContext });
     const legacyRoute = createLegacyKnowledgeRoute(route);
     const agentSteps = [
-      createAgentStep("identify_user", "确认员工身份", `当前以 ${user.name}（${user.department} / ${user.role}）的身份处理请求。`),
+      createIdentifyUserStep(user),
       createAgentStep("classify_intent", "识别任务类型", `Router 判定为 ${route.execution_class}/${route.handler_type}（${route.intent_code}, source=${route.source}）。`),
       ...createToolSteps(result.toolPlan, result.toolResults),
       createAgentStep("observe_result", "观察结果", `知识库命中 ${result.docs.length} 个片段，正在组织回答。`)
@@ -757,7 +757,7 @@ export class SimpleWorkflowOrchestrator {
       answer: String(scenarioResult.answer ?? ""),
       scenarioDebug: scenarioResult.debug,
       agentSteps: [
-        createAgentStep("identify_user", "确认员工身份", `当前以 ${user.name}（${user.department} / ${user.role}）的身份处理请求。`),
+        createIdentifyUserStep(user),
         createAgentStep("classify_intent", "识别任务类型", `Router 判定为 ${route.execution_class}/${route.handler_type}（${route.intent_code}, source=${route.source}）。`),
         this.workflowRunner.createEnterStep()
       ],
@@ -831,7 +831,7 @@ export class SimpleWorkflowOrchestrator {
       session.recent_routes = pushRecentRoute(session, route, nowDate);
     }
     const agentSteps = [
-      createAgentStep("identify_user", "确认员工身份", `当前以 ${user.name}（${user.department} / ${user.role}）的身份处理请求。`),
+      createIdentifyUserStep(user),
       createAgentStep("classify_intent", "识别任务类型", `Router 判定为 ${route.intent_code}（confidence=${route.confidence}, source=${route.source}）。`),
       createAgentStep("intent_query", "执行结构化查询", `命中 ${route.intent_code}，已调用 ${handlerResult.toolPlan.calls.map((call) => call.name).join(",")}，返回 ${handlerResult.debug.row_count} 条记录。`)
     ];
@@ -874,7 +874,7 @@ export class SimpleWorkflowOrchestrator {
       handler_type: route.handler_type
     };
     const agentSteps = [
-      createAgentStep("identify_user", "确认员工身份", `当前以 ${user.name}（${user.department} / ${user.role}）的身份处理请求。`),
+      createIdentifyUserStep(user),
       createAgentStep("classify_intent", "识别任务类型", `Router 判定为 ${route.intent_code}（chitchat, source=${route.source}）。`),
       createAgentStep("chitchat", "直接生成回答", "无需调用工具或检索知识库。")
     ];
@@ -919,7 +919,7 @@ export class SimpleWorkflowOrchestrator {
     };
     const traces = Array.isArray(handlerResult.debug?.traces) ? handlerResult.debug.traces as Array<Record<string, unknown>> : [];
     const agentSteps = [
-      createAgentStep("identify_user", "确认员工身份", `当前以 ${user.name}（${user.department} / ${user.role}）的身份处理请求。`),
+      createIdentifyUserStep(user),
       createAgentStep("classify_intent", "识别任务类型", `Router 判定为 agentic（${route.intent_code}, source=${route.source}）。`),
       createAgentStep("agentic", "跨意图规划", `执行 ${traces.length} 步：${traces.map((t) => t.tool ?? t.type).join(" → ")}`)
     ];

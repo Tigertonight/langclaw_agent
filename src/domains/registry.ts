@@ -173,6 +173,10 @@ export class DomainRegistry {
   readonly allScopeSentinels: string[] = [];
   /** 所有 domain 注册的 user field source（按 name 路由） */
   readonly allUserFieldSources: UserFieldSourceDefinition[] = [];
+  /** 所有 domain 注册的取消/放弃短语（去重） */
+  readonly allCancellationPhrases: string[] = [];
+  /** 所有 domain 注册的 router 抽参示例（按注册顺序） */
+  readonly allParamExtractionExamples: string[] = [];
   /** 已注册 DomainPack 的元数据快照，用于动态加载和冲突诊断。 */
   readonly domainMetadata: Array<{ id: string; name: string; version: string; conflictPolicy: string; order: number }> = [];
 
@@ -494,6 +498,8 @@ export class DomainRegistry {
     this.allFactExtractors.length = 0;
     this.allScopeSentinels.length = 0;
     this.allUserFieldSources.length = 0;
+    this.allCancellationPhrases.length = 0;
+    this.allParamExtractionExamples.length = 0;
     this.domainMetadata.length = 0;
     // 清空 object 类型的收集器
     for (const key of Object.keys(this.allExtractors)) delete this.allExtractors[key];
@@ -859,6 +865,20 @@ export class DomainRegistry {
       // User Field Sources（按 name 路由）
       if (pack.userFieldSources) {
         this.allUserFieldSources.push(...pack.userFieldSources);
+      }
+
+      // Cancellation Phrases（去重）
+      if (pack.cancellationPhrases) {
+        for (const phrase of pack.cancellationPhrases) {
+          if (phrase && !this.allCancellationPhrases.includes(phrase)) {
+            this.allCancellationPhrases.push(phrase);
+          }
+        }
+      }
+
+      // Param Extraction Examples（按注册顺序合并）
+      if (pack.paramExtractionExamples) {
+        this.allParamExtractionExamples.push(...pack.paramExtractionExamples);
       }
     }
 

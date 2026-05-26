@@ -132,6 +132,11 @@ export const dealerPack: DomainPack = {
     },
   ],
 
+  // ── Router 抽参示例片段 ──
+  paramExtractionExamples: [
+    "比如「汉EV」就是「汉EV」，不要简化为「汉」。",
+  ],
+
   // ── 路由提示词片段 ──
   routerPromptHints: [
     "当用户提到经销商、门店、库存、车辆、库龄、在途、配额、PDI、合格证、线索、意向、到店、战败、锁车、折让金、应付、返利、售后、维修、工单、三包、索赔等关键词时，应路由到 dealer 域的对应 intent_code。",

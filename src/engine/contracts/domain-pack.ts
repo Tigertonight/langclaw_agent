@@ -286,6 +286,23 @@ export interface DomainPack {
   userFieldSources?: UserFieldSourceDefinition[];
 
   /**
+   * 取消/放弃当前流程的领域专属短语。
+   *
+   * workflow-runner 在判断 scenario 控制消息时，会把所有域注册的 cancellationPhrases
+   * 拼到通用取消短语集合中（如「不办了」「不请假了」）。仅声明短语本身，不需要
+   * 包含通用词（取消、退出、算了 等）。多个域的短语会合并去重。
+   */
+  cancellationPhrases?: string[];
+
+  /**
+   * Router 抽参示例片段（按域贡献）。
+   *
+   * 用于 router-prompt 的"抽参严格按用户原文"硬规则示例。例如 dealer 域贡献
+   * 「比如「汉EV」就是「汉EV」，不要简化为「汉」」。多个域的示例会按注册顺序合并。
+   */
+  paramExtractionExamples?: string[];
+
+  /**
    * LLM 答案生成系统提示词片段。
    * 用于 createAnswerSystemPrompt 等场景，替代硬编码提示。
    * DomainRegistry 会自动合并所有域的 answerPromptHints 到全局列表。

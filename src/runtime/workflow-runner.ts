@@ -1,5 +1,5 @@
 import { createAgentStep } from "./agent-events.js";
-import { detectSlotUpdateFromRegistry } from "../domains/runtime-registry.js";
+import { detectSlotUpdateFromRegistry, getCancellationPhrases } from "../domains/runtime-registry.js";
 import type { JsonObject, Route, UserContext } from "../types/agent-contracts.js";
 
 interface WorkflowSession {
@@ -94,8 +94,20 @@ export class WorkflowRunner {
   }
 }
 
+const GENERIC_SCENARIO_CONTROL_PHRASES = [
+  "确认", "提交", "确定", "是的", "可以",
+  "不", "否", "先不", "不用", "不要",
+  "修改", "取消", "退出", "算了", "停止",
+  "不办了", "先不办了", "不用了"
+];
+
 function isScenarioControlMessage(message?: string): boolean {
-  return /^(确认|提交|确定|是的|可以|不|否|先不|不用|不要|修改|取消|退出|算了|停止|不请假了|先不请假了|不用请假了|不办了|先不办了|不用了)$/i.test(String(message ?? "").trim());
+  const text = String(message ?? "").trim();
+  if (!text) return false;
+  const phrases = [...GENERIC_SCENARIO_CONTROL_PHRASES, ...getCancellationPhrases()];
+  const escaped = phrases.map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  const pattern = new RegExp(`^(${escaped.join("|")})$`, "i");
+  return pattern.test(text);
 }
 
 // 用户用自然语言表达"继续/接着/恢复"当前未完成流程，应优先续做不要清状态

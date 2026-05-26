@@ -1,5 +1,5 @@
 import { executionClassForHandler } from "./execution-class.js";
-import { getRouterPromptHints } from "../domains/runtime-registry.js";
+import { getRouterPromptHints, getParamExtractionExamples } from "../domains/runtime-registry.js";
 import type { IntentRegistry, JsonValue, RouteRequest } from "../types/agent-contracts.js";
 
 interface IntentExample {
@@ -60,7 +60,7 @@ export function buildSystemPrompt(registry: PromptRegistry): string {
     "4. controlled_execution 包含 chitchat / intent_query / knowledge_lookup / workflow：直接回答、单次查询/聚合、知识库检索、受控多轮流程都属于这一类。",
     "5. autonomous_planning 目前对应 agentic：复杂经营分析、原因诊断、跨资源对比、报告/行动计划、无法确定 intent 时都进入这一类。",
     "6. 不确定属于哪个 intent_code 时，输出 intent_code = \"general\"，execution_class = \"autonomous_planning\"，handler_type = \"agentic\"。",
-    "7. 抽参时严格按用户原文，比如「汉EV」就是「汉EV」，不要简化为「汉」。",
+    `7. 抽参时严格按用户原文。${getParamExtractionExamples().join("")}`,
     "8. **明细 vs 聚合**：用户问「有哪些 / 列表 / 明细 / 哪几单 / 哪几条」时选 <domain>.query.* 类（明细查询）；问「总额 / 合计 / 平均 / 最高 / 最低 / 占比 / 率 / 多少条 / 多少笔 / 各门店多少」时选 <domain>.aggregate.* 类（聚合）。",
     "9. 聚合类必须填 metric（指标名），可选 group_by（用户说「各门店」「按车系」时填，否则 null）。",
     "10. **时间基准**：解析「本月 / 上月 / 近一个月 / 近三个月 / 昨天 / 今天 / 本周」等相对时间时，以 user prompt 里的 now 字段为基准（now 是 ISO 时间戳）。time_range 仍按用户原文回填（如「本月」「近一个月」），不要自己换算成具体日期。",

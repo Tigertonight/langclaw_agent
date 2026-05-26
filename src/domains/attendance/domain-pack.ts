@@ -48,6 +48,9 @@ export const attendancePack: DomainPack = {
     submit_leave_request: "提交请假",
   },
 
+  // ── 取消请假流程的领域专属短语 ──
+  cancellationPhrases: ["不请假了", "先不请假了", "不用请假了"],
+
   // ── fact key 映射 ──
   factKeyMappings: {},
 

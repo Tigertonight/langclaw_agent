@@ -108,6 +108,10 @@ export interface RuntimeRegistryAccessor {
   readonly allScopeSentinels: string[];
   /** 域特定的 user field source 定义 */
   readonly allUserFieldSources: UserFieldSourceDefinition[];
+  /** 域贡献的取消/放弃流程短语（已去重） */
+  readonly allCancellationPhrases: string[];
+  /** 域贡献的 router 抽参示例片段 */
+  readonly allParamExtractionExamples: string[];
 }
 
 let _accessor: RuntimeRegistryAccessor | null = null;
@@ -711,4 +715,20 @@ export function readUserFieldFromRegistry(name: string, user?: UserContext): Jso
     }
   }
   return undefined;
+}
+
+/**
+ * 获取所有 domain 注册的取消/放弃流程短语。
+ * 用于 workflow-runner 拼接 scenario 控制消息正则。
+ */
+export function getCancellationPhrases(): string[] {
+  return _accessor?.allCancellationPhrases ?? [];
+}
+
+/**
+ * 获取所有 domain 注册的 router 抽参示例片段。
+ * 用于 router-prompt 注入"严格按用户原文"硬规则的示例文本。
+ */
+export function getParamExtractionExamples(): string[] {
+  return _accessor?.allParamExtractionExamples ?? [];
 }
