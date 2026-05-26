@@ -519,17 +519,9 @@ export class SimpleWorkflowOrchestrator {
         route,
         session
       });
-      const legacyRoute = {
-        intent: INTENTS.DATA_QUERY,
-        confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
-        reason: route.reasoning ?? "Intent Router → controlled_execution/intent_query",
-        intent_code: route.intent_code,
-        router: "intent_router",
-        router_source: route.source,
-        params: route.params,
-        execution_class: route.execution_class,
-        handler_type: route.handler_type
-      };
+      const legacyRoute = buildLegacyRoute(route, {
+        reason: route.reasoning ?? "Intent Router → controlled_execution/intent_query"
+      });
       if (session) {
         const nowDate = new Date();
         const snapshot = { intent_code: route.intent_code, params: route.params ?? {}, ts: nowDate.toISOString() };
@@ -597,16 +589,10 @@ export class SimpleWorkflowOrchestrator {
       if (session) {
         session.last_route = { intent_code: route.intent_code, params: route.params ?? {}, ts: new Date().toISOString() };
       }
-      const legacyRoute = {
-        intent: INTENTS.SMALLTALK,
-        confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
+      const legacyRoute = buildLegacyRoute(route, {
         reason: route.reasoning ?? "Intent Router → controlled_execution/chitchat",
-        intent_code: route.intent_code,
-        router: "intent_router",
-        router_source: route.source,
-        execution_class: route.execution_class,
-        handler_type: route.handler_type
-      };
+        includeParams: false
+      });
       await pushStep(createAgentStep("chitchat", "直接生成回答", "这是受控执行里的轻量交互，无需调用工具或检索知识库。"));
       return this.finishStream({
         user,
@@ -810,17 +796,9 @@ export class SimpleWorkflowOrchestrator {
       session
     });
     // 保留 legacy intent 字符串，兼容下游历史字段。
-    const legacyRoute = {
-      intent: INTENTS.DATA_QUERY,
-      confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
-      reason: route.reasoning ?? "Intent Router → intent_query",
-      intent_code: route.intent_code,
-      router: "intent_router",
-      router_source: route.source,
-      params: route.params,
-      execution_class: route.execution_class,
-      handler_type: route.handler_type
-    };
+    const legacyRoute = buildLegacyRoute(route, {
+      reason: route.reasoning ?? "Intent Router → intent_query"
+    });
     if (session) {
       const nowDate = new Date();
       const snapshot = { intent_code: route.intent_code, params: route.params ?? {}, ts: nowDate.toISOString() };
@@ -863,16 +841,10 @@ export class SimpleWorkflowOrchestrator {
       session.last_route = { intent_code: route.intent_code, params: route.params ?? {}, ts: new Date().toISOString() };
       // 寒暄不更新 last_query_route，下一轮"那华南呢"还能继承上次的查询
     }
-    const legacyRoute = {
-      intent: INTENTS.SMALLTALK,
-      confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
+    const legacyRoute = buildLegacyRoute(route, {
       reason: route.reasoning ?? "Intent Router → chitchat",
-      intent_code: route.intent_code,
-      router: "intent_router",
-      router_source: route.source,
-      execution_class: route.execution_class,
-      handler_type: route.handler_type
-    };
+      includeParams: false
+    });
     const agentSteps = [
       createIdentifyUserStep(user),
       createAgentStep("classify_intent", "识别任务类型", `Router 判定为 ${route.intent_code}（chitchat, source=${route.source}）。`),
@@ -906,17 +878,9 @@ export class SimpleWorkflowOrchestrator {
       // agentic 走完不更新 last_query_route——它可能跨多个 intent，没有单一"这一次的查询"
       session.last_route = { intent_code: route.intent_code, params: route.params ?? {}, ts: new Date().toISOString() };
     }
-    const legacyRoute = {
-      intent: INTENTS.DATA_QUERY,
-      confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
-      reason: route.reasoning ?? "Intent Router → agentic",
-      intent_code: route.intent_code,
-      router: "intent_router",
-      router_source: route.source,
-      execution_class: route.execution_class,
-      handler_type: route.handler_type,
-      params: route.params
-    };
+    const legacyRoute = buildLegacyRoute(route, {
+      reason: route.reasoning ?? "Intent Router → agentic"
+    });
     const traces = Array.isArray(handlerResult.debug?.traces) ? handlerResult.debug.traces as Array<Record<string, unknown>> : [];
     const agentSteps = [
       createIdentifyUserStep(user),
@@ -970,17 +934,9 @@ export class SimpleWorkflowOrchestrator {
     if (session) {
       session.last_route = { intent_code: route.intent_code, params: route.params ?? {}, ts: new Date().toISOString() };
     }
-    const legacyRoute = {
-      intent: INTENTS.DATA_QUERY,
-      confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
-      reason: route.reasoning ?? "Intent Router → agentic",
-      intent_code: route.intent_code,
-      router: "intent_router",
-      router_source: route.source,
-      execution_class: route.execution_class,
-      handler_type: route.handler_type,
-      params: route.params
-    };
+    const legacyRoute = buildLegacyRoute(route, {
+      reason: route.reasoning ?? "Intent Router → agentic"
+    });
 
     return this.finishStream({
       user,
@@ -1316,18 +1272,42 @@ function summarizeEnterpriseContext(context: unknown): Record<string, unknown> |
   };
 }
 
-function createLegacyKnowledgeRoute(route: Route | LegacyRoute): LegacyRoute {
-  return {
-    intent: INTENTS.KNOWLEDGE_QA,
+/**
+ * Map handler_type to a legacy "coarse intent" string, used only for the
+ * legacy `route.intent` field that downstream history fields still expect.
+ * 引擎层只在 handler_type 上做映射，不在调用点散落 INTENTS.* 常量。
+ */
+function legacyIntentForHandlerType(handlerType?: string): string {
+  if (handlerType === "chitchat") return INTENTS.SMALLTALK;
+  if (handlerType === "knowledge_lookup") return INTENTS.KNOWLEDGE_QA;
+  return INTENTS.DATA_QUERY;
+}
+
+interface BuildLegacyRouteOptions {
+  reason?: JsonValue;
+  includeParams?: boolean;
+}
+
+function buildLegacyRoute(route: Route | LegacyRoute, { reason, includeParams = true }: BuildLegacyRouteOptions = {}): LegacyRoute {
+  const reasoning = (route as Route).reasoning;
+  const result: LegacyRoute = {
+    intent: legacyIntentForHandlerType(route.handler_type),
     confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
-    reason: route.reasoning ?? "Intent Router → controlled_execution/knowledge_lookup",
+    reason: reason ?? reasoning ?? `Intent Router → ${route.handler_type ?? "unknown"}`,
     intent_code: route.intent_code,
     router: "intent_router",
     router_source: route.source,
     execution_class: route.execution_class,
-    handler_type: route.handler_type,
-    params: route.params
+    handler_type: route.handler_type
   };
+  if (includeParams) result.params = route.params;
+  return result;
+}
+
+function createLegacyKnowledgeRoute(route: Route | LegacyRoute): LegacyRoute {
+  return buildLegacyRoute(route, {
+    reason: (route as Route).reasoning ?? "Intent Router → controlled_execution/knowledge_lookup"
+  });
 }
 
 function createLegacyWorkflowRoute(route: Route | LegacyRoute): LegacyRoute {
