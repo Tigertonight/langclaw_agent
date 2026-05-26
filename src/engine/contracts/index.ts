@@ -103,6 +103,11 @@ export type {
   EvidenceInferenceDefinition,
 } from "./evidence-contract.js";
 
+// ── Runtime Plugin Contract (stable) ─────────────────────────────────────────
+export type {
+  RuntimePluginDefinition,
+} from "./runtime-plugin-contract.js";
+
 // ── Lifecycle Contract (stable) ──────────────────────────────────────────────
 export type {
   DomainInitContext,

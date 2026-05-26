@@ -25,7 +25,6 @@ import {
 } from "../../auth/user-context-resolver.js";
 import { OpenAILLMClient } from "../../llm/openai-llm.js";
 import { EvolutionRuntime } from "../../evolution/runtime.js";
-import { createSkillCuratorPlugin } from "../../evolution/skill-curator-plugin.js";
 import { createEvolutionSignalPlugin } from "../../evolution/evolution-signal-plugin.js";
 import { createEvolutionIterationPlugin } from "../../evolution/iteration-plugin.js";
 import { createEvolutionTools } from "../../evolution/tools.js";
@@ -44,13 +43,11 @@ import { BusinessQueryEngine } from "../../runtime/business-query-engine.js";
 import { PendingActionStore } from "../../runtime/pending-action-store.js";
 import { RuntimeHooks } from "../../runtime/hooks.js";
 import { resolveUserWorkspace } from "../../runtime/workspace-context.js";
-import { createMaintenanceSchedulerPlugin } from "../../runtime/maintenance-scheduler-plugin.js";
 import { createTranscriptPlugin } from "../../runtime/transcript-plugin.js";
 import { createPromptAuthorityAlertPlugin } from "../../runtime/prompt-authority-alert-plugin.js";
 import { MetricsCollector, createMetricsPlugin } from "../../runtime/metrics-collector.js";
 import { FileSystemSkillLoader } from "../../runtime/skill-loader.js";
 import { TranscriptStore } from "../../transcript/transcript-store.js";
-import { createTaskContinuityPlugin } from "../../tasks/task-continuity-plugin.js";
 import { ScenarioRouter } from "../../scenarios/router.js";
 import { SkillRegistryStore } from "../../skills/registry-store.js";
 import { SkillRuntime } from "../../skills/runtime.js";
@@ -125,9 +122,10 @@ export function createInfraAdapter(): InfraPort {
 
   hooks.use(createEvolutionSignalPlugin({ evolutionRuntime }));
   hooks.use(createEvolutionIterationPlugin());
-  hooks.use(createTaskContinuityPlugin());
-  hooks.use(createSkillCuratorPlugin());
-  hooks.use(createMaintenanceSchedulerPlugin());
+
+  // 注：task-continuity / skill-curator / maintenance-scheduler 已迁移到
+  // corePack.runtimePlugins，由 EngineHost.init() 末尾统一挂载。
+  // 引擎层只保留真正通用的插件（transcript / promptAuthority / metrics / evolution）。
 
   return { llm, hooks, evolutionRuntime, transcriptStore, metricsCollector };
 }

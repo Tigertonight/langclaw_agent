@@ -27,6 +27,7 @@ import type {
   AgenticFallbackDefinition,
   ReportComposerDefinition,
   EvidenceInferenceDefinition,
+  RuntimePluginDefinition,
   SkillMappingDefinition,
   ExtractorFn,
   FilterTransformFn,
@@ -140,6 +141,11 @@ export class DomainRegistry {
   readonly allEntityAliases: Record<string, string[]> = {};
   /** 所有 domain 注册的 entityAliasSuffixRules */
   readonly allEntityAliasSuffixRules: Array<{ suffix: string; replacement: string }> = [];
+  /**
+   * 所有 domain 注册的 RuntimePlugin 声明。
+   * 由 EngineHost 在 init() 末尾按 priority 排序、按 id 去重后挂载到 RuntimeHooks。
+   */
+  readonly allRuntimePlugins: RuntimePluginDefinition[] = [];
   /** 已注册 DomainPack 的元数据快照，用于动态加载和冲突诊断。 */
   readonly domainMetadata: Array<{ id: string; name: string; version: string; conflictPolicy: string; order: number }> = [];
 
@@ -449,6 +455,7 @@ export class DomainRegistry {
     this.allMetricKeywordMappings.length = 0;
     this.allChatPageRenderers.length = 0;
     this.allEntityAliasSuffixRules.length = 0;
+    this.allRuntimePlugins.length = 0;
     this.domainMetadata.length = 0;
     // 清空 object 类型的收集器
     for (const key of Object.keys(this.allExtractors)) delete this.allExtractors[key];
@@ -752,6 +759,11 @@ export class DomainRegistry {
       // Entity Alias Suffix Rules
       if (pack.entityAliasSuffixRules) {
         this.allEntityAliasSuffixRules.push(...pack.entityAliasSuffixRules);
+      }
+
+      // Runtime Plugins（声明式插件挂载，由 EngineHost 在 init 末尾统一挂载）
+      if (pack.runtimePlugins) {
+        this.allRuntimePlugins.push(...pack.runtimePlugins);
       }
     }
 

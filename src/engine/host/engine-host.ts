@@ -288,6 +288,21 @@ export class EngineHost {
       this.toolRegistry.register(tool);
     }
 
+    // 6. 挂载 DomainPack 声明的 RuntimePlugin
+    //    按 priority ASC 排序；同 id 仅挂载第一个并打 warn 日志。
+    const sortedPlugins = [...this.domainRegistry.allRuntimePlugins].sort(
+      (a, b) => (a.priority ?? 100) - (b.priority ?? 100)
+    );
+    const seenPluginIds = new Set<string>();
+    for (const def of sortedPlugins) {
+      if (seenPluginIds.has(def.id)) {
+        console.warn(`[EngineHost] duplicate runtime plugin '${def.id}', skipped`);
+        continue;
+      }
+      seenPluginIds.add(def.id);
+      this.infra.hooks.use(def.plugin);
+    }
+
     this.initialized = true;
   }
 

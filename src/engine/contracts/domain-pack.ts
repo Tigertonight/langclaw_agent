@@ -68,6 +68,10 @@ import type {
 } from "./evidence-contract.js";
 
 import type {
+  RuntimePluginDefinition,
+} from "./runtime-plugin-contract.js";
+
+import type {
   DomainInitContext,
   DomainRegistrationContext,
   DomainDisposeContext,
@@ -394,6 +398,17 @@ export interface DomainPack {
    * DomainRegistry 会自动合并所有域的 entityAliasSuffixRules 到全局列表。
    */
   entityAliasSuffixRules?: Array<{ suffix: string; replacement: string }>;
+
+  /**
+   * 运行时插件声明。
+   * 由 EngineHost 在 init() 末尾统一收集、按 priority 排序、按 id 去重后挂载到 RuntimeHooks。
+   * 业务侧增加 runtime plugin 不需要修改 engine-adapters.ts。
+   *
+   * 引擎层只内置真正通用的插件（transcript / metrics / promptAuthority / evolution），
+   * 跨域共享但带业务语义的插件（task continuity / skill curator / maintenance scheduler）
+   * 由 corePack 声明。
+   */
+  runtimePlugins?: RuntimePluginDefinition[];
 
   // ── 生命周期钩子 ────────────────────────────────────────────────────────
 

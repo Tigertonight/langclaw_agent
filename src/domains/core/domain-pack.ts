@@ -11,6 +11,9 @@ import { CORE_COMMANDS } from "./commands.js";
 import { CORE_DETERMINISTIC_RULES } from "./deterministic-rules.js";
 import { CORE_QUERY_ADAPTER } from "./query-adapter.js";
 import { CORE_REPORT_COMPOSERS } from "./report-composers.js";
+import { createTaskContinuityPlugin } from "../../tasks/task-continuity-plugin.js";
+import { createSkillCuratorPlugin } from "../../evolution/skill-curator-plugin.js";
+import { createMaintenanceSchedulerPlugin } from "../../runtime/maintenance-scheduler-plugin.js";
 
 export const corePack: DomainPack = {
   id: "core",
@@ -217,5 +220,15 @@ export const corePack: DomainPack = {
         return null;
       },
     } satisfies DomainQueryAdapter,
+  ],
+
+  // ── Runtime 插件声明 ──
+  // 这些插件本质上是跨域共享的业务能力（任务连续性 / skill 治理 / 维护调度），
+  // 而不是引擎通用能力（transcript/metrics/promptAuthority/evolution 仍由引擎内置）。
+  // 由 EngineHost 在 init() 末尾按 priority 排序、按 id 去重后挂载。
+  runtimePlugins: [
+    { id: "core.task-continuity", priority: 110, plugin: createTaskContinuityPlugin() },
+    { id: "core.skill-curator", priority: 120, plugin: createSkillCuratorPlugin() },
+    { id: "core.maintenance-scheduler", priority: 130, plugin: createMaintenanceSchedulerPlugin() },
   ],
 };
