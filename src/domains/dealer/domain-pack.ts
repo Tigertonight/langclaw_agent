@@ -17,6 +17,7 @@ import { dealerQueryAdapter } from "./query-adapter.js";
 import { composeDealerReport } from "./dealer-report-composer.js";
 import { inferDealerEvidenceFacts } from "./dealer-evidence.js";
 import { vehicleProgressPlugin } from "./surfaces/vehicle-progress.js";
+import { createDealerTools } from "./tools.js";
 
 export const dealerPack: DomainPack = {
   id: "dealer",
@@ -26,6 +27,7 @@ export const dealerPack: DomainPack = {
   description: "销售订单、库存、线索、财务、三包索赔、维修工单、经营指标等经销商核心业务。",
 
   resources: DEALER_RESOURCES,
+  tools: createDealerTools(),
   commands: DEALER_COMMANDS,
   deterministicRules: DEALER_DETERMINISTIC_RULES,
   extractors: DEALER_EXTRACTORS,
