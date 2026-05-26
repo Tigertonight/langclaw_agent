@@ -136,22 +136,13 @@ function taskFromMetadata(metadata?: JsonObject | null): ConversationTask | null
 
 function inferTaskFromText(text?: string): ConversationTask | null {
   const value = String(text ?? "");
-  if (/(制度|政策|流程|规则|标准|手册|报销|试用期)/.test(value)) {
-    return {
-      intent: "knowledge_qa",
-      intent_code: "knowledge.policy_qa",
-      selected_skill: "knowledge-qa",
-      target: null,
-      operation: null,
-      filters: [],
-      summary: summarizeText(value)
-    };
-  }
-  // 通过 registry 动态查找域特定的任务推断（包括 core 域的 business/org 和其他域如 attendance）
+  // 通过 registry 动态查找域特定的任务推断。
+  // 知识/制度问答由 core 域的 knowledge adapter 贡献并显式声明 intent: KNOWLEDGE_QA；
+  // 其他业务/组织查询默认归入 DATA_QUERY。
   const domainTask = inferTaskFromRegistry(value);
   if (domainTask) {
     return {
-      intent: INTENTS.DATA_QUERY,
+      intent: domainTask.intent ?? INTENTS.DATA_QUERY,
       intent_code: domainTask.intent_code,
       selected_skill: domainTask.selected_skill,
       target: domainTask.target,

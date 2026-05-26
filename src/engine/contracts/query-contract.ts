@@ -122,8 +122,11 @@ export interface DomainQueryAdapter {
   /**
    * 从 NLP 启发式推断会话任务（用于 conversation-context 的 inferTaskFromText）。
    * 返回 null 表示此 adapter 不处理该问题。
+   *
+   * 返回值的 intent 字段为可选：未提供时 conversation-context 默认按 DATA_QUERY 处理；
+   * 知识/制度类问答的 adapter 可显式返回 intent: "knowledge_qa" 以让上游正确分发。
    */
-  inferTask?(question: string): { intent_code: string; selected_skill: string; target: string; operation: string } | null;
+  inferTask?(question: string): { intent?: string; intent_code: string; selected_skill: string; target: string | null; operation: string | null } | null;
 }
 
 // ─── Query Resource Schema ───────────────────────────────────────────────────

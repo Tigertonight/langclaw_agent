@@ -424,7 +424,7 @@ export function inferDomainFromIntentCodeViaRegistry(intentCode: string | undefi
  * 通过 registry 的 queryAdapters 推断会话任务。
  * 用于 conversation-context 的 inferTaskFromText，替代硬编码的域特定 NLP 启发式。
  */
-export function inferTaskFromRegistry(text: string): { intent_code: string; selected_skill: string; target: string; operation: string } | null {
+export function inferTaskFromRegistry(text: string): { intent?: string; intent_code: string; selected_skill: string; target: string | null; operation: string | null } | null {
   for (const adapter of getQueryAdapters()) {
     const task = adapter.inferTask?.(text);
     if (task) return task;

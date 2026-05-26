@@ -7,6 +7,7 @@
 
 import type { DomainPack, IntentCodeInferenceFn, DomainQueryAdapter, EvidenceInferenceDefinition, FactExtractorDefinition, ExtractedFact, FollowUpPlannerHeuristic, KnownEntityProbe } from "../types.js";
 import type { JsonObject, ToolCall } from "../../types/agent-contracts.js";
+import { INTENTS, INTENT_CODES } from "../../agent/ports.js";
 import { loadJson } from "../../data/load-json.js";
 import { getResourceDataPath } from "../runtime-registry.js";
 import { CORE_RESOURCES, CORE_FIELD_LABELS } from "./resources.js";
@@ -264,6 +265,22 @@ export const corePack: DomainPack = {
   // ── 查询适配器（用于 conversation-context 的 inferTask 等） ──
   queryAdapters: [
     CORE_QUERY_ADAPTER,
+    {
+      domain: "core.knowledge",
+      supports: () => false,
+      inferTask(question: string) {
+        if (/(制度|政策|流程|规则|标准|手册|报销|试用期)/.test(question)) {
+          return {
+            intent: INTENTS.KNOWLEDGE_QA,
+            intent_code: INTENT_CODES.KNOWLEDGE_POLICY_QA,
+            selected_skill: "knowledge-qa",
+            target: null,
+            operation: null,
+          };
+        }
+        return null;
+      },
+    } satisfies DomainQueryAdapter,
     {
       domain: "core",
       supports: () => false,
