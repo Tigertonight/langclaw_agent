@@ -93,9 +93,12 @@ export interface UserContext {
   name?: string;
   role: string;
   department?: string;
-  default_store?: string;
   permissions?: string[];
   accessible_customer_ids?: string[];
+  /**
+   * 业务域可通过索引签名扩展用户字段（如 dealer 的 default_store）。
+   * 推荐通过 DomainPack.userFieldSources 注册以便引擎层 manifest 配置消费。
+   */
   [key: string]: unknown;
 }
 

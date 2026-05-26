@@ -286,14 +286,15 @@ export const dealerQueryAdapter: DomainQueryAdapter = {
     const applied: JsonObject[] = [];
 
     // store 默认值：用户在 users.json 里有 default_store，且当前 manifest 接受 store 字段、用户没显式提
+    const userDefaultStore = (user as { default_store?: string } | undefined)?.default_store;
     if (
       schema.store &&
       (next.store == null || next.store === "") &&
-      user?.default_store &&
+      userDefaultStore &&
       !shouldSkipDefaultStore({ params: next, message })
     ) {
-      next.store = user.default_store;
-      applied.push({ field: "store", value: String(user.default_store), reason: "默认门店" });
+      next.store = userDefaultStore;
+      applied.push({ field: "store", value: String(userDefaultStore), reason: "默认门店" });
     }
 
     if (!applied.length) return null;
@@ -313,8 +314,9 @@ export const dealerQueryAdapter: DomainQueryAdapter = {
     if (resource === "dealer_metrics" && /库存/.test(message ?? "") && /线索/.test(message ?? "") && !/线索/.test(answer)) {
       return `${answer}\n\n线索维度也在本次优先级问题范围内；如需展开，可继续查看 lead 类经营指标。`;
     }
-    if (params?.store && user?.default_store && params.store === user.default_store && !/默认(?:store|门店)|已自动套用/.test(answer)) {
-      return `${answer}\n\n这里按你的默认门店「${user.default_store}」来看的。`;
+    const userDefaultStore = (user as { default_store?: string } | undefined)?.default_store;
+    if (params?.store && userDefaultStore && params.store === userDefaultStore && !/默认(?:store|门店)|已自动套用/.test(answer)) {
+      return `${answer}\n\n这里按你的默认门店「${userDefaultStore}」来看的。`;
     }
     return answer;
   },

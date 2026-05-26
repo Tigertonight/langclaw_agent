@@ -738,7 +738,7 @@ function formatAggregateAnswer({ metric, metricDef, groupBy, toolData, params: _
     } else {
       // 选用作为"主指标"的那个 as：取 metric_definitions 里第一个非 _ 开头的 derived，否则第一个 aggregations 的 as
       const primaryAs = pickPrimaryAs(metricDef, metric);
-      lines.push(createGroupedMetricIntro({ metric, groupBy, total: toolData?.total, fieldLabels }));
+      lines.push(createGroupedMetricIntro({ metric, metricDef, groupBy, total: toolData?.total, fieldLabels }));
       lines.push("");
       lines.push(formatGroupedMetricTable({ groups, groupBy, primaryAs, metric, formatValue: fmt, fieldLabels }));
     }
@@ -758,9 +758,16 @@ function formatAggregateAnswer({ metric, metricDef, groupBy, toolData, params: _
   return lines.join("\n");
 }
 
-function createGroupedMetricIntro({ metric, groupBy, total, fieldLabels }: { metric: string; groupBy: string; total?: unknown; fieldLabels?: Record<string, string> }): string {
-  if (metric === "order_count" && groupBy === "order_status") {
-    return `最近订单按${labelOfField(groupBy, fieldLabels)}看，主要是下面这些状态。`;
+function createGroupedMetricIntro({ metric, metricDef, groupBy, total, fieldLabels }: { metric: string; metricDef?: DataRecord; groupBy: string; total?: unknown; fieldLabels?: Record<string, string> }): string {
+  const templates = metricDef?.grouped_intro_templates;
+  if (templates && typeof templates === "object" && !Array.isArray(templates)) {
+    const template = (templates as Record<string, unknown>)[groupBy];
+    if (typeof template === "string" && template) {
+      return template
+        .replace(/\{groupLabel\}/g, labelOfField(groupBy, fieldLabels))
+        .replace(/\{metricLabel\}/g, labelOfMetric(metric, fieldLabels))
+        .replace(/\{total\}/g, String(total ?? ""));
+    }
   }
   const totalText = Number(total ?? 0) > 0 ? `（共 ${total} 条记录）` : "";
   return `${labelOfMetric(metric, fieldLabels)}按${labelOfField(groupBy, fieldLabels)}分布如下${totalText}。`;

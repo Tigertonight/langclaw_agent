@@ -216,7 +216,7 @@ function pickUser(user: UserContext): JsonObject {
     name: user.name,
     role: user.role,
     department: user.department,
-    default_store: user.default_store,
+    default_store: (user as { default_store?: string }).default_store,
     permissions: user.permissions ?? []
   };
 }
