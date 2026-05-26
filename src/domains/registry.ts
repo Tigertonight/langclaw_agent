@@ -28,10 +28,13 @@ import type {
   ReportComposerDefinition,
   EvidenceInferenceDefinition,
   RuntimePluginDefinition,
+  LocalPolicyQuestionPattern,
+  LocalPlannerHeuristic,
   SkillMappingDefinition,
   ExtractorFn,
   FilterTransformFn,
   PermissionRuleFn,
+  ToolPermissionPolicy,
   MutableIntentRegistry,
   DeterministicRuleCollector,
   CatalogDomainCollector,
@@ -79,6 +82,8 @@ export class DomainRegistry {
   readonly allFilterTransforms: Record<string, FilterTransformFn> = {};
   /** 所有 domain 注册的 permissionRules（按 domain 注册顺序） */
   readonly allPermissionRules: PermissionRuleFn[] = [];
+  /** 所有 domain 注册的 toolPermissionPolicies（按 domain 注册顺序） */
+  readonly allToolPermissionPolicies: ToolPermissionPolicy[] = [];
   /** 所有 domain 注册的 fieldLabels（合并后的全局字段标签） */
   readonly allFieldLabels: Record<string, string> = {};
   /** 所有 domain 注册的 resources（合并后的全局资源配置） */
@@ -146,6 +151,14 @@ export class DomainRegistry {
    * 由 EngineHost 在 init() 末尾按 priority 排序、按 id 去重后挂载到 RuntimeHooks。
    */
   readonly allRuntimePlugins: RuntimePluginDefinition[] = [];
+  /** 本地 LLM 策略问题模式（业务"制度/政策"类问题） */
+  readonly allLocalPolicyQuestionPatterns: LocalPolicyQuestionPattern[] = [];
+  /** 本地 LLM 兜底规划启发式 */
+  readonly allLocalPlannerHeuristics: LocalPlannerHeuristic[] = [];
+  /** 知识库检索关键词（合并去重） */
+  readonly allKnowledgeRetrievalKeywords: string[] = [];
+  /** 所有 domain 注册的 agentic question patterns */
+  readonly allAgenticQuestionPatterns: RegExp[] = [];
   /** 已注册 DomainPack 的元数据快照，用于动态加载和冲突诊断。 */
   readonly domainMetadata: Array<{ id: string; name: string; version: string; conflictPolicy: string; order: number }> = [];
 
@@ -437,6 +450,7 @@ export class DomainRegistry {
     this.allCatalogDomains.length = 0;
     this.allQueryAdapters.length = 0;
     this.allPermissionRules.length = 0;
+    this.allToolPermissionPolicies.length = 0;
     this.allCronTemplates.length = 0;
     this.allRouterPromptHints.length = 0;
     this.allAnswerPromptHints.length = 0;
@@ -456,6 +470,10 @@ export class DomainRegistry {
     this.allChatPageRenderers.length = 0;
     this.allEntityAliasSuffixRules.length = 0;
     this.allRuntimePlugins.length = 0;
+    this.allLocalPolicyQuestionPatterns.length = 0;
+    this.allLocalPlannerHeuristics.length = 0;
+    this.allKnowledgeRetrievalKeywords.length = 0;
+    this.allAgenticQuestionPatterns.length = 0;
     this.domainMetadata.length = 0;
     // 清空 object 类型的收集器
     for (const key of Object.keys(this.allExtractors)) delete this.allExtractors[key];
@@ -590,6 +608,9 @@ export class DomainRegistry {
       // Permission Rules
       if (pack.permissionRules) {
         this.allPermissionRules.push(...pack.permissionRules);
+      }
+      if (pack.toolPermissionPolicies) {
+        this.allToolPermissionPolicies.push(...pack.toolPermissionPolicies);
       }
 
       // Tool Labels
@@ -764,6 +785,24 @@ export class DomainRegistry {
       // Runtime Plugins（声明式插件挂载，由 EngineHost 在 init 末尾统一挂载）
       if (pack.runtimePlugins) {
         this.allRuntimePlugins.push(...pack.runtimePlugins);
+      }
+
+      // 本地 LLM 启发式
+      if (pack.localPolicyQuestionPatterns) {
+        this.allLocalPolicyQuestionPatterns.push(...pack.localPolicyQuestionPatterns);
+      }
+      if (pack.localPlannerHeuristics) {
+        this.allLocalPlannerHeuristics.push(...pack.localPlannerHeuristics);
+      }
+      if (pack.knowledgeRetrievalKeywords) {
+        for (const keyword of pack.knowledgeRetrievalKeywords) {
+          if (!this.allKnowledgeRetrievalKeywords.includes(keyword)) {
+            this.allKnowledgeRetrievalKeywords.push(keyword);
+          }
+        }
+      }
+      if (pack.agenticQuestionPatterns) {
+        this.allAgenticQuestionPatterns.push(...pack.agenticQuestionPatterns);
       }
     }
 

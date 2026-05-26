@@ -2,7 +2,7 @@ import { LocalLLMClient } from "./local-llm.js";
 import { composeReportFromRegistry, getIntentForIntentCode } from "../domains/runtime-registry.js";
 import { inferIntentCode } from "../agent/intent-codes.js";
 import { INTENT_CODES, INTENTS } from "../agent/ports.js";
-import { getRegisteredResourceIds, getRegisteredDomainNames, getAnswerPromptHints, getRouterPromptHints, isDomainDataQueryIntent, isAnalysisIntentCode, inferDomainFromIntentCodeViaRegistry, inferAnalysisIntentFromRegistry, isAnyDomainDataQuestion, inferIntentCodeFromRegistry, buildClassifierIntentList, buildDataQueryDescription, buildClassifierIntentDescriptions, getClassificationKeywords } from "../domains/runtime-registry.js";
+import { getRegisteredResourceIds, getRegisteredDomainNames, getAnswerPromptHints, getRouterPromptHints, isDomainDataQueryIntent, isAnalysisIntentCode, inferDomainFromIntentCodeViaRegistry, inferAnalysisIntentFromRegistry, isAnyDomainDataQuestion, inferIntentCodeFromRegistry, buildClassifierIntentList, buildDataQueryDescription, buildClassifierIntentDescriptions, getClassificationKeywords, getAgenticQuestionPatterns } from "../domains/runtime-registry.js";
 import { applyPromptCache } from "./prompt-cache.js";
 import type { JsonObject, QueryEntity, QueryIR, Route, ToolCall, ToolResult, UserContext } from "../types/agent-contracts.js";
 
@@ -1180,11 +1180,8 @@ function callSignature(call: ToolCall | undefined): string {
  */
 function extractRowDisplayName(row: Record<string, unknown>): string | undefined {
   if (!row || typeof row !== "object") return undefined;
-  // 1. 精确匹配高优先级字段
-  const PRIORITY_FIELDS = ["name", "employee_name", "customer_name", "owner_name", "user_name"];
-  for (const field of PRIORITY_FIELDS) {
-    if (row[field] != null && String(row[field]).trim()) return String(row[field]).trim();
-  }
+  // 1. 精确匹配 name 字段
+  if (row.name != null && String(row.name).trim()) return String(row.name).trim();
   // 2. 匹配所有以 _name 结尾的字段（如 applicant_name, dealer_name 等）
   for (const [key, val] of Object.entries(row)) {
     if (key.endsWith("_name") && val != null && String(val).trim()) {
@@ -1286,7 +1283,15 @@ function isClearlyAgenticQuestion(question: unknown, fallback: DataRecord): bool
   const text = String(question ?? "");
   if (fallback?.intent === INTENTS.MIXED) return true;
   if (isAnalysisIntentCode(String(fallback?.intent_code ?? ""))) return true;
-  return /(分析|复盘|原因|风险|优先级|对比|承压|最该关注|为什么|诊断|报告|日报|周报|月报|材料|汇报稿|经营复盘|晨会|看板|仪表盘|红黄绿|健康度|监控|计划|行动项|管理动作|下周|推进|落地|整改)/.test(text);
+  // 引擎内置的通用语言学模式（分析/复盘/原因/风险/对比/为什么/诊断/报告类）
+  if (/(分析|复盘|原因|风险|优先级|对比|承压|最该关注|为什么|诊断|报告|日报|周报|月报|材料|汇报稿)/.test(text)) {
+    return true;
+  }
+  // 域级别的业务管理动作模式（晨会/红黄绿/健康度/经营计划等）
+  for (const pattern of getAgenticQuestionPatterns()) {
+    if (pattern.test(text)) return true;
+  }
+  return false;
 }
 
 function summarizeEnterpriseContextForPrompt(context: DataRecord | null | undefined): DataRecord | null {
@@ -1490,9 +1495,8 @@ function normalizeQueryIR(queryIR: Record<string, unknown> | null | undefined, i
   if (!queryIR || typeof queryIR !== "object") return null;
   const target = String(queryIR.target ?? "");
   // 通过 registry 动态获取允许的 target 列表
-  const registeredIds = getRegisteredResourceIds();
-  const allowedTargets = new Set(registeredIds.length ? registeredIds : ["customers", "orders", "sales_reports", "employees", "departments"]);
-  if (!allowedTargets.has(target)) return null;
+  const allowedTargets = new Set(getRegisteredResourceIds());
+  if (allowedTargets.size === 0 || !allowedTargets.has(target)) return null;
   const operation = queryIR.operation === "aggregate" ? "aggregate" : "search";
   return {
     kind: "business_query_ir" as const,

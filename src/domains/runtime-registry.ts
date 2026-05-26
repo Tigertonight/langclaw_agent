@@ -11,7 +11,7 @@
  */
 
 import type { ResourceConfig } from "../resources/types.js";
-import type { QueryResourceSchema, DomainQueryAdapter, PermissionRuleFn, CronTemplateDefinition, CatalogDomainDefinition, AgenticFallbackDefinition, ReportComposerDefinition, EvidenceInferenceDefinition, SkillMappingDefinition, IntentCodeInferenceFn, CorrectionDeltaRule } from "./types.js";
+import type { QueryResourceSchema, DomainQueryAdapter, PermissionRuleFn, ToolPermissionPolicy, CronTemplateDefinition, CatalogDomainDefinition, AgenticFallbackDefinition, ReportComposerDefinition, EvidenceInferenceDefinition, SkillMappingDefinition, IntentCodeInferenceFn, CorrectionDeltaRule, LocalPolicyQuestionPattern, LocalPlannerHeuristic } from "./types.js";
 import type { Route, ToolResult } from "../types/agent-contracts.js";
 
 /**
@@ -40,6 +40,8 @@ export interface RuntimeRegistryAccessor {
   readonly allQueryAdapters: DomainQueryAdapter[];
   /** 权限规则列表 */
   readonly allPermissionRules: PermissionRuleFn[];
+  /** 工具级权限策略列表 */
+  readonly allToolPermissionPolicies: ToolPermissionPolicy[];
   /** Cron 模板列表 */
   readonly allCronTemplates: CronTemplateDefinition[];
   /** Catalog domain 定义列表 */
@@ -86,6 +88,14 @@ export interface RuntimeRegistryAccessor {
   readonly allEntityAliases: Record<string, string[]>;
   /** 域特定的实体别名后缀规则 */
   readonly allEntityAliasSuffixRules: Array<{ suffix: string; replacement: string }>;
+  /** 本地 LLM 策略问题模式 */
+  readonly allLocalPolicyQuestionPatterns: LocalPolicyQuestionPattern[];
+  /** 本地 LLM 兜底规划启发式 */
+  readonly allLocalPlannerHeuristics: LocalPlannerHeuristic[];
+  /** 知识库检索关键词 */
+  readonly allKnowledgeRetrievalKeywords: string[];
+  /** 域特定的 agentic 问题识别正则 */
+  readonly allAgenticQuestionPatterns: RegExp[];
 }
 
 let _accessor: RuntimeRegistryAccessor | null = null;
@@ -571,4 +581,45 @@ export function getEntityAliases(): Record<string, string[]> {
  */
 export function getEntityAliasSuffixRules(): Array<{ suffix: string; replacement: string }> {
   return _accessor?.allEntityAliasSuffixRules ?? [];
+}
+
+/**
+ * 获取所有域注册的本地 LLM 策略问题模式。
+ * 用于 local-llm.ts 判断"用户问题是否为本域的制度/政策类提问"。
+ */
+export function getLocalPolicyQuestionPatterns(): LocalPolicyQuestionPattern[] {
+  return _accessor?.allLocalPolicyQuestionPatterns ?? [];
+}
+
+/**
+ * 获取所有域注册的本地 LLM 兜底规划启发式（按 priority 升序）。
+ * 用于 local-llm.ts planToolCalls 在不走 query parser 时返回预设工具计划。
+ */
+export function getLocalPlannerHeuristics(): LocalPlannerHeuristic[] {
+  const all = _accessor?.allLocalPlannerHeuristics ?? [];
+  return [...all].sort((a, b) => (a.priority ?? 100) - (b.priority ?? 100));
+}
+
+/**
+ * 获取所有域注册的知识库检索关键词。
+ * 用于 local-llm.ts shouldRetrieveKnowledge 判断 MIXED 意图下是否需要触发知识检索。
+ */
+export function getKnowledgeRetrievalKeywords(): string[] {
+  return _accessor?.allKnowledgeRetrievalKeywords ?? [];
+}
+
+/**
+ * 获取所有域注册的工具级权限策略。
+ * 用于 auth/permissions.ts checkToolPermission 在内置策略后追加域级判断。
+ */
+export function getToolPermissionPolicies(): ToolPermissionPolicy[] {
+  return _accessor?.allToolPermissionPolicies ?? [];
+}
+
+/**
+ * 获取所有域注册的 agentic 问题识别正则。
+ * 用于 openai-llm.ts isClearlyAgenticQuestion 判断问题是否走 agentic 流程。
+ */
+export function getAgenticQuestionPatterns(): RegExp[] {
+  return _accessor?.allAgenticQuestionPatterns ?? [];
 }

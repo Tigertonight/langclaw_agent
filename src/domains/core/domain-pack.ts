@@ -231,4 +231,10 @@ export const corePack: DomainPack = {
     { id: "core.skill-curator", priority: 120, plugin: createSkillCuratorPlugin() },
     { id: "core.maintenance-scheduler", priority: 130, plugin: createMaintenanceSchedulerPlugin() },
   ],
+
+  // ── 本地 LLM 启发式：MIXED 意图下触发知识检索的关键词（通用知识库类） ──
+  knowledgeRetrievalKeywords: [
+    "制度", "政策", "流程", "标准", "手册",
+    "权限", "审批", "规则", "依据", "资料", "文档",
+  ],
 };

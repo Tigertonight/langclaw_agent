@@ -96,6 +96,8 @@ export type {
 export type {
   PermissionRuleInput,
   PermissionRuleFn,
+  ToolPermissionPolicy,
+  ToolPermissionPolicyInput,
 } from "./permission-contract.js";
 
 // ── Evidence Contract (stable) ───────────────────────────────────────────────
@@ -107,6 +109,12 @@ export type {
 export type {
   RuntimePluginDefinition,
 } from "./runtime-plugin-contract.js";
+
+// ── LLM Contract (stable) ────────────────────────────────────────────────────
+export type {
+  LocalPolicyQuestionPattern,
+  LocalPlannerHeuristic,
+} from "./llm-contract.js";
 
 // ── Lifecycle Contract (stable) ──────────────────────────────────────────────
 export type {

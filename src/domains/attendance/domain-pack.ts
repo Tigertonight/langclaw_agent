@@ -170,6 +170,23 @@ export const attendancePack: DomainPack = {
     },
   ],
 
+  // ── 本地 LLM 启发式：MIXED 意图下触发知识检索的考勤相关关键词 ──
+  knowledgeRetrievalKeywords: ["报销", "试用期", "年假", "病假"],
+
+  // ── 本地 LLM 启发式：把"请假制度/规则"类问题归到 KNOWLEDGE_QA ──
+  localPolicyQuestionPatterns: [
+    {
+      id: "attendance.leave_policy",
+      reason: "询问请假制度或办理规则",
+      matches(question: string): boolean {
+        const text = String(question ?? "");
+        const mentionsLeave = /(请假|休假|事假|病假|年假|调休|产假)/.test(text);
+        const asksAboutPolicy = /(制度|政策|规定|流程|怎么办|如何|多少天|几天|审批|批准|可以请|能请|申请条件|条件|资格|规则)/.test(text);
+        return mentionsLeave && asksAboutPolicy;
+      },
+    },
+  ],
+
   // ── 场景注册（通过 register() 逃生口） ──
   register(ctx) {
     ctx.scenarioRouter.register("leave_request", new LeaveRequestScenario({ toolRegistry: ctx.toolRegistry }));

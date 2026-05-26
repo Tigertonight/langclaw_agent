@@ -61,6 +61,7 @@ import type {
 
 import type {
   PermissionRuleFn,
+  ToolPermissionPolicy,
 } from "./permission-contract.js";
 
 import type {
@@ -70,6 +71,11 @@ import type {
 import type {
   RuntimePluginDefinition,
 } from "./runtime-plugin-contract.js";
+
+import type {
+  LocalPolicyQuestionPattern,
+  LocalPlannerHeuristic,
+} from "./llm-contract.js";
 
 import type {
   DomainInitContext,
@@ -190,6 +196,18 @@ export interface DomainPack {
    * DomainRegistry 会自动合并所有域的 permissionRules 到全局列表。
    */
   permissionRules?: PermissionRuleFn[];
+
+  /**
+   * 工具级权限策略列表。
+   * 与 permissionRules（资源级、同步、只能放行）互补：toolPermissionPolicies 工作在
+   * 工具调用粒度，支持 async（可加载数据做 scope 校验），可以返回明确的 deny。
+   *
+   * checkToolPermission 在执行内置策略后会遍历所有注册的 toolPermissionPolicies。
+   * 任一策略返回 PermissionDecision（无论 allow 或 deny）即作为最终结论。
+   *
+   * 使用场景：dealer 的 customer scope 校验、sales_report 的部门隔离等。
+   */
+  toolPermissionPolicies?: ToolPermissionPolicy[];
 
   /**
    * 工具标签映射（tool name → 中文展示标签）。
@@ -409,6 +427,37 @@ export interface DomainPack {
    * 由 corePack 声明。
    */
   runtimePlugins?: RuntimePluginDefinition[];
+
+  /**
+   * 本地 LLM 启发式：判断用户问题是否为本域的"制度/政策/流程"类问题，
+   * 命中时把意图归到 KNOWLEDGE_QA。
+   * 替代 local-llm.ts 中硬编码的 isLeavePolicyQuestion。
+   */
+  localPolicyQuestionPatterns?: LocalPolicyQuestionPattern[];
+
+  /**
+   * 本地 LLM 启发式：本域的预设工具调用计划。
+   * 命中时直接返回一组预设的工具调用，不走 query parser。
+   * 替代 local-llm.ts 中硬编码的 isPersonalCustomerOverviewQuestion +
+   * buildPersonalCustomerOverviewPlan。
+   */
+  localPlannerHeuristics?: LocalPlannerHeuristic[];
+
+  /**
+   * 知识库检索关键词。
+   * 用于 local-llm.ts 中 shouldRetrieveKnowledge 判断 MIXED 意图下
+   * 是否需要触发知识检索。多个域的关键词会合并去重。
+   */
+  knowledgeRetrievalKeywords?: string[];
+
+  /**
+   * Agentic（开放分析类）问题识别正则。
+   * 用于 openai-llm.ts isClearlyAgenticQuestion 判断用户问题是否需要走 agentic 流程，
+   * 命中任一即视为分析/复盘类问题。多个域的正则会合并。
+   *
+   * 业务侧的"晨会/经营计划/行动项/红黄绿"等管理动作词应通过此字段在域内声明。
+   */
+  agenticQuestionPatterns?: RegExp[];
 
   // ── 生命周期钩子 ────────────────────────────────────────────────────────
 

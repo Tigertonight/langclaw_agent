@@ -13,6 +13,7 @@ import { DEALER_COMMANDS } from "./commands.js";
 import { DEALER_DETERMINISTIC_RULES, DEALER_EXTRACTORS } from "./deterministic-rules.js";
 import { DEALER_FILTER_TRANSFORMS } from "./filter-transforms.js";
 import { DEALER_PERMISSION_RULES } from "./permission-rules.js";
+import { DEALER_TOOL_PERMISSION_POLICIES } from "./tool-permission-policies.js";
 import { dealerQueryAdapter } from "./query-adapter.js";
 import { composeDealerReport } from "./dealer-report-composer.js";
 import { inferDealerEvidenceFacts } from "./dealer-evidence.js";
@@ -33,6 +34,7 @@ export const dealerPack: DomainPack = {
   extractors: DEALER_EXTRACTORS,
   filterTransforms: DEALER_FILTER_TRANSFORMS,
   permissionRules: DEALER_PERMISSION_RULES,
+  toolPermissionPolicies: DEALER_TOOL_PERMISSION_POLICIES,
   fieldLabels: DEALER_FIELD_LABELS,
   queryAdapters: [dealerQueryAdapter],
   intentDir: "data/domains/dealer/intent-codes",
@@ -479,6 +481,76 @@ export const dealerPack: DomainPack = {
       card.appendChild(list);
       return card;
     })`,
+    },
+  ],
+
+  // 经营管理动作类问题（业务管理用语，不属于通用语言学模式）
+  agenticQuestionPatterns: [
+    /(经营复盘|晨会|看板|仪表盘|红黄绿|健康度|监控|计划|行动项|管理动作|下周|推进|落地|整改)/,
+  ],
+
+  localPlannerHeuristics: [
+    {
+      id: "dealer.personal_customer_overview",
+      priority: 50,
+      matches(question: string): boolean {
+        const text = String(question ?? "");
+        const mentionsOwnedCustomers = /(我的|名下|负责|我负责).{0,10}客户/.test(text)
+          || /客户.{0,10}(我的|名下|负责|我负责)/.test(text);
+        const asksForActionableReview = /(订单|跟进|优先|最近|情况|风险|续签|待跟进|看看|检查|分析)/.test(text);
+        return mentionsOwnedCustomers && asksForActionableReview;
+      },
+      buildPlan() {
+        return {
+          calls: [
+            {
+              name: "query_business_data",
+              args: {
+                resource: "customers",
+                operation: "search",
+                filters: [],
+                metrics: [],
+                fields: [
+                  "id", "name", "tier", "industry", "industry_category",
+                  "deal_status", "follow_status", "renewal_status",
+                  "annual_revenue", "last_contacted_at", "next_follow_up_at",
+                  "contract_expire_at",
+                ],
+                sort: [{ field: "next_follow_up_at", direction: "asc" }],
+                limit: 20,
+                display: {
+                  domain: "sales",
+                  target: "customers",
+                  operation: "search",
+                  reason: "先查询当前用户可访问的客户，再结合订单判断优先跟进项。",
+                },
+              },
+            },
+            {
+              name: "query_business_data",
+              args: {
+                resource: "orders",
+                operation: "search",
+                filters: [],
+                metrics: [],
+                fields: [
+                  "id", "customer_id", "customer_name", "status",
+                  "amount", "created_at", "expected_delivery",
+                ],
+                sort: [{ field: "created_at", direction: "desc" }],
+                limit: 20,
+                display: {
+                  domain: "sales",
+                  target: "orders",
+                  operation: "search",
+                  reason: "继续查询授权客户的最近订单，用于动态观察和回答。",
+                },
+              },
+            },
+          ],
+          reason: "这是客户经营类综合问题，先查可访问客户和最近订单，再进行观察与归纳。",
+        };
+      },
     },
   ],
 

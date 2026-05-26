@@ -2,7 +2,7 @@ import { loadJson } from "../data/load-json.js";
 import { composeReportFromRegistry } from "../domains/runtime-registry.js";
 import { inferIntentCode } from "../agent/intent-codes.js";
 import { INTENTS } from "../agent/ports.js";
-import { readableResourceNameFromRegistry, getRuntimeRegistry, isDomainDataQueryIntent, isAnyDomainDataQuestion, inferAnalysisIntentFromRegistry, getClassificationKeywords, getClassificationPatterns, getResourceDataPath } from "../domains/runtime-registry.js";
+import { readableResourceNameFromRegistry, getRuntimeRegistry, isDomainDataQueryIntent, isAnyDomainDataQuestion, inferAnalysisIntentFromRegistry, getClassificationKeywords, getClassificationPatterns, getResourceDataPath, getLocalPolicyQuestionPatterns, getLocalPlannerHeuristics, getKnowledgeRetrievalKeywords } from "../domains/runtime-registry.js";
 import { compileBusinessQueryIR } from "../query/query-compiler.js";
 import {
   isBusinessDataQuestion,
@@ -100,14 +100,14 @@ export class LocalLLMClient {
     const hasLeave = isLeaveIntent(question);
     const asksLeaveRecords = isAnyDomainDataQuestion(question);
     const risky = DANGEROUS_KEYWORDS.some((word) => question.includes(word));
-    const asksLeavePolicy = isLeavePolicyQuestion(question);
     const hasOrgData = await isOrgDataQuestion(question);
+    const policyMatch = matchLocalPolicyQuestion(question);
 
     if (/^(你好|hi|hello|在吗)/i.test(question.trim())) {
       return { intent: INTENTS.SMALLTALK, confidence: 0.95, reason: "问候类问题" };
     }
-    if (asksLeavePolicy) {
-      return { intent: INTENTS.KNOWLEDGE_QA, confidence: 0.88, reason: "询问域特定制度或办理规则" };
+    if (policyMatch) {
+      return { intent: INTENTS.KNOWLEDGE_QA, confidence: 0.88, reason: policyMatch.reason ?? "询问域特定制度或办理规则" };
     }
     if (asksLeaveRecords) {
       return { intent: INTENTS.DATA_QUERY, confidence: 0.9, reason: "查询域特定数据记录" };
@@ -147,8 +147,10 @@ export class LocalLLMClient {
       };
     }
 
-    if (isPersonalCustomerOverviewQuestion(question)) {
-      return buildPersonalCustomerOverviewPlan();
+    for (const heuristic of getLocalPlannerHeuristics()) {
+      if (heuristic.matches(question)) {
+        return heuristic.buildPlan(question);
+      }
     }
 
     if (shouldRetrieveKnowledge({ question, route })) {
@@ -312,10 +314,15 @@ export class LocalLLMClient {
   }
 }
 
-function isLeavePolicyQuestion(question: string): boolean {
-  const hasLeave = isLeaveIntent(question);
-  if (!hasLeave) return false;
-  return ["怎么", "如何", "制度", "政策", "流程", "规则", "标准", "说明", "问下", "了解"].some((word) => question.includes(word));
+/**
+ * 通过 registry 查找匹配的本地策略问题模式。
+ * 替代硬编码的 isLeavePolicyQuestion。
+ */
+function matchLocalPolicyQuestion(question: string): { reason?: string } | null {
+  for (const pattern of getLocalPolicyQuestionPatterns()) {
+    if (pattern.matches(question)) return { reason: pattern.reason };
+  }
+  return null;
 }
 
 function isComputeQuestion(question: unknown): boolean {
@@ -346,84 +353,14 @@ function buildSafeComputeArgs(question: unknown): JsonObject {
   };
 }
 
-function isPersonalCustomerOverviewQuestion(question: unknown): boolean {
-  const text = String(question ?? "");
-  const mentionsOwnedCustomers = /(\u6211\u7684|\u540d\u4e0b|\u8d1f\u8d23|\u6211\u8d1f\u8d23).{0,10}\u5ba2\u6237/.test(text)
-    || /\u5ba2\u6237.{0,10}(\u6211\u7684|\u540d\u4e0b|\u8d1f\u8d23|\u6211\u8d1f\u8d23)/.test(text);
-  const asksForActionableReview = /(\u8ba2\u5355|\u8ddf\u8fdb|\u4f18\u5148|\u6700\u8fd1|\u60c5\u51b5|\u98ce\u9669|\u7eed\u7b7e|\u5f85\u8ddf\u8fdb|\u770b\u770b|\u68c0\u67e5|\u5206\u6790)/.test(text);
-  return mentionsOwnedCustomers && asksForActionableReview;
-}
-
-function buildPersonalCustomerOverviewPlan(): ToolPlanResult {
-  return {
-    calls: [
-      {
-        name: "query_business_data",
-        args: {
-          resource: "customers",
-          operation: "search",
-          filters: [],
-          metrics: [],
-          fields: [
-            "id",
-            "name",
-            "tier",
-            "industry",
-            "industry_category",
-            "deal_status",
-            "follow_status",
-            "renewal_status",
-            "annual_revenue",
-            "last_contacted_at",
-            "next_follow_up_at",
-            "contract_expire_at"
-          ],
-          sort: [{ field: "next_follow_up_at", direction: "asc" }],
-          limit: 20,
-          display: {
-            domain: "sales",
-            target: "customers",
-            operation: "search",
-            reason: "\u5148\u67e5\u8be2\u5f53\u524d\u7528\u6237\u53ef\u8bbf\u95ee\u7684\u5ba2\u6237\uff0c\u518d\u7ed3\u5408\u8ba2\u5355\u5224\u65ad\u4f18\u5148\u8ddf\u8fdb\u9879\u3002"
-          }
-        }
-      },
-      {
-        name: "query_business_data",
-        args: {
-          resource: "orders",
-          operation: "search",
-          filters: [],
-          metrics: [],
-          fields: [
-            "id",
-            "customer_id",
-            "customer_name",
-            "status",
-            "amount",
-            "created_at",
-            "expected_delivery"
-          ],
-          sort: [{ field: "created_at", direction: "desc" }],
-          limit: 20,
-          display: {
-            domain: "sales",
-            target: "orders",
-            operation: "search",
-            reason: "\u7ee7\u7eed\u67e5\u8be2\u6388\u6743\u5ba2\u6237\u7684\u6700\u8fd1\u8ba2\u5355\uff0c\u7528\u4e8e\u52a8\u6001\u89c2\u5bdf\u548c\u56de\u7b54\u3002"
-          }
-        }
-      }
-    ],
-    reason: "\u8fd9\u662f\u5ba2\u6237\u7ecf\u8425\u7c7b\u7efc\u5408\u95ee\u9898\uff0c\u5148\u67e5\u53ef\u8bbf\u95ee\u5ba2\u6237\u548c\u6700\u8fd1\u8ba2\u5355\uff0c\u518d\u8fdb\u884c\u89c2\u5bdf\u4e0e\u5f52\u7eb3\u3002"
-  };
-}
 
 function shouldRetrieveKnowledge({ question, route }: { question?: string; route?: Partial<Route> & { intent_code?: string } }): boolean {
   if (isDomainDataQueryIntent(route?.intent_code)) return false;
   if (route?.intent === INTENTS.KNOWLEDGE_QA) return true;
   if (route?.intent !== INTENTS.MIXED) return false;
-  return /(制度|政策|流程|标准|手册|报销|试用期|年假|病假|权限|审批|规则|依据|资料|文档)/.test(String(question ?? ""));
+  const text = String(question ?? "");
+  const keywords = getKnowledgeRetrievalKeywords();
+  return keywords.some((kw) => text.includes(kw));
 }
 
 function buildKnowledgeRetrievalPlan(question: string): ToolPlanResult {
