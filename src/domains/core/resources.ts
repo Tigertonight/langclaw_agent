@@ -141,6 +141,7 @@ export const CORE_RESOURCES: Record<string, ResourceConfig> = {
   customers: {
     file: "data/customers.json",
     scopeField: "id",
+    userScopeField: "accessible_customer_ids",
     fields: [
       "id",
       "name",
@@ -164,6 +165,7 @@ export const CORE_RESOURCES: Record<string, ResourceConfig> = {
   orders: {
     file: "data/orders.json",
     scopeField: "customer_id",
+    userScopeField: "accessible_customer_ids",
     fields: [
       "id",
       "customer_id",

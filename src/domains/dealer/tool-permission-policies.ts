@@ -49,7 +49,8 @@ function deny(code: string, message: string): PermissionDecision {
 }
 
 function canAccessCustomer(user: UserContext, customerId: string): boolean {
-  return Array.isArray(user.accessible_customer_ids) && user.accessible_customer_ids.includes(customerId);
+  const ids = (user as Record<string, unknown>).accessible_customer_ids;
+  return Array.isArray(ids) && ids.includes(customerId);
 }
 
 function normalizeFilters(filters: unknown = []): QueryFilter[] {

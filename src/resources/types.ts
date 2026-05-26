@@ -15,7 +15,11 @@ export interface BusinessToolContext {
     name?: string;
     department?: string;
     permissions?: string[];
-    accessible_customer_ids?: string[];
+    /**
+     * 业务字段（如 dealer 的 accessible_customer_ids）通过索引签名传递。
+     * 引擎层用 bracket access 读取，避免对业务字段做硬编码声明。
+     */
+    [key: string]: unknown;
   };
 }
 
@@ -28,8 +32,14 @@ export interface BusinessToolContext {
 export interface ResourceConfig {
   /** 数据文件路径（相对 cwd），与 loader 二选一 */
   file?: string;
-  /** 用户作用域字段（如 "id"），用于按 accessible_customer_ids 过滤 */
+  /** 数据行上的作用域字段名（如 "id"），与 userScopeField 配对：保留行的条件是 row[scopeField] ∈ user[userScopeField]。 */
   scopeField?: string;
+  /**
+   * 用户上下文中提供"允许的 ID 列表"的字段名（如 dealer 的 "accessible_customer_ids"）。
+   * 当 scopeField 命中时，按 user[userScopeField] 数组做行级过滤。
+   * 不声明时引擎不做行级过滤，避免引擎硬编码业务字段名。
+   */
+  userScopeField?: string;
   /** 作用域类型："self_user" 表示按 selfUserIdField 过滤 */
   scopeType?: string;
   /**

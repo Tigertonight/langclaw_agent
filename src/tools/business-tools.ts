@@ -19,7 +19,7 @@ interface BusinessToolContext {
     name?: string;
     department?: string;
     permissions?: string[];
-    accessible_customer_ids?: string[];
+    [key: string]: unknown;
   };
 }
 
@@ -222,7 +222,10 @@ async function injectUserScope(rows: DataRow[], config: ResourceConfig, user: Bu
     return rows.filter((row) => row[idField] === user.id);
   }
   if (!config.scopeField) return rows;
-  const allowed = new Set(user.accessible_customer_ids ?? []);
+  if (!config.userScopeField) return rows;
+  const userIds = (user as Record<string, unknown>)[config.userScopeField];
+  const accessibleIds = Array.isArray(userIds) ? userIds.map(String) : [];
+  const allowed = new Set(accessibleIds);
   return rows.filter((row) => allowed.has(String(row[config.scopeField])));
 }
 

@@ -27,7 +27,6 @@ interface BusinessToolContext {
     name?: string;
     department?: string;
     permissions?: string[];
-    accessible_customer_ids?: string[];
   };
 }
 

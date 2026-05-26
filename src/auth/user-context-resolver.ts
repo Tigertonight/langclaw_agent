@@ -20,6 +20,7 @@ export interface UserIdentity extends UserContext {
   mobile?: string;
   email?: string;
   alias?: string;
+  accessible_customer_ids?: string[];
   wecom?: WeComUserRecord;
 }
 

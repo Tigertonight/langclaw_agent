@@ -90,8 +90,7 @@ export class ToolRegistry {
     const user: UserContext = context?.user ?? {
       id: "anonymous",
       role: "anonymous",
-      permissions: [],
-      accessible_customer_ids: []
+      permissions: []
     };
     const governedCall: ToolCall = {
       ...call,
