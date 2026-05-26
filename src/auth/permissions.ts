@@ -1,4 +1,5 @@
 import { loadJson } from "../data/load-json.js";
+import { getRuntimeRegistry, getResourceDataPath } from "../domains/runtime-registry.js";
 import type {
   JsonObject,
   PermissionDecision,
@@ -34,7 +35,7 @@ let customersCache: CustomerRecord[] | undefined;
 async function getCustomerByName(customerName: string | null | undefined): Promise<CustomerRecord | null> {
   if (!customerName) return null;
   if (!customersCache) {
-    customersCache = await loadJson<CustomerRecord[]>("data/customers.json");
+    customersCache = await loadJson<CustomerRecord[]>(getResourceDataPath("customers") ?? "data/customers.json");
   }
   return customersCache.find((customer) => customer.name === customerName) ?? null;
 }
@@ -98,11 +99,22 @@ const TOOL_POLICIES: ToolPolicy[] = [
     }
   },
   {
-    name: "submit_leave_request",
-    matches: ({ toolCall }) => toolCall.name === "submit_leave_request",
-    authorize: async ({ user }) => hasPermission(user, "leave:submit")
-      ? allow()
-      : deny("missing_permission", "你没有权限提交请假申请。")
+    name: "domain_tool_permission",
+    matches: ({ toolCall }) => {
+      // 匹配所有域注册的工具（通过 metadata.required_permissions 判断）
+      const meta = toolCall.metadata ?? {};
+      return Array.isArray(meta.required_permissions) && meta.required_permissions.length > 0
+        && !["query_business_data", "list_my_customers", "query_customer", "query_order", "query_sales_report", "search_knowledge_base", "retrieve_knowledge", "safe_compute"].includes(toolCall.name);
+    },
+    authorize: async ({ user, toolCall }) => {
+      const requiredPerms = (toolCall.metadata?.required_permissions ?? []) as string[];
+      for (const perm of requiredPerms) {
+        if (!hasPermission(user, perm)) {
+          return deny("missing_permission", `你没有权限执行此操作（需要 ${perm}）。`);
+        }
+      }
+      return allow();
+    }
   }
 ];
 
@@ -129,17 +141,13 @@ async function authorizeBusinessData({ user, toolCall }: PermissionPolicyInput):
     if (hasPermission(user, "org:read") || user.role !== "anonymous") return allow();
     return deny("missing_permission", "你没有权限查询组织架构或人员汇报关系。");
   }
-  if (resource === "leave_requests") {
-    const leaveScope = getLeaveRequestScope(toolCall.args?.filters);
-    if ((leaveScope === "team" || leaveScope === "company" || leaveScope === "other") && !hasPermission(user, "org:read")) {
-      return deny("missing_permission", "你没有权限查看团队成员的请假记录。");
-    }
-    if (hasPermission(user, "leave:submit") || hasPermission(user, "leave:read")) return allow();
-    return deny("missing_permission", "你没有权限查看请假记录。");
-  }
-  if (String(resource).startsWith("dealer_")) {
-    if (canReadDealerResource(user, String(resource))) return allow();
-    return deny("missing_permission", "你没有权限查看该经销商业务数据。");
+  // 通过 registry 动态查找 domain 权限规则（包括 leave_requests 等域特定资源）
+  if (canReadDomainResource(user, String(resource))) return allow();
+  // 如果没有匹配的权限规则，拒绝访问
+  const registry = getRuntimeRegistry();
+  const isRegistered = registry?.allResources[String(resource)];
+  if (isRegistered) {
+    return deny("missing_permission", "你没有权限查看该业务数据。");
   }
   return deny("invalid_resource", "不支持该业务资源。");
 }
@@ -192,40 +200,19 @@ function getFilterValue(filters: unknown = [], field: string): QueryFilter["valu
   return filter?.value ?? null;
 }
 
-function getLeaveRequestScope(filters: unknown = []): "self" | "team" | "company" | "other" {
-  const normalized = normalizeFilters(filters);
-  const applicantFilter = normalized.find((item) => item.field === "applicant_user_id");
-  if (normalized.some((item) => item.field === "applicant_name")) return "other";
-  if (normalized.some((item) => item.field === "department")) return "other";
-  if (!applicantFilter) return "self";
-  if (applicantFilter.value === "__CURRENT_USER__") return "self";
-  if (applicantFilter.value === "__CURRENT_USER_SUBORDINATES__" || applicantFilter.value === "__CURRENT_USER_REPORTS__") return "team";
-  if (applicantFilter.value === "__ALL_ORG_USERS__") return "company";
-  return "other";
-}
-
-function canReadDealerResource(user: UserContext, resource: string): boolean {
-  if (hasPermission(user, "dealer:read")) return true;
-  if (["store_general_manager", "sales_manager"].includes(user.role)) return true;
-  if (resource === "dealer_metrics") {
-    return hasPermission(user, "inventory:read")
-      || hasPermission(user, "customer:read")
-      || hasPermission(user, "order:read")
-      || hasPermission(user, "sales_report:read")
-      || hasPermission(user, "finance:read")
-      || hasPermission(user, "after_sales:read");
-  }
-  if (["dealer_vehicles", "dealer_inbounds", "dealer_quotas", "dealer_stores"].includes(resource)) {
-    return hasPermission(user, "inventory:read") || hasPermission(user, "order:read") || hasPermission(user, "sales_report:read");
-  }
-  if (["dealer_leads", "dealer_sales_orders"].includes(resource)) {
-    return hasPermission(user, "customer:read") || hasPermission(user, "order:read") || hasPermission(user, "sales_report:read");
-  }
-  if (resource === "dealer_finance") {
-    return hasPermission(user, "finance:read") || user.role === "store_general_manager";
-  }
-  if (["dealer_repair_orders", "dealer_warranty_claims"].includes(resource)) {
-    return hasPermission(user, "after_sales:read") || user.role === "store_general_manager";
+/**
+ * 通过 registry 动态查找 domain 权限规则，判断用户是否有权访问指定资源。
+ */
+function canReadDomainResource(user: UserContext, resource: string): boolean {
+  const registry = getRuntimeRegistry();
+  if (!registry) return false;
+  const permissionRules = registry.allPermissionRules ?? [];
+  const userPermissions = new Set(user.permissions ?? []);
+  // 构造一个最小化的 manifest 用于权限检查
+  const manifest = { tool_binding: { resource } } as import("../types/agent-contracts.js").IntentManifest;
+  for (const rule of permissionRules) {
+    const result = rule({ resource, user, userPermissions, manifest });
+    if (result?.ok) return true;
   }
   return false;
 }

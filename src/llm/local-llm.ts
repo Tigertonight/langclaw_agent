@@ -1,25 +1,33 @@
 import { loadJson } from "../data/load-json.js";
-import { composeDealerReport } from "../dealer/dealer-report-composer.js";
+import { composeReportFromRegistry } from "../domains/runtime-registry.js";
 import { inferIntentCode } from "../agent/intent-codes.js";
-import { INTENT_CODES, INTENTS } from "../agent/ports.js";
+import { INTENTS } from "../agent/ports.js";
+import { readableResourceNameFromRegistry, getRuntimeRegistry, isDomainDataQueryIntent, isAnyDomainDataQuestion, inferAnalysisIntentFromRegistry, getClassificationKeywords, getClassificationPatterns, getResourceDataPath } from "../domains/runtime-registry.js";
 import { compileBusinessQueryIR } from "../query/query-compiler.js";
 import {
   isBusinessDataQuestion,
-  isCustomerQuestion,
-  isDealerAnalysisQuestion,
-  isLeaveRecordQuestion,
-  isOrderQuestion,
-  isOrgQuestion,
-  isSalesReportQuestion,
-  planDealerMultiQuery,
+  planDomainMultiQuery,
   parseBusinessQuery
 } from "../query/query-parser.js";
 import type { JsonObject, QueryIR, Route, ToolCall, ToolResult, UserContext } from "../types/agent-contracts.js";
 
-const DATA_KEYWORDS = ["客户", "订单", "成交额", "销售额", "报表", "pipeline", "合同金额", "发货", "交付", "状态", "进展", "列表", "名下", "负责", "多少", "几个", "数量", "签单", "续签", "跟进", "行业", "组织", "组织架构", "部门", "上级", "下级", "下属", "下辖", "下面", "团队", "同学", "汇报", "直属", "领导", "主管", "岗位", "VIN", "整车", "车辆", "库存", "库龄", "在途", "配额", "PDI", "合格证", "线索", "意向", "到店", "战败", "漏斗", "锁车", "折让金", "应付", "应收", "返利", "售后", "维修", "保养", "工单", "三包", "质保", "索赔", "经营", "分析", "风险", "总览", "周报", "日报", "复盘", "看板", "优先级", "总经理", "体系", "晨会", "行动项", "经营计划", "负责人", "管理动作", "协调问题"];
-const KB_KEYWORDS = ["制度", "政策", "流程", "标准", "手册", "报销", "试用期", "年假", "权限", "审批", "规则"];
+// 安全关键词（域无关）
 const DANGEROUS_KEYWORDS = ["忽略", "绕过", "导出所有", "全部客户", "所有客户", "工资", "身份证", "银行卡"];
-const LEAVE_KEYWORDS = ["请假", "休假", "年假", "病假", "事假", "调休"];
+
+/** 动态获取 data_query 关键词：全部从 registry 获取 */
+function getDataKeywords(): string[] {
+  return getClassificationKeywords()["data_query"] ?? [];
+}
+
+/** 动态获取 knowledge_qa 关键词：全部从 registry 获取 */
+function getKBKeywords(): string[] {
+  return getClassificationKeywords()["knowledge_qa"] ?? [];
+}
+
+/** 动态获取 leave_request 关键词：全部从 registry 获取 */
+function getLeaveKeywords(): string[] {
+  return getClassificationKeywords()["leave_request"] ?? [];
+}
 
 interface ConversationContext {
   continuation?: { is_likely_continuation?: boolean };
@@ -36,15 +44,6 @@ interface LocalToolResult extends Record<string, unknown> {
 }
 
 type DataRecord = Record<string, ReturnType<typeof JSON.parse>>;
-type DealerSummary = {
-  storeName: string;
-  rows: DataRecord[];
-  critical: number;
-  warning: number;
-  score: number;
-  topRisks: DataRecord[];
-};
-type DealerAction = { owner: string; text: string };
 
 interface LLMInput {
   user?: UserContext;
@@ -95,11 +94,11 @@ export class LocalLLMClient {
         reason: "当前消息是对上一轮任务的范围、时间或筛选条件补充。"
       };
     }
-    const hasData = DATA_KEYWORDS.some((word) => question.includes(word)) || isDealerAnalysisQuestion(question) || await isBusinessDataQuestion(question);
-    const hasKb = KB_KEYWORDS.some((word) => question.includes(word));
+    const hasData = getDataKeywords().some((word) => question.includes(word)) || !!inferAnalysisIntentFromRegistry(question) || await isBusinessDataQuestion(question);
+    const hasKb = getKBKeywords().some((word) => question.includes(word));
     const hasCompute = isComputeQuestion(question);
     const hasLeave = isLeaveIntent(question);
-    const asksLeaveRecords = isLeaveRecordQuestion(question);
+    const asksLeaveRecords = isAnyDomainDataQuestion(question);
     const risky = DANGEROUS_KEYWORDS.some((word) => question.includes(word));
     const asksLeavePolicy = isLeavePolicyQuestion(question);
     const hasOrgData = await isOrgDataQuestion(question);
@@ -108,16 +107,17 @@ export class LocalLLMClient {
       return { intent: INTENTS.SMALLTALK, confidence: 0.95, reason: "问候类问题" };
     }
     if (asksLeavePolicy) {
-      return { intent: INTENTS.KNOWLEDGE_QA, confidence: 0.88, reason: "询问请假制度或办理规则" };
+      return { intent: INTENTS.KNOWLEDGE_QA, confidence: 0.88, reason: "询问域特定制度或办理规则" };
     }
     if (asksLeaveRecords) {
-      return { intent: INTENTS.DATA_QUERY, confidence: 0.9, reason: "查询请假记录、请假统计或团队请假情况" };
+      return { intent: INTENTS.DATA_QUERY, confidence: 0.9, reason: "查询域特定数据记录" };
     }
     if (hasKb && !hasExplicitDataLookup(question)) {
       return { intent: INTENTS.KNOWLEDGE_QA, confidence: 0.86, reason: "涉及制度、流程或知识库内容" };
     }
     if (hasLeave) {
-      return { intent: INTENTS.LEAVE_REQUEST, confidence: 0.9, reason: "涉及请假申请业务场景" };
+      // 域特定 workflow intent（如 "leave_request"），由 DomainPack.classificationPatterns 声明
+      return { intent: "leave_request", confidence: 0.9, reason: "命中域特定 workflow 分类模式" };
     }
     if (risky && !hasData && !hasKb) {
       return { intent: INTENTS.UNSUPPORTED, confidence: 0.85, reason: "可能涉及敏感或越权请求" };
@@ -126,13 +126,10 @@ export class LocalLLMClient {
       return { intent: INTENTS.DATA_QUERY, confidence: 0.88, reason: "需要使用受限计算沙箱完成确定性运算" };
     }
     if ((hasData || hasOrgData) && hasKb) {
-      return { intent: INTENTS.MIXED, confidence: 0.82, reason: "同时涉及业务数据和制度解释" };
+      return { intent: INTENTS.MIXED, confidence: 0.82, reason: "同时涉及业务数据和知识库内容" };
     }
     if (hasData || hasOrgData) {
-      if (hasOrgData) {
-        return { intent: INTENTS.DATA_QUERY, confidence: 0.86, reason: "涉及企业通讯录、组织架构或人员汇报关系" };
-      }
-      return { intent: INTENTS.DATA_QUERY, confidence: 0.86, reason: "涉及客户、订单或销售报表" };
+      return { intent: INTENTS.DATA_QUERY, confidence: 0.86, reason: "涉及业务数据或组织数据查询" };
     }
     if (hasKb) {
       return { intent: INTENTS.KNOWLEDGE_QA, confidence: 0.86, reason: "涉及制度、流程或知识库内容" };
@@ -158,12 +155,12 @@ export class LocalLLMClient {
       return buildKnowledgeRetrievalPlan(question);
     }
 
-    const dealerIRs = await planDealerMultiQuery({ question });
-    if (dealerIRs?.length > 1) {
-      const plans = await Promise.all(dealerIRs.map((queryIR) => compileBusinessQueryIR(queryIR, { question })));
+    const domainIRs = await planDomainMultiQuery({ question });
+    if (domainIRs?.length > 1) {
+      const plans = await Promise.all(domainIRs.map((queryIR) => compileBusinessQueryIR(queryIR, { question })));
       return {
         calls: plans.flatMap((plan) => plan.calls ?? []),
-        ir: dealerIRs
+        ir: domainIRs
       };
     }
     const ir = route?.query_ir ?? await parseBusinessQuery({ user, question, history, conversationContext });
@@ -269,41 +266,17 @@ export class LocalLLMClient {
       return { answer: `${notFound.message}目前没有足够上下文继续判断。` };
     }
 
-    const lines = [];
+    const lines: string[] = [];
     const successfulTools = toolResults.filter((result) => result.ok);
-    const dealerAnalysisAnswer = composeDealerReport({ question, route, toolResults: successfulTools as ToolResult[] });
-    if (dealerAnalysisAnswer) {
-      return dealerAnalysisAnswer;
+
+    // 所有 tool-specific 答案模板统一由 registry 中注册的 reportComposers 处理
+    const composedAnswer = composeReportFromRegistry({ question, route, toolResults: successfulTools as ToolResult[] });
+    if (composedAnswer) {
+      return composedAnswer;
     }
-    const customerOrderRiskAnswer = composeCustomerOrderRiskAnswer({ question, toolResults: successfulTools, agentState });
-    if (customerOrderRiskAnswer) return customerOrderRiskAnswer;
+
+    // 仅处理通用工具结果（query_business_data / safe_compute）
     for (const result of successfulTools) {
-      if (result.tool === "query_order") {
-        const order = result.data;
-        lines.push(`客户「${order.customer_name}」最近订单 ${order.id} 当前状态为「${order.status}」，金额 ${order.amount} 元。`);
-        if (order.expected_delivery) {
-          lines.push(`预计交付时间是 ${order.expected_delivery}。`);
-        }
-      }
-      if (result.tool === "query_customer") {
-        const customer = result.data;
-        lines.push(`客户「${customer.name}」属于 ${customer.tier} 类客户，行业为${customer.industry}，年度成交额为 ${customer.annual_revenue} 元。`);
-      }
-      if (result.tool === "list_my_customers") {
-        const customers = Array.isArray(result.data?.customers) ? result.data.customers as Array<Record<string, unknown>> : [];
-        if (customers.length === 0) {
-          lines.push("你当前没有可访问的客户。");
-        } else {
-          lines.push(`你当前可访问 ${customers.length} 个客户：`);
-          for (const customer of customers) {
-            lines.push(`- ${customer.name}（${customer.id}）：${customer.tier} 类客户，行业为${customer.industry}，年度成交额 ${customer.annual_revenue} 元。`);
-          }
-        }
-      }
-      if (result.tool === "query_sales_report") {
-        const report = result.data;
-        lines.push(`${report.department} 在 ${report.period} 的销售收入为 ${report.revenue} 元，pipeline 为 ${report.pipeline} 元。`);
-      }
       if (result.tool === "query_business_data") {
         lines.push(formatBusinessDataResult(result.data));
       }
@@ -447,7 +420,7 @@ function buildPersonalCustomerOverviewPlan(): ToolPlanResult {
 }
 
 function shouldRetrieveKnowledge({ question, route }: { question?: string; route?: Partial<Route> & { intent_code?: string } }): boolean {
-  if (String(route?.intent_code ?? "").startsWith("dealer.")) return false;
+  if (isDomainDataQueryIntent(route?.intent_code)) return false;
   if (route?.intent === INTENTS.KNOWLEDGE_QA) return true;
   if (route?.intent !== INTENTS.MIXED) return false;
   return /(制度|政策|流程|标准|手册|报销|试用期|年假|病假|权限|审批|规则|依据|资料|文档)/.test(String(question ?? ""));
@@ -494,84 +467,10 @@ async function isOrgDataQuestion(question: string): Promise<boolean> {
 }
 
 function isLeaveIntent(question: string): boolean {
-  return LEAVE_KEYWORDS.some((word) => question.includes(word))
-    || /(请|休|申请|办)(个|一下|一会儿|半天|一天|几天)?假/.test(question);
+  return getLeaveKeywords().some((word) => question.includes(word))
+    || (getClassificationPatterns()["leave_request"] ?? []).some((re) => re.test(question));
 }
 
-async function buildOrgQueries({ question, asksAggregate }: { question: string; asksAggregate: boolean }): Promise<ToolCall[]> {
-  const mentionedDepartment = await findMentionedDepartment(question);
-  if (mentionedDepartment && isPeopleCountQuestion(question)) {
-    const departmentIds = await getDepartmentTreeIds(mentionedDepartment.id);
-    return [buildEmployeeQueryCall({
-      filters: [{ field: "department", op: "in", value: departmentIds }],
-      asksAggregate: true,
-      limit: 100
-    })];
-  }
-
-  if (mentionedDepartment && /(负责人|主管|经理|leader|谁负责)/i.test(question)) {
-    return [{
-      name: "query_business_data",
-      args: {
-        resource: "departments",
-        operation: "search",
-        filters: [{ field: "id", op: "eq", value: mentionedDepartment.id }],
-        metrics: [],
-        fields: ["id", "name", "parentid", "leader_userid", "vertical_relation", "vertical_department", "relation"],
-        sort: [{ field: "order", direction: "asc" }],
-        limit: 1
-      }
-    }];
-  }
-
-  if (mentionedDepartment && /(有哪些|都有谁|人员|员工|同学|名单|列表)/.test(question)) {
-    const departmentIds = await getDepartmentTreeIds(mentionedDepartment.id);
-    return [buildEmployeeQueryCall({
-      filters: [{ field: "department", op: "in", value: departmentIds }],
-      asksAggregate: false,
-      limit: 100
-    })];
-  }
-
-  if (["组织架构", "部门结构", "部门列表", "有哪些部门"].some((word) => question.includes(word))) {
-    return [{
-      name: "query_business_data",
-      args: {
-        resource: "departments",
-        operation: asksAggregate ? "aggregate" : "search",
-        filters: [],
-        metrics: asksAggregate ? [{ type: "count", field: "id", as: "department_count" }] : [],
-        fields: ["id", "name", "parentid", "leader_userid", "vertical_relation", "vertical_department", "relation"],
-        sort: [{ field: "order", direction: "asc" }],
-        limit: 100
-      }
-    }];
-  }
-
-  const employeeName = await extractEmployeeName(question);
-  const asksSubordinates = ["下属", "下级", "下辖", "下面", "团队", "同学"].some((word) => question.includes(word));
-  const asksLeader = ["上级", "汇报", "直属", "领导", "主管"].some((word) => question.includes(word));
-  const calls: ToolCall[] = [];
-
-  if (employeeName || asksLeader || (question.includes("我") && !asksSubordinates)) {
-    const filters: JsonObject[] = [];
-    if (employeeName) filters.push({ field: "name", op: "eq", value: employeeName });
-    if (!employeeName) filters.push({ field: "userid", op: "eq", value: "__CURRENT_USER__" });
-    calls.push(buildEmployeeQueryCall({ filters, asksAggregate, limit: 1 }));
-  }
-
-  if (!employeeName && asksSubordinates) {
-    calls.push(buildEmployeeQueryCall({
-      filters: [{ field: "direct_leader", op: "contains", value: "__CURRENT_USER__" }],
-      asksAggregate,
-      limit: 50
-    }));
-  }
-
-  if (calls.length > 0) return calls;
-  const hasOrgSignal = ["组织", "部门", "部", "岗位", "人员", "员工"].some((word) => question.includes(word));
-  return hasOrgSignal ? [buildEmployeeQueryCall({ filters: [], asksAggregate, limit: 50 })] : [];
-}
 
 function buildEmployeeQueryCall({ filters, asksAggregate, limit }: { filters: JsonObject[]; asksAggregate: boolean; limit: number }): ToolCall {
   return {
@@ -586,37 +485,6 @@ function buildEmployeeQueryCall({ filters, asksAggregate, limit }: { filters: Js
       limit
     }
   };
-}
-
-async function findMentionedDepartment(question: string): Promise<DataRecord | undefined> {
-  const departments = await loadJson("data/wecom-departments.json") as DataRecord[];
-  const normalized = String(question ?? "");
-  return departments
-    .slice()
-    .sort((left, right) => String(right.name).length - String(left.name).length)
-    .find((department) => normalized.includes(department.name)
-      || normalized.includes(String(department.name).replace(/部$/, ""))
-      || String(department.name).includes(normalized));
-}
-
-async function getDepartmentTreeIds(rootId: unknown): Promise<number[]> {
-  const departments = await loadJson("data/wecom-departments.json") as DataRecord[];
-  const ids = new Set([Number(rootId)]);
-  let changed = true;
-  while (changed) {
-    changed = false;
-    for (const department of departments) {
-      if (ids.has(Number(department.parentid)) && !ids.has(Number(department.id))) {
-        ids.add(Number(department.id));
-        changed = true;
-      }
-    }
-  }
-  return [...ids];
-}
-
-function isPeopleCountQuestion(question: unknown): boolean {
-  return /(多少人|几个人|几名|人数|员工数|人员数|多少个员工|有多少.*(人|员工|同学))/.test(String(question ?? ""));
 }
 
 function hasEmployeeSelfQuery(calls: ToolCall[]): boolean {
@@ -635,168 +503,48 @@ function splitForStreaming(text: unknown): string[] {
   return String(text ?? "").match(/.{1,8}/gs) ?? [];
 }
 
-function buildCustomerQuery({ question, customerName, asksAggregate }: { question: string; customerName?: string | null; asksAggregate: boolean }): ToolCall {
-  const filters: JsonObject[] = [];
-  if (customerName) filters.push({ field: "name", op: "eq", value: customerName });
-  if (question.includes("科技")) filters.push({ field: "industry_category", op: "eq", value: "科技" });
-  if (question.includes("制造")) filters.push({ field: "industry_category", op: "eq", value: "制造" });
-  if (question.includes("零售")) filters.push({ field: "industry_category", op: "eq", value: "零售" });
-  if (question.includes("物流")) filters.push({ field: "industry_category", op: "eq", value: "物流" });
-  if (question.includes("未签单")) filters.push({ field: "deal_status", op: "eq", value: "未签单" });
-  if (question.includes("已签单")) filters.push({ field: "deal_status", op: "eq", value: "已签单" });
-  if (question.includes("跟进")) filters.push({ field: "follow_status", op: "contains", value: "跟进" });
-  if (question.includes("待续签")) filters.push({ field: "renewal_status", op: "eq", value: "待续签" });
-
-  return {
-    name: "query_business_data",
-    args: {
-      resource: "customers",
-      operation: asksAggregate ? "aggregate" : "search",
-      filters,
-      metrics: asksAggregate ? [{ type: "count", field: "id", as: "customer_count" }] : [],
-      fields: [
-        "id",
-        "name",
-        "tier",
-        "industry",
-        "industry_category",
-        "deal_status",
-        "follow_status",
-        "renewal_status",
-        "annual_revenue",
-        "next_follow_up_at",
-        "contract_expire_at"
-      ],
-      sort: [{ field: "next_follow_up_at", direction: "asc" }],
-      limit: 20
-    }
-  };
-}
-
-function buildOrderQuery({ customerName }: { customerName?: string | null }): ToolCall {
-  return {
-    name: "query_business_data",
-    args: {
-      resource: "orders",
-      operation: "search",
-      filters: [{ field: "customer_name", op: "eq", value: customerName }],
-      fields: ["id", "customer_name", "status", "amount", "created_at", "expected_delivery"],
-      sort: [{ field: "created_at", direction: "desc" }],
-      limit: 1
-    }
-  };
-}
-
-function buildSalesReportQuery({ user, question }: { user: UserContext; question: string }): ToolCall {
-  return {
-    name: "query_business_data",
-    args: {
-      resource: "sales_reports",
-      operation: "search",
-      filters: [
-        { field: "department", op: "eq", value: extractDepartment(question) ?? user.department },
-        { field: "period", op: "eq", value: extractPeriod(question) ?? "2026Q2" }
-      ],
-      fields: ["department", "period", "revenue", "pipeline", "top_customers"],
-      limit: 1
-    }
-  };
-}
-
 function formatBusinessDataResult(data: DataRecord): string {
+  // 优先使用 registry 中注册的 resultFormatter（域特定格式化）
+  const registry = getRuntimeRegistry();
+  const resourceConfig = registry?.allResources[String(data.resource)];
+  if (resourceConfig?.resultFormatter) {
+    const formatted = resourceConfig.resultFormatter(data);
+    if (formatted) return formatted;
+  }
+
+  // 聚合查询通用路径
   if (data.operation === "aggregate") {
     const metrics = (data.metrics ?? []) as DataRecord[];
     const count = metrics.find((item: DataRecord) => item.type === "count")?.value ?? data.total;
-    if (data.resource === "employees") return `查询结果：符合条件的员工共 ${count} 人。`;
-    if (data.resource === "departments") return `查询结果：符合条件的组织节点共 ${count} 个。`;
-    if (data.resource === "leave_requests") {
-      return isTeamLeaveRecordResult(data)
-        ? `查询结果：符合条件的团队请假记录共 ${count} 条。`
-        : `查询结果：你共有 ${count} 条请假记录。`;
-    }
     return `查询结果：符合条件的${resourceName(data.resource)}共 ${count} 条。`;
   }
 
-  const rows = data.rows ?? [];
+  const rows = (data.rows ?? []) as DataRecord[];
   if (rows.length === 0) {
     return `没有找到符合条件的${resourceName(data.resource)}。`;
   }
 
-  if (data.resource === "orders") {
-    const order = rows[0];
-    return `客户「${order.customer_name}」最近订单 ${order.id} 当前状态为「${order.status}」，金额 ${order.amount} 元。${order.expected_delivery ? `预计交付时间是 ${order.expected_delivery}。` : ""}`;
-  }
-
-  if (data.resource === "sales_reports") {
-    const report = rows[0];
-    return `${report.department} 在 ${report.period} 的销售收入为 ${report.revenue} 元，pipeline 为 ${report.pipeline} 元。`;
-  }
-
-  if (data.resource === "employees") {
-    if (isCurrentUserLeaderLookup(data)) {
-      const row = rows[0];
-      const leader = Array.isArray(row.direct_leader_profiles) ? row.direct_leader_profiles[0] : null;
-      const reportingText = formatReporting(row.reporting);
-      return leader?.name
-        ? `你的直属上级是 ${formatEmployeeProfile(leader)}。${reportingText}`
-        : `${row.name} 当前没有配置直属上级。${reportingText}`;
-    }
-    const lines = [`查询到 ${rows.length} 名员工：`];
+  // 通用域资源格式化：通过 registry 查找 rowTemplate
+  if (resourceConfig?.rowTemplate) {
+    const label = readableResourceNameFromRegistry(data.resource, "记录");
+    const lines = [`查询到 ${rows.length} 条${label}：`];
     for (const row of rows) {
-      const leaderText = Array.isArray(row.direct_leader) && row.direct_leader.length
-        ? formatEmployeeProfiles(row.direct_leader_profiles, row.direct_leader)
-        : "无";
-      const reportingText = formatReporting(row.reporting);
-      lines.push(`- ${row.name}：${row.department_name} / ${row.position}。直属上级：${leaderText}。${reportingText}`);
+      lines.push(resourceConfig.rowTemplate(row));
     }
     return lines.join("\n");
   }
 
-  if (data.resource === "departments") {
-    if (rows.length === 1 && data.query?.display?.reason?.includes("负责人")) {
-      const row = rows[0];
-      const leader = row.leader_profile?.name ? formatEmployeeProfile(row.leader_profile) : "暂未配置";
-      return `${row.name}的负责人是 ${leader}。`;
-    }
-    const lines = [`查询到 ${rows.length} 个组织节点：`];
-    for (const row of rows) {
-      const extras = [
-        row.vertical_department ? `垂直归属：${row.vertical_department}` : null,
-        row.relation ? `关系：${row.relation}` : null
-      ].filter(Boolean).join("；");
-      const leader = row.leader_profile?.name ? `${row.leader_profile.name}（${row.leader_profile.position ?? "负责人"}）` : "暂未配置";
-      lines.push(`- ${row.name}：负责人 ${leader}${extras ? `，${extras}` : ""}。`);
-    }
-    return lines.join("\n");
-  }
-
-  if (data.resource === "leave_requests") {
-    const lines = [isSelfLeaveRecordResult(data)
-      ? `查询到 ${rows.length} 条你的请假记录：`
-      : `查询到 ${rows.length} 条请假记录：`];
-    for (const row of rows) {
-      const applicantPrefix = isSelfLeaveRecordResult(data) ? "" : `${row.applicant_name}：`;
-      lines.push(`- ${applicantPrefix}${row.leave_type}，${row.leave_duration}，${row.start_time} 至 ${row.end_time}，事由：${row.reason}，状态：${row.status}。`);
-    }
-    return lines.join("\n");
-  }
-
-  if (String(data.resource).startsWith("dealer_")) {
-    return formatDealerRows(data.resource, rows);
-  }
-
-  const lines = [`查询到 ${rows.length} 条${resourceName(data.resource)}：`];
+  // 最终 fallback：按字段名输出
+  const label = readableResourceNameFromRegistry(data.resource, "记录");
+  const lines = [`查询到 ${rows.length} 条${label}：`];
   for (const row of rows) {
-    lines.push(`- ${row.name}（${row.id}）：${row.tier} 类，${row.industry}，签单状态「${row.deal_status}」，跟进状态「${row.follow_status}」，续签状态「${row.renewal_status}」，年度成交额 ${row.annual_revenue} 元。`);
+    const fields = Object.entries(row)
+      .filter(([, v]) => v !== null && v !== undefined && v !== "")
+      .map(([k, v]) => `${k}: ${v}`)
+      .join("，");
+    lines.push(`- ${fields}`);
   }
   return lines.join("\n");
-}
-
-function isCurrentUserLeaderLookup(data: DataRecord): boolean {
-  const filters = (data.query?.filters ?? []) as DataRecord[];
-  return data.resource === "employees"
-    && data.rows?.length === 1
-    && filters.some((filter: DataRecord) => filter.field === "userid" && filter.value === "__CURRENT_USER__");
 }
 
 function formatSafeComputeResult(data: DataRecord | undefined): string {
@@ -811,494 +559,15 @@ function formatSafeComputeResult(data: DataRecord | undefined): string {
   return `计算结果：${rendered}${suffix}`;
 }
 
-function formatDealerAnalysisAnswer({ question, route, toolResults }: { question: string; route?: Partial<Route> & { intent_code?: string }; toolResults: LocalToolResult[] }): string | null {
-  const metricRows = toolResults
-    .filter((result) => result.tool === "query_business_data" && result.data?.resource === "dealer_metrics")
-    .flatMap((result) => Array.isArray(result.data?.rows) ? result.data.rows as DataRecord[] : []);
-  if (!metricRows.length || route?.intent_code !== INTENT_CODES.DEALER_ANALYSIS_QUERY) return null;
-
-  const rowsByStore = groupBy(metricRows, (row) => row.store_name || "全部门店");
-  const storeSummaries = Object.entries(rowsByStore).map(([storeName, rows]) => summarizeDealerStore(storeName, rows));
-  const ranked = storeSummaries.slice().sort((left, right) => right.score - left.score);
-  const detailResources = toolResults
-    .filter((result) => result.tool === "query_business_data" && result.data?.resource !== "dealer_metrics")
-    .map((result) => ({
-      resource: result.data.resource,
-      total: result.data.total,
-      rows: Array.isArray(result.data.rows) ? result.data.rows : []
-    }));
-
-  const lines = [];
-  if (/(对比|哪家|压力更大)/.test(question) && ranked.length >= 2) {
-    const top = ranked[0];
-    const second = ranked[1];
-    lines.push("## 经营压力对比");
-    lines.push("");
-    lines.push(`**结论：${top.storeName} 当前经营压力略高于 ${second.storeName}。**`);
-    lines.push("");
-    lines.push(`判断依据：${top.storeName} 有 ${top.critical} 项严重风险、${top.warning} 项警示风险，风险分 ${top.score}；${second.storeName} 有 ${second.critical} 项严重风险、${second.warning} 项警示风险，风险分 ${second.score}。`);
-  } else if (/(日报|周报|月度|报告|复盘|看板|晨会|经营计划|行动项|管理动作)/.test(question)) {
-    lines.push(`## ${buildDealerReportTitle(question)}`);
-    lines.push("");
-    const top = ranked[0];
-    if (top) lines.push(`**总体判断：当前最高优先级是 ${top.storeName} 的 ${formatTopRisk(top.topRisks[0])}。**`);
-  } else {
-    const top = ranked[0];
-    lines.push("## 经营风险判断");
-    lines.push("");
-    lines.push(`**结论：当前最该关注 ${top.storeName} 的 ${formatTopRisk(top.topRisks[0])}。**`);
-  }
-
-  lines.push("");
-  lines.push("### 关键风险");
-  for (const summary of ranked) {
-    lines.push("");
-    lines.push(`**${summary.storeName}**`);
-    lines.push("");
-    lines.push(`- 风险概览：${summary.critical} 项严重、${summary.warning} 项警示，风险分 ${summary.score}。`);
-    const topRisks = summary.topRisks.slice(0, 5);
-    if (!topRisks.length) {
-      lines.push("- 重点风险：暂无高风险项。");
-    } else {
-      for (const risk of topRisks) {
-        lines.push(`- ${formatTopRisk(risk)}：${risk.summary}`);
-      }
-    }
-  }
-
-  const details = summarizeDealerDetails(detailResources);
-  if (details.length) {
-    lines.push("");
-    lines.push("### 数据明细支撑");
-    for (const item of details) lines.push(`- ${item}`);
-  }
-
-  if (/(原因|为什么|承压|复盘|报告|方案)/.test(question)) {
-    lines.push("");
-    lines.push("### 原因分析");
-    for (const summary of ranked) {
-      const causes = summarizeDealerCauses(summary);
-      if (causes.length) {
-        lines.push("");
-        lines.push(`**${summary.storeName}**`);
-        for (const cause of causes) lines.push(`- ${cause}`);
-      }
-    }
-  }
-
-  lines.push("");
-  lines.push("### 关键动作");
-  const actionGroups = buildDealerActionGroups(ranked);
-  for (const group of actionGroups) {
-    lines.push("");
-    lines.push(`**${group.storeName}**`);
-    const byOwner = groupActionsByOwner(group.actions) as Record<string, Array<{ text: string }>>;
-    for (const [owner, actions] of Object.entries(byOwner)) {
-      lines.push(`- ${owner}：${actions.map((item) => stripSentenceEnd(item.text)).join("；")}。`);
-    }
-  }
-
-  if (/(负责人|行动项|晨会|经营计划|下周)/.test(question)) {
-    lines.push("");
-    lines.push("### 负责人拆解");
-    lines.push("- 销售负责人：跟进 H/A 级未成交线索、战败复盘、待交付订单收款和交付节点。");
-    lines.push("- 库存负责人：处理高库龄与合格证风险车辆，给出清库、调拨或促销方案。");
-    lines.push("- 财务负责人：跟进折让金余额、未结清应付和待结算返利，评估采购现金流。");
-    lines.push("- 售后负责人：关闭未结算/施工中工单，补齐三包索赔证据。");
-  }
-
-  return lines.join("\n");
-}
-
-function summarizeDealerStore(storeName: string, rows: DataRecord[]): DealerSummary {
-  const critical = rows.filter((row) => row.severity === "critical").length;
-  const warning = rows.filter((row) => row.severity === "warning").length;
-  const score = rows.reduce((total, row) => total + (row.severity === "critical" ? 3 : row.severity === "warning" ? 1 : 0), 0);
-  const topRisks = rows
-    .filter((row) => row.severity === "critical" || row.severity === "warning")
-    .sort((left, right) => severityWeight(right.severity) - severityWeight(left.severity) || Number(right.value) - Number(left.value));
-  return { storeName, rows, critical, warning, score, topRisks };
-}
-
-function severityWeight(value: unknown): number {
-  if (value === "critical") return 3;
-  if (value === "warning") return 1;
-  return 0;
-}
-
-function formatTopRisk(row: DataRecord | undefined): string {
-  if (!row) return "暂无高风险项";
-  const category = dealerCategoryName(row.category);
-  return `${category}「${dealerMetricName(row.metric)}」${row.value}${row.unit ?? ""}（${row.severity}）`;
-}
-
-function dealerCategoryName(value: unknown): string {
-  return {
-    inventory: "库存",
-    sales: "销售",
-    lead: "线索",
-    finance: "财务",
-    after_sales: "售后",
-    warranty: "三包"
-  }[String(value)] ?? String(value ?? "");
-}
-
-function dealerMetricName(value: unknown): string {
-  return {
-    stock_risk_vehicle_count: "库龄风险车",
-    mortgaged_certificate_vehicle_count: "合格证抵押车",
-    pending_delivery_order_count: "待交付订单",
-    unpaid_order_count: "未结清订单",
-    hot_open_lead_count: "H/A级未成交线索",
-    no_contact_lead_count: "未首联线索",
-    lost_lead_count: "战败线索",
-    discount_wallet_balance: "折让金余额",
-    unsettled_payable_amount: "未结清应付",
-    pending_rebate_amount: "待结算返利",
-    open_repair_order_count: "未关闭工单",
-    warranty_claim_loss_risk_amount: "三包索赔损失风险"
-  }[String(value)] ?? String(value ?? "");
-}
-
-function buildDealerReportTitle(question: string): string {
-  if (question.includes("晨会")) return "晨会材料";
-  if (question.includes("月度")) return "月度经营分析报告";
-  if (question.includes("周报")) return "经营周报";
-  if (question.includes("日报")) return "经营日报";
-  if (question.includes("看板")) return "门店经营健康度看板";
-  if (question.includes("经营计划")) return "下周经营计划";
-  return "经营复盘";
-}
-
-function summarizeDealerDetails(resources: Array<{ resource: unknown; rows: DataRecord[] }>): string[] {
-  const lines: string[] = [];
-  for (const item of resources) {
-    if (item.resource === "dealer_vehicles") {
-      const risky = item.rows.filter((row) => row.stock_warning_level && row.stock_warning_level !== "正常");
-      if (risky.length) lines.push(`库存：${risky.map((row) => `${row.vin} ${row.stock_age_days}天/${row.stock_warning_level}`).join("，")}`);
-    }
-    if (item.resource === "dealer_leads") {
-      const weak = item.rows.filter((row) => row.status === "待首次联系" || row.status === "战败" || (!row.converted_order_id && ["H", "A"].includes(row.intention_level)));
-      if (weak.length) lines.push(`线索：${weak.map((row) => `${row.customer_name}/${row.owner_name}/${row.intention_level}/${row.status}`).join("，")}`);
-    }
-    if (item.resource === "dealer_sales_orders") {
-      const risky = item.rows.filter((row) => row.payment_status !== "已结清" || row.delivery_status !== "已交付");
-      if (risky.length) lines.push(`订单：${risky.map((row) => `${row.id}/${row.payment_status}/${row.delivery_status}`).join("，")}`);
-    }
-    if (item.resource === "dealer_finance") {
-      if (item.rows.length) lines.push(`财务：${item.rows.map((row) => `${row.id}/${row.resource_type}/${row.amount}/${row.status}`).join("，")}`);
-    }
-    if (item.resource === "dealer_repair_orders") {
-      const open = item.rows.filter((row) => !["已结算", "已关闭"].includes(row.status));
-      if (open.length) lines.push(`售后：${open.map((row) => `${row.id}/${row.order_type}/${row.status}`).join("，")}`);
-    }
-    if (item.resource === "dealer_warranty_claims") {
-      const risky = item.rows.filter((row) => row.claim_status === "已拒绝" || Number(row.difference_amount ?? 0) > 0 || row.evidence_status === "照片不足");
-      if (risky.length) lines.push(`三包：${risky.map((row) => `${row.id}/${row.claim_status}/差异${row.difference_amount}`).join("，")}`);
-    }
-  }
-  return lines;
-}
-
-function summarizeDealerCauses(summary: DealerSummary): string[] {
-  const categories = new Set(summary.topRisks.map((risk) => risk.category));
-  const causes: string[] = [];
-  if (categories.has("inventory")) causes.push("库存侧存在高库龄或合格证约束，可能占用资金并影响交付确定性。");
-  if (categories.has("sales")) causes.push("销售侧存在待交付或未结清订单，说明交付链路仍有收款、开票或整备阻塞。");
-  if (categories.has("lead")) causes.push("线索侧存在未成交高意向线索或战败线索，说明转化效率和价格策略需要复盘。");
-  if (categories.has("finance")) causes.push("财务侧折让金、应付或返利压力会影响采购节奏和现金流安全边界。");
-  if (categories.has("after_sales")) causes.push("售后侧未关闭工单积压，可能影响客户满意度和后续结算效率。");
-  if (categories.has("warranty")) causes.push("三包侧存在拒赔或差异金额，通常与证据完整度、厂家审核口径和旧件材料有关。");
-  return causes;
-}
-
-function buildDealerActionGroups(summaries: DealerSummary[]): Array<{ storeName: string; actions: DealerAction[] }> {
-  const rankedRisks = summaries
-    .flatMap((summary) => summary.topRisks.map((risk) => ({ storeName: summary.storeName, risk })))
-    .sort((left, right) => severityWeight(right.risk.severity) - severityWeight(left.risk.severity) || Number(right.risk.value) - Number(left.risk.value));
-
-  const grouped = new Map<string, Map<string, DealerAction>>();
-  for (const { storeName, risk } of rankedRisks) {
-    const actions = grouped.get(storeName) ?? new Map();
-    const action = actionForDealerRisk(risk);
-    if (action) {
-      const key = `${action.owner}:${action.text}`;
-      actions.set(key, action);
-    }
-    grouped.set(storeName, actions);
-  }
-
-  return summaries
-    .filter((summary) => grouped.has(summary.storeName))
-    .map((summary) => ({
-      storeName: summary.storeName,
-      actions: [...grouped.get(summary.storeName).values()]
-    }));
-}
-
-function groupActionsByOwner(actions: DealerAction[]): Record<string, DealerAction[]> {
-  const groups: Record<string, DealerAction[]> = {};
-  for (const action of actions) {
-    groups[action.owner] ??= [];
-    if (!groups[action.owner].some((item) => item.text === action.text)) {
-      groups[action.owner].push(action);
-    }
-  }
-  return groups;
-}
-
-function stripSentenceEnd(text: unknown): string {
-  return String(text ?? "").replace(/[。；;]+$/g, "");
-}
-
-function actionForDealerRisk(risk: DataRecord): DealerAction | null {
-  if (risk.category === "inventory") {
-    return {
-      owner: "库存负责人",
-      text: `优先处理${dealerMetricName(risk.metric)}，结合清库、调拨、促销或解押动作。`
-    };
-  }
-  if (risk.category === "sales") {
-    return {
-      owner: "销售负责人",
-      text: "逐单推进待交付和未结清订单，明确收款、开票、整备、交付阻塞点。"
-    };
-  }
-  if (risk.category === "lead") {
-    return {
-      owner: "销售负责人",
-      text: "当天清理未首联/H-A级未成交线索，并复盘战败原因。"
-    };
-  }
-  if (risk.category === "finance") {
-    return {
-      owner: "财务负责人",
-      text: "跟进折让金、应付和返利，评估采购现金流安全边界。"
-    };
-  }
-  if (risk.category === "after_sales") {
-    return {
-      owner: "售后负责人",
-      text: "关闭未结算或施工中工单，避免超时影响满意度。"
-    };
-  }
-  if (risk.category === "warranty") {
-    return {
-      owner: "售后负责人",
-      text: "补齐三包证据并复盘被拒/差异原因。"
-    };
-  }
-  return null;
-}
-
-function groupBy<T>(items: T[], keyFn: (item: T) => string): Record<string, T[]> {
-  const groups: Record<string, T[]> = {};
-  for (const item of items) {
-    const key = keyFn(item);
-    groups[key] ??= [];
-    groups[key].push(item);
-  }
-  return groups;
-}
-
 function resourceName(resource: unknown): string {
-  if (resource === "customers") return "客户";
-  if (resource === "orders") return "订单";
-  if (resource === "sales_reports") return "销售报表";
-  if (resource === "employees") return "员工";
-  if (resource === "departments") return "组织节点";
-  if (resource === "leave_requests") return "请假记录";
-  if (resource === "dealer_stores") return "经销商门店";
-  if (resource === "dealer_vehicles") return "整车库存";
-  if (resource === "dealer_inbounds") return "在途订单";
-  if (resource === "dealer_quotas") return "配额记录";
-  if (resource === "dealer_leads") return "销售线索";
-  if (resource === "dealer_sales_orders") return "销售订单";
-  if (resource === "dealer_finance") return "财务流水";
-  if (resource === "dealer_repair_orders") return "售后工单";
-  if (resource === "dealer_warranty_claims") return "三包索赔";
-  if (resource === "dealer_metrics") return "经营指标";
-  return "记录";
-}
-
-function formatDealerRows(resource: unknown, rows: DataRecord[]): string {
-  const lines = [`查询到 ${rows.length} 条${resourceName(resource)}：`];
-  for (const row of rows) {
-    if (resource === "dealer_metrics") {
-      lines.push(`- ${row.store_name} / ${row.category} / ${row.metric}：${row.value}${row.unit ?? ""}，风险级别「${row.severity}」。${row.summary} 建议：${row.recommendation}`);
-    } else if (resource === "dealer_vehicles") {
-      lines.push(`- ${row.vin}：${row.store_name} / ${row.series} ${row.model}，状态「${row.status}」，库龄 ${row.stock_age_days} 天（${row.stock_warning_level}），综合成本 ${row.landing_cost} 元。`);
-    } else if (resource === "dealer_inbounds") {
-      lines.push(`- ${row.id}：${row.store_name} / ${row.series} ${row.model}，${row.order_type}，状态「${row.status}」，预计到店 ${row.expected_arrival_date}${row.customer_name ? `，绑定客户 ${row.customer_name}` : ""}。`);
-    } else if (resource === "dealer_quotas") {
-      lines.push(`- ${row.id}：${row.store_name} / ${row.month} / ${row.series} ${row.model}，总配额 ${row.quota_total}，已绑定 ${row.bound_inbound_count}，剩余可承诺 ${row.available_quota}。`);
-    } else if (resource === "dealer_leads") {
-      lines.push(`- ${row.id}：${row.customer_name}，来源 ${row.source}，顾问 ${row.owner_name}，意向 ${row.intention_level}，状态「${row.status}」，跟进 ${row.followup_count} 次，到店 ${row.visit_count} 次${row.lost_reason ? `，战败原因：${row.lost_reason}` : ""}。`);
-    } else if (resource === "dealer_sales_orders") {
-      lines.push(`- ${row.id}：${row.customer_name} / ${row.series} ${row.model}，顾问 ${row.owner_name}，订单「${row.order_status}」，收款「${row.payment_status}」，交付「${row.delivery_status}」，成交价 ${row.final_price} 元，毛利 ${row.gross_profit} 元。`);
-    } else if (resource === "dealer_finance") {
-      const financeType = row.resource_type === "discount_wallet" ? "折让金" : row.resource_type;
-      lines.push(`- ${row.id}：${row.store_name}，${financeType} / ${row.direction} / ${row.category}，金额 ${row.amount} 元，状态「${row.status}」${row.balance_after !== null && row.balance_after !== undefined ? `，变动后余额 ${row.balance_after} 元` : ""}。`);
-    } else if (resource === "dealer_repair_orders") {
-      lines.push(`- ${row.id}：${row.customer_name} / ${row.series}，类型「${row.order_type}」，状态「${row.status}」，服务顾问 ${row.service_advisor_name}，应收 ${row.receivable_amount} 元${row.warranty_claim_id ? `，关联三包 ${row.warranty_claim_id}` : ""}。`);
-    } else if (resource === "dealer_warranty_claims") {
-      lines.push(`- ${row.id}：${row.customer_name} / ${row.series}，故障 ${row.fault_category}（${row.fault_code}），状态「${row.claim_status}」，申报 ${row.claimed_amount} 元，核准 ${row.approved_amount ?? "待定"} 元，证据：${row.evidence_status}。`);
-    } else {
-      lines.push(`- ${row.name ?? row.id}：${row.status ?? "无状态"}`);
-    }
-  }
-  return lines.join("\n");
-}
-
-function formatReporting(reporting: unknown): string {
-  const record = reporting && typeof reporting === "object" ? reporting as DataRecord : null;
-  if (!record) return "";
-  if (record.line === "store") return (record.manager_profile as DataRecord | undefined)?.name ? `门店线汇报给 ${formatEmployeeProfile(record.manager_profile)}。` : "门店线最高负责人。";
-  if (record.line === "strong_vertical") return `强垂直汇报：${record.vertical_department ?? "未配置"} / ${record.vertical_manager_title ?? "未配置"}；门店负责人：${formatEmployeeProfile(record.store_manager_profile) ?? "未配置"}。`;
-  if (record.line === "weak_vertical") return `弱垂直协同：${record.vertical_department ?? "未配置"}；门店负责人：${formatEmployeeProfile(record.store_manager_profile) ?? "未配置"}。`;
-  return `汇报线：${record.line}。`;
-}
-
-function formatEmployeeProfiles(profiles: unknown[] = [], fallbackUserIds: unknown[] = []): string {
-  const text = profiles
-    .filter(Boolean)
-    .map((profile) => formatEmployeeProfile(profile))
-    .filter(Boolean);
-  return text.length ? text.join("、") : "暂未配置";
-}
-
-function formatEmployeeProfile(profile: unknown): string | null {
-  if (!profile) return null;
-  const record = profile as DataRecord;
-  const title = [record.department_name, record.position].filter(Boolean).join(" / ");
-  return title ? `${record.name}（${title}）` : String(record.name ?? "");
-}
-
-function isTeamLeaveRecordResult(data: DataRecord): boolean {
-  return Boolean(((data?.query?.filters ?? []) as DataRecord[]).some((filter: DataRecord) => filter.field === "applicant_user_id"
-    && filter.op === "in"
-    && Array.isArray(filter.value)));
-}
-
-function isSelfLeaveRecordResult(data: DataRecord): boolean {
-  return Boolean(((data?.query?.filters ?? []) as DataRecord[]).some((filter: DataRecord) => filter.field === "applicant_user_id"
-    && filter.op === "eq"
-    && filter.value === "__CURRENT_USER__"));
-}
-
-async function extractCustomerName(question: string, history: Array<Record<string, unknown>> = []): Promise<string | null> {
-  const customers = await loadJson("data/customers.json") as DataRecord[];
-  const direct = customers.find((customer) => question.includes(customer.name))?.name;
-  if (direct) return direct;
-  if (!/(它|他|她|这个|该客户|刚才|上面|这个客户)/.test(question)) return null;
-  const historyText = history
-    .slice()
-    .reverse()
-    .map((item) => item.text)
-    .filter(Boolean)
-    .join("\n");
-  return customers.find((customer) => historyText.includes(customer.name))?.name ?? null;
+  return readableResourceNameFromRegistry(resource, "记录");
 }
 
 async function extractEmployeeName(question: string): Promise<string | null> {
-  const employees = await loadJson("data/wecom-users.json") as DataRecord[];
+  const employees = await loadJson(getResourceDataPath("employees") ?? "data/wecom-users.json") as DataRecord[];
   return employees.find((employee) => question.includes(employee.name))?.name ?? null;
 }
 
-function extractDepartment(question: string): string | null {
-  const departments = ["华东销售部", "华南销售部", "人力资源部"];
-  return departments.find((department) => question.includes(department)) ?? null;
-}
-
-function extractPeriod(question: string): string | null {
-  if (question.includes("今年") || question.includes("本年")) return "2026Q2";
-  if (question.includes("Q2") || question.includes("二季度")) return "2026Q2";
-  return null;
-}
-
-function composeCustomerOrderRiskAnswer({ question, toolResults, agentState }: { question: string; toolResults: LocalToolResult[]; agentState?: DataRecord }): { answer: string } | null {
-  const wantsRiskAnalysis = /(分析|风险|诊断|复盘|优先级|建议|行动)/.test(question)
-    || ["analysis", "report", "action_plan"].includes(agentState?.task_type);
-  if (!wantsRiskAnalysis) return null;
-
-  const customers = new Map<unknown, DataRecord>();
-  const orders: DataRecord[] = [];
-  for (const result of toolResults) {
-    if (result.tool === "list_my_customers") {
-      for (const customer of (result.data?.customers as DataRecord[] | undefined) ?? []) {
-        if (customer?.id || customer?.name) customers.set(customer.id ?? customer.name, customer);
-      }
-    }
-    if (result.tool === "query_customer" && result.data) {
-      customers.set(result.data.id ?? result.data.name, result.data);
-    }
-    if (result.tool === "query_order" && result.data) {
-      orders.push(result.data);
-    }
-    if (result.tool === "query_business_data" && result.data?.resource === "customers") {
-      for (const customer of (result.data.rows as DataRecord[] | undefined) ?? []) {
-        if (customer?.id || customer?.name) customers.set(customer.id ?? customer.name, customer);
-      }
-    }
-    if (result.tool === "query_business_data" && result.data?.resource === "orders") {
-      orders.push(...((result.data.rows as DataRecord[] | undefined) ?? []));
-    }
-  }
-
-  if (!customers.size && !orders.length) return null;
-
-  const riskLines = [];
-  const actionLines = [];
-  for (const order of orders) {
-    const name = order.customer_name ?? order.customerName ?? "未知客户";
-    const status = order.status ?? order.order_status ?? "未知状态";
-    const amount = formatAmount(order.amount);
-    if (/(合同|审批)/.test(status)) {
-      riskLines.push(`${name} 的订单仍在「${status}」，金额${amount}，主要风险是合同或审批节点阻塞，影响签约确认和收入落地。`);
-      actionLines.push(`推进 ${name} 的合同审批，明确卡点、负责人和预计完成时间。`);
-    } else if (/(待发货|待交付|整备|发货)/.test(status)) {
-      riskLines.push(`${name} 的订单处于「${status}」，金额${amount}，主要风险是交付节点延迟，可能影响客户体验和回款节奏。`);
-      actionLines.push(`跟进 ${name} 的交付排期和发货准备，确认 ${order.expected_delivery ? `${order.expected_delivery} 前` : ""}是否能完成。`);
-    } else {
-      riskLines.push(`${name} 的订单状态为「${status}」，金额${amount}，需要继续跟踪状态变化。`);
-    }
-  }
-
-  for (const customer of customers.values()) {
-    if (customer.tier === "B" || /未签单|跟进中|待续签/.test(`${customer.sign_status ?? ""}${customer.follow_status ?? ""}${customer.renewal_status ?? ""}`)) {
-      const name = customer.name ?? customer.id ?? "未知客户";
-      const tags = [customer.tier ? `${customer.tier} 类` : null, customer.industry, customer.sign_status, customer.follow_status, customer.renewal_status]
-        .filter(Boolean)
-        .join(" / ");
-      riskLines.push(`${name}（${tags}）仍需要经营推进，风险在于转化或续签不确定。`);
-      actionLines.push(`为 ${name} 设定下一次跟进目标，优先确认决策人、预算、审批进度和续签意向。`);
-    }
-  }
-
-  const dedupedRisks = uniqueLines(riskLines);
-  const dedupedActions = uniqueLines(actionLines);
-  if (!dedupedRisks.length) return null;
-
-  return {
-    answer: [
-      `结论：你当前可访问 ${customers.size || "若干"} 个客户，已查到 ${orders.length} 条相关订单；主要风险集中在订单审批/交付推进和客户转化/续签不确定性。`,
-      "",
-      "关键风险：",
-      ...dedupedRisks.map((line) => `- ${line}`),
-      "",
-      "建议动作：",
-      ...dedupedActions.slice(0, 5).map((line) => `- ${line}`)
-    ].join("\n")
-  };
-}
-
-function formatAmount(value: unknown): string {
-  return value === undefined || value === null || value === "" ? "未提供" : `${value} 元`;
-}
-
-function uniqueLines(lines: string[]): string[] {
-  return Array.from(new Set(lines.filter(Boolean)));
-}
 
 function summarizeChunk(text: string, question: string): string {
   const sentences = text

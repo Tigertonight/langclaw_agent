@@ -57,12 +57,12 @@ export function createSpawnAgentTool({ handler }: { handler: AgenticHandler }): 
       properties: {
         task: {
           type: "string",
-          description: "子 agent 的目标，越具体越好。例：'调研店内 SUV 库存超过 90 天的车型，给出 200 字摘要'。"
+          description: "子 agent 的目标，越具体越好。例：'调研最近 30 天的异常数据，给出 200 字摘要'。"
         },
         allowed_tools: {
           type: "array",
           items: { type: "string" },
-          description: "工具名白名单（带命名空间，如 'intent.dealer.query.inventory'）。不传则继承主 agent 全部 expose_to_agentic 工具。"
+          description: "工具名白名单（带命名空间，如 'intent.<domain>.<action>.<resource>'）。不传则继承主 agent 全部 expose_to_agentic 工具。"
         },
         max_steps: {
           type: "number",

@@ -1,5 +1,6 @@
 import type { JsonObject, ToolCall, ToolDefinition, ToolExecutionContext, ToolResult, UserContext } from "../types/agent-contracts.js";
 import type { KnowledgeSearchOptions, KnowledgeSearchResult } from "../rag/local-knowledge-base.js";
+import { getRuntimeRegistry } from "../domains/runtime-registry.js";
 
 interface PrimitiveDefinition {
   name: string;
@@ -190,11 +191,21 @@ function defineArtifactPrimitive(): PrimitiveDefinition {
 
 function mapActCall(call: PrimitiveCall): ToolCall | null {
   const { resource, operation, payload } = call.args ?? {};
-  if (resource === "leave_requests" && ["create", "submit"].includes(String(operation ?? ""))) {
-    return {
-      name: "submit_leave_request",
-      args: isJsonObject(payload) ? payload : {}
-    };
+  if (["create", "submit"].includes(String(operation ?? ""))) {
+    // 通过 registry 查找域工具：resource + operation → tool name
+    const registry = getRuntimeRegistry();
+    const toolLabels = registry?.allToolLabels ?? {};
+    // 查找匹配 "submit_<resource_singular>" 或 "create_<resource_singular>" 模式的工具
+    const resourceStr = String(resource ?? "");
+    const singular = resourceStr.endsWith("s") ? resourceStr.slice(0, -1) : resourceStr;
+    const candidateNames = [`submit_${singular}`, `create_${singular}`, `submit_${resourceStr}`, `create_${resourceStr}`];
+    const toolName = candidateNames.find((name) => name in toolLabels);
+    if (toolName) {
+      return {
+        name: toolName,
+        args: isJsonObject(payload) ? payload : {}
+      };
+    }
   }
   return null;
 }

@@ -1,5 +1,6 @@
 import { summarizeUser } from "../auth/users.js";
 import { appendAuditEvent, appendConversationLog } from "../logs/logger.js";
+import { getRuntimeRegistry, inferSkillFromRegistry, getIntentForIntentCode } from "../domains/runtime-registry.js";
 
 const RECENT_MESSAGES_LIMIT = 5;
 const RECENT_ROUTES_LIMIT = 3;
@@ -494,8 +495,12 @@ export class SimpleWorkflowOrchestrator {
     if (route.handler_type === "knowledge_lookup") {
       return this.runKnowledgeLookup({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId });
     }
-    if (route.handler_type === "workflow" && this.workflowRunner.hasWorkflow(INTENTS.LEAVE_REQUEST)) {
-      return this.runWorkflowFromIntentRouter({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId });
+    if (route.handler_type === "workflow") {
+      const workflowIntent = resolveWorkflowIntent(route);
+      if (workflowIntent && this.workflowRunner.hasWorkflow(workflowIntent)) {
+        const enrichedRoute = { ...route, intent: workflowIntent };
+        return this.runWorkflowFromIntentRouter({ user, workspace, message, sessionId, session, route: enrichedRoute, enterpriseContext, conversationContext, debug, startedAt, runId });
+      }
     }
     return null;
   }
@@ -630,8 +635,12 @@ export class SimpleWorkflowOrchestrator {
       return this.runKnowledgeLookupStream({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId, emit, pushStep, visibleSteps });
     }
 
-    if (route.handler_type === "workflow" && this.workflowRunner.hasWorkflow(INTENTS.LEAVE_REQUEST)) {
-      return this.runWorkflowFromIntentRouterStream({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId, emit, pushStep, visibleSteps });
+    if (route.handler_type === "workflow") {
+      const workflowIntent = resolveWorkflowIntent(route);
+      if (workflowIntent && this.workflowRunner.hasWorkflow(workflowIntent)) {
+        const enrichedRoute = { ...route, intent: workflowIntent };
+        return this.runWorkflowFromIntentRouterStream({ user, workspace, message, sessionId, session, route: enrichedRoute, enterpriseContext, conversationContext, debug, startedAt, runId, emit, pushStep, visibleSteps });
+      }
     }
 
     return null;
@@ -734,7 +743,7 @@ export class SimpleWorkflowOrchestrator {
   }
 
   async runWorkflowFromIntentRouter({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId }: FlowInput) {
-    const scenarioResult = await this.workflowRunner.runNew({ route: { ...route, intent: INTENTS.LEAVE_REQUEST } as Route, user, message, session: asWorkflowSession(session) });
+    const scenarioResult = await this.workflowRunner.runNew({ route: route as Route, user, message, session: asWorkflowSession(session) });
     const legacyRoute = createLegacyWorkflowRoute(route);
     return this.finish({
       user,
@@ -765,7 +774,7 @@ export class SimpleWorkflowOrchestrator {
   async runWorkflowFromIntentRouterStream({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId, emit, pushStep, visibleSteps }: StreamFlowInput) {
     await pushStep(createAgentStep("classify_intent", "识别任务类型", `Router 判定为 ${route.execution_class}/${route.handler_type}（${route.intent_code}, source=${route.source}）。`));
     await emit({ type: "route", route });
-    const scenarioResult = await this.workflowRunner.runNew({ route: { ...route, intent: INTENTS.LEAVE_REQUEST } as Route, user, message, session: asWorkflowSession(session) });
+    const scenarioResult = await this.workflowRunner.runNew({ route: route as Route, user, message, session: asWorkflowSession(session) });
     await pushStep(this.workflowRunner.createEnterStep());
     return this.finishStream({
       user,
@@ -1222,6 +1231,27 @@ function asWorkflowSession(session: AgentSession): WorkflowSessionLike {
   return session as never;
 }
 
+/**
+ * 从 Route 推导 workflow intent 名称。
+ * IntentRouter 返回的 Route 可能没有 intent 字段（RouterLLMResult 不含 intent），
+ * 需要从 intent_code 反查或推导。
+ * 例如 intent_code="workflow.leave_request" → intent="leave_request"。
+ */
+function resolveWorkflowIntent(route: Route | LegacyRoute): string | null {
+  // 1. 已有 intent 字段，直接使用
+  if (route.intent) return route.intent;
+  // 2. 通过 registry 反查 intentMappings（DomainPack.intentMappings 的反向映射）
+  if (route.intent_code) {
+    const fromRegistry = getIntentForIntentCode(route.intent_code);
+    if (fromRegistry) return fromRegistry;
+  }
+  // 3. 从 intent_code 推导：去掉 "workflow." 前缀
+  if (route.intent_code?.startsWith("workflow.")) {
+    return route.intent_code.slice("workflow.".length);
+  }
+  return null;
+}
+
 function emptyWorkflowRoute(): WorkflowRouteLike {
   return {
     intent: null,
@@ -1302,7 +1332,7 @@ function createLegacyKnowledgeRoute(route: Route | LegacyRoute): LegacyRoute {
 
 function createLegacyWorkflowRoute(route: Route | LegacyRoute): LegacyRoute {
   return {
-    intent: INTENTS.LEAVE_REQUEST,
+    intent: route.intent ?? route.intent_code?.split(".")[0] ?? "workflow",
     confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
     reason: route.reasoning ?? "Intent Router → controlled_execution/workflow",
     intent_code: route.intent_code,
@@ -1316,10 +1346,11 @@ function createLegacyWorkflowRoute(route: Route | LegacyRoute): LegacyRoute {
 
 function inferSelectedSkillFromRoute(route: Route | LegacyRoute | null | undefined): { id: string } | null {
   const intentCode = route?.intent_code;
+  if (!intentCode) return null;
+  // 核心 intent code → skill 映射
   if (intentCode === "knowledge.policy_qa") return { id: "knowledge-qa" };
-  if (intentCode === "attendance.leave_query") return { id: "leave-records" };
-  if (intentCode?.startsWith?.("dealer.") || intentCode === "business.query") return { id: "business-query" };
-  return null;
+  // 域特定映射：通过 registry 动态查找
+  return inferSkillFromRegistry(intentCode);
 }
 
 function createCompactDebugInfo(debug: Record<string, unknown>): Record<string, unknown> {
@@ -1417,25 +1448,11 @@ function summarizeSampleRows(resource: unknown, rows: unknown = []): Array<Recor
 
 function pickDebugRowFields(resource: unknown, row: unknown): Record<string, unknown> {
   const record = row && typeof row === "object" ? row as Record<string, unknown> : {};
-  const fieldMap: Record<string, string[]> = {
-    employees: ["userid", "name", "department_name", "position", "role"],
-    leave_requests: ["id", "applicant_user_id", "applicant_name", "leave_type", "leave_duration", "start_time", "end_time", "status", "reason"],
-    customers: ["id", "name", "owner_user_id", "department", "tier", "deal_status", "annual_revenue"],
-    orders: ["id", "customer_name", "status", "amount", "created_at", "expected_delivery"],
-    sales_reports: ["department", "period", "revenue", "pipeline"],
-    dealer_stores: ["id", "name", "city", "region", "store_type", "capacity", "status"],
-    dealer_vehicles: ["vin", "store_name", "series", "model", "status", "stock_age_days", "stock_warning_level", "landing_cost"],
-    dealer_inbounds: ["id", "store_name", "order_type", "series", "model", "customer_name", "status", "expected_arrival_date"],
-    dealer_quotas: ["id", "store_name", "month", "series", "model", "quota_total", "bound_inbound_count", "available_quota"],
-    dealer_leads: ["id", "customer_name", "source", "store_name", "owner_name", "interested_series", "intention_level", "status", "followup_count", "visit_count"],
-    dealer_sales_orders: ["id", "store_name", "customer_name", "owner_name", "vin", "series", "order_status", "payment_status", "delivery_status", "final_price", "gross_profit"],
-    dealer_finance: ["id", "resource_type", "store_name", "direction", "category", "amount", "balance_after", "status"],
-    dealer_repair_orders: ["id", "store_name", "customer_name", "vin", "order_type", "status", "receivable_amount", "warranty_claim_id"],
-    dealer_warranty_claims: ["id", "repair_order_id", "store_name", "customer_name", "vin", "fault_category", "claim_status", "claimed_amount", "approved_amount"],
-    dealer_metrics: ["store_name", "category", "metric", "value", "unit", "severity", "summary", "recommendation", "related_resource", "related_ids"]
-  };
   const key = String(resource ?? "");
-  const fields = fieldMap[key] ?? Object.keys(record).slice(0, 8);
+  // 优先从 registry 查找 debugFields，否则取前 8 个字段
+  const registry = getRuntimeRegistry();
+  const debugFields = registry?.allResources[key]?.debugFields;
+  const fields = debugFields ?? Object.keys(record).slice(0, 8);
   return Object.fromEntries(fields.filter((field) => record[field] !== undefined).map((field) => [field, record[field]]));
 }
 

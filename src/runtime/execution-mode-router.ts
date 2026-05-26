@@ -1,5 +1,6 @@
 import { INTENTS } from "../agent/ports.js";
 import { inferTaskMode } from "./agent-state.js";
+import { isAnalysisIntentCode } from "../domains/runtime-registry.js";
 import type { Route, SkillDefinition } from "../types/agent-contracts.js";
 
 export type ExecutionMode = "strict_workflow" | "fast_grounded" | "agentic_task";
@@ -44,8 +45,8 @@ export function chooseExecutionMode({
     return agentic("混合问题需要动态组合知识库和业务数据。", 4, 45000);
   }
 
-  if (String(route?.intent_code ?? "").startsWith("dealer.") && route?.intent_code === "dealer.analysis_query") {
-    return agentic("经销商经营分析需要多资源观察和补证。", 5, 60000);
+  if (isAnalysisIntentCode(route?.intent_code as string)) {
+    return agentic("经营分析需要多资源观察和补证。", 5, 60000);
   }
 
   const taskMode = inferTaskMode(message, route);

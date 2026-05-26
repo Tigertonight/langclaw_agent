@@ -1,5 +1,5 @@
-import { loadJson } from "../data/load-json.js";
-import type { JsonObject, JsonValue } from "../types/agent-contracts.js";
+import { loadJson } from "../../data/load-json.js";
+import type { JsonObject, JsonValue } from "../../types/agent-contracts.js";
 
 interface DealerRow extends JsonObject {
   id?: string;

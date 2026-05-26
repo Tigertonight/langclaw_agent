@@ -1,4 +1,4 @@
-import { inferDealerEvidenceFacts } from "../dealer/dealer-evidence.js";
+import { readableResourceNameFromRegistry, getFactKeyFromRegistry, isAnalysisIntentCode, inferEvidenceFactsFromRegistry } from "../domains/runtime-registry.js";
 import type { JsonObject, Route, SkillDefinition, ToolCall, ToolPlan, ToolResult, UserContext } from "../types/agent-contracts.js";
 import type { KnowledgeSearchResult } from "../rag/local-knowledge-base.js";
 
@@ -220,22 +220,14 @@ export function inferTaskMode(message: unknown, route?: Partial<Route> | null): 
   if (/(看板|仪表盘|红黄绿|健康度|监控)/.test(text)) return "dashboard";
   if (/(计划|行动项|管理动作|下周|推进|落地|整改)/.test(text)) return "action_plan";
   if (/(分析|复盘|原因|风险|优先级|对比|承压|最该关注|为什么|诊断)/.test(text)) return "analysis";
-  if (String(route?.intent_code ?? "").startsWith("dealer.") && route?.intent_code === "dealer.analysis_query") return "analysis";
+  if (isAnalysisIntentCode(route?.intent_code as string)) return "analysis";
   return "lookup";
 }
 
 function inferRequiredFacts(message: unknown, route: Partial<Route>): string[] {
   const text = String(message ?? "");
-  const facts: string[] = [];
-  if (["data_query", "mixed"].includes(route.intent)) {
-    if (/(上级|汇报|直属|领导|主管)/.test(text)) facts.push("direct_leader");
-    if (/(下属|下级|下辖|下面|团队|同学)/.test(text)) facts.push("direct_reports");
-    if (/(组织|部门|岗位)/.test(text)) facts.push("org_profile");
-    if (/(客户|名下|负责)/.test(text)) facts.push("customer_scope");
-    if (/(多少|几个|数量|统计|有多少)/.test(text)) facts.push("aggregate_metric");
-    if (/(状态|进展|交付|发货|订单)/.test(text)) facts.push("business_status");
-  }
-  facts.push(...inferDealerEvidenceFacts(String(message ?? ""), route));
+  // 通过 registry 动态推断所需的 evidence facts（各域在 evidenceInferenceFns 中声明）
+  const facts = inferEvidenceFactsFromRegistry(text, route);
   if (["knowledge_qa", "mixed"].includes(route.intent)) facts.push("knowledge_context");
   return [...new Set(facts)];
 }
@@ -273,53 +265,39 @@ function extractFactsFromToolResult(result: ToolResult): AgentFact[] {
   }
   if (result.tool !== "query_business_data") return [];
   const data = result.data ?? {};
+  // employees 有特殊的多 fact 提取逻辑
   if (data.resource === "employees") return extractEmployeeFacts(data);
-  if (data.resource === "departments") {
-    return [{ key: "org_profile", text: `查询到 ${data.total ?? 0} 个组织节点。` }];
-  }
-  if (data.resource === "customers") {
-    const key = data.operation === "aggregate" ? "aggregate_metric" : "customer_scope";
-    return [{ key, text: summarizeBusinessData(data, "客户") }];
-  }
-  if (data.resource === "orders") {
-    return [{ key: "business_status", text: summarizeBusinessData(data, "订单") }];
-  }
-  if (data.resource === "sales_reports") {
-    return [{ key: "aggregate_metric", text: summarizeBusinessData(data, "销售报表") }];
-  }
-  if (data.resource === "leave_requests") {
-    const key = data.operation === "aggregate" ? "aggregate_metric" : "business_status";
-    const facts = [{ key, text: summarizeBusinessData(data, "请假记录") }];
+  // 通用域资源 fact 提取：通过 registry 的 factKeyMappings 查找 factKey
+  const resourceStr = String(data.resource ?? "");
+  const factKey = getFactKeyFromRegistry(resourceStr);
+  if (factKey) {
+    const effectiveKey = data.operation === "aggregate" ? "aggregate_metric" : factKey;
+    const label = readableResourceNameFromRegistry(resourceStr, "业务数据");
+    const facts: AgentFact[] = [{ key: effectiveKey, text: summarizeBusinessData(data, label) }];
     const query = isObject(data.query) ? data.query : {};
     if (isScopedToReports(query.filters)) {
-      facts.push({ key: "direct_reports", text: "已按当前用户的下属范围查询请假记录。" });
+      facts.push({ key: "direct_reports", text: `已按当前用户的下属范围查询${label}。` });
     }
     return facts;
   }
-  if (String(data.resource ?? "").startsWith("dealer_")) return extractDealerFacts(data);
+  // 已注册但无 factKey 的资源，使用通用 fact 提取
+  const label = readableResourceNameFromRegistry(resourceStr);
+  if (label !== "业务数据") {
+    const key = data.operation === "aggregate" ? "aggregate_metric" : "business_status";
+    const facts: AgentFact[] = [{ key, text: summarizeBusinessData(data, label) }];
+    const query = isObject(data.query) ? data.query : {};
+    if (isScopedToReports(query.filters)) {
+      facts.push({ key: "direct_reports", text: `已按当前用户的下属范围查询${label}。` });
+    }
+    return facts;
+  }
   return [];
-}
-
-function extractDealerFacts(data: JsonObject): AgentFact[] {
-  const keyMap = {
-    dealer_metrics: "dealer_metrics",
-    dealer_vehicles: "dealer_inventory_detail",
-    dealer_leads: "dealer_lead_detail",
-    dealer_sales_orders: "dealer_order_detail",
-    dealer_finance: "dealer_finance_detail",
-    dealer_repair_orders: "dealer_after_sales_detail",
-    dealer_warranty_claims: "dealer_warranty_detail"
-  };
-  const key = keyMap[String(data.resource ?? "") as keyof typeof keyMap];
-  if (!key) return [];
-  return [{ key, text: summarizeBusinessData(data, readableResourceName(data.resource)) }];
 }
 
 function isScopedToReports(filters: unknown = []): boolean {
   if (!Array.isArray(filters)) return false;
   return filters.some((filter) => (
     isObject(filter)
-    && filter.field === "applicant_user_id"
     && ["__CURRENT_USER_REPORTS__", "__CURRENT_USER_SUBORDINATES__"].includes(String(filter.value ?? ""))
   ));
 }
@@ -350,7 +328,7 @@ function extractEmployeeFacts(data: JsonObject): AgentFact[] {
 
 function summarizeToolResult(result: ToolResult): string {
   if (result.tool === "query_business_data") {
-    return summarizeBusinessData(result.data ?? {}, readableResourceName(result.data?.resource));
+    return summarizeBusinessData(result.data ?? {}, readableResourceNameFromRegistry(result.data?.resource));
   }
   return `${result.tool} 已返回结果。`;
 }
@@ -361,26 +339,6 @@ function summarizeBusinessData(data: JsonObject, label: string): string {
   }
   const rows = Array.isArray(data.rows) ? data.rows : [];
   return `${label}查询完成，匹配 ${data.total ?? 0} 条记录，返回 ${rows.length} 条。`;
-}
-
-function readableResourceName(resource: unknown): string {
-  if (resource === "employees") return "员工";
-  if (resource === "departments") return "组织";
-  if (resource === "customers") return "客户";
-  if (resource === "orders") return "订单";
-  if (resource === "sales_reports") return "销售报表";
-  if (resource === "leave_requests") return "请假记录";
-  if (resource === "dealer_stores") return "经销商门店";
-  if (resource === "dealer_vehicles") return "整车库存";
-  if (resource === "dealer_inbounds") return "在途订单";
-  if (resource === "dealer_quotas") return "配额记录";
-  if (resource === "dealer_leads") return "销售线索";
-  if (resource === "dealer_sales_orders") return "销售订单";
-  if (resource === "dealer_finance") return "财务流水";
-  if (resource === "dealer_repair_orders") return "售后工单";
-  if (resource === "dealer_warranty_claims") return "三包索赔";
-  if (resource === "dealer_metrics") return "经营指标";
-  return "业务数据";
 }
 
 function addKnownFact(state: AgentState, key: string, text: string): void {

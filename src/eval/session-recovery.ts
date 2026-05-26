@@ -13,6 +13,7 @@ interface RecoveryResult {
 }
 
 let app = createApp();
+await app.init();
 const first = normalizeRecoveryResult(await app.agent.run({
   userId: "sales_001",
   sessionId,
@@ -23,6 +24,7 @@ const first = normalizeRecoveryResult(await app.agent.run({
 assertEqual(first.debug.scenario.step, "collecting", "first step");
 
 app = createApp();
+await app.init();
 const second = normalizeRecoveryResult(await app.agent.run({
   userId: "sales_001",
   sessionId,

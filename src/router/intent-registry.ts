@@ -73,6 +73,24 @@ export class IntentRegistry implements IntentRegistryContract {
     }
     return result;
   }
+
+  // ── 动态注册（Milestone 3：供 DomainPack.intentManifests 注入） ──────
+
+  /**
+   * 动态注册单个 IntentManifest。
+   * 重复 intent_code 会覆盖已有的（后注册优先）。
+   */
+  register(manifest: IntentManifest): void {
+    this.validate(manifest, `dynamic:${manifest.intent_code}`);
+    this.codes.set(manifest.intent_code, manifest);
+  }
+
+  /**
+   * 批量动态注册 IntentManifest。
+   */
+  registerMany(manifests: IntentManifest[]): void {
+    for (const manifest of manifests) this.register(manifest);
+  }
 }
 
 function getErrorMessage(err: unknown): string {

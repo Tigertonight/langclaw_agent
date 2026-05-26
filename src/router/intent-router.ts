@@ -5,6 +5,8 @@ import { CommandRegistry } from "./command-registry.js";
 import { EXECUTION_CLASSES, executionClassForHandler, normalizeExecutionClass } from "./execution-class.js";
 import { applyPromptCache } from "../llm/prompt-cache.js";
 import { DeterministicRuleRegistry } from "./deterministic-rule-registry.js";
+import type { DeterministicRuleDefinition, ExtractorFn, CorrectionDeltaRule } from "../domains/types.js";
+import { getCorrectionDeltaRules, getShortCorrectionPatterns, getMetricKeywordMappings } from "../domains/runtime-registry.js";
 import type {
   Confidence,
   HandlerType,
@@ -54,6 +56,8 @@ export class IntentRouter {
   private readonly registry: IntentRegistry;
   private readonly timeoutMs: number;
   private readonly deterministicRules: DeterministicRuleRegistry;
+  /** 外部注入的 extractor 注册表（来自 DomainRegistry.allExtractors），供短句修参动态查找 */
+  private readonly extractorRegistry: Record<string, ExtractorFn>;
   /**
    * 前置命令注册表。默认空，由外部通过 router.commands.register(...) 注入。
    * 命中即返回 Route，跳过 deterministic_rule 与 LLM。
@@ -67,17 +71,24 @@ export class IntentRouter {
    *   timeoutMs?: number
    * }} [input]
    */
-  constructor({ llm, registry, timeoutMs = readPositiveNumberEnv("LLM_DECISION_TIMEOUT_MS", DEFAULT_TIMEOUT_MS) }: {
+  constructor({ llm, registry, timeoutMs = readPositiveNumberEnv("LLM_DECISION_TIMEOUT_MS", DEFAULT_TIMEOUT_MS), domainRules, extractorRegistry }: {
     llm?: unknown;
     registry: IntentRegistry;
     timeoutMs?: number;
+    /** 外部注入的确定性规则（来自 DomainRegistry.allDeterministicRules） */
+    domainRules?: DeterministicRuleDefinition[];
+    /** 外部注入的 extractor 注册表（供 manifest rules 引用 + 短句修参动态查找） */
+    extractorRegistry?: Record<string, ExtractorFn>;
   }) {
     this.llm = llm;
     this.registry = registry;
     this.timeoutMs = timeoutMs;
+    this.extractorRegistry = extractorRegistry ?? {};
     this.deterministicRules = new DeterministicRuleRegistry({
       registry,
-      createRoute: (intentCode, params, reasoning) => this.createDeterministicRoute(intentCode, params, reasoning)
+      createRoute: (intentCode, params, reasoning) => this.createDeterministicRoute(intentCode, params, reasoning),
+      domainRules,
+      extractorRegistry,
     });
     this.commands = new CommandRegistry();
   }
@@ -251,7 +262,7 @@ export class IntentRouter {
     if (!manifest || manifest.handler_type !== "intent_query") return null;
 
     const schema = manifest.params_schema ?? {};
-    const delta = buildShortCorrectionDelta({ text, schema });
+    const delta = buildShortCorrectionDelta({ text, schema, extractorRegistry: this.extractorRegistry });
     if (!Object.keys(delta).length) return null;
 
     const merged = mergeRouteParams({
@@ -523,76 +534,83 @@ function isRecentRoute(route: { ts?: string } | null | undefined): boolean {
 
 function looksLikeShortCorrection(text: string): boolean {
   if (!text || text.length > 40) return false;
-  const bareStore = /^(那)?(华东|华南|华东旗舰店|华南标准店)(呢)?[？?]?$/.test(text);
-  const bareTime = /^(那)?(今天|昨天|本周|这周|上周|本月|这个月|上月|上个月|近一个月|最近)(呢)?[？?]?$/.test(text);
-  const bareVehicle = /^(那)?(海豹|汉EV|宋L|唐DM-p|唐DM|汉|唐|宋)(呢)?[？?]?$/.test(text);
-  return /^(那)?(华东|华南|华东旗舰店|华南标准店)(呢)?[？?]?$/.test(text)
-    || /^不是.*是/.test(text)
-    || /^(改成|换成|改为|换为|只看|仅看|看|具体看|按|按照|再看|再查|加上|不要|去掉|其他|别的)/.test(text)
-    || /(呢|以上|以下)$/.test(text)
-    || bareStore
-    || bareTime
-    || bareVehicle;
+  // 通用修正模式（域无关）
+  const corePatterns = [
+    /^不是.*是/,
+    /^(改成|换成|改为|换为|只看|仅看|看|具体看|按|按照|再看|再查|加上|不要|去掉|其他|别的)/,
+    /(呢|以上|以下)$/,
+    /^(那)?(今天|昨天|本周|这周|上周|本月|这个月|上月|上个月|近一个月|最近)(呢)?[？?]?$/,
+  ];
+  if (corePatterns.some((p) => p.test(text))) return true;
+  // 域特定模式（从 DomainPack.shortCorrectionPatterns 动态获取）
+  const domainPatterns = getShortCorrectionPatterns();
+  return domainPatterns.some((p) => p.test(text));
 }
 
-function buildShortCorrectionDelta({ text, schema }: { text: string; schema: IntentParamSchema }): JsonObject {
+function buildShortCorrectionDelta({ text, schema, extractorRegistry }: { text: string; schema: IntentParamSchema; extractorRegistry: Record<string, ExtractorFn> }): JsonObject {
   const delta: JsonObject = {};
-  const store = extractStore(text);
-  if (store) setIfSchema(delta, schema, "store", store);
 
-  const timeRange = extractTimeRange(text);
-  if (timeRange) setIfSchema(delta, schema, "time_range", timeRange);
-
-  const vehicle = extractVehicleModel(text);
-  if (vehicle) {
-    if ("vehicle_model" in schema) delta.vehicle_model = vehicle;
-    else if ("model" in schema) delta.model = vehicle;
-    else if ("series" in schema) delta.series = normalizeSeries(vehicle);
-    else if ("interested_series" in schema) delta.interested_series = normalizeSeries(vehicle);
-  }
-
-  const priceMin = extractPriceMin(text);
-  const amountMin = extractAmountMin(text);
-  if (priceMin != null) {
-    if (/(应付|应收|款|金额)/.test(text)) {
-      setFirstSchema(delta, schema, ["amount_min", "difference_min", "price_min"], priceMin);
-    } else {
-      setFirstSchema(delta, schema, ["price_min", "amount_min", "difference_min"], priceMin);
-    }
-  }
-  if (amountMin != null) setFirstSchema(delta, schema, ["amount_min", "difference_min", "price_min"], amountMin);
-
-  const groupBy = extractGroupBy(text);
-  if (groupBy) setIfSchema(delta, schema, "group_by", groupBy);
-
+  // metric 提取依赖 schema.metric.values，不是简单的 extractor→field 映射，保留在此
   const metric = extractMetricForSchema(text, schema);
   if (metric) setIfSchema(delta, schema, "metric", metric);
 
-  const status = extractGenericStatus(text);
-  if (status) {
-    if ("delivery_status" in schema && /交付|交车/.test(text)) delta.delivery_status = status;
-    else if ("payment_status" in schema && /结清|定金|收款|付款/.test(text)) delta.payment_status = status;
-    else setIfSchema(delta, schema, "status", status);
-  }
-
-  const direction = extractFinanceDirection(text);
-  if (direction) setIfSchema(delta, schema, "direction", direction);
-
-  const resourceType = extractFinanceResourceType(text);
-  if (resourceType) setIfSchema(delta, schema, "resource_type", resourceType);
-
-  const leadLevel = extractLeadIntentionLevel(text);
-  if (leadLevel) setIfSchema(delta, schema, "intention_level", leadLevel);
-
-  const source = extractLeadSource(text);
-  if (source) setIfSchema(delta, schema, "source", source);
-
-  if (/其他销售|别的销售|换个销售|不要.*林悦/.test(text)) {
-    setIfSchema(delta, schema, "owner", null);
-    setIfSchema(delta, schema, "owner_name", null);
-  }
+  // 所有 extractor→field 映射规则均由 DomainPack.correctionDeltaRules 声明，registry 驱动
+  applyCorrectionDeltaRules(delta, text, schema, extractorRegistry);
 
   return delta;
+}
+
+/**
+ * 从 registry 获取域特定的修正 delta 规则并应用。
+ * 替代硬编码的 vehicle_model 别名、status 消歧、owner 重置等逻辑。
+ */
+function applyCorrectionDeltaRules(delta: JsonObject, text: string, schema: IntentParamSchema, extractorRegistry: Record<string, ExtractorFn>): void {
+  const rules = getCorrectionDeltaRules();
+  for (const rule of rules) {
+    // 文本模式匹配规则（如 "其他销售|别的销售"）
+    if (rule.textPattern && rule.setFields?.length) {
+      if (new RegExp(rule.textPattern).test(text)) {
+        for (const field of rule.setFields) {
+          setIfSchema(delta, schema, field, rule.setValue ?? null);
+        }
+      }
+      continue;
+    }
+
+    // extractor 输出映射规则
+    if (!rule.extractor) continue;
+    const value = extractorRegistry[rule.extractor]?.(text);
+    if (value == null) continue;
+
+    // 消歧逻辑：根据文本内容选择目标字段
+    if (rule.disambiguate?.length) {
+      let matched = false;
+      for (const { pattern, field } of rule.disambiguate) {
+        if (field in schema && new RegExp(pattern).test(text)) {
+          delta[field] = value;
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        setFirstSchema(delta, schema, rule.targetFields, value);
+      }
+      continue;
+    }
+
+    // 字段别名映射：按优先级尝试目标字段
+    if (rule.targetFields.length > 0) {
+      const normalizer = rule.normalizeExtractor ? extractorRegistry[rule.normalizeExtractor] : null;
+      for (const field of rule.targetFields) {
+        if (field in schema) {
+          // 对后续字段使用归一化值
+          const useNormalized = normalizer && field !== rule.targetFields[0];
+          delta[field] = useNormalized ? (normalizer(String(value)) ?? value) : value;
+          break;
+        }
+      }
+    }
+  }
 }
 
 function mergeRouteParams({ base, delta, schema }: { base?: JsonObject | null; delta?: JsonObject | null; schema: IntentParamSchema }): JsonObject {
@@ -616,225 +634,17 @@ function setFirstSchema(target: JsonObject, schema: IntentParamSchema, keys: str
   if (key) target[key] = value;
 }
 
-function extractStore(text: string): string | null {
-  if (/华东旗舰店|华东/.test(text)) return "华东旗舰店";
-  if (/华南标准店|华南/.test(text)) return "华南标准店";
-  return null;
-}
-
-function extractTimeRange(text: string): string | null {
-  if (/本月|这个月/.test(text)) return "本月";
-  if (/上月|上个月/.test(text)) return "上月";
-  if (/本周|这周/.test(text)) return "本周";
-  if (/今天|今日/.test(text)) return "今天";
-  if (/昨天|昨日/.test(text)) return "昨天";
-  if (/最近|近一个月/.test(text)) return "近一个月";
-  return null;
-}
-
-function extractFinanceResourceType(text: string): string | null {
-  if (/折让金/.test(text)) return "discount_wallet";
-  if (/返利/.test(text)) return "rebate";
-  if (/应付|付款|付了|付完|款项/.test(text)) return "payable";
-  if (/应收/.test(text)) return "receivable";
-  if (/收款|收到|入账|到账|首付/.test(text)) return "receipt";
-  return null;
-}
-
-function extractFinanceDirection(text: string): string | null {
-  if (/出账|付款|付了|付完|扣款|支出/.test(text)) return "出账";
-  if (/收款|收到|入账|到账|首付/.test(text)) return "收款";
-  return null;
-}
-
-function extractPriceMin(text: string): number | null {
-  const match = text.match(/(\d+(?:\.\d+)?)\s*万以上/);
-  if (match) return Number(match[1]) * 10000;
-  return null;
-}
-
-function extractAmountMin(text: string): number | null {
-  const match = text.match(/(?:超过|大于|不少于|至少)\s*(\d+(?:\.\d+)?)\s*万?/);
-  if (!match) return null;
-  const value = Number(match[1]);
-  if (!Number.isFinite(value)) return null;
-  return /万/.test(match[0]) ? value * 10000 : value;
-}
-
-function extractGroupBy(text: string): string | null {
-  if (/按车系|各车系|分车系/.test(text)) return "series";
-  if (/按门店|各门店|分门店|每个门店/.test(text)) return "store_name";
-  if (/按销售|各销售|销售顾问|顾问/.test(text)) return "owner_name";
-  if (/按状态|各状态/.test(text)) return "status";
-  if (/按来源|各来源/.test(text)) return "source";
-  if (/按意向等级|各意向等级/.test(text)) return "intention_level";
-  if (/按类型|各类型/.test(text)) return "order_type";
-  return null;
-}
-
+// extractMetricForSchema 依赖 schema.metric.values，不是简单的 text→value extractor，保留在本地
 function extractMetricForSchema(text: string, schema: IntentParamSchema): string | null {
   const values = schema?.metric?.values ?? [];
-  /** @type {Array<[RegExp, string]>} */
-  const candidates: Array<[RegExp, string]> = [
-    [/毛利率|毛利/, "gross_margin"],
-    [/成交总额|销售额|总额/, "total_revenue"],
-    [/订单数|多少单|卖了多少|数量/, "order_count"],
-    [/平均成交价/, "avg_price"],
-    [/最高/, "max_price"],
-    [/线索数/, "lead_count"],
-    [/转化率/, "conversion_rate"],
-    [/战败数|流失数/, "lost_count"],
-    [/未结清|待结算|没到账|未到账/, "unsettled_amount"],
-    [/总金额|合计|多少钱/, "total_amount"],
-    [/平均工时费|平均/, "avg_labor"],
-    [/应收合计|结算金额|工单金额/, "total_receivable"]
-  ];
+  // 从 DomainPack.metricKeywordMappings 动态获取 metric 关键词映射
+  const candidates = getMetricKeywordMappings();
   for (const [pattern, metric] of candidates) {
     if (pattern.test(text) && values.includes(metric)) return metric;
   }
   return null;
 }
 
-function extractGenericStatus(text: string): string | null {
-  if (/待交付|未交付|还没交车|没交车/.test(text)) return "待交付";
-  if (/已交付|已经交车/.test(text)) return "已交付";
-  if (/整备中/.test(text)) return "整备中";
-  if (/已结清|结清/.test(text)) return "已结清";
-  if (/未结清|还没结清|欠着/.test(text)) return "未结清";
-  if (/部分收款|定金/.test(text)) return "部分收款";
-  if (/待结算/.test(text)) return "待结算";
-  if (/已到账|到账/.test(text)) return "已到账";
-  if (/跟进中|还在跟进/.test(text)) return "跟进中";
-  if (/战败|流失/.test(text)) return "已流失";
-  if (/施工中|正在施工/.test(text)) return "施工中";
-  if (/已核准|核准|通过/.test(text)) return "已核准";
-  if (/审核中|厂家审核/.test(text)) return "厂家审核中";
-  return null;
-}
-
-function extractLeadIntentionLevel(text: string): string | null {
-  if (/高意向|H\s*级|热单/.test(text)) return "H";
-  if (/中意向|M\s*级/.test(text)) return "M";
-  if (/低意向|L\s*级/.test(text)) return "L";
-  return null;
-}
-
-function extractLeadSource(text: string): string | null {
-  if (/抖音/.test(text)) return "抖音直播";
-  if (/懂车帝/.test(text)) return "懂车帝";
-  if (/汽车之家/.test(text)) return "汽车之家";
-  if (/自然到店|自然到访|到店/.test(text)) return "自然到店";
-  return null;
-}
-
-function normalizeSeries(value: string): string {
-  if (value === "汉EV") return "汉";
-  if (/唐DM/.test(value)) return "唐";
-  return value;
-}
-
-function extractMetricCategory(text: string): string | null {
-  if (/库存/.test(text) && /线索/.test(text)) return null;
-  if (/库存/.test(text)) return "inventory";
-  if (/财务|折让金|返利|应付|应收|收款|付款/.test(text)) return "finance";
-  if (/三包|索赔|质保|保修/.test(text)) return "warranty";
-  if (/售后|维修|工单/.test(text)) return "after_sales";
-  return null;
-}
-
-function extractLeadGroupBy(text: string): string | null {
-  if (/意向等级/.test(text)) return "intention_level";
-  if (/来源/.test(text)) return "source";
-  if (/各门店|每个门店/.test(text)) return "store_name";
-  if (/销售顾问|顾问/.test(text)) return "owner_name";
-  return null;
-}
-
-function extractSalesMetric(text: string): string {
-  if (/毛利率|毛利/.test(text)) return "gross_margin";
-  if (/平均成交价/.test(text)) return "avg_price";
-  if (/最高/.test(text)) return "max_price";
-  if (/卖了多少|多少台|多少单/.test(text)) return "order_count";
-  return "total_revenue";
-}
-
-function extractSalesGroupBy(text: string): string | null {
-  if (/车系|按车系/.test(text)) return "series";
-  if (/各门店|每个门店/.test(text)) return "store_name";
-  if (/销售顾问|排行榜|谁卖得最好/.test(text)) return "owner_name";
-  return null;
-}
-
-function extractRepairMetric(text: string): string {
-  if (/平均工时费|平均/.test(text)) return "avg_labor";
-  if (/应收|结算金额|金额|合计/.test(text)) return "total_receivable";
-  return "order_count";
-}
-
-function extractVehicleSeries(text: string): string | null {
-  const known = ["汉EV", "宋L", "海豹", "秦PLUS", "唐", "汉", "宋"];
-  const matched = known.find((item) => text.includes(item));
-  if (!matched) return null;
-  if (matched === "汉EV") return "汉";
-  return matched;
-}
-
-function extractWarrantyClaimStatus(text: string): string | null {
-  if (/(被拒|驳回|拒绝)/.test(text)) return "已驳回";
-  if (/审核|厂家/.test(text)) return "厂家审核中";
-  if (/核准|通过/.test(text)) return "已核准";
-  if (/结算/.test(text)) return "已结算";
-  if (/待提交|未提交/.test(text)) return "待提交";
-  return null;
-}
-
-function extractWarrantyFaultCategory(text: string): string | null {
-  if (/三电|电池|电机|电控/.test(text)) return "三电";
-  if (/内饰/.test(text)) return "内饰";
-  if (/电气/.test(text)) return "电气";
-  if (/底盘/.test(text)) return "底盘";
-  return null;
-}
-
-function extractWarrantyEvidenceStatus(text: string): string | null {
-  if (/证据缺失|缺照片/.test(text)) return "缺照片";
-  if (/缺工时单/.test(text)) return "缺工时单";
-  if (/照片齐全|证据齐全/.test(text)) return "照片齐全";
-  return null;
-}
-
-function looksLikeLeaveRequest(text: string): boolean {
-  if (/(请假记录|请假历史|请假情况|请假次数|谁请假|最近请假|查.*请假|看.*请假)/.test(text)) return false;
-  return /(想请假|我要请|我想请|帮我请|帮我申请.*假|申请.*假|请个假|休假|走个假勤|请.*年假|请.*病假|请.*事假|请.*调休)/.test(text);
-}
-
-function extractLeaveType(text: string): string | null {
-  if (/年假/.test(text)) return "年假";
-  if (/病假/.test(text)) return "病假";
-  if (/事假|家里有事/.test(text)) return "事假";
-  if (/调休/.test(text)) return "调休";
-  return null;
-}
-
-function extractLeaveStartTime(text: string): string | null {
-  if (/后天/.test(text)) return "后天";
-  if (/明天/.test(text)) return "明天";
-  if (/今天|下午|上午/.test(text)) return "今天";
-  return null;
-}
-
-function extractLeaveReason(text: string): string | null {
-  const reasonMatch = text.match(/因为(.+)$/);
-  if (reasonMatch?.[1]) return reasonMatch[1].trim();
-  if (/家里有事/.test(text)) return "家里有事";
-  if (/身体不舒服|不舒服/.test(text)) return "身体不舒服";
-  return null;
-}
-
-function extractVehicleModel(text: string): string | null {
-  const known = ["汉EV", "唐DM-p", "唐DM", "宋L", "海豹", "汉", "唐", "宋"];
-  return known.find((item) => text.includes(item)) ?? null;
-}
 
 function stripCodeFence(text: unknown): string {
   if (typeof text !== "string") return "";

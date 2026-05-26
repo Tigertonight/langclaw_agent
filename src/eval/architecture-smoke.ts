@@ -1,6 +1,8 @@
 import { createApp } from "../app.js";
 
-const { userContextResolver, documentSource, knowledgeBase } = createApp();
+const app = createApp();
+await app.init();
+const { userContextResolver, documentSource, knowledgeBase } = app;
 
 const wecomUser = await userContextResolver.resolve({ wecomUserId: "sales_001" });
 assertEqual(wecomUser.source, "wecom_mock", "wecom source");

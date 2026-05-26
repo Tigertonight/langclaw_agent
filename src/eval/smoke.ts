@@ -5,7 +5,9 @@ interface SmokeResult {
   debug?: unknown;
 }
 
-const { agent } = createApp();
+const app = createApp();
+await app.init();
+const { agent } = app;
 
 const samples: Array<[string, string]> = [
   ["sales_001", "帮我查一下星河科技最近订单状态"],

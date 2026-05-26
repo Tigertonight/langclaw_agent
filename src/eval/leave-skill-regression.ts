@@ -21,7 +21,9 @@ interface LeaveFilter {
   value?: unknown;
 }
 
-const { agent } = createApp();
+const app = createApp();
+await app.init();
+const { agent } = app;
 const runId = `leave_regression_${Date.now()}`;
 const failures: Array<{ name: string; message: string }> = [];
 

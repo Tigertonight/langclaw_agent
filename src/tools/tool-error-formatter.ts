@@ -1,16 +1,18 @@
 import type { JsonObject } from "../types/agent-contracts.js";
+import { readableToolNameFromRegistry, getFieldLabelFromRegistry } from "../domains/runtime-registry.js";
 
-const FIELD_LABELS: Record<string, string> = {
+/**
+ * 通用字段标签（与任何业务域无关的系统级字段）。
+ * 域特定字段标签（如 leave_type、customer_name）由各 DomainPack.fieldLabels 提供，
+ * 通过 getFieldLabelFromRegistry() 动态获取。
+ */
+const GENERIC_FIELD_LABELS: Record<string, string> = {
   title: "标题",
   goal: "目标",
   priority: "优先级",
   status: "状态",
   id: "ID",
   reason: "原因",
-  leave_type: "请假类型",
-  start_time: "开始时间",
-  end_time: "结束时间",
-  customer_name: "客户名称",
   plugin: "插件",
   config: "配置",
   code: "代码",
@@ -23,29 +25,26 @@ const FIELD_LABELS: Record<string, string> = {
   expires_at: "过期时间"
 };
 
-const TOOL_LABELS: Record<string, string> = {
+/** 兜底工具标签（registry 未初始化时使用） */
+const FALLBACK_TOOL_LABELS: Record<string, string> = {
   "task.create": "创建任务",
   "task.update": "更新任务",
   "task.delete": "删除任务",
   "task.list": "查询任务",
   "safe_compute": "代码计算",
-  "submit_leave_request": "提交请假",
   "runtime.plugin.config": "配置插件",
-  "query_business_data": "查询业务数据",
-  "list_my_customers": "查询客户列表",
-  "query_customer": "查询客户",
-  "query_order": "查询订单",
-  "query_sales_report": "销售报表"
+  "query_business_data": "查询业务数据"
 };
 
 export function getFieldLabel(path: string): string {
   if (!path) return "字段";
   const head = path.split(".")[0] ?? path;
-  return FIELD_LABELS[head] ?? path;
+  // 优先从 registry 获取域特定标签，再查通用标签
+  return getFieldLabelFromRegistry(head) ?? GENERIC_FIELD_LABELS[head] ?? path;
 }
 
 export function getToolLabel(toolName: string): string {
-  return TOOL_LABELS[toolName] ?? toolName;
+  return readableToolNameFromRegistry(toolName, FALLBACK_TOOL_LABELS[toolName]);
 }
 
 interface ZodIssueLike {

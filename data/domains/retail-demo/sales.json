@@ -1,0 +1,86 @@
+[
+  {
+    "id": "SL001",
+    "store_id": "RS001",
+    "store_name": "城西万达旗舰店",
+    "product": "经典拿铁",
+    "category": "咖啡",
+    "quantity": 120,
+    "unit_price": 32,
+    "total_amount": 3840,
+    "date": "2025-01-15",
+    "payment_method": "微信支付"
+  },
+  {
+    "id": "SL002",
+    "store_id": "RS001",
+    "store_name": "城西万达旗舰店",
+    "product": "抹茶星冰乐",
+    "category": "冰饮",
+    "quantity": 85,
+    "unit_price": 38,
+    "total_amount": 3230,
+    "date": "2025-01-15",
+    "payment_method": "支付宝"
+  },
+  {
+    "id": "SL003",
+    "store_id": "RS002",
+    "store_name": "滨江银泰标准店",
+    "product": "经典拿铁",
+    "category": "咖啡",
+    "quantity": 65,
+    "unit_price": 32,
+    "total_amount": 2080,
+    "date": "2025-01-15",
+    "payment_method": "微信支付"
+  },
+  {
+    "id": "SL004",
+    "store_id": "RS002",
+    "store_name": "滨江银泰标准店",
+    "product": "草莓蛋糕",
+    "category": "甜点",
+    "quantity": 30,
+    "unit_price": 28,
+    "total_amount": 840,
+    "date": "2025-01-15",
+    "payment_method": "现金"
+  },
+  {
+    "id": "SL005",
+    "store_id": "RS003",
+    "store_name": "西湖文化广场快闪店",
+    "product": "冰美式",
+    "category": "咖啡",
+    "quantity": 200,
+    "unit_price": 22,
+    "total_amount": 4400,
+    "date": "2025-01-15",
+    "payment_method": "微信支付"
+  },
+  {
+    "id": "SL006",
+    "store_id": "RS001",
+    "store_name": "城西万达旗舰店",
+    "product": "芝士蛋糕",
+    "category": "甜点",
+    "quantity": 45,
+    "unit_price": 35,
+    "total_amount": 1575,
+    "date": "2025-01-16",
+    "payment_method": "支付宝"
+  },
+  {
+    "id": "SL007",
+    "store_id": "RS003",
+    "store_name": "西湖文化广场快闪店",
+    "product": "经典拿铁",
+    "category": "咖啡",
+    "quantity": 150,
+    "unit_price": 32,
+    "total_amount": 4800,
+    "date": "2025-01-16",
+    "payment_method": "微信支付"
+  }
+]

@@ -1,4 +1,5 @@
 import { loadJson } from "../data/load-json.js";
+import { getResourceDataPath, getEntityAliases, getEntityAliasSuffixRules } from "../domains/runtime-registry.js";
 import type { JsonObject, JsonValue, QueryEntity } from "../types/agent-contracts.js";
 
 interface HistoryItem {
@@ -35,9 +36,9 @@ export interface ResolvedEntities {
 
 export async function resolveEntities(question: string, history: HistoryItem[] = []): Promise<ResolvedEntities> {
   const [customers, employees, departments] = await Promise.all([
-    loadJson<CustomerRecord[]>("data/customers.json"),
-    loadJson<EmployeeRecord[]>("data/wecom-users.json"),
-    loadJson<DepartmentRecord[]>("data/wecom-departments.json")
+    loadJson<CustomerRecord[]>(getResourceDataPath("customers") ?? "data/customers.json"),
+    loadJson<EmployeeRecord[]>(getResourceDataPath("employees") ?? "data/wecom-users.json"),
+    loadJson<DepartmentRecord[]>(getResourceDataPath("departments") ?? "data/wecom-departments.json")
   ]);
 
   return {
@@ -48,7 +49,7 @@ export async function resolveEntities(question: string, history: HistoryItem[] =
 }
 
 export async function getDepartmentTreeIds(rootId: JsonValue | undefined): Promise<number[]> {
-  const departments = await loadJson<DepartmentRecord[]>("data/wecom-departments.json");
+  const departments = await loadJson<DepartmentRecord[]>(getResourceDataPath("departments") ?? "data/wecom-departments.json");
   const ids = new Set<number>([Number(rootId)]);
   let changed = true;
   while (changed) {
@@ -101,18 +102,21 @@ function resolveDepartment(question: string, departments: DepartmentRecord[]): R
 function getDepartmentAliases(department: DepartmentRecord): string[] {
   const name = String(department.name ?? "");
   const aliases = new Set<string>();
-  if (name === "行政人事部") {
-    aliases.add("行政部");
-    aliases.add("人事部");
-    aliases.add("HR部");
-    aliases.add("HR");
+
+  // 从 DomainPack 声明的 entityAliases 中查找精确别名
+  const registeredAliases = getEntityAliases();
+  if (registeredAliases[name]) {
+    for (const alias of registeredAliases[name]) {
+      aliases.add(alias);
+    }
   }
-  if (name === "市场与新媒体部") {
-    aliases.add("市场部");
-    aliases.add("新媒体部");
+
+  // 从 DomainPack 声明的 entityAliasSuffixRules 中生成后缀变体
+  for (const rule of getEntityAliasSuffixRules()) {
+    if (name.endsWith(rule.suffix)) {
+      aliases.add(name.replace(new RegExp(`${rule.suffix}$`), rule.replacement));
+    }
   }
-  if (name === "前台接待") aliases.add("前台");
-  if (name.endsWith("组")) aliases.add(name.replace(/组$/, ""));
-  if (name.endsWith("部")) aliases.add(name.replace(/部$/, ""));
+
   return [...aliases].filter((alias) => alias.length >= 2);
 }

@@ -93,7 +93,11 @@ export class ToolRegistry {
       permissions: [],
       accessible_customer_ids: []
     };
-    const permission = await checkToolPermission(user, call);
+    const governedCall: ToolCall = {
+      ...call,
+      metadata: call.metadata ?? (tool.metadata as JsonObject | undefined)
+    };
+    const permission = await checkToolPermission(user, governedCall);
     if (!permission.allow) {
       await this.emitGovernance(call, context, tool, "permission_denied", permission.message, permission.code);
       return {

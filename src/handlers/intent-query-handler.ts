@@ -21,6 +21,10 @@ import type {
   ToolResult,
   UserContext
 } from "../types/agent-contracts.js";
+import type { QueryAdapterRegistry } from "../domains/query-adapter-registry.js";
+import type { FilterTransformFn, PermissionRuleFn } from "../domains/types.js";
+import { getFieldLabelFromRegistry } from "../domains/runtime-registry.js";
+import { translateTimeRangeToIso, formatLocalDate, extractMonthToken } from "../domains/shared/time-utils.js";
 
 interface AnswerLLM {
   generateAnswer?: (input: Record<string, unknown>) => Promise<{ answer?: string }>;
@@ -39,6 +43,15 @@ interface IntentQueryHandlerOptions {
   llm?: AnswerLLM;
   toolRegistry: QueryToolRegistry;
   registry: IntentRegistry;
+  queryAdapterRegistry?: QueryAdapterRegistry;
+  /** 外部注入的 filter transform 注册表（来自 DomainRegistry.allFilterTransforms） */
+  filterTransformRegistry?: Record<string, FilterTransformFn>;
+  /** 外部注入的权限规则列表（来自 DomainRegistry.allPermissionRules） */
+  permissionRules?: PermissionRuleFn[];
+  /** 外部注入的字段标签（来自 DomainRegistry.allFieldLabels） */
+  fieldLabels?: Record<string, string>;
+  /** 外部注入的资源配置（来自 DomainRegistry.allResources），供展示层查找 displayColumns */
+  resourceConfigs?: Record<string, import("../resources/types.js").ResourceConfig>;
 }
 
 interface IntentQueryExecuteInput {
@@ -115,11 +128,21 @@ export class IntentQueryHandler {
   private readonly llm?: AnswerLLM;
   private readonly toolRegistry: QueryToolRegistry;
   private readonly registry: IntentRegistry;
+  private readonly queryAdapterRegistry?: QueryAdapterRegistry;
+  private readonly filterTransformRegistry: Record<string, FilterTransformFn>;
+  private readonly permissionRules: PermissionRuleFn[];
+  private readonly fieldLabels: Record<string, string>;
+  private readonly resourceConfigs: Record<string, import("../resources/types.js").ResourceConfig>;
 
-  constructor({ llm, toolRegistry, registry }: IntentQueryHandlerOptions) {
+  constructor({ llm, toolRegistry, registry, queryAdapterRegistry, filterTransformRegistry, permissionRules, fieldLabels, resourceConfigs }: IntentQueryHandlerOptions) {
     this.llm = llm;
     this.toolRegistry = toolRegistry;
     this.registry = registry;
+    this.queryAdapterRegistry = queryAdapterRegistry;
+    this.filterTransformRegistry = filterTransformRegistry ?? {};
+    this.permissionRules = permissionRules ?? [];
+    this.fieldLabels = fieldLabels ?? {};
+    this.resourceConfigs = resourceConfigs ?? {};
   }
 
   async execute({ user, workspace, message, intent_code, params = {}, route: _route, session: _session }: IntentQueryExecuteInput = {}): Promise<IntentQueryResult> {
@@ -182,8 +205,25 @@ export class IntentQueryHandler {
     if (defaultsApplied?.length) {
       answer = appendDefaultNotes(answer, defaultsApplied);
     }
-    if (binding.resource === "dealer_metrics" && /库存/.test(message) && /线索/.test(message) && !/线索/.test(answer)) {
-      answer = `${answer}\n\n线索维度也在本次优先级问题范围内；如需展开，可继续查看 lead 类经营指标。`;
+    // QueryAdapter postProcessAnswer 委托
+    if (this.queryAdapterRegistry) {
+      answer = this.queryAdapterRegistry.postProcessAnswer({
+        answer,
+        rows,
+        toolResult,
+        params,
+        route: {
+          intent: "data_query",
+          intent_code,
+          handler_type: "intent_query",
+          execution_class: "controlled_execution",
+          params,
+          confidence: "high",
+        },
+        manifest,
+        user,
+        message,
+      });
     }
 
     const debug = {
@@ -247,7 +287,8 @@ export class IntentQueryHandler {
         metricDef: def,
         groupBy: toolCall.args.group_by ?? null,
         toolData: toolResult?.data,
-        params
+        params,
+        fieldLabels: this.fieldLabels,
       });
       answer = await this.summarizeAggregate({
         user,
@@ -285,237 +326,54 @@ export class IntentQueryHandler {
   applyDefaults({ manifest, params, user, message }: DefaultsInput): { params: JsonObject; defaultsApplied: JsonObject[] } {
     const next = { ...(params ?? {}) };
     const applied: JsonObject[] = [];
-    const schema = manifest.params_schema ?? {};
-    // store 默认值：用户在 users.json 里有 default_store，且当前 manifest 接受 store 字段、用户没显式提
-    if (schema.store && (next.store == null || next.store === "") && user?.default_store && !shouldSkipDefaultStore({ params: next, message })) {
-      next.store = user.default_store;
-      applied.push({ field: "store", value: String(user.default_store), reason: "默认门店" });
+
+    // QueryAdapter 委托（DomainPack 声明的 applyDefaults）
+    if (this.queryAdapterRegistry) {
+      const intent_code = manifest?.intent_code ?? "";
+      const resource = manifest?.tool_binding?.resource ?? "";
+      const adapterResult = this.queryAdapterRegistry.applyDefaults({
+        intentCode: intent_code,
+        resource,
+        params: next,
+        manifest,
+        message: String(message ?? ""),
+        user,
+      });
+      if (adapterResult?.params) {
+        // 合并 adapter 返回的 params 变更
+        for (const [key, value] of Object.entries(adapterResult.params)) {
+          if (value !== undefined && value !== null && next[key] !== value) {
+            const reason = `默认${getFieldLabelFromRegistry(key) ?? key}`;
+            applied.push({ field: key, value: String(value), reason });
+            next[key] = value;
+          }
+        }
+      }
     }
+
     return { params: next, defaultsApplied: applied };
   }
 
   buildFilters({ manifest, intent_code, resource, params, message, user }: FiltersInput): QueryFilter[] {
+    // 1. manifest 声明式 filter_mapping 优先
     const mapped = this.buildMappedFilters({ manifest, params, message, user });
     if (mapped) return mapped;
 
-    const filters: QueryFilter[] = [];
-    if (intent_code === "attendance.leave_query" && resource === "leave_requests") {
-      const { scope, applicant_name, leave_type, time_range, status } = params ?? {};
-      const text = String(message ?? "");
-      const selfScope = scope === "self" || /(我|我的|本人)/.test(text);
-      const companyScope = scope === "company" || /(全公司|整个公司|公司全员|所有员工|全部员工|公司最近)/.test(text);
-      const teamScope = scope === "team" || /(同学|下属|下级|下辖|团队|组员|成员)/.test(text);
-      const peopleScope = /(谁|哪些人|哪几个人|哪位|哪些员工)/.test(text);
-      if (applicant_name && typeof applicant_name === "string" && applicant_name.trim()) {
-        filters.push({ field: "applicant_name", op: "contains", value: applicant_name.trim() });
-      } else if ((companyScope || peopleScope) && user?.permissions?.includes("org:read")) {
-        filters.push({ field: "applicant_user_id", op: "in", value: "__ALL_ORG_USERS__" });
-      } else if (teamScope && user?.permissions?.includes("org:read")) {
-        filters.push({ field: "applicant_user_id", op: "in", value: "__CURRENT_USER_REPORTS__" });
-      } else if (selfScope) {
-        filters.push({ field: "applicant_user_id", op: "eq", value: "__CURRENT_USER__" });
-      } else if (user?.permissions?.includes("org:read")) {
-        filters.push({ field: "applicant_user_id", op: "in", value: "__ALL_ORG_USERS__" });
-      } else {
-        filters.push({ field: "applicant_user_id", op: "eq", value: "__CURRENT_USER__" });
-      }
-      const inferredType = inferLeaveType(text);
-      if (leave_type && typeof leave_type === "string" && leave_type.trim()) {
-        filters.push({ field: "leave_type", op: "eq", value: leave_type.trim() });
-      } else if (inferredType) {
-        filters.push({ field: "leave_type", op: "eq", value: inferredType });
-      }
-      const inferredStatus = typeof status === "string" && status.trim() ? status.trim() : null;
-      if (inferredStatus) filters.push({ field: "status", op: "eq", value: inferredStatus });
-      const monthToken = extractMonthToken(text);
-      if (monthToken) {
-        filters.push({ field: "start_time", op: "contains", value: monthToken });
-      } else {
-        const sinceIso = translateTimeRangeToIso(String(time_range || text));
-        if (sinceIso) {
-          filters.push({ field: "start_time", op: "gte", value: sinceIso });
-        }
-      }
+    // 2. QueryAdapter 委托（DomainPack 声明的业务特例）
+    if (this.queryAdapterRegistry) {
+      const adapterFilters = this.queryAdapterRegistry.buildFilters({
+        intentCode: intent_code,
+        resource,
+        params: params ?? {},
+        manifest,
+        message: String(message ?? ""),
+        user,
+      });
+      if (adapterFilters) return adapterFilters;
     }
-    if (intent_code === "dealer.query.inventory" && resource === "dealer_vehicles") {
-      const { vehicle_model, store, time_range, warning_level } = params ?? {};
-      if (vehicle_model && typeof vehicle_model === "string" && vehicle_model.trim()) {
-        // 直接 contains 整个原文（如「汉EV」），由 model 字段命中即可
-        filters.push({ field: "model", op: "contains", value: vehicle_model.trim() });
-      }
-      if (store && typeof store === "string" && store.trim()) {
-        filters.push({ field: "store_name", op: "contains", value: store.trim() });
-      }
-      if (warning_level && typeof warning_level === "string" && warning_level.trim()) {
-        filters.push({ field: "stock_warning_level", op: "eq", value: warning_level.trim() });
-      }
-      // 库存查询里 time_range 仅作为语义提示（用户在问"现在"的库存），
-      // 不再硬过滤 inbound_date——库龄已由 stock_age_days 表达。
-    }
-    if (intent_code === "dealer.query.repair_orders" && resource === "dealer_repair_orders") {
-      const { store, series, status, order_type, service_advisor, time_range, overdue_only } = params ?? {};
-      if (store && typeof store === "string" && store.trim()) {
-        filters.push({ field: "store_name", op: "contains", value: store.trim() });
-      }
-      if (series && typeof series === "string" && series.trim()) {
-        filters.push({ field: "series", op: "contains", value: series.trim() });
-      }
-      if (status && typeof status === "string" && status.trim()) {
-        filters.push({ field: "status", op: "eq", value: status.trim() });
-      }
-      if (order_type && typeof order_type === "string" && order_type.trim()) {
-        filters.push({ field: "order_type", op: "contains", value: order_type.trim() });
-      }
-      if (service_advisor && typeof service_advisor === "string" && service_advisor.trim()) {
-        filters.push({ field: "service_advisor_name", op: "contains", value: service_advisor.trim() });
-      }
-      const sinceIso = typeof time_range === "string" ? translateTimeRangeToIso(time_range) : null;
-      if (sinceIso) {
-        filters.push({ field: "appointment_at", op: "gte", value: sinceIso });
-      }
-      // 逾期 = promised_finish_at <= 今天 AND status != 已交付（query_business_data 没 lt，用 lte+today 近似，并合配 status 排除）
-      if (overdue_only === true) {
-        const today = new Date().toISOString().slice(0, 10);
-        filters.push({ field: "promised_finish_at", op: "lte", value: today });
-        filters.push({ field: "status", op: "neq", value: "已交付" });
-      }
-    }
-    if (intent_code === "dealer.query.warranty_claims" && resource === "dealer_warranty_claims") {
-      const { store, series, claim_status, fault_category, evidence_status, time_range, difference_min } = params ?? {};
-      if (store && typeof store === "string" && store.trim()) {
-        filters.push({ field: "store_name", op: "contains", value: store.trim() });
-      }
-      if (series && typeof series === "string" && series.trim()) {
-        filters.push({ field: "series", op: "contains", value: series.trim() });
-      }
-      if (claim_status && typeof claim_status === "string" && claim_status.trim()) {
-        filters.push({ field: "claim_status", op: "contains", value: claim_status.trim() });
-      }
-      if (fault_category && typeof fault_category === "string" && fault_category.trim()) {
-        // 用户常说「三电故障/电池故障」，库里值是「三电/底盘」，去掉「故障」「故障类别」后缀以提高命中
-        const cleaned = fault_category.trim().replace(/故障类别|故障$/u, "").trim() || fault_category.trim();
-        filters.push({ field: "fault_category", op: "contains", value: cleaned });
-      }
-      if (evidence_status && typeof evidence_status === "string" && evidence_status.trim()) {
-        filters.push({ field: "evidence_status", op: "contains", value: evidence_status.trim() });
-      }
-      if (typeof difference_min === "number" && Number.isFinite(difference_min)) {
-        filters.push({ field: "difference_amount", op: "gte", value: difference_min });
-      }
-      const sinceIso = typeof time_range === "string" ? translateTimeRangeToIso(time_range) : null;
-      if (sinceIso) {
-        filters.push({ field: "submitted_at", op: "gte", value: sinceIso });
-      }
-    }
-    if (intent_code === "dealer.query.sales_orders" && resource === "dealer_sales_orders") {
-      const { store, series, model, owner, order_type, order_status, payment_status, delivery_status, time_range, price_min, price_max } = params ?? {};
-      if (store && typeof store === "string" && store.trim()) {
-        filters.push({ field: "store_name", op: "contains", value: store.trim() });
-      }
-      if (series && typeof series === "string" && series.trim()) {
-        filters.push({ field: "series", op: "contains", value: series.trim() });
-      }
-      if (model && typeof model === "string" && model.trim()) {
-        filters.push({ field: "model", op: "contains", value: model.trim() });
-      }
-      if (owner && typeof owner === "string" && owner.trim()) {
-        filters.push({ field: "owner_name", op: "contains", value: owner.trim() });
-      }
-      if (order_type && typeof order_type === "string" && order_type.trim()) {
-        filters.push({ field: "order_type", op: "eq", value: order_type.trim() });
-      }
-      if (order_status && typeof order_status === "string" && order_status.trim()) {
-        // "未交付" → order_status != 已交付（用 neq 表达"非"语义）
-        if (/未交付|没交付/.test(order_status)) {
-          filters.push({ field: "order_status", op: "neq", value: "已交付" });
-        } else {
-          filters.push({ field: "order_status", op: "eq", value: order_status.trim() });
-        }
-      }
-      if (payment_status && typeof payment_status === "string" && payment_status.trim()) {
-        if (/未结清|未付清/.test(payment_status)) {
-          filters.push({ field: "payment_status", op: "neq", value: "已结清" });
-        } else {
-          filters.push({ field: "payment_status", op: "eq", value: payment_status.trim() });
-        }
-      }
-      if (delivery_status && typeof delivery_status === "string" && delivery_status.trim()) {
-        if (/未交付|没交付/.test(delivery_status)) {
-          filters.push({ field: "delivery_status", op: "neq", value: "已交付" });
-        } else {
-          filters.push({ field: "delivery_status", op: "eq", value: delivery_status.trim() });
-        }
-      }
-      if (typeof price_min === "number" && Number.isFinite(price_min)) {
-        filters.push({ field: "final_price", op: "gte", value: price_min });
-      }
-      if (typeof price_max === "number" && Number.isFinite(price_max)) {
-        filters.push({ field: "final_price", op: "lte", value: price_max });
-      }
-      const sinceIso = typeof time_range === "string" ? translateTimeRangeToIso(time_range) : null;
-      if (sinceIso) {
-        filters.push({ field: "created_at", op: "gte", value: sinceIso });
-      }
-    }
-    if (intent_code === "dealer.query.leads" && resource === "dealer_leads") {
-      const { store, series, owner, intention_level, status, source, time_range } = params ?? {};
-      if (store && typeof store === "string" && store.trim()) {
-        filters.push({ field: "store_name", op: "contains", value: store.trim() });
-      }
-      if (series && typeof series === "string" && series.trim()) {
-        filters.push({ field: "interested_series", op: "contains", value: series.trim() });
-      }
-      if (owner && typeof owner === "string" && owner.trim()) {
-        filters.push({ field: "owner_name", op: "contains", value: owner.trim() });
-      }
-      if (intention_level && typeof intention_level === "string" && intention_level.trim()) {
-        filters.push({ field: "intention_level", op: "eq", value: intention_level.trim() });
-      }
-      if (status && typeof status === "string" && status.trim()) {
-        if (/未成交|没成交/.test(status)) {
-          filters.push({ field: "status", op: "neq", value: "已成交" });
-        } else {
-          filters.push({ field: "status", op: "contains", value: status.trim() });
-        }
-      }
-      if (source && typeof source === "string" && source.trim()) {
-        filters.push({ field: "source", op: "contains", value: source.trim() });
-      }
-      const sinceIso = typeof time_range === "string" ? translateTimeRangeToIso(time_range) : null;
-      if (sinceIso) {
-        filters.push({ field: "created_at", op: "gte", value: sinceIso });
-      }
-    }
-    if (intent_code === "dealer.query.finance" && resource === "dealer_finance") {
-      const { resource_type, store, category, direction, status, time_range, amount_min, amount_max } = params ?? {};
-      if (resource_type && typeof resource_type === "string" && resource_type.trim()) {
-        filters.push({ field: "resource_type", op: "eq", value: resource_type.trim() });
-      }
-      if (store && typeof store === "string" && store.trim()) {
-        filters.push({ field: "store_name", op: "contains", value: store.trim() });
-      }
-      if (category && typeof category === "string" && category.trim()) {
-        filters.push({ field: "category", op: "contains", value: category.trim() });
-      }
-      if (direction && typeof direction === "string" && direction.trim()) {
-        filters.push({ field: "direction", op: "eq", value: direction.trim() });
-      }
-      if (status && typeof status === "string" && status.trim()) {
-        filters.push({ field: "status", op: "eq", value: status.trim() });
-      }
-      if (typeof amount_min === "number" && Number.isFinite(amount_min)) {
-        filters.push({ field: "amount", op: "gte", value: amount_min });
-      }
-      if (typeof amount_max === "number" && Number.isFinite(amount_max)) {
-        filters.push({ field: "amount", op: "lte", value: amount_max });
-      }
-      // time_range 翻译为 occurred_at 起始日期；财务查询和"发生时间"强相关
-      const sinceIso = typeof time_range === "string" ? translateTimeRangeToIso(time_range) : null;
-      if (sinceIso) {
-        filters.push({ field: "occurred_at", op: "gte", value: sinceIso });
-      }
-    }
-    return filters;
+
+    // 3. 空回退（所有业务逻辑已迁移到 DomainQueryAdapter）
+    return [];
   }
 
   buildMappedFilters({ manifest, params, message, user }: DefaultsInput): QueryFilter[] | null {
@@ -528,7 +386,7 @@ export class IntentQueryHandler {
       for (const rule of rules) {
         if (!rule || typeof rule !== "object") continue;
         const raw = valueForMapping({ paramName, params, message, user, rule });
-        const filter = buildFilterFromRule({ raw, rule, params, message, user });
+        const filter = buildFilterFromRule({ raw, rule, params, message, user, filterTransformRegistry: this.filterTransformRegistry });
         if (Array.isArray(filter)) filters.push(...filter);
         else if (filter) filters.push(filter);
       }
@@ -537,9 +395,18 @@ export class IntentQueryHandler {
   }
 
   buildSort({ intent_code, resource, params: _params, message: _message }: SortInput): QuerySort[] {
-    if (intent_code === "attendance.leave_query" && resource === "leave_requests") {
-      return [{ field: "start_time", direction: "desc" }];
+    // QueryAdapter 委托
+    if (this.queryAdapterRegistry) {
+      const adapterSort = this.queryAdapterRegistry.buildSort({
+        intentCode: intent_code,
+        resource,
+        params: _params ?? {},
+        manifest: this.registry.getCode(intent_code) ?? ({} as IntentManifest),
+        message: String(_message ?? ""),
+      });
+      if (adapterSort) return adapterSort;
     }
+    // 空回退（所有业务排序已迁移到 DomainQueryAdapter）
     return [];
   }
 
@@ -550,20 +417,14 @@ export class IntentQueryHandler {
       return { ok: false, code: "no_user", message: "无法识别当前用户身份。" };
     }
     const userPerms = new Set(user.permissions ?? []);
-    // 角色级别的隐式授权：和 src/auth/permissions.ts#canReadDealerResource 对齐。
-    // 这里只做粗粒度放行（避免在 handler 层抢着拒绝），细粒度仍交给 ToolRegistry/authorizeToolCall。
     const resource = manifest.tool_binding?.resource;
-    if (resource === "dealer_finance" && user.role === "store_general_manager") {
-      return { ok: true };
+
+    // 委托 domain 注册的权限规则（来自 DomainPack.permissionRules）
+    for (const rule of this.permissionRules) {
+      const result = rule({ resource, user, userPermissions: userPerms, manifest });
+      if (result?.ok) return { ok: true };
     }
-    if (["dealer_vehicles", "dealer_inbounds", "dealer_quotas", "dealer_stores"].includes(resource)
-        && (userPerms.has("inventory:read") || userPerms.has("order:read") || userPerms.has("sales_report:read"))) {
-      return { ok: true };
-    }
-    if (typeof resource === "string" && resource.startsWith("dealer_")
-        && ["store_general_manager", "sales_manager"].includes(user.role)) {
-      return { ok: true };
-    }
+
     const missing = required.filter((perm) => !userPerms.has(perm));
     if (missing.length === 0) return { ok: true };
     return {
@@ -574,8 +435,10 @@ export class IntentQueryHandler {
   }
 
   async summarize({ user, message, rows, intent_code, resource }: SummarizeInput): Promise<string> {
+    const fl = this.fieldLabels;
+    const rc = this.resourceConfigs;
     if (rows.length === 1 && isSimpleSingleRowQuestion(message)) {
-      return formatRowsTemplate({ rows, total: rows.length, resource });
+      return formatRowsTemplate({ rows, total: rows.length, resource, fieldLabels: fl, resourceConfigs: rc });
     }
     if (canUseAnswerLLM(this.llm)) {
       try {
@@ -592,8 +455,8 @@ export class IntentQueryHandler {
               operation: "search",
               rows,
               total: rows.length,
-              fields: inferDisplayFields(resource, rows),
-              answer_preference: createSearchAnswerPreference({ message, resource, rows })
+              fields: inferDisplayFields(resource, rows, rc),
+              answer_preference: createSearchAnswerPreference({ message, resource, rows, resourceConfigs: rc })
             }
           }]
         });
@@ -602,7 +465,7 @@ export class IntentQueryHandler {
         // 走模板兜底
       }
     }
-    return formatRowsTemplate({ rows, total: rows.length, resource });
+    return formatRowsTemplate({ rows, total: rows.length, resource, fieldLabels: fl, resourceConfigs: rc });
   }
 
   async summarizeAggregate({ user, message, intent_code, resource, metric, metricDef, groupBy, toolResult, deterministicAnswer }: SummarizeAggregateInput): Promise<string> {
@@ -680,10 +543,10 @@ function isSimpleSingleRowQuestion(message: unknown): boolean {
   return /(是否|有没有|吗|是不是|查一下|看一下|详情|状态)/.test(text);
 }
 
-function createSearchAnswerPreference({ message, resource, rows }: { message?: string; resource: string; rows: DataRecord[] }): JsonObject {
+function createSearchAnswerPreference({ message, resource, rows, resourceConfigs }: { message?: string; resource: string; rows: DataRecord[]; resourceConfigs?: Record<string, import("../resources/types.js").ResourceConfig> }): JsonObject {
   return {
     format: rows.length > 1 ? "natural_markdown_table" : "natural_single_record",
-    display_fields: inferDisplayFields(resource, rows),
+    display_fields: inferDisplayFields(resource, rows, resourceConfigs),
     rules: [
       "像一个业务同事一样组织回答：先给一句自然结论，再展开必要明细。",
       "不要说 rows、字段、工具结果、查询结果这些工程词。",
@@ -718,73 +581,11 @@ function appendDefaultNotes(answer: string, defaultsApplied: DataRecord[] = []):
 
 function defaultNoteText(item: DataRecord): string {
   if (!item) return "";
-  if (item.field === "store") {
-    return `这里按你的默认门店「${item.value}」来看的。`;
-  }
-  return `这里按 ${item.field}=${item.value} 来看的。`;
+  const label = getFieldLabelFromRegistry(String(item.field ?? "")) ?? String(item.field ?? "");
+  return `这里按你的默认${label}「${item.value}」来看的。`;
 }
 
-function shouldSkipDefaultStore({ params, message }: { params?: JsonObject; message?: string }): boolean {
-  const text = String(message ?? "");
-  if (params?.group_by === "store_name") return true;
-  return /(各门店|所有门店|全部门店|全部门店|全店|全公司|整个|整体|体系|集团|区域|对比)/.test(text);
-}
-
-function translateTimeRangeToIso(text: unknown): string | null {
-  const input = String(text ?? "");
-  const now = new Date();
-  if (/本月|这个月/.test(input)) {
-    return formatLocalDate(new Date(now.getFullYear(), now.getMonth(), 1));
-  }
-  if (/上月|上个月/.test(input)) {
-    return formatLocalDate(new Date(now.getFullYear(), now.getMonth() - 1, 1));
-  }
-  if (/本周|这周/.test(input)) {
-    const d = new Date(now);
-    const day = d.getDay() || 7;
-    d.setDate(d.getDate() - day + 1);
-    return formatLocalDate(d);
-  }
-  if (/今天|今日/.test(input)) {
-    return formatLocalDate(now);
-  }
-  if (/昨天|昨日/.test(input)) {
-    const d = new Date(now);
-    d.setDate(d.getDate() - 1);
-    return formatLocalDate(d);
-  }
-  if (/最近|近期|近来/.test(input)) {
-    const d = new Date(now);
-    d.setMonth(d.getMonth() - 1);
-    return formatLocalDate(d);
-  }
-  if (/近一个月|最近一个月|过去一个月/.test(input)) {
-    const d = new Date(now);
-    d.setMonth(d.getMonth() - 1);
-    return formatLocalDate(d);
-  }
-  if (/近三个月|最近三个月|过去三个月/.test(input)) {
-    const d = new Date(now);
-    d.setMonth(d.getMonth() - 3);
-    return formatLocalDate(d);
-  }
-  if (/近半年|最近半年/.test(input)) {
-    const d = new Date(now);
-    d.setMonth(d.getMonth() - 6);
-    return d.toISOString().slice(0, 10);
-  }
-  const quarterMatch = input.match(/Q([1-4])/i);
-  if (quarterMatch) {
-    const q = Number(quarterMatch[1]);
-    const startMonth = (q - 1) * 3;
-    return formatLocalDate(new Date(now.getFullYear(), startMonth, 1));
-  }
-  return null;
-}
-
-function formatLocalDate(date: Date): string {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
+// translateTimeRangeToIso / formatLocalDate / extractMonthToken 已统一到 src/domains/shared/time-utils.ts
 
 /**
  * @param {{
@@ -817,19 +618,20 @@ function valueForMapping({ paramName, params, message, user, rule }: {
  *   user?: import("../types/agent-contracts.js").UserContext
  * }} input
  */
-function buildFilterFromRule({ raw, rule, params: _params, message, user }: {
+function buildFilterFromRule({ raw, rule, params: _params, message, user, filterTransformRegistry }: {
   raw: unknown;
   rule: JsonObject;
   params?: JsonObject;
   message?: string;
   user?: UserContext;
+  filterTransformRegistry?: Record<string, FilterTransformFn>;
 }): QueryFilter | QueryFilter[] | null {
   let value = raw;
   if (value === undefined || value === null || value === "") return null;
   if (typeof value === "string") value = value.trim();
   if (value === "") return null;
 
-  const transformed = applyMappingTransform(value, rule, { message, user });
+  const transformed = applyMappingTransform(value, rule, { message, user }, filterTransformRegistry);
   if (transformed === null || transformed === undefined || transformed === "") return null;
   if (Array.isArray(transformed)) {
     if (!transformed.length) return null;
@@ -852,11 +654,24 @@ function buildFilterFromRule({ raw, rule, params: _params, message, user }: {
  * @param {import("../types/agent-contracts.js").JsonObject} rule
  * @param {{ message?: string, user?: import("../types/agent-contracts.js").UserContext }} [context]
  */
-function applyMappingTransform(value: unknown, rule: JsonObject, { message, user }: MappingContext = {}): JsonValue | QueryFilter | QueryFilter[] | null {
-  if (rule.transform === "time_range_to_iso") {
+function applyMappingTransform(
+  value: unknown,
+  rule: JsonObject,
+  { message, user }: MappingContext = {},
+  filterTransformRegistry?: Record<string, FilterTransformFn>,
+): JsonValue | QueryFilter | QueryFilter[] | null {
+  const transformName = typeof rule.transform === "string" ? rule.transform : null;
+
+  // 1. 优先查 domain 注册的 filterTransform
+  if (transformName && filterTransformRegistry?.[transformName]) {
+    return filterTransformRegistry[transformName](value, { message, user, rule });
+  }
+
+  // 2. 通用 transform（不属于特定业务域）
+  if (transformName === "time_range_to_iso") {
     return translateTimeRangeToIso(String(value ?? ""));
   }
-  if (rule.transform === "month_token_or_time_range") {
+  if (transformName === "month_token_or_time_range") {
     const text = String(value ?? message ?? "");
     const monthToken = extractMonthToken(text);
     if (monthToken) return monthToken;
@@ -867,57 +682,8 @@ function applyMappingTransform(value: unknown, rule: JsonObject, { message, user
       { field: String(rule.field ?? ""), op: "lte", value: formatLocalDate(new Date()) }
     ];
   }
-  if (rule.transform === "leave_department_aliases") {
-    const text = String(value ?? "").trim();
-    if (/销售部/.test(text)) return ["展厅销售组", "华东销售部", "华南销售部"];
-    if (/人事部|人力资源|行政人事/.test(text)) return ["人力资源部"];
-    return text ? [text] : null;
-  }
-  if (rule.transform === "clean_fault_category") {
-    return String(value ?? "").replace(/故障类别|故障$/u, "").trim();
-  }
-  if (rule.transform === "normalize_finance_direction") {
-    const text = String(value ?? "").trim();
-    if (/付款|支付|付了|扣款|抵扣|支出|支款/.test(text)) return "出账";
-    if (/收款|到账|收到/.test(text)) return "收款";
-    return text;
-  }
-  if (rule.transform === "infer_leave_type") {
-    return inferLeaveType(String(value ?? message ?? ""));
-  }
-  if (rule.transform === "overdue_repair_filters") {
-    if (value !== true) return null;
-    const today = new Date().toISOString().slice(0, 10);
-    return [
-      { field: "promised_finish_at", op: "lte", value: today },
-      { field: "status", op: "neq", value: "已交付" }
-    ];
-  }
-  if (rule.transform === "leave_scope") {
-    const text = String(message ?? "");
-    const scope = String(value ?? "");
-    const selfScope = scope === "self" || /(我|我的|本人)/.test(text);
-    const companyScope = scope === "company" || /(全公司|整个公司|公司全员|所有员工|全部员工|公司最近)/.test(text);
-    const teamScope = scope === "team" || /(同学|下属|下级|下辖|团队|组员|成员)/.test(text);
-    const peopleScope = /(谁|哪些人|哪几个人|哪位|哪些员工)/.test(text);
-    if ((companyScope || peopleScope) && user?.permissions?.includes("org:read")) {
-      /** @type {import("../types/agent-contracts.js").QueryFilter[]} */
-      const filters: QueryFilter[] = [{ field: "applicant_user_id", op: "in", value: "__ALL_ORG_USERS__" }];
-      if (companyScope) {
-        filters.push({ field: "department", op: "in", value: ["华东销售部", "华南销售部", "人力资源部"] });
-      }
-      return filters;
-    }
-    if (teamScope && user?.permissions?.includes("org:read")) {
-      return { field: "applicant_user_id", op: "in", value: "__CURRENT_USER_REPORTS__" };
-    }
-    if (selfScope) return { field: "applicant_user_id", op: "eq", value: "__CURRENT_USER__" };
-    if (user?.permissions?.includes("org:read")) {
-      return { field: "applicant_user_id", op: "in", value: "__ALL_ORG_USERS__" };
-    }
-    return { field: "applicant_user_id", op: "eq", value: "__CURRENT_USER__" };
-  }
 
+  // 3. negative_patterns 通用逻辑
   if (rule.negative_patterns && Array.isArray(rule.negative_patterns)) {
     const text = String(value ?? "");
     const negativePatterns = rule.negative_patterns.filter(isJsonObject);
@@ -949,31 +715,14 @@ function isJsonValue(value: unknown): value is JsonValue {
   return Object.values(value).every((item) => item === undefined || isJsonValue(item));
 }
 
-function extractMonthToken(text: unknown): string | null {
-  const input = String(text ?? "");
-  if (/本月|这个月/.test(input)) return new Date().toISOString().slice(0, 7);
-  const explicit = input.match(/(20\d{2})[-年/.](\d{1,2})/);
-  if (explicit) return `${explicit[1]}-${String(Number(explicit[2])).padStart(2, "0")}`;
-  const monthOnly = input.match(/(\d{1,2})月/);
-  if (monthOnly) return `${new Date().getFullYear()}-${String(Number(monthOnly[1])).padStart(2, "0")}`;
-  return null;
-}
 
-function inferLeaveType(text: unknown): string | null {
-  const input = String(text ?? "");
-  if (/年假/.test(input)) return "年假";
-  if (/病假/.test(input)) return "病假";
-  if (/事假/.test(input)) return "事假";
-  if (/调休/.test(input)) return "调休";
-  return null;
-}
-
-function formatAggregateAnswer({ metric, metricDef, groupBy, toolData, params: _params }: {
+function formatAggregateAnswer({ metric, metricDef, groupBy, toolData, params: _params, fieldLabels }: {
   metric: string;
   metricDef?: DataRecord;
   groupBy?: string | null;
   toolData?: DataRecord;
   params?: JsonObject;
+  fieldLabels?: Record<string, string>;
 }): string {
   const definition = metricDef?.definition ?? metric;
   const fmt = (value: unknown) => formatMetricValue(metric, value);
@@ -986,18 +735,18 @@ function formatAggregateAnswer({ metric, metricDef, groupBy, toolData, params: _
     } else {
       // 选用作为"主指标"的那个 as：取 metric_definitions 里第一个非 _ 开头的 derived，否则第一个 aggregations 的 as
       const primaryAs = pickPrimaryAs(metricDef, metric);
-      lines.push(createGroupedMetricIntro({ metric, groupBy, total: toolData?.total }));
+      lines.push(createGroupedMetricIntro({ metric, groupBy, total: toolData?.total, fieldLabels }));
       lines.push("");
-      lines.push(formatGroupedMetricTable({ groups, groupBy, primaryAs, metric, formatValue: fmt }));
+      lines.push(formatGroupedMetricTable({ groups, groupBy, primaryAs, metric, formatValue: fmt, fieldLabels }));
     }
   } else {
     const aggregates = toolData?.aggregates ?? {};
     const primaryAs = pickPrimaryAs(metricDef, metric);
     const value = aggregates[primaryAs];
     if (value === null || value === undefined) {
-      lines.push(`没有查到符合条件的记录，无法计算${labelOfMetric(metric)}。`);
+      lines.push(`没有查到符合条件的记录，无法计算${labelOfMetric(metric, fieldLabels)}。`);
     } else {
-      lines.push(`${labelOfMetric(metric)}是 **${fmt(value)}**。`);
+      lines.push(`${labelOfMetric(metric, fieldLabels)}是 **${fmt(value)}**。`);
       if (Number(toolData?.total ?? 0) > 0) lines.push(`这次统计覆盖 ${toolData.total} 条记录。`);
     }
   }
@@ -1006,24 +755,25 @@ function formatAggregateAnswer({ metric, metricDef, groupBy, toolData, params: _
   return lines.join("\n");
 }
 
-function createGroupedMetricIntro({ metric, groupBy, total }: { metric: string; groupBy: string; total?: unknown }): string {
+function createGroupedMetricIntro({ metric, groupBy, total, fieldLabels }: { metric: string; groupBy: string; total?: unknown; fieldLabels?: Record<string, string> }): string {
   if (metric === "order_count" && groupBy === "order_status") {
-    return `最近订单按${labelOfField(groupBy)}看，主要是下面这些状态。`;
+    return `最近订单按${labelOfField(groupBy, fieldLabels)}看，主要是下面这些状态。`;
   }
   const totalText = Number(total ?? 0) > 0 ? `（共 ${total} 条记录）` : "";
-  return `${labelOfMetric(metric)}按${labelOfField(groupBy)}分布如下${totalText}。`;
+  return `${labelOfMetric(metric, fieldLabels)}按${labelOfField(groupBy, fieldLabels)}分布如下${totalText}。`;
 }
 
-function formatGroupedMetricTable({ groups, groupBy, primaryAs, metric, formatValue }: {
+function formatGroupedMetricTable({ groups, groupBy, primaryAs, metric, formatValue, fieldLabels }: {
   groups: DataRecord[];
   groupBy: string;
   primaryAs: string;
   metric: string;
   formatValue: MetricFormatter;
+  fieldLabels?: Record<string, string>;
 }): string {
-  const metricLabel = labelOfMetric(metric);
+  const metricLabel = labelOfMetric(metric, fieldLabels);
   const rows = [
-    `| ${labelOfField(groupBy)} | ${metricLabel} | 记录数 |`,
+    `| ${labelOfField(groupBy, fieldLabels)} | ${metricLabel} | 记录数 |`,
     "| --- | --- | --- |"
   ];
   for (const g of groups) {
@@ -1047,58 +797,21 @@ function pickPrimaryAs(metricDef: DataRecord | undefined, metric: string): strin
   return metric;
 }
 
-function labelOfMetric(metric: string): string {
-  const map: Record<string, string> = {
-    total_revenue: "总成交额",
-    order_count: "订单数",
-    avg_price: "平均成交价",
-    total_profit: "总毛利",
-    gross_margin: "毛利率(%)",
-    max_price: "最高成交价",
-    min_price: "最低成交价",
-    total_amount: "总金额",
-    unsettled_amount: "未结清金额",
-    record_count: "记录数",
-    avg_amount: "平均金额",
-    total_receivable: "应收合计",
-    avg_labor: "平均工时费",
-    max_receivable: "最高应收",
-    total_labor: "工时费合计",
-    lead_count: "线索数",
-    converted_count: "成交线索数",
-    conversion_rate: "转化率(%)",
-    lost_count: "战败线索数",
-    avg_followup: "平均跟进次数"
-  };
-  return map[metric] ?? metric;
+/**
+ * 查找 metric 的中文标签。优先从 domain 注册的 fieldLabels 查找，找不到走本地 fallback。
+ */
+function labelOfMetric(metric: string, fieldLabels?: Record<string, string>): string {
+  if (fieldLabels?.[metric]) return fieldLabels[metric];
+  return metric;
 }
 
-function labelOfField(field: unknown): string {
+/**
+ * 查找 field 的中文标签。优先从 domain 注册的 fieldLabels 查找，找不到走本地 fallback。
+ */
+function labelOfField(field: unknown, fieldLabels?: Record<string, string>): string {
   const key = String(field ?? "");
-  const map: Record<string, string> = {
-    store_name: "门店",
-    series: "车系",
-    order_status: "订单状态",
-    payment_status: "付款状态",
-    delivery_status: "交付状态",
-    owner_name: "销售顾问",
-    order_type: "订单类型",
-    resource_type: "款项类型",
-    direction: "方向",
-    category: "类别",
-    status: "状态",
-    intention_level: "意向等级",
-    source: "来源",
-    interested_series: "意向车系",
-    service_advisor_name: "服务顾问",
-    inventory: "库存",
-    lead: "线索",
-    sales: "销售",
-    finance: "财务",
-    after_sales: "售后",
-    warranty: "三包"
-  };
-  return map[key] ?? key;
+  if (fieldLabels?.[key]) return fieldLabels[key];
+  return key;
 }
 
 function formatMetricValue(metric: string, value: unknown): string {
@@ -1113,17 +826,17 @@ function formatMetricValue(metric: string, value: unknown): string {
   return value.toString();
 }
 
-function formatRowsTemplate({ rows, total, resource }: { rows: DataRecord[]; total: number; resource: string }): string {
+function formatRowsTemplate({ rows, total, resource, fieldLabels, resourceConfigs }: { rows: DataRecord[]; total: number; resource: string; fieldLabels?: Record<string, string>; resourceConfigs?: Record<string, import("../resources/types.js").ResourceConfig> }): string {
   const head = rows.slice(0, 8);
-  const table = formatRowsTable({ rows: head, resource });
+  const table = formatRowsTable({ rows: head, resource, resourceConfigs });
   if (table) return `最近有 ${total} 条相关记录：\n\n${table}`;
-  const lines = head.map((row) => formatRowByResource(row, resource));
+  const lines = head.map((row) => formatRowByResource(row, resource, fieldLabels, resourceConfigs));
   return `最近有 ${total} 条相关记录：\n${lines.join("\n")}`;
 }
 
-function formatRowsTable({ rows, resource }: { rows: DataRecord[]; resource: string }): string {
+function formatRowsTable({ rows, resource, resourceConfigs }: { rows: DataRecord[]; resource: string; resourceConfigs?: Record<string, import("../resources/types.js").ResourceConfig> }): string {
   if (!rows.length) return "";
-  const columns = getDisplayColumns(resource, rows);
+  const columns = getDisplayColumns(resource, rows, resourceConfigs);
   if (!columns.length) return "";
   const header = `| ${columns.map((column) => column.label).join(" | ")} |`;
   const divider = `| ${columns.map(() => "---").join(" | ")} |`;
@@ -1131,55 +844,23 @@ function formatRowsTable({ rows, resource }: { rows: DataRecord[]; resource: str
   return [header, divider, ...body].join("\n");
 }
 
-function inferDisplayFields(resource: string, rows: DataRecord[]): string[] {
-  return getDisplayColumns(resource, rows).map((column: DisplayColumn) => column.field);
+function inferDisplayFields(resource: string, rows: DataRecord[], resourceConfigs?: Record<string, import("../resources/types.js").ResourceConfig>): string[] {
+  return getDisplayColumns(resource, rows, resourceConfigs).map((column: DisplayColumn) => column.field);
 }
 
-function getDisplayColumns(resource: string, rows: DataRecord[] = []): DisplayColumn[] {
-  const presets: Record<string, Array<[string, string]>> = {
-    leave_requests: [
-      ["applicant_name", "员工"],
-      ["leave_type", "类型"],
-      ["leave_duration", "时长"],
-      ["start_time", "开始时间"],
-      ["end_time", "结束时间"],
-      ["status", "状态"],
-      ["reason", "事由"]
-    ],
-    dealer_vehicles: [
-      ["store_name", "门店"],
-      ["series", "车系"],
-      ["model", "车型"],
-      ["status", "状态"],
-      ["stock_age_days", "库龄(天)"],
-      ["stock_warning_level", "预警"]
-    ],
-    dealer_sales_orders: [
-      ["store_name", "门店"],
-      ["customer_name", "客户"],
-      ["series", "车系"],
-      ["model", "车型"],
-      ["order_status", "订单状态"],
-      ["payment_status", "收款状态"],
-      ["delivery_status", "交付状态"],
-      ["final_price", "成交价"]
-    ],
-    dealer_leads: [
-      ["store_name", "门店"],
-      ["customer_name", "客户"],
-      ["source", "来源"],
-      ["interested_series", "意向车系"],
-      ["intention_level", "意向等级"],
-      ["status", "状态"],
-      ["followup_count", "跟进次数"]
-    ]
-  };
-  const preset = presets[resource];
-  if (preset) {
-    return preset
+/**
+ * 获取资源的展示列。优先从 ResourceConfig.displayColumns 查找，找不到走自动推断。
+ */
+function getDisplayColumns(resource: string, rows: DataRecord[] = [], resourceConfigs?: Record<string, import("../resources/types.js").ResourceConfig>): DisplayColumn[] {
+  // 优先从 domain 注册的 ResourceConfig.displayColumns 查找
+  const config = resourceConfigs?.[resource];
+  if (config?.displayColumns?.length) {
+    return config.displayColumns
       .filter(([field]) => rows.some((row) => row?.[field] !== undefined && row?.[field] !== null && row?.[field] !== ""))
       .map(([field, label]) => ({ field, label }));
   }
+
+  // 自动推断：取前 6 个字段
   return Object.keys(rows[0] ?? {})
     .slice(0, 6)
     .map((field) => ({ field, label: field }));
@@ -1220,33 +901,12 @@ function answerContainsNumber(text: string, value: unknown): boolean {
   return [raw, rounded, fixed2, localized].some((candidate) => candidate && text.includes(candidate));
 }
 
-function formatRowByResource(row: DataRecord, resource: string): string {
-  if (resource === "dealer_vehicles") {
-    const stockAge = row.stock_age_days != null ? `库龄 ${row.stock_age_days} 天` : "";
-    const warning = row.stock_warning_level ? `预警 ${row.stock_warning_level}` : "";
-    return `- ${row.store_name ?? ""} ${row.series ?? ""} ${row.model ?? ""}（${[stockAge, warning].filter(Boolean).join("，")}）`;
+function formatRowByResource(row: DataRecord, resource: string, fieldLabels?: Record<string, string>, resourceConfigs?: Record<string, import("../resources/types.js").ResourceConfig>): string {
+  // 优先使用 ResourceConfig.rowTemplate（声明式，来自 DomainPack）
+  const rowTemplate = resourceConfigs?.[resource]?.rowTemplate;
+  if (rowTemplate) {
+    return rowTemplate(row as Record<string, unknown>, fieldLabels);
   }
-  if (resource === "dealer_finance") {
-    return `- [${row.id ?? ""}] ${row.store_name ?? ""} ${row.category ?? ""} ${row.direction ?? ""} ${row.amount ?? ""}（${row.status ?? ""}，${row.occurred_at ?? ""}）`;
-  }
-  if (resource === "dealer_repair_orders") {
-    return `- [${row.id ?? ""}] ${row.store_name ?? ""} ${row.series ?? ""} ${row.order_type ?? ""}（状态 ${row.status ?? ""}，承诺完工 ${row.promised_finish_at ?? ""}）`;
-  }
-  if (resource === "dealer_warranty_claims") {
-    const diff = row.difference_amount != null ? `差额 ${row.difference_amount}` : "";
-    return `- [${row.id ?? ""}] ${row.store_name ?? ""} ${row.series ?? ""} ${row.fault_category ?? ""}（${row.claim_status ?? ""}${diff ? "，" + diff : ""}，提交 ${row.submitted_at ?? ""}）`;
-  }
-  if (resource === "dealer_sales_orders") {
-    return `- [${row.id ?? ""}] ${row.store_name ?? ""} ${row.customer_name ?? ""} ${row.series ?? ""} ${row.model ?? ""}（${row.order_status ?? ""}/${row.payment_status ?? ""}/${row.delivery_status ?? ""}，${row.final_price ?? ""}）`;
-  }
-  if (resource === "dealer_leads") {
-    return `- [${row.id ?? ""}] ${row.store_name ?? ""} ${row.customer_name ?? ""} ${row.interested_series ?? ""}（意向 ${row.intention_level ?? ""}，状态 ${row.status ?? ""}，跟进 ${row.followup_count ?? 0} 次）`;
-  }
-  if (resource === "leave_requests") {
-    return `- ${row.applicant_name ?? "未知员工"}：${row.leave_type ?? "请假"} ${row.leave_duration ?? ""}，${row.start_time ?? ""} 至 ${row.end_time ?? ""}（${row.status ?? "未知状态"}，${row.reason ?? "未填写事由"}）`;
-  }
-  if (resource === "dealer_metrics") {
-    return `- ${row.store_name ?? ""} ${labelOfField(row.category)}/${row.metric ?? ""}：${row.value ?? ""}${row.unit ?? ""}（${row.severity ?? ""}） ${row.summary ?? ""} 建议：${row.recommendation ?? ""}`;
-  }
+  // 兜底：JSON 截断
   return `- ${JSON.stringify(row).slice(0, 200)}`;
 }

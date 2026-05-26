@@ -18,6 +18,7 @@ const userId = "sales_001";
 const workspace = resolveUserWorkspace(userId);
 
 const app = createApp();
+await app.init();
 const { queryEngine, transcriptStore } = app;
 
 // ── 测试 1：非流式路径 submitMessage() ──────────────────────────────────────

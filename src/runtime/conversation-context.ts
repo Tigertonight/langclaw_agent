@@ -1,5 +1,6 @@
 import type { JsonObject } from "../types/agent-contracts.js";
 import type { AgentSession, SessionHistoryItem } from "../agent/session-store.js";
+import { inferTaskFromRegistry, getStandaloneTaskKeywords } from "../domains/runtime-registry.js";
 
 interface ConversationTask {
   intent: string | null;
@@ -145,35 +146,15 @@ function inferTaskFromText(text?: string): ConversationTask | null {
       summary: summarizeText(value)
     };
   }
-  if (/(请假记录|请假历史|休假记录|休假历史|请假数据|休假数据)/.test(value)) {
+  // 通过 registry 动态查找域特定的任务推断（包括 core 域的 business/org 和其他域如 attendance）
+  const domainTask = inferTaskFromRegistry(value);
+  if (domainTask) {
     return {
       intent: "data_query",
-      intent_code: "attendance.leave_query",
-      selected_skill: "leave-records",
-      target: "leave_requests",
-      operation: "search",
-      filters: [],
-      summary: summarizeText(value)
-    };
-  }
-  if (/(客户|订单|销售额|成交额|pipeline|报表)/i.test(value)) {
-    return {
-      intent: "data_query",
-      intent_code: "business.query",
-      selected_skill: "business-query",
-      target: null,
-      operation: "search",
-      filters: [],
-      summary: summarizeText(value)
-    };
-  }
-  if (/(组织架构|部门|员工|下属|上级|汇报关系)/.test(value)) {
-    return {
-      intent: "data_query",
-      intent_code: "org.employee_query",
-      selected_skill: "business-query",
-      target: "employees",
-      operation: "search",
+      intent_code: domainTask.intent_code,
+      selected_skill: domainTask.selected_skill,
+      target: domainTask.target,
+      operation: domainTask.operation,
       filters: [],
       summary: summarizeText(value)
     };
@@ -183,7 +164,9 @@ function inferTaskFromText(text?: string): ConversationTask | null {
 
 function analyzeCurrentMessage(message: string | undefined, lastTask: ConversationTask | null): { text: string; is_likely_continuation: boolean; continuation_reason: string } {
   const text = String(message ?? "").trim();
-  const hasStandaloneTask = /(请假|休假|客户|订单|成交额|pipeline|报表|组织架构|组织|员工|部门|负责人|主管|领导|我们店|门店|知识库|制度|政策|流程|规则|标准|手册|报销|试用期)/.test(text);
+  // 所有独立任务关键词均由 domain packs 声明，通过 registry 动态获取
+  const allKeywords = getStandaloneTaskKeywords();
+  const hasStandaloneTask = allKeywords.some((kw) => text.includes(kw));
   const hasRefinementSignal = /(全公司|整个公司|公司全员|所有|全部|最近|近\d+|近[一二两三四五六七八九十]+|本月|上月|今天|昨天|明天|这个月|三个月|半年|一年|按|只看|筛选|换成|改成|范围|时间)/.test(text);
   const isShort = text.length > 0 && text.length <= 24;
   const isLikelyContinuation = Boolean(lastTask) && !hasStandaloneTask && (hasRefinementSignal || isShort);

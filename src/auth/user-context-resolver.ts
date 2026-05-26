@@ -1,4 +1,5 @@
 import { loadJson } from "../data/load-json.js";
+import { getResourceDataPath } from "../domains/runtime-registry.js";
 import { fetchJson } from "../integrations/http.js";
 import { TokenCache } from "../integrations/token-cache.js";
 import type { JsonObject, JsonValue, UserContext } from "../types/agent-contracts.js";
@@ -185,7 +186,7 @@ export class MockWeComDirectory implements UserDirectory {
 
   async loadUsers(): Promise<WeComUserRecord[]> {
     if (!this.usersCache) {
-      this.usersCache = await loadJson<WeComUserRecord[]>("data/wecom-users.json");
+      this.usersCache = await loadJson<WeComUserRecord[]>(getResourceDataPath("employees") ?? "data/wecom-users.json");
     }
     return this.usersCache;
   }

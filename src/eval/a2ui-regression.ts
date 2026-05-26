@@ -2,7 +2,9 @@ import { createApp } from "../app.js";
 import { createA2UIModule } from "../a2ui/module.js";
 import type { A2UIEnvelope } from "../a2ui/types.js";
 
-const { agent, queryEngine, toolRegistry, userContextResolver } = createApp();
+const app = createApp();
+await app.init();
+const { agent, queryEngine, toolRegistry, userContextResolver } = app;
 const { chatController } = createA2UIModule({ queryEngine, streamAgent: agent, toolRegistry, userContextResolver });
 
 interface Case {

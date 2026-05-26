@@ -1,4 +1,5 @@
 import { createAgentStep } from "./agent-events.js";
+import { detectSlotUpdateFromRegistry } from "../domains/runtime-registry.js";
 import type { JsonObject, Route, UserContext } from "../types/agent-contracts.js";
 
 interface WorkflowSession {
@@ -57,7 +58,8 @@ export class WorkflowRunner {
     if (route.intent === activeIntent) return true;
     if (isScenarioControlMessage(message)) return true;
     if (isScenarioContinueMessage(message)) return true;
-    if (activeIntent === "leave_request" && looksLikeLeaveSlotUpdate(message)) return true;
+    // 通用 slot update 检测：如果当前活跃意图有对应的 slot update 检测器，使用它
+    if (activeIntent && looksLikeSlotUpdate(activeIntent, message)) return true;
     return false;
   }
 
@@ -93,7 +95,7 @@ export class WorkflowRunner {
 }
 
 function isScenarioControlMessage(message?: string): boolean {
-  return /^(确认|提交|确定|是的|可以|不|否|先不|不用|不要|修改|取消|退出|算了|停止|不办了|先不办了|不用了)$/i.test(String(message ?? "").trim());
+  return /^(确认|提交|确定|是的|可以|不|否|先不|不用|不要|修改|取消|退出|算了|停止|不请假了|先不请假了|不用请假了|不办了|先不办了|不用了)$/i.test(String(message ?? "").trim());
 }
 
 // 用户用自然语言表达"继续/接着/恢复"当前未完成流程，应优先续做不要清状态
@@ -104,10 +106,13 @@ function isScenarioContinueMessage(message?: string): boolean {
       || /^(继续|接着).{0,8}(那个|刚才|上次|之前|未完成|流程|表单|申请)/.test(text);
 }
 
-function looksLikeLeaveSlotUpdate(message?: string): boolean {
+/**
+ * 通用 slot update 检测。
+ * 通过 registry 的 slotUpdateDetectors 动态查找域特定的检测逻辑。
+ */
+function looksLikeSlotUpdate(activeIntent: string, message?: string): boolean {
   const text = String(message ?? "");
-  if (/(怎么|如何|制度|政策|流程|规则|标准|说明|问下|了解)/.test(text)) return false;
-  return /(年假|病假|事假|调休|前天|昨天|明天|后天|今天|上午|下午|晚上|\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[./月]\d{1,2}(?:日|号)?|半天|一天|两天|三天|四天|五天|小时|因为|原因是|事由是|家里有事|身体不舒服|去医院|去看了医生|去看医生|看医生)/.test(text);
+  return detectSlotUpdateFromRegistry(activeIntent, text);
 }
 
 function resetScenarioSessionPatch(): Partial<WorkflowSession> {

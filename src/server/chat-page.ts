@@ -1,4 +1,10 @@
+import { getRuntimeRegistry, getChatPageRenderers } from "../domains/runtime-registry.js";
+
 export function renderChatPage(): string {
+  // 从 registry 动态获取工具标签，注入到前端
+  const registryToolLabels = getRuntimeRegistry()?.allToolLabels ?? {};
+  // 从 registry 动态获取域特定前端渲染器代码片段
+  const domainRenderers = getChatPageRenderers();
   return `<!doctype html>
 <html lang="zh-CN">
 <head>
@@ -1714,7 +1720,7 @@ export function renderChatPage(): string {
     function userFacingLegacyRouteDetail(text) {
       if (/smalltalk|\\u95ee\\u5019|\\u80fd\\u529b\\u4ecb\\u7ecd/.test(text)) return "\\u8bc6\\u522b\\u4e3a\\u95ee\\u5019\\u6216\\u80fd\\u529b\\u4ecb\\u7ecd\\u7c7b\\u95ee\\u9898\\uff0c\\u53ef\\u4ee5\\u76f4\\u63a5\\u56de\\u7b54\\u3002";
       if (/data_query|\\u4e1a\\u52a1|\\u6570\\u636e/.test(text)) return "\\u8bc6\\u522b\\u4e3a\\u4e1a\\u52a1\\u6570\\u636e\\u67e5\\u8be2\\uff0c\\u6b63\\u5728\\u4e3a\\u4f60\\u67e5\\u8be2\\u3002";
-      if (/leave_request|\\u8bf7\\u5047|\\u6d41\\u7a0b/.test(text)) return "\\u8bc6\\u522b\\u4e3a\\u6d41\\u7a0b\\u529e\\u7406\\u8bf7\\u6c42\\uff0c\\u5c06\\u7ee7\\u7eed\\u6536\\u96c6\\u548c\\u786e\\u8ba4\\u4fe1\\u606f\\u3002";
+      if (/workflow|\\u6d41\\u7a0b/.test(text)) return "\\u8bc6\\u522b\\u4e3a\\u6d41\\u7a0b\\u529e\\u7406\\u8bf7\\u6c42\\uff0c\\u5c06\\u7ee7\\u7eed\\u6536\\u96c6\\u548c\\u786e\\u8ba4\\u4fe1\\u606f\\u3002";
       return "\\u5df2\\u8bc6\\u522b\\u95ee\\u9898\\u7c7b\\u578b\\uff0c\\u6b63\\u5728\\u9009\\u62e9\\u5408\\u9002\\u7684\\u5904\\u7406\\u65b9\\u5f0f\\u3002";
     }
     function userFacingFastGroundedDetail(phase, text) {
@@ -1939,23 +1945,32 @@ export function renderChatPage(): string {
       const sources = Array.isArray(surface.data?.sources) ? surface.data.sources : [];
       return renderSourceDisclosure(sources);
     }
+    /* ─── OpenUI 组件渲染器注册表 ─── */
+    const _componentRenderers = {};
+    function registerRenderer(name, fn) { _componentRenderers[name] = fn; }
+
+    /* 核心组件渲染器注册 */
+    registerRenderer("CitationDisclosure", (surface, props) => renderSourceDisclosure(props.sources || surface.data?.sources || []));
+    registerRenderer("ExpenseEstimate", (surface, props) => renderMaterialExpenseEstimate(surface, props));
+    registerRenderer("ApprovalFlow", (surface, props, view) => renderMaterialApproval(surface, props, view.actions || []));
+    registerRenderer("ApprovalCard", (surface, props, view) => renderMaterialApproval(surface, props, view.actions || []));
+    registerRenderer("TaskResumeCard", (surface, props) => renderMaterialTaskResume(surface, props));
+    /* Phase 4 Workbench Surface */
+    registerRenderer("ToolCatalogSurface", (surface, props) => renderToolCatalogSurface(surface, props));
+    registerRenderer("RiskListSurface", (surface, props) => renderRiskListSurface(surface, props));
+    registerRenderer("MetricCardsSurface", (surface, props) => renderMetricCardsSurface(surface, props));
+    registerRenderer("EvidenceSurface", (surface, props) => renderEvidenceSurface(surface, props));
+    registerRenderer("TaskTrackingSurface", (surface, props) => renderTaskTrackingSurface(surface, props));
+    registerRenderer("PendingActionSurface", (surface, props) => renderPendingActionSurface(surface, props));
+    /* 域特定组件渲染器（从 DomainPack.chatPageRenderers 动态注入） */
+    ${domainRenderers.map((r) => `registerRenderer(${JSON.stringify(r.name)}, ${r.code});`).join("\n    ")}
+
     function renderOpenUIView(surface) {
       const view = surface.data?.openui;
       if (!view?.component || view.protocol !== "openui-bridge/0.1") return null;
       const props = view.props || {};
-      if (view.component === "CitationDisclosure") return renderSourceDisclosure(props.sources || surface.data?.sources || []);
-      if (view.component === "DealerVehicleProgress") return renderMaterialVehicleProgress(surface, props);
-      if (view.component === "ExpenseEstimate") return renderMaterialExpenseEstimate(surface, props);
-      if (view.component === "LeaveRequestForm") return renderMaterialLeaveRequestForm(surface, props);
-      if (view.component === "ApprovalFlow" || view.component === "ApprovalCard") return renderMaterialApproval(surface, props, view.actions || []);
-      if (view.component === "TaskResumeCard") return renderMaterialTaskResume(surface, props);
-      /* ─── Phase 4 Workbench Surface 6 类 ─── */
-      if (view.component === "ToolCatalogSurface") return renderToolCatalogSurface(surface, props);
-      if (view.component === "RiskListSurface") return renderRiskListSurface(surface, props);
-      if (view.component === "MetricCardsSurface") return renderMetricCardsSurface(surface, props);
-      if (view.component === "EvidenceSurface") return renderEvidenceSurface(surface, props);
-      if (view.component === "TaskTrackingSurface") return renderTaskTrackingSurface(surface, props);
-      if (view.component === "PendingActionSurface") return renderPendingActionSurface(surface, props);
+      const renderer = _componentRenderers[view.component];
+      if (renderer) return renderer(surface, props, view);
       return null;
     }
     /* ──────────────────────────────────────────────────────────────
@@ -2260,46 +2275,6 @@ export function renderChatPage(): string {
       return card;
     }
 
-    function renderMaterialVehicleProgress(surface, props) {
-      const orders = Array.isArray(props.orders) ? props.orders : [];
-      const summary = props.summary || {};
-      if (!orders.length) return null;
-      const card = materialCard("车辆交付进度", "由 OpenUI Bridge 映射到本地车辆进度物料");
-      const metrics = document.createElement("div");
-      metrics.className = "material-metrics";
-      metrics.append(
-        materialMetric(summary.total ?? orders.length, "相关订单"),
-        materialMetric(summary.pending_delivery ?? "-", "待交付/整备"),
-        materialMetric(summary.unpaid ?? "-", "未结清")
-      );
-      card.appendChild(metrics);
-      const list = document.createElement("div");
-      list.className = "material-list";
-      orders.slice(0, 6).forEach((order) => {
-        const item = document.createElement("div");
-        item.className = "material-item";
-        const title = document.createElement("div");
-        title.className = "material-item-title";
-        title.textContent = clean([order.customer_name || "客户", [order.series, order.model].filter(Boolean).join(" ")].filter(Boolean).join(" · "));
-        const row = document.createElement("div");
-        row.className = "material-row";
-        row.append(
-          materialChip("订单 " + clean(order.id || "-")),
-          materialChip("交付 " + clean(order.delivery_status || order.order_status || "-")),
-          materialChip("收款 " + clean(order.payment_status || "-"))
-        );
-        const action = document.createElement("div");
-        action.className = "material-action";
-        action.textContent = "下一步：" + inferVehicleNextAction(order);
-        const timeline = renderMaterialTimeline(order.timeline || []);
-        item.append(title, row);
-        if (timeline) item.appendChild(timeline);
-        item.appendChild(action);
-        list.appendChild(item);
-      });
-      card.appendChild(list);
-      return card;
-    }
     function renderMaterialExpenseEstimate(_surface, props) {
       const card = materialCard("报销金额测算", props.status === "exceeded" ? "存在超标金额，需要补充说明或审批。" : "按当前制度标准测算。");
       const metrics = document.createElement("div");
@@ -2313,37 +2288,6 @@ export function renderChatPage(): string {
       basis.className = "material-action";
       basis.textContent = "规则依据：" + clean(props.policy_basis || "按当前制度标准测算");
       card.append(metrics, basis);
-      return card;
-    }
-    function renderMaterialLeaveRequestForm(surface, props) {
-      const slots = props.slots || {};
-      const missing = Array.isArray(props.missing_slots) ? props.missing_slots : [];
-      const card = materialCard("请假申请", props.step === "completed" ? "已提交" : props.step === "awaiting_confirmation" ? "等待确认提交" : "继续补全请假信息");
-      const progress = document.createElement("div");
-      progress.className = "material-progress";
-      const bar = document.createElement("span");
-      bar.style.width = Math.max(0, Math.min(100, Number(props.completion || 0))) + "%";
-      progress.appendChild(bar);
-      const list = document.createElement("div");
-      list.className = "material-list";
-      [
-        ["请假类型", slots.leave_type],
-        ["开始时间", slots.start_time],
-        ["结束时间", slots.end_time],
-        ["请假事由", slots.reason]
-      ].forEach(([label, value]) => {
-        const item = document.createElement("div");
-        item.className = "material-item";
-        const row = document.createElement("div");
-        row.className = "material-row";
-        row.append(materialChip(label), materialChip(value || "待补充"));
-        item.appendChild(row);
-        list.appendChild(item);
-      });
-      const status = document.createElement("div");
-      status.className = "material-action";
-      status.textContent = missing.length ? "还需补充：" + missing.join("、") : "信息已完整，可继续确认提交。";
-      card.append(progress, list, status);
       return card;
     }
     function renderMaterialApproval(surface, props, actions) {
@@ -2464,12 +2408,6 @@ export function renderChatPage(): string {
       button.textContent = label;
       button.addEventListener("click", () => dispatchA2UIAction({ event: { name, context } }, surface, button));
       return button;
-    }
-    function inferVehicleNextAction(order) {
-      if ((order.payment_status || "") !== "已结清") return "优先跟进尾款/金融放款到账";
-      if ((order.invoice_status || "") !== "已开票") return "确认开票节点";
-      if ((order.delivery_status || "") !== "已交付") return "确认整备、上牌和交付排期";
-      return "已完成交付，保持客户回访";
     }
     function renderSourceDisclosure(sources) {
       const cleanSources = (sources || []).filter(Boolean);
@@ -2758,17 +2696,18 @@ export function renderChatPage(): string {
     }
     function readableToolSummary(tool) {
       const name = tool.slice("tool.".length);
-      const map = {
+      const coreMap = {
         safe_compute: "\\u8fdb\\u884c\\u4e86\\u7cbe\\u786e\\u8ba1\\u7b97",
         retrieve_knowledge: "\\u67e5\\u9605\\u4e86\\u77e5\\u8bc6\\u5e93",
         query_business_data: "\\u67e5\\u8be2\\u4e86\\u4e1a\\u52a1\\u6570\\u636e",
         list_my_customers: "\\u67e5\\u8be2\\u4e86\\u5ba2\\u6237\\u5217\\u8868",
         query_customer: "\\u67e5\\u8be2\\u4e86\\u5ba2\\u6237\\u4fe1\\u606f",
         query_order: "\\u67e5\\u8be2\\u4e86\\u8ba2\\u5355\\u4fe1\\u606f",
-        query_sales_report: "\\u67e5\\u8be2\\u4e86\\u9500\\u552e\\u62a5\\u8868",
-        submit_leave_request: "\\u63d0\\u4ea4\\u4e86\\u8bf7\\u5047\\u7533\\u8bf7"
+        query_sales_report: "\\u67e5\\u8be2\\u4e86\\u9500\\u552e\\u62a5\\u8868"
       };
-      return map[name] || "\\u4f7f\\u7528\\u4e86\\u76f8\\u5173\\u80fd\\u529b";
+      // 域注册的工具标签（从 registry 动态注入）
+      const domainMap = ${JSON.stringify(Object.fromEntries(Object.entries(registryToolLabels).map(([k, v]) => [k, v])))};
+      return coreMap[name] || domainMap[name] || "\\u4f7f\\u7528\\u4e86\\u76f8\\u5173\\u80fd\\u529b";
     }
     function appendText(id, text) {
       const msg = getMsg(id);

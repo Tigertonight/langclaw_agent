@@ -52,13 +52,9 @@ const AGENTIC: HandlerManifest = {
   supports_streaming: true,
   uses_tool_loop: true,
   accepts_intent_codes: [],
+  // 核心工具引用；域特定工具通过 DomainPack.tools 动态注册
   known_tool_refs: [
     "query_business_data",
-    "list_my_customers",
-    "query_customer",
-    "query_order",
-    "query_sales_report",
-    "submit_leave_request"
   ],
   capabilities: {
     task_continuity: true,
@@ -122,8 +118,9 @@ const WORKFLOW: HandlerManifest = {
   description: "结构化多步流程，比如请假申请、表单填写。状态机驱动，可中断恢复。",
   supports_streaming: true,
   uses_tool_loop: false,
-  accepts_intent_codes: ["workflow.leave_request"],
-  known_tool_refs: ["submit_leave_request"],
+  // 域特定 workflow intent codes 通过 DomainPack.register() 动态注册到 ScenarioRouter
+  accepts_intent_codes: [],
+  known_tool_refs: [],
   capabilities: {
     task_continuity: true,
     knowledge_grounding: false,

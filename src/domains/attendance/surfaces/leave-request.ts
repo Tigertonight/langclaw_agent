@@ -1,10 +1,15 @@
-import { businessSurface } from "../openui-bridge.js";
-import { card, list, readArray, readArrayLike, readPath, text, toRecord } from "../builders/components.js";
-import { LeaveScenarioSchema } from "./schemas.js";
-import { approvalActions } from "./approval.js";
-import type { SurfacePlugin } from "./types.js";
-import type { A2UIComponentInstance } from "../types.js";
-import type { JsonObject } from "../../types/agent-contracts.js";
+/**
+ * Attendance 域 leave-request Surface 插件。
+ * 从 src/a2ui/plugins/leave-request.ts 迁移而来。
+ */
+
+import { businessSurface } from "../../../a2ui/openui-bridge.js";
+import { card, list, readArray, readArrayLike, readPath, text, toRecord } from "../../../a2ui/builders/components.js";
+import { LeaveScenarioSchema } from "../schemas.js";
+import { approvalActions } from "../../../a2ui/plugins/approval.js";
+import type { SurfacePlugin } from "../../../a2ui/plugins/types.js";
+import type { A2UIComponentInstance } from "../../../a2ui/types.js";
+import type { JsonObject } from "../../../types/agent-contracts.js";
 
 export const leaveRequestPlugin: SurfacePlugin<JsonObject> = {
   kind: "leave_request_form",
@@ -46,18 +51,13 @@ function extractLeaveRequestForm(record: Record<string, unknown>): JsonObject | 
   const scenarioParsed = LeaveScenarioSchema.safeParse(scenarioRaw);
   const scenario = scenarioParsed.success ? scenarioParsed.data : null;
 
-  // 触发条件：scenario 显式标记 leave_request，或 message 同时含"动作词 + 假别词"。
-  // 单独的"年假/病假"等关键词在知识检索语境（如"年假制度"）中是 false positive，必须配上"请/休/申请/提交/取消/续/调/帮我请"等动作词。
-  // 知识检索意图（"制度/政策/规则/标准/流程/手册/怎么算"）即使含"年假/病假"也不触发。
   const isKnowledgeIntent = /(制度|政策|规则|手册|标准|流程|怎么算|是什么|什么意思|了解一下|问下|介绍下)/.test(message);
   const hasLeaveActionVerb = /(请假|休假|申请假|提交假|取消假|续假|销假|要请|想请|想休|要休|帮我请|帮.{0,2}请|帮我申请|想申请|要申请|请[^?？\n]{0,4}假|休[^?？\n]{0,4}假|调休)/.test(message);
   const hasLeaveContext = /(请假|休假|年假|病假|事假|调休|销假)/.test(`${message}\n${answer}`);
   const isLeaveScenario = scenario?.scenario === "leave_request" || (!isKnowledgeIntent && hasLeaveActionVerb && hasLeaveContext);
   if (!isLeaveScenario) return null;
 
-  // 1) 优先用结构化 slots
   const structuredSlots = scenario?.slots ?? {};
-  // 2) 回归式补全：scenario 没给 → 文本抽
   const textualSlots = {
     ...extractLeaveSlotsFromText(answer),
     ...extractLeaveSlotsFromText(message)

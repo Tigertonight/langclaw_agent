@@ -1,5 +1,6 @@
 import type { JsonObject, JsonValue, SkillDefinition, ToolPlan, ToolResult } from "../types/agent-contracts.js";
 import type { KnowledgeSearchResult } from "../rag/local-knowledge-base.js";
+import { readableResourceNameFromRegistry, readableToolNameFromRegistry, readableFactNameFromRegistry } from "../domains/runtime-registry.js";
 
 export interface AgentStep {
   phase: string;
@@ -322,15 +323,7 @@ export function splitForStreaming(text: unknown): string[] {
 }
 
 function readableToolName(name: string): string {
-  const names: Record<string, string> = {
-    query_business_data: "业务数据查询",
-    list_my_customers: "客户列表查询",
-    query_customer: "客户详情查询",
-    query_order: "订单查询",
-    query_sales_report: "销售报表查询",
-    submit_leave_request: "请假申请提交"
-  };
-  return names[name] ?? name;
+  return readableToolNameFromRegistry(name, name);
 }
 
 function summarizeToolResult(result: ToolResult): string {
@@ -338,51 +331,31 @@ function summarizeToolResult(result: ToolResult): string {
     const data = result.data ?? {};
     const metrics = Array.isArray(data.metrics) ? data.metrics : [];
     if (data.operation === "aggregate") return `得到 ${metrics.length} 个统计指标，匹配 ${data.total ?? 0} 条记录`;
-    return `返回 ${data.rows?.length ?? 0} 条${readableResourceName(data.resource)}`;
+    return `返回 ${data.rows?.length ?? 0} 条${readableResourceNameFromRegistry(data.resource, "记录")}`;
   }
-  if (result.tool === "list_my_customers") {
-    const customers = Array.isArray(result.data?.customers) ? result.data.customers : [];
-    return `返回 ${customers.length} 个客户`;
+  // 通用：工具结果中包含列表字段时做计数摘要
+  if (result.data && typeof result.data === "object") {
+    const listKey = Object.keys(result.data).find((k) => Array.isArray((result.data as Record<string, unknown>)[k]));
+    if (listKey) {
+      const list = (result.data as Record<string, unknown[]>)[listKey];
+      const toolLabel = readableToolNameFromRegistry(result.tool);
+      return `返回 ${list.length} 条${toolLabel !== result.tool ? toolLabel : "记录"}`;
+    }
+    // 单条数据结果
+    const name = (result.data as Record<string, unknown>).name ?? (result.data as Record<string, unknown>).id;
+    if (name) {
+      const toolLabel = readableToolNameFromRegistry(result.tool);
+      return `找到${toolLabel !== result.tool ? toolLabel : "记录"}「${name}」`;
+    }
   }
-  if (result.tool === "query_customer") return `找到客户「${result.data?.name ?? "未知"}」`;
-  if (result.tool === "query_order") return `找到订单「${result.data?.id ?? "未知"}」`;
-  if (result.tool === "query_sales_report") return `找到 ${result.data?.department ?? "相关部门"} 的销售报表`;
-  if (result.tool === "submit_leave_request") return "业务系统已返回提交结果";
+  // 通用工具标签
+  const toolLabel = readableToolNameFromRegistry(result.tool);
+  if (toolLabel !== result.tool) return `${toolLabel}已返回结果`;
   return "已获得工具返回结果";
 }
 
-function readableResourceName(resource: unknown): string {
-  if (resource === "customers") return "客户";
-  if (resource === "orders") return "订单";
-  if (resource === "sales_reports") return "销售报表";
-  if (resource === "dealer_metrics") return "经营指标";
-  if (resource === "dealer_vehicles") return "整车库存";
-  if (resource === "dealer_leads") return "销售线索";
-  if (resource === "dealer_sales_orders") return "销售订单";
-  if (resource === "dealer_finance") return "财务流水";
-  if (resource === "dealer_repair_orders") return "售后工单";
-  if (resource === "dealer_warranty_claims") return "三包索赔";
-  return "记录";
-}
-
 function readableFactName(name: string): string {
-  const names: Record<string, string> = {
-    direct_leader: "直属上级",
-    direct_reports: "直属下级",
-    org_profile: "组织/岗位信息",
-    customer_scope: "客户范围",
-    aggregate_metric: "统计指标",
-    business_status: "业务状态",
-    knowledge_context: "知识库依据",
-    dealer_metrics: "经营指标",
-    dealer_inventory_detail: "库存明细",
-    dealer_lead_detail: "线索明细",
-    dealer_order_detail: "订单明细",
-    dealer_finance_detail: "财务明细",
-    dealer_after_sales_detail: "售后明细",
-    dealer_warranty_detail: "三包索赔明细"
-  };
-  return names[name] ?? name;
+  return readableFactNameFromRegistry(name);
 }
 
 function sanitizeObservation(result: ToolResult | undefined): JsonObject {

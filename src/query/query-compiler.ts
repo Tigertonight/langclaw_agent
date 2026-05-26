@@ -1,5 +1,6 @@
 import { getDepartmentTreeIds, resolveEntities } from "./entity-resolver.js";
-import { QUERY_OPERATIONS, RESOURCE_SCHEMAS, type ResourceSchema } from "./schema-catalog.js";
+import { QUERY_OPERATIONS, getResourceSchema, type ResourceSchema } from "./schema-catalog.js";
+import { getRuntimeRegistry } from "../domains/runtime-registry.js";
 import type {
   BusinessQueryArgs,
   CompiledBusinessQuery,
@@ -14,7 +15,6 @@ interface CompileBusinessQueryInput {
   question?: string;
 }
 
-const resourceSchemas = RESOURCE_SCHEMAS;
 const queryOperations = QUERY_OPERATIONS;
 
 export async function compileBusinessQueryIR(
@@ -80,7 +80,7 @@ async function normalizeIRForCompilation(
 }
 
 async function compileArgs(ir: QueryIR): Promise<BusinessQueryArgs> {
-  const schema = resourceSchemas[ir.target];
+  const schema = getResourceSchema(ir.target);
   if (!schema) {
     throw new Error(`Unknown query target: ${ir.target}`);
   }
@@ -128,13 +128,8 @@ async function compileFilters(ir: QueryIR): Promise<QueryFilter[]> {
 
 function normalizeMetrics(ir: QueryIR, schema: ResourceSchema): QueryMetric[] {
   if (ir.metrics?.length) return ir.metrics;
-  if (schema.entity === "leave_request") {
-    return [{ type: "count", field: "id", as: "leave_request_count" }];
-  }
-  if (schema.entity === "dealer_metric") {
-    return [{ type: "count", field: "id", as: "dealer_metric_count" }];
-  }
-  const field = schema.entity === "employee" ? "userid" : "id";
+  // 通用逻辑：优先使用 "id" 作为 count 字段，employee 使用 "userid"
+  const field = schema.fields.includes("id") ? "id" : (schema.fields[0] ?? "id");
   return [{ type: "count", field, as: `${schema.entity}_count` }];
 }
 
@@ -144,8 +139,10 @@ function hasDepartmentFilter(filters: QueryFilter[] = []): boolean {
 
 function defaultLimitForTarget(target: string, operation: string): number {
   if (operation === queryOperations.AGGREGATE) return 20;
-  if (target === "dealer_metrics") return 50;
-  if (target === "employees" || target === "departments") return 100;
+  // 优先从 registry 中注册的 ResourceConfig.defaultLimit 读取
+  const registry = getRuntimeRegistry();
+  const resourceConfig = registry?.allResources[target];
+  if (resourceConfig?.defaultLimit) return resourceConfig.defaultLimit;
   return 20;
 }
 

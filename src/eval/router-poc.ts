@@ -2,6 +2,7 @@ process.env.WECOM_MODE ??= "mock";
 
 const { createApp } = await import("../app.js");
 const app = createApp();
+await app.init();
 const { agent } = app;
 
 // 选用 store_gm_001（顾明远，role=store_general_manager），可读 dealer 资源
