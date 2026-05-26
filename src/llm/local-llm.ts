@@ -21,12 +21,12 @@ function isDangerousQuestion(question: string): boolean {
 
 /** 动态获取 data_query 关键词：全部从 registry 获取 */
 function getDataKeywords(): string[] {
-  return getClassificationKeywords()["data_query"] ?? [];
+  return getClassificationKeywords()[INTENTS.DATA_QUERY] ?? [];
 }
 
 /** 动态获取 knowledge_qa 关键词：全部从 registry 获取 */
 function getKBKeywords(): string[] {
-  return getClassificationKeywords()["knowledge_qa"] ?? [];
+  return getClassificationKeywords()[INTENTS.KNOWLEDGE_QA] ?? [];
 }
 
 interface ConversationContext {
@@ -389,7 +389,7 @@ function matchWorkflowIntent(question: string): string | null {
   const keywords = getClassificationKeywords();
   const patterns = getClassificationPatterns();
   for (const intent of Object.keys(intents)) {
-    if (intent === "data_query" || intent === "knowledge_qa") continue;
+    if (intent === INTENTS.DATA_QUERY || intent === INTENTS.KNOWLEDGE_QA) continue;
     const hits = keywords[intent] ?? [];
     const regs = patterns[intent] ?? [];
     if (hits.some((word) => question.includes(word))) return intent;

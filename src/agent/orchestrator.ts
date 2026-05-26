@@ -520,7 +520,7 @@ export class SimpleWorkflowOrchestrator {
         session
       });
       const legacyRoute = {
-        intent: "data_query",
+        intent: INTENTS.DATA_QUERY,
         confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
         reason: route.reasoning ?? "Intent Router → controlled_execution/intent_query",
         intent_code: route.intent_code,
@@ -598,7 +598,7 @@ export class SimpleWorkflowOrchestrator {
         session.last_route = { intent_code: route.intent_code, params: route.params ?? {}, ts: new Date().toISOString() };
       }
       const legacyRoute = {
-        intent: "smalltalk",
+        intent: INTENTS.SMALLTALK,
         confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
         reason: route.reasoning ?? "Intent Router → controlled_execution/chitchat",
         intent_code: route.intent_code,
@@ -811,7 +811,7 @@ export class SimpleWorkflowOrchestrator {
     });
     // 保留 legacy intent 字符串，兼容下游历史字段。
     const legacyRoute = {
-      intent: "data_query",
+      intent: INTENTS.DATA_QUERY,
       confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
       reason: route.reasoning ?? "Intent Router → intent_query",
       intent_code: route.intent_code,
@@ -864,7 +864,7 @@ export class SimpleWorkflowOrchestrator {
       // 寒暄不更新 last_query_route，下一轮"那华南呢"还能继承上次的查询
     }
     const legacyRoute = {
-      intent: "smalltalk",
+      intent: INTENTS.SMALLTALK,
       confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
       reason: route.reasoning ?? "Intent Router → chitchat",
       intent_code: route.intent_code,
@@ -907,7 +907,7 @@ export class SimpleWorkflowOrchestrator {
       session.last_route = { intent_code: route.intent_code, params: route.params ?? {}, ts: new Date().toISOString() };
     }
     const legacyRoute = {
-      intent: "data_query",
+      intent: INTENTS.DATA_QUERY,
       confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
       reason: route.reasoning ?? "Intent Router → agentic",
       intent_code: route.intent_code,
@@ -971,7 +971,7 @@ export class SimpleWorkflowOrchestrator {
       session.last_route = { intent_code: route.intent_code, params: route.params ?? {}, ts: new Date().toISOString() };
     }
     const legacyRoute = {
-      intent: "data_query",
+      intent: INTENTS.DATA_QUERY,
       confidence: route.confidence === "high" ? 0.95 : route.confidence === "medium" ? 0.85 : 0.6,
       reason: route.reasoning ?? "Intent Router → agentic",
       intent_code: route.intent_code,

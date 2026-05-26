@@ -1,6 +1,7 @@
 import type { JsonObject } from "../types/agent-contracts.js";
 import type { AgentSession, SessionHistoryItem } from "../agent/session-store.js";
 import { inferTaskFromRegistry, getStandaloneTaskKeywords, getToolCategoryFromRegistry } from "../domains/runtime-registry.js";
+import { INTENTS } from "../agent/ports.js";
 
 interface ConversationTask {
   intent: string | null;
@@ -150,7 +151,7 @@ function inferTaskFromText(text?: string): ConversationTask | null {
   const domainTask = inferTaskFromRegistry(value);
   if (domainTask) {
     return {
-      intent: "data_query",
+      intent: INTENTS.DATA_QUERY,
       intent_code: domainTask.intent_code,
       selected_skill: domainTask.selected_skill,
       target: domainTask.target,

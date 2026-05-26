@@ -1,6 +1,7 @@
 import type { JsonObject, ToolCall, ToolDefinition, ToolExecutionContext, ToolResult, UserContext } from "../types/agent-contracts.js";
 import type { KnowledgeSearchOptions, KnowledgeSearchResult } from "../rag/local-knowledge-base.js";
 import { getRuntimeRegistry } from "../domains/runtime-registry.js";
+import { INTENTS } from "../agent/ports.js";
 
 interface PrimitiveDefinition {
   name: string;
@@ -224,7 +225,7 @@ function buildArtifact(args: JsonObject = {}): JsonObject {
 
 function isPrimitiveAvailable(primitive: PrimitiveDefinition, context: ToolExecutionContext): boolean {
   const route = isJsonObject(context.route) ? context.route : {};
-  if (primitive.name === "act" && route.intent === "knowledge_qa") return false;
+  if (primitive.name === "act" && route.intent === INTENTS.KNOWLEDGE_QA) return false;
   return true;
 }
 

@@ -1,4 +1,5 @@
 import { readableResourceNameFromRegistry, getFactKeyFromRegistry, isAnalysisIntentCode, inferEvidenceFactsFromRegistry, extractFactsForResource, isScopedToCurrentUser, getToolCategoryFromRegistry } from "../domains/runtime-registry.js";
+import { INTENTS } from "../agent/ports.js";
 import type { JsonObject, Route, SkillDefinition, ToolCall, ToolPlan, ToolResult, UserContext } from "../types/agent-contracts.js";
 import type { KnowledgeSearchResult } from "../rag/local-knowledge-base.js";
 
@@ -208,9 +209,9 @@ function summarizeEnterpriseContext(context?: unknown): JsonObject | null {
 
 function inferGoal(message: unknown, route: Partial<Route>): string {
   const text = String(message ?? "").trim();
-  if (route.intent === "data_query") return `查询企业数据：${text}`;
-  if (route.intent === "mixed") return `结合企业数据和知识库回答：${text}`;
-  if (route.intent === "knowledge_qa") return `查询知识库：${text}`;
+  if (route.intent === INTENTS.DATA_QUERY) return `查询企业数据：${text}`;
+  if (route.intent === INTENTS.MIXED) return `结合企业数据和知识库回答：${text}`;
+  if (route.intent === INTENTS.KNOWLEDGE_QA) return `查询知识库：${text}`;
   return text || "处理用户请求";
 }
 
@@ -228,7 +229,7 @@ function inferRequiredFacts(message: unknown, route: Partial<Route>): string[] {
   const text = String(message ?? "");
   // 通过 registry 动态推断所需的 evidence facts（各域在 evidenceInferenceFns 中声明）
   const facts = inferEvidenceFactsFromRegistry(text, route);
-  if (["knowledge_qa", "mixed"].includes(route.intent)) facts.push("knowledge_context");
+  if (route.intent === INTENTS.KNOWLEDGE_QA || route.intent === INTENTS.MIXED) facts.push("knowledge_context");
   return [...new Set(facts)];
 }
 
