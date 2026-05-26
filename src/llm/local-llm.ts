@@ -2,7 +2,7 @@ import { loadJson } from "../data/load-json.js";
 import { composeReportFromRegistry } from "../domains/runtime-registry.js";
 import { inferIntentCode } from "../agent/intent-codes.js";
 import { INTENTS } from "../agent/ports.js";
-import { readableResourceNameFromRegistry, getRuntimeRegistry, isDomainDataQueryIntent, isAnyDomainDataQuestion, inferAnalysisIntentFromRegistry, getClassificationKeywords, getClassificationPatterns, getResourceDataPath, getLocalPolicyQuestionPatterns, getLocalPlannerHeuristics, getKnowledgeRetrievalKeywords } from "../domains/runtime-registry.js";
+import { readableResourceNameFromRegistry, getRuntimeRegistry, isDomainDataQueryIntent, isAnyDomainDataQuestion, inferAnalysisIntentFromRegistry, getClassificationKeywords, getClassificationPatterns, getResourceDataPath, getLocalPolicyQuestionPatterns, getLocalPlannerHeuristics, getKnowledgeRetrievalKeywords, getDangerousQuestionKeywords, getKnowledgeChunkHeadingHints, getImportantSentenceKeywords } from "../domains/runtime-registry.js";
 import { compileBusinessQueryIR } from "../query/query-compiler.js";
 import {
   isBusinessDataQuestion,
@@ -11,8 +11,14 @@ import {
 } from "../query/query-parser.js";
 import type { JsonObject, QueryIR, Route, ToolCall, ToolResult, UserContext } from "../types/agent-contracts.js";
 
-// 安全关键词（域无关）
-const DANGEROUS_KEYWORDS = ["忽略", "绕过", "导出所有", "全部客户", "所有客户", "工资", "身份证", "银行卡"];
+// 引擎内置的通用注入/越权防御词；业务专属词由各域通过 dangerousQuestionKeywords 贡献。
+const ENGINE_DANGEROUS_KEYWORDS = ["忽略", "绕过", "导出所有"];
+
+function isDangerousQuestion(question: string): boolean {
+  const text = String(question ?? "");
+  if (ENGINE_DANGEROUS_KEYWORDS.some((word) => text.includes(word))) return true;
+  return getDangerousQuestionKeywords().some((word) => text.includes(word));
+}
 
 /** 动态获取 data_query 关键词：全部从 registry 获取 */
 function getDataKeywords(): string[] {
@@ -99,7 +105,7 @@ export class LocalLLMClient {
     const hasCompute = isComputeQuestion(question);
     const hasLeave = isLeaveIntent(question);
     const asksLeaveRecords = isAnyDomainDataQuestion(question);
-    const risky = DANGEROUS_KEYWORDS.some((word) => question.includes(word));
+    const risky = isDangerousQuestion(question);
     const hasOrgData = await isOrgDataQuestion(question);
     const policyMatch = matchLocalPolicyQuestion(question);
 
@@ -516,29 +522,18 @@ function summarizeChunk(text: string, question: string): string {
     return `${sentences.slice(0, 3).join("。")}。`;
   }
 
+  const keywords = getImportantSentenceKeywords();
   const important = sentences.find((sentence) => {
-    return ["报销", "试用期", "年假", "审批", "权限", "订单", "客户", "敏感"].some(
-      (word) => question.includes(word) && sentence.includes(word)
-    );
+    return keywords.some((word) => question.includes(word) && sentence.includes(word));
   });
   return important ? `${important}。` : `${sentences.slice(0, 2).join("。")}。`;
 }
 
 function chooseAnswerChunk(docs: Array<{ text?: string; metadata?: { heading?: string } }>, question: string): { text?: string; metadata?: { heading?: string } } | undefined {
-  const headingHints: Array<[string, string[]]> = [
-    ["标准", ["标准", "住宿标准", "交通标准"]],
-    ["时限", ["时限", "提交时限"]],
-    ["审批", ["审批", "合同审批"]],
-    ["试用期", ["试用期"]],
-    ["年假", ["年假"]],
-    ["权限", ["权限", "最小权限", "客户数据访问"]]
-  ];
-
-  for (const [keyword, headings] of headingHints) {
-    if (!question.includes(keyword)) continue;
-    const matched = docs.find((doc) => headings.some((heading) => String(doc.metadata?.heading ?? "").includes(heading)));
+  for (const hint of getKnowledgeChunkHeadingHints()) {
+    if (!question.includes(hint.questionKeyword)) continue;
+    const matched = docs.find((doc) => hint.matchHeadings.some((heading) => String(doc.metadata?.heading ?? "").includes(heading)));
     if (matched) return matched;
   }
-
   return docs[0];
 }

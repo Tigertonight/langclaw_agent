@@ -11,7 +11,7 @@
  */
 
 import type { ResourceConfig } from "../resources/types.js";
-import type { QueryResourceSchema, DomainQueryAdapter, PermissionRuleFn, ToolPermissionPolicy, CronTemplateDefinition, CatalogDomainDefinition, AgenticFallbackDefinition, ReportComposerDefinition, EvidenceInferenceDefinition, SkillMappingDefinition, IntentCodeInferenceFn, CorrectionDeltaRule, LocalPolicyQuestionPattern, LocalPlannerHeuristic } from "./types.js";
+import type { QueryResourceSchema, DomainQueryAdapter, PermissionRuleFn, ToolPermissionPolicy, CronTemplateDefinition, CatalogDomainDefinition, AgenticFallbackDefinition, ReportComposerDefinition, EvidenceInferenceDefinition, SkillMappingDefinition, IntentCodeInferenceFn, CorrectionDeltaRule, LocalPolicyQuestionPattern, LocalPlannerHeuristic, KnowledgeChunkHeadingHint } from "./types.js";
 import type { Route, ToolResult } from "../types/agent-contracts.js";
 
 /**
@@ -96,6 +96,12 @@ export interface RuntimeRegistryAccessor {
   readonly allKnowledgeRetrievalKeywords: string[];
   /** 域特定的 agentic 问题识别正则 */
   readonly allAgenticQuestionPatterns: RegExp[];
+  /** 域特定的危险问题关键词 */
+  readonly allDangerousQuestionKeywords: string[];
+  /** 域特定的知识库 chunk heading 启发式 */
+  readonly allKnowledgeChunkHeadingHints: KnowledgeChunkHeadingHint[];
+  /** 域特定的重要句关键词 */
+  readonly allImportantSentenceKeywords: string[];
 }
 
 let _accessor: RuntimeRegistryAccessor | null = null;
@@ -622,4 +628,28 @@ export function getToolPermissionPolicies(): ToolPermissionPolicy[] {
  */
 export function getAgenticQuestionPatterns(): RegExp[] {
   return _accessor?.allAgenticQuestionPatterns ?? [];
+}
+
+/**
+ * 获取所有域注册的危险关键词。
+ * 用于 local-llm.ts 检测用户问题是否触及敏感数据访问意图。
+ */
+export function getDangerousQuestionKeywords(): string[] {
+  return _accessor?.allDangerousQuestionKeywords ?? [];
+}
+
+/**
+ * 获取所有域注册的知识库 chunk heading 启发式。
+ * 用于 local-llm.ts chooseAnswerChunk 选择最相关的 chunk。
+ */
+export function getKnowledgeChunkHeadingHints(): KnowledgeChunkHeadingHint[] {
+  return _accessor?.allKnowledgeChunkHeadingHints ?? [];
+}
+
+/**
+ * 获取所有域注册的重要句关键词。
+ * 用于 local-llm.ts summarizeChunk 选择 chunk 内的关键句。
+ */
+export function getImportantSentenceKeywords(): string[] {
+  return _accessor?.allImportantSentenceKeywords ?? [];
 }

@@ -75,6 +75,8 @@ import type {
 import type {
   LocalPolicyQuestionPattern,
   LocalPlannerHeuristic,
+  KnowledgeChunkHeadingHint,
+  ImportantSentenceKeyword,
 } from "./llm-contract.js";
 
 import type {
@@ -458,6 +460,29 @@ export interface DomainPack {
    * 业务侧的"晨会/经营计划/行动项/红黄绿"等管理动作词应通过此字段在域内声明。
    */
   agenticQuestionPatterns?: RegExp[];
+
+  /**
+   * 危险关键词列表（域特定的数据外泄/敏感意图标记）。
+   * 用于 local-llm.ts 检测用户问题是否包含本域的敏感数据访问意图，
+   * 命中后会降低意图识别置信度并改走 unsupported 分支。
+   *
+   * 引擎内置通用注入防御词（"忽略"、"绕过"），业务专属词（"全部客户"、"工资"、
+   * "身份证"、"银行卡"等）由各域贡献。多个域的关键词会合并去重。
+   */
+  dangerousQuestionKeywords?: string[];
+
+  /**
+   * 知识库 chunk 选择启发式：heading 命中规则。
+   * 用于 local-llm.ts chooseAnswerChunk 替代硬编码的 headingHints 表。
+   */
+  knowledgeChunkHeadingHints?: KnowledgeChunkHeadingHint[];
+
+  /**
+   * 知识库 chunk 重要句关键词。
+   * 用于 local-llm.ts summarizeChunk 替代硬编码的关键词数组。
+   * 多个域的关键词会合并去重。
+   */
+  importantSentenceKeywords?: ImportantSentenceKeyword[];
 
   // ── 生命周期钩子 ────────────────────────────────────────────────────────
 

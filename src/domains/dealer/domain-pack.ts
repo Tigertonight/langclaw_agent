@@ -489,6 +489,12 @@ export const dealerPack: DomainPack = {
     /(经营复盘|晨会|看板|仪表盘|红黄绿|健康度|监控|计划|行动项|管理动作|下周|推进|落地|整改)/,
   ],
 
+  // ── 本地 LLM 启发式：销售相关的敏感数据外泄词 ──
+  dangerousQuestionKeywords: ["全部客户", "所有客户"],
+
+  // ── 本地 LLM 启发式：知识库重要句关键词（销售类） ──
+  importantSentenceKeywords: ["订单", "客户"],
+
   localPlannerHeuristics: [
     {
       id: "dealer.personal_customer_overview",

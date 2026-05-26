@@ -56,3 +56,33 @@ export interface LocalPlannerHeuristic {
     reason?: string;
   };
 }
+
+// ─── Knowledge Chunk Heading Hint ────────────────────────────────────────────
+
+/**
+ * 知识库 chunk 选择启发式。
+ *
+ * 替代 local-llm.ts chooseAnswerChunk 中硬编码的 headingHints 表。
+ * 当用户问题包含 questionKeyword 时，优先选择 metadata.heading 命中
+ * matchHeadings 任一字符串的 chunk。
+ *
+ * 示例：dealer 域声明 { questionKeyword: "权限", matchHeadings: ["权限", "客户数据访问"] }。
+ */
+export interface KnowledgeChunkHeadingHint {
+  /** 用户问题中的触发关键词 */
+  questionKeyword: string;
+  /** 命中时优先选择的 heading 字符串列表（任一匹配即可） */
+  matchHeadings: string[];
+}
+
+// ─── Important Sentence Keyword ──────────────────────────────────────────────
+
+/**
+ * 知识库 chunk 重要句提取启发式。
+ *
+ * 替代 local-llm.ts summarizeChunk 中硬编码的关键词数组。
+ * 当用户问题和某个句子同时包含此关键词时，该句子被视为重要句优先返回。
+ *
+ * 示例：attendance 域贡献 ["报销", "试用期", "年假", "审批"]。
+ */
+export type ImportantSentenceKeyword = string;

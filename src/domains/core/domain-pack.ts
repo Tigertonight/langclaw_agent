@@ -237,4 +237,15 @@ export const corePack: DomainPack = {
     "制度", "政策", "流程", "标准", "手册",
     "权限", "审批", "规则", "依据", "资料", "文档",
   ],
+
+  // ── 本地 LLM 启发式：通用敏感信息词（PII / 跨域权限词） ──
+  dangerousQuestionKeywords: ["工资", "身份证", "银行卡"],
+
+  // ── 本地 LLM 启发式：知识库重要句关键词（通用权限/敏感类） ──
+  importantSentenceKeywords: ["权限", "敏感"],
+
+  // ── 本地 LLM 启发式：知识库 chunk heading 命中规则（通用权限类） ──
+  knowledgeChunkHeadingHints: [
+    { questionKeyword: "权限", matchHeadings: ["权限", "最小权限", "客户数据访问"] },
+  ],
 };

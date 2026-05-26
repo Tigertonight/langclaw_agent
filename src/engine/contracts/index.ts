@@ -114,6 +114,8 @@ export type {
 export type {
   LocalPolicyQuestionPattern,
   LocalPlannerHeuristic,
+  KnowledgeChunkHeadingHint,
+  ImportantSentenceKeyword,
 } from "./llm-contract.js";
 
 // ── Lifecycle Contract (stable) ──────────────────────────────────────────────

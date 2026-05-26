@@ -159,6 +159,12 @@ export class DomainRegistry {
   readonly allKnowledgeRetrievalKeywords: string[] = [];
   /** 所有 domain 注册的 agentic question patterns */
   readonly allAgenticQuestionPatterns: RegExp[] = [];
+  /** 所有 domain 注册的危险关键词（去重） */
+  readonly allDangerousQuestionKeywords: string[] = [];
+  /** 所有 domain 注册的知识库 chunk heading 启发式 */
+  readonly allKnowledgeChunkHeadingHints: import("./types.js").KnowledgeChunkHeadingHint[] = [];
+  /** 所有 domain 注册的重要句关键词（去重） */
+  readonly allImportantSentenceKeywords: string[] = [];
   /** 已注册 DomainPack 的元数据快照，用于动态加载和冲突诊断。 */
   readonly domainMetadata: Array<{ id: string; name: string; version: string; conflictPolicy: string; order: number }> = [];
 
@@ -474,6 +480,9 @@ export class DomainRegistry {
     this.allLocalPlannerHeuristics.length = 0;
     this.allKnowledgeRetrievalKeywords.length = 0;
     this.allAgenticQuestionPatterns.length = 0;
+    this.allDangerousQuestionKeywords.length = 0;
+    this.allKnowledgeChunkHeadingHints.length = 0;
+    this.allImportantSentenceKeywords.length = 0;
     this.domainMetadata.length = 0;
     // 清空 object 类型的收集器
     for (const key of Object.keys(this.allExtractors)) delete this.allExtractors[key];
@@ -803,6 +812,23 @@ export class DomainRegistry {
       }
       if (pack.agenticQuestionPatterns) {
         this.allAgenticQuestionPatterns.push(...pack.agenticQuestionPatterns);
+      }
+      if (pack.dangerousQuestionKeywords) {
+        for (const word of pack.dangerousQuestionKeywords) {
+          if (!this.allDangerousQuestionKeywords.includes(word)) {
+            this.allDangerousQuestionKeywords.push(word);
+          }
+        }
+      }
+      if (pack.knowledgeChunkHeadingHints) {
+        this.allKnowledgeChunkHeadingHints.push(...pack.knowledgeChunkHeadingHints);
+      }
+      if (pack.importantSentenceKeywords) {
+        for (const word of pack.importantSentenceKeywords) {
+          if (!this.allImportantSentenceKeywords.includes(word)) {
+            this.allImportantSentenceKeywords.push(word);
+          }
+        }
       }
     }
 

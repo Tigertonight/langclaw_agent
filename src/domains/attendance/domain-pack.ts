@@ -173,6 +173,18 @@ export const attendancePack: DomainPack = {
   // ── 本地 LLM 启发式：MIXED 意图下触发知识检索的考勤相关关键词 ──
   knowledgeRetrievalKeywords: ["报销", "试用期", "年假", "病假"],
 
+  // ── 本地 LLM 启发式：知识库重要句关键词（考勤/HR 类） ──
+  importantSentenceKeywords: ["报销", "试用期", "年假", "审批"],
+
+  // ── 本地 LLM 启发式：知识库 chunk heading 命中规则（考勤/HR 类） ──
+  knowledgeChunkHeadingHints: [
+    { questionKeyword: "标准", matchHeadings: ["标准", "住宿标准", "交通标准"] },
+    { questionKeyword: "时限", matchHeadings: ["时限", "提交时限"] },
+    { questionKeyword: "审批", matchHeadings: ["审批", "合同审批"] },
+    { questionKeyword: "试用期", matchHeadings: ["试用期"] },
+    { questionKeyword: "年假", matchHeadings: ["年假"] },
+  ],
+
   // ── 本地 LLM 启发式：把"请假制度/规则"类问题归到 KNOWLEDGE_QA ──
   localPolicyQuestionPatterns: [
     {
