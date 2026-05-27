@@ -1,5 +1,6 @@
 import type { ToolDefinition, UserContext } from "../types/agent-contracts.js";
 import type { KnowledgeSearchOptions, KnowledgeSearchResult } from "../rag/local-knowledge-base.js";
+import { INTENTS } from "../agent/ports.js";
 import { defineTool, z, ToolResultBaseSchema } from "./zod-helpers.js";
 
 interface KnowledgeBase {
@@ -15,7 +16,7 @@ export function createKnowledgeTools({ knowledgeBase }: { knowledgeBase: Knowled
         required_permissions: ["policy:read"],
         risk_level: "read",
         requires_confirmation: false,
-        intents: ["knowledge_qa", "mixed"]
+        intents: [INTENTS.KNOWLEDGE_QA, INTENTS.MIXED]
       },
       inputSchema: z.object({
         query: z.string().min(1).max(500).describe("检索关键词或语义查询"),

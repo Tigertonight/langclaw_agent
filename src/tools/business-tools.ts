@@ -3,6 +3,7 @@ import { getResourceDataPath } from "../domains/runtime-registry.js";
 import { ResourceRegistry } from "../resources/registry.js";
 import type { ResourceConfig } from "../resources/types.js";
 import type { JsonObject, JsonValue, QueryFilter, QuerySort, ToolDefinition } from "../types/agent-contracts.js";
+import { INTENTS } from "../agent/ports.js";
 import { defineTool, z, ToolResultBaseSchema } from "./zod-helpers.js";
 
 interface QueryArgs extends JsonObject {
@@ -603,7 +604,7 @@ export function createBusinessTools(options: { resourceRegistry: ResourceRegistr
         required_permissions: [] as string[],
         risk_level: "read",
         requires_confirmation: false,
-        intents: ["data_query", "mixed"]
+        intents: [INTENTS.DATA_QUERY, INTENTS.MIXED]
       },
       inputSchema: BusinessQuerySchema,
       outputSchema: ToolResultBaseSchema,

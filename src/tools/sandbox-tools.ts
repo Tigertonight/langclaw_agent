@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { resolveProjectPath } from "../data/load-json.js";
 import { resolveUserWorkspace, safeJoinWorkspace, type WorkspaceContext } from "../runtime/workspace-context.js";
 import type { JsonObject, JsonValue, ToolDefinition, ToolExecutionContext } from "../types/agent-contracts.js";
+import { INTENTS } from "../agent/ports.js";
 import { defineTool, z, ToolResultBaseSchema } from "./zod-helpers.js";
 
 const DEFAULT_TIMEOUT_MS = 1000;
@@ -72,7 +73,7 @@ export function createSandboxTools(): ToolDefinition[] {
         required_permissions: [],
         risk_level: "sandboxed_compute",
         requires_confirmation: false,
-        intents: ["data_query", "mixed"],
+        intents: [INTENTS.DATA_QUERY, INTENTS.MIXED],
         expose_to_agentic: true,
         sandbox: {
           per_user: true,

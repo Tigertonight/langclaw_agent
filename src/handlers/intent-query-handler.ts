@@ -25,6 +25,7 @@ import type { QueryAdapterRegistry } from "../domains/query-adapter-registry.js"
 import type { FilterTransformFn, PermissionRuleFn } from "../domains/types.js";
 import { getFieldLabelFromRegistry, readUserFieldFromRegistry } from "../domains/runtime-registry.js";
 import { translateTimeRangeToIso, formatLocalDate, extractMonthToken } from "../domains/shared/time-utils.js";
+import { INTENTS } from "../agent/ports.js";
 
 interface AnswerLLM {
   generateAnswer?: (input: Record<string, unknown>) => Promise<{ answer?: string }>;
@@ -213,7 +214,7 @@ export class IntentQueryHandler {
         toolResult,
         params,
         route: {
-          intent: "data_query",
+          intent: INTENTS.DATA_QUERY,
           intent_code,
           handler_type: "intent_query",
           execution_class: "controlled_execution",
@@ -445,7 +446,7 @@ export class IntentQueryHandler {
         const result = await this.llm.generateAnswer({
           user: summarizeUserForAnswer(user),
           question: message,
-          route: { intent: "data_query", intent_code, handler_type: "intent_query" },
+          route: { intent: INTENTS.DATA_QUERY, intent_code, handler_type: "intent_query" },
           docs: [],
           toolResults: [{
             ok: true,
@@ -474,7 +475,7 @@ export class IntentQueryHandler {
       const result = await this.llm.generateAnswer({
         user: summarizeUserForAnswer(user),
         question: message,
-        route: { intent: "data_query", intent_code, handler_type: "intent_query", params: { metric, group_by: groupBy } },
+        route: { intent: INTENTS.DATA_QUERY, intent_code, handler_type: "intent_query", params: { metric, group_by: groupBy } },
         docs: [],
         toolResults: [{
           ok: true,

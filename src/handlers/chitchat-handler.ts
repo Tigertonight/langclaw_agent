@@ -1,5 +1,6 @@
 import type { JsonObject, UserContext } from "../types/agent-contracts.js";
 import { getCapabilityDescriptions } from "../domains/runtime-registry.js";
+import { INTENTS } from "../agent/ports.js";
 
 interface AnswerLLM {
   generateAnswer(input: JsonObject): Promise<{ answer?: string }>;
@@ -19,7 +20,7 @@ export class ChitchatHandler {
         const result = await this.llm.generateAnswer({
           user: { name: user?.name ?? "员工" },
           question: message,
-          route: { intent: "smalltalk", intent_code: "system.smalltalk" },
+          route: { intent: INTENTS.SMALLTALK, intent_code: "system.smalltalk" },
           docs: [],
           toolResults: []
         });
