@@ -51,7 +51,7 @@
     "tool_name": "query_business_data",
     "resource": "retail_sales"
   },
-  "required_permissions": [],
+  "required_permissions": ["retail:read"],
   "filter_mapping": {
     "store": {
       "field": "store_name",

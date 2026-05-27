@@ -42,7 +42,7 @@
     "tool_name": "query_business_data",
     "resource": "retail_inventory_alerts"
   },
-  "required_permissions": [],
+  "required_permissions": ["retail:read"],
   "filter_mapping": {
     "store": {
       "field": "store_name",
