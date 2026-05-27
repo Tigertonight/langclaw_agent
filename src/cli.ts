@@ -1,24 +1,29 @@
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
-import { createApp } from "./app.js";
+import { attachMcpServers, createApp } from "./app.js";
 
 interface CliRunResult {
   answer?: string;
   sources?: Array<{ title?: string; heading?: string; score?: number }>;
   debug?: unknown;
+  trace?: unknown;
+  context_budget?: unknown;
 }
 
-const { agent } = createApp();
+const app = createApp();
+const mcp = await attachMcpServers(app.toolRegistry);
+const { queryEngine } = app;
 const [, , userArg, ...messageParts] = process.argv;
 
 if (userArg && messageParts.length > 0) {
-  const result = await agent.run({
+  const result = await queryEngine.submitMessage({
     userId: userArg,
     message: messageParts.join(" "),
     sessionId: `${userArg}:cli`,
     debug: true
   });
   printResult(result as CliRunResult);
+  await mcp.registry.stop();
   process.exit(0);
 }
 
@@ -30,10 +35,11 @@ output.write("输入问题开始对话，输入 exit 退出。\n");
 while (true) {
   const message = await rl.question("> ");
   if (["exit", "quit"].includes(message.trim().toLowerCase())) break;
-  const result = await agent.run({ userId, message, sessionId, debug: true });
+  const result = await queryEngine.submitMessage({ userId, message, sessionId, debug: true });
   printResult(result as CliRunResult);
 }
 rl.close();
+await mcp.registry.stop();
 
 function printResult(result: CliRunResult): void {
   output.write(`\n${result.answer}\n`);
@@ -45,6 +51,12 @@ function printResult(result: CliRunResult): void {
   }
   if (result.debug) {
     output.write(`\nDebug:\n${JSON.stringify(result.debug, null, 2)}\n`);
+  }
+  if (result.context_budget) {
+    output.write(`\nContext budget:\n${JSON.stringify(result.context_budget, null, 2)}\n`);
+  }
+  if (result.trace) {
+    output.write(`\nTrace:\n${JSON.stringify(result.trace, null, 2)}\n`);
   }
   output.write("\n");
 }

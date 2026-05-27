@@ -324,13 +324,13 @@ function repairQueryRule(text: string): MatchedRule | null {
 }
 
 function salesOrdersRule(text: string): MatchedRule | null {
-  if (!/销售订单|成交订单|成交了哪些订单|哪几单|华东订单|华南订单|待交付|未交付|交车|结清款项|按揭|分期|定金|开票|发票/.test(text)) return null;
+  if (!/销售订单|成交订单|成交了哪些订单|哪几单|华东订单|华南订单|车辆申请|车辆.*进度|交付进度|待交付|未交付|交车|结清款项|按揭|分期|定金|开票|发票/.test(text)) return null;
   return {
     intent_code: "dealer.query.sales_orders",
     params: {
       store: extractStore(text),
       owner: extractOwner(text),
-      delivery_status: /待交付|未交付|交车/.test(text) ? "待交付" : null,
+      delivery_status: /车辆申请|车辆.*进度|交付进度|未交付|交车/.test(text) ? "未交付" : /待交付/.test(text) ? "待交付" : null,
       payment_status: /定金|还没付完/.test(text) ? "部分收款" : /结清/.test(text) ? "已结清" : null,
       order_type: /按揭|分期|贷款/.test(text) ? "按揭" : null,
       time_range: extractTimeRange(text)

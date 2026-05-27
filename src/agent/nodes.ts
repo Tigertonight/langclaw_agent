@@ -295,9 +295,10 @@ function formatRuntimeDate(value: unknown): string | null {
   return `${text.slice(0, 4)}-${text.slice(4, 6)}-${text.slice(6, 8)}`;
 }
 
-export async function executeToolsNode({ toolRegistry, user, toolPlan }: {
+export async function executeToolsNode({ toolRegistry, user, workspace, toolPlan }: {
   toolRegistry: ToolRegistry;
   user: UserContext;
+  workspace?: unknown;
   toolPlan: ToolPlan;
 }): Promise<ToolResult[]> {
   const toolResults: ToolResult[] = [];
@@ -315,7 +316,7 @@ export async function executeToolsNode({ toolRegistry, user, toolPlan }: {
       continue;
     }
 
-    const result = await toolRegistry.execute(call, { user });
+    const result = await toolRegistry.execute(call, { user, workspace });
     toolResults.push(result as ToolResult);
   }
 

@@ -167,12 +167,30 @@ export function renderChatPage(): string {
     .send { height: 36px; min-width: 72px; border: 0; border-radius: 6px; background: #111; color: #fff; font-weight: 600; cursor: pointer; }
     .send:disabled { background: #cfcfcf; cursor: not-allowed; }
     .hint { width: min(820px, calc(100vw - 40px)); margin: 7px auto 0; color: var(--faint); font-size: 12px; }
+    .composer-suggest {
+      width: min(820px, calc(100vw - 40px)); margin: 0 auto; position: relative;
+    }
+    .composer-suggest .suggest-popup {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      background: #fff; border: 1px solid #d4d4d4; border-radius: 8px;
+      box-shadow: 0 18px 44px rgba(0,0,0,.12); padding: 6px; z-index: 5;
+      max-height: 260px; overflow-y: auto; display: none;
+    }
+    .composer-suggest .suggest-popup.open { display: block; }
+    .suggest-item {
+      display: grid; grid-template-columns: max-content 1fr; align-items: baseline;
+      gap: 10px; padding: 8px 10px; border-radius: 6px; cursor: pointer;
+    }
+    .suggest-item:hover, .suggest-item.active { background: #f4f4f5; }
+    .suggest-trigger { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 13px; color: #111; font-weight: 600; }
+    .suggest-title { font-size: 12.5px; color: #6b6b6b; }
+    .suggest-empty { padding: 10px; color: var(--faint); font-size: 12.5px; text-align: center; }
     /* 业务视角（默认）：仿 GPT 段落叙述风格，方案 1 配对（先 summary 后 narrative） */
     .biz { margin: 0 0 12px; color: #6b6b6b; font-size: 14px; line-height: 1.7; }
     .assistant-body.has-answer .biz.collapsed { margin-bottom: 4px; }
     .biz-head {
-      display: inline-grid; grid-template-columns: 10px 104px 14px; align-items: center; column-gap: 6px;
-      color: #9b9b9b; font-size: 12.5px; user-select: none; margin-bottom: 6px;
+      min-height: 22px; display: inline-grid; grid-template-columns: 16px max-content 14px; align-items: center; column-gap: 6px;
+      color: #9b9b9b; font-size: 12.5px; line-height: 22px; user-select: none; margin-bottom: 8px;
       cursor: pointer;
     }
     .biz-time {
@@ -212,25 +230,34 @@ export function renderChatPage(): string {
     }
     .biz.running .biz-head { color: #8a8a8a; }
     .biz.failed .biz-head { color: #dc2626; }
-    .biz.running .dotanim {
-      display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+    .dotanim {
+      width: 16px; height: 16px; display: inline-grid; place-items: center; color: currentColor;
+    }
+    .dotanim::before {
+      content: ""; width: 11px; height: 6px; border-left: 1.8px solid currentColor; border-bottom: 1.8px solid currentColor;
+      transform: rotate(-45deg) translate(1px, -1px); border-radius: 1px;
+    }
+    .biz.running .dotanim::before {
+      width: 6px; height: 6px; border: 0; border-radius: 50%; transform: none;
       background: currentColor; animation: bizBlink 1.2s ease-in-out infinite;
     }
     .biz.failed .dotanim { display: inline-grid; width: 13px; height: 13px; place-items: center; }
+    .biz.failed .dotanim::before { display: none; }
     .biz.failed .dotanim svg { width: 13px; height: 13px; stroke-width: 1.8; }
     @keyframes bizBlink { 0%,100% { opacity: .3; } 50% { opacity: 1; } }
-    .biz-body { display: grid; gap: 8px; overflow: hidden; max-height: 360px; opacity: 1; }
+    .biz-body { display: grid; gap: 10px; overflow: hidden; max-height: 360px; opacity: 1; }
     .biz-pair {
-      display: grid; grid-template-columns: 18px minmax(0, 1fr); column-gap: 10px; row-gap: 2px;
+      display: grid; grid-template-columns: 20px minmax(0, 1fr); column-gap: 10px; row-gap: 4px;
       align-items: start;
     }
     .biz-summary-line {
-      color: #9b9b9b; font-size: 12.5px; margin: 0;
-      display: contents;
+      grid-column: 1 / -1; grid-row: 1; min-width: 0;
+      display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: center;
+      color: #9b9b9b; font-size: 12.5px; line-height: 20px; margin: 0;
     }
-    .biz-summary-line .glyph { width: 18px; height: 20px; opacity: .7; display: inline-grid; place-items: center; grid-column: 1; grid-row: 1; padding-top: 2px; }
-    .biz-summary-line .glyph svg { width: 13px; height: 13px; stroke-width: 1.6; }
-    .biz-summary-line .summary-text { grid-column: 2; grid-row: 1; align-self: center; min-width: 0; }
+    .biz-summary-line .glyph { width: 20px; height: 20px; opacity: .7; display: inline-grid; place-items: center; grid-column: 1; }
+    .biz-summary-line .glyph svg { width: 14px; height: 14px; stroke-width: 1.6; display: block; }
+    .biz-summary-line .summary-text { grid-column: 2; min-width: 0; align-self: center; }
     .biz-narrative { margin: 0; color: #303030; font-size: 14.5px; line-height: 1.72; grid-column: 1 / -1; grid-row: 2; min-width: 0; }
     .biz.running .biz-pair.active .summary-text {
       color: transparent;
@@ -247,6 +274,12 @@ export function renderChatPage(): string {
       animation: bizGlyphPulse 4.16s ease-in-out infinite;
     }
     .biz-narrative:last-child, .biz-summary-line:last-child { margin-bottom: 0; }
+    /* item 状态视觉：运行中转圈、失败红字 */
+    .biz-pair-status-running .biz-summary-line .glyph svg { animation: bizSpin 1.2s linear infinite; }
+    .biz-pair-status-failed .biz-summary-line .glyph { color: #c0392b; opacity: 1; }
+    .biz-pair-status-failed .biz-summary-line .summary-text { color: #c0392b; }
+    .biz-error { color: #c0392b !important; font-size: 12.5px !important; }
+    @keyframes bizSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     .biz-fadein { animation: bizFadein .28s ease both; }
     @keyframes bizFadein { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes bizCollapse {
@@ -311,7 +344,90 @@ export function renderChatPage(): string {
       background: #f7f7f8; border: 1px solid #eeeeef; border-radius: 6px; padding: 9px;
       color: #27272a; font-size: 12px; line-height: 1.5; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     }
-    .sources { margin-top: 12px; color: var(--muted); font-size: 12px; }
+    .sources { margin-top: 12px; }
+    .source-disclosure {
+      margin-top: 10px; color: var(--muted); font-size: 12px;
+    }
+    .source-disclosure summary {
+      width: fit-content; display: flex; align-items: center; gap: 6px;
+      cursor: pointer; user-select: none; color: #6f6f6f; list-style: none;
+      border: 1px solid var(--border); border-radius: 999px; padding: 4px 9px;
+      background: #fff; transition: background .14s ease, border-color .14s ease, color .14s ease;
+    }
+    .source-disclosure summary::-webkit-details-marker { display: none; }
+    .source-disclosure summary:hover { background: var(--soft); border-color: #d4d4d4; color: #262626; }
+    .source-disclosure .source-caret {
+      width: 11px; height: 11px; display: inline-grid; place-items: center; transition: transform .16s ease;
+    }
+    .source-disclosure .source-caret::before {
+      content: ""; width: 5px; height: 5px; border-right: 1.6px solid currentColor; border-bottom: 1.6px solid currentColor;
+      transform: rotate(45deg) translate(-1px, -1px); border-radius: 1px;
+    }
+    .source-disclosure[open] .source-caret { transform: rotate(-180deg); }
+    .source-panel {
+      margin-top: 8px; display: grid; gap: 7px; padding: 10px 11px;
+      border: 1px solid var(--border); border-radius: 8px; background: #fafafa;
+    }
+    .source-item { display: grid; gap: 3px; color: #525252; line-height: 1.5; }
+    .source-item-title { color: #262626; font-weight: 600; font-size: 12.5px; }
+    .source-item-meta { color: #8a8a8a; font-size: 11.5px; }
+    .source-item-quote { color: #555; font-size: 12px; }
+    .a2ui-surfaces { margin-top: 14px; display: grid; gap: 10px; }
+    .a2ui-card {
+      border: 1px solid var(--border); border-radius: 8px; background: #fff; padding: 10px 11px;
+      display: grid; gap: 9px; color: #27272a;
+    }
+    .a2ui-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .a2ui-list { display: grid; gap: 7px; }
+    .a2ui-text { font-size: 13px; line-height: 1.62; color: #303030; }
+    .a2ui-text h3 { margin: 0 0 3px; font-size: 13px; line-height: 1.35; font-weight: 700; }
+    .a2ui-button {
+      height: 30px; border: 1px solid #d4d4d8; border-radius: 6px; background: #111; color: #fff;
+      padding: 0 10px; font: inherit; font-size: 12.5px; cursor: pointer;
+    }
+    .a2ui-button.secondary { background: #fff; color: #27272a; }
+    .a2ui-button:disabled { opacity: .55; cursor: not-allowed; }
+    .a2ui-progress {
+      border: 1px solid var(--border); border-radius: 8px; background: #fafafa;
+      padding: 9px 11px; display: grid; gap: 4px;
+    }
+    .a2ui-progress-title { font-size: 13px; font-weight: 600; color: #202020; }
+    .a2ui-progress-detail { font-size: 12px; color: #6a6a6a; line-height: 1.55; }
+    .a2ui-progress-running { background: #f4f7ff; border-color: #d8e0ff; }
+    .a2ui-progress-done { background: #f4faf4; border-color: #d8e8d8; }
+    .a2ui-progress-warn { background: #fdf6ed; border-color: #f0d9a8; }
+    .a2ui-skeleton { position: relative; overflow: hidden; }
+    .a2ui-skeleton::after {
+      content: ""; position: absolute; inset: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.55) 50%, transparent 100%);
+      animation: a2uiShimmer 1.4s infinite;
+    }
+    @keyframes a2uiShimmer { 0% { transform: translateX(-100%);} 100% { transform: translateX(100%);} }
+    .material-card {
+      border: 1px solid var(--border); border-radius: 8px; background: #fff; padding: 11px;
+      display: grid; gap: 10px; color: #27272a;
+    }
+    .material-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .material-title { font-size: 13px; line-height: 1.35; font-weight: 700; color: #202020; }
+    .material-subtle { color: #7a7a7a; font-size: 12px; line-height: 1.45; }
+    .material-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+    .material-metric { border: 1px solid #eeeeef; border-radius: 7px; padding: 8px; background: #fafafa; min-width: 0; }
+    .material-metric strong { display: block; font-size: 16px; line-height: 1.1; color: #111; margin-bottom: 4px; }
+    .material-list { display: grid; gap: 8px; }
+    .material-item { border: 1px solid #eeeeef; border-radius: 7px; padding: 9px; display: grid; gap: 6px; background: #fff; }
+    .material-item-title { font-weight: 650; font-size: 13px; color: #202020; }
+    .material-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .material-chip { border: 1px solid #e3e3e6; border-radius: 999px; padding: 2px 7px; color: #555; font-size: 11.5px; background: #fafafa; }
+    .material-action { color: #444; font-size: 12.5px; line-height: 1.45; }
+    .material-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .material-timeline { display: grid; gap: 6px; }
+    .material-step { display: grid; grid-template-columns: 14px minmax(0, 1fr); gap: 7px; align-items: center; color: #777; font-size: 12px; }
+    .material-step-dot { width: 8px; height: 8px; border-radius: 99px; background: #d4d4d8; justify-self: center; }
+    .material-step.done .material-step-dot { background: #111; }
+    .material-step.current .material-step-dot { background: #111; box-shadow: 0 0 0 4px rgba(17,17,17,.08); }
+    .material-step.done, .material-step.current { color: #303030; }
+    .material-progress { height: 6px; border-radius: 999px; background: #eee; overflow: hidden; }
+    .material-progress span { display: block; height: 100%; background: #111; border-radius: inherit; }
     .error { color: #dc2626; }
     .markdown { color: #1f1f1f; line-height: 1.78; overflow-wrap: anywhere; }
     .markdown.answer-enter { animation: answerEnter .42s cubic-bezier(.2, .8, .2, 1) both; }
@@ -452,12 +568,13 @@ export function renderChatPage(): string {
         </div>
       </div>
       <div id="messages" class="messages"></div>
+      <div class="composer-suggest"><div id="suggestPopup" class="suggest-popup" role="listbox" aria-label="&#x547D;&#x4EE4;&#x5EFA;&#x8BAE;"></div></div>
       <form id="form" class="composer">
         <div class="composer-inner">
-          <textarea id="input" rows="1" placeholder="&#x8F93;&#x5165;&#x95EE;&#x9898;&#x6216;&#x4E1A;&#x52A1;&#x6307;&#x4EE4;"></textarea>
+          <textarea id="input" rows="1" placeholder="&#x8F93;&#x5165;&#x95EE;&#x9898;&#x6216;&#x4E1A;&#x52A1;&#x6307;&#x4EE4;&#xFF08;&#x6309; / &#x67E5;&#x770B;&#x5FEB;&#x6377;&#x547D;&#x4EE4;&#xFF09;"></textarea>
           <button id="send" class="send" type="submit">&#x53D1;&#x9001;</button>
         </div>
-        <div class="hint">Enter &#x53D1;&#x9001; &#183; Shift+Enter &#x6362;&#x884C;</div>
+        <div class="hint">Enter &#x53D1;&#x9001; &#183; Shift+Enter &#x6362;&#x884C; &#183; / &#x547D;&#x4EE4;&#x8865;&#x5168;</div>
       </form>
     </section>
     <div id="personModalBackdrop" class="person-modal-backdrop" aria-hidden="true">
@@ -509,6 +626,7 @@ export function renderChatPage(): string {
       form: document.querySelector("#form"),
       input: document.querySelector("#input"),
       send: document.querySelector("#send"),
+      suggestPopup: document.querySelector("#suggestPopup"),
       personPicker: document.querySelector("#personPicker"),
       personTrigger: document.querySelector("#personTrigger"),
       personAvatar: document.querySelector("#personAvatar"),
@@ -771,12 +889,28 @@ export function renderChatPage(): string {
     els.input.addEventListener("input", () => {
       els.input.style.height = "auto";
       els.input.style.height = Math.max(36, Math.min(180, els.input.scrollHeight)) + "px";
+      updateCommandSuggest();
     });
     els.input.addEventListener("keydown", (event) => {
+      if (commandSuggest.open) {
+        if (event.key === "ArrowDown") { event.preventDefault(); moveSuggest(1); return; }
+        if (event.key === "ArrowUp") { event.preventDefault(); moveSuggest(-1); return; }
+        if (event.key === "Tab" || (event.key === "Enter" && !event.shiftKey)) {
+          event.preventDefault();
+          acceptSuggest();
+          return;
+        }
+        if (event.key === "Escape") { event.preventDefault(); closeSuggest(); return; }
+      }
       if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
         els.form.requestSubmit();
       }
+    });
+    els.input.addEventListener("blur", () => { setTimeout(closeSuggest, 120); });
+    els.suggestPopup.addEventListener("mousedown", (event) => {
+      // 阻止 textarea blur 抢先关闭弹层
+      event.preventDefault();
     });
     els.form.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -813,8 +947,11 @@ export function renderChatPage(): string {
           })
         });
         await readSse(response, assistantId);
+        // 流正常结束后，把还没收到 end 的 item 视为"未完成"，避免 spinner 残留
+        finalizeRunningItems(getMsg(assistantId), "\\u6d41\\u5df2\\u7ed3\\u675f\\u4f46\\u672a\\u6536\\u5230 end \\u4e8b\\u4ef6");
       } catch (error) {
         const message = error.name === "AbortError" ? STR.requestTimeout : STR.failed + (error.message || "unknown error");
+        finalizeRunningItems(getMsg(assistantId), message);
         patch(assistantId, { text: message, error: true, streaming: false, thinking: false });
         touchActiveSession();
       } finally {
@@ -838,8 +975,123 @@ export function renderChatPage(): string {
       userContextCache.set(userId, ctx);
       return ctx;
     }
+    /**
+     * /命令自动补全：当输入以 / 开头且光标在第一行时，弹出基于 /api/commands
+     * 的过滤列表（按权限过滤）。Tab/Enter 接受、Esc 关闭。
+     */
+    const commandSuggest = { open: false, items: [], active: 0, fetched: new Map(), inflight: null };
+    async function loadCommandsForUser(userId) {
+      if (commandSuggest.fetched.has(userId)) return commandSuggest.fetched.get(userId);
+      if (commandSuggest.inflight && commandSuggest.inflight.userId === userId) return commandSuggest.inflight.promise;
+      const promise = (async () => {
+        try {
+          const res = await fetch("/api/commands?user_id=" + encodeURIComponent(userId));
+          if (!res.ok) return [];
+          const data = await res.json();
+          const list = Array.isArray(data.commands) ? data.commands : [];
+          commandSuggest.fetched.set(userId, list);
+          return list;
+        } catch (_err) {
+          return [];
+        }
+      })();
+      commandSuggest.inflight = { userId, promise };
+      const result = await promise;
+      commandSuggest.inflight = null;
+      return result;
+    }
+    function updateCommandSuggest() {
+      const value = els.input.value;
+      // 只在第一行、以 / 开头时触发
+      const firstLine = value.split("\\n")[0] || "";
+      if (!firstLine.startsWith("/")) { closeSuggest(); return; }
+      const query = firstLine.toLowerCase();
+      loadCommandsForUser(currentUserId).then((commands) => {
+        // 比较时机：用户可能已经把 / 删掉了，重新检查
+        const stillFirst = (els.input.value.split("\\n")[0] || "").toLowerCase();
+        if (!stillFirst.startsWith("/")) { closeSuggest(); return; }
+        const matches = commands.filter((cmd) => {
+          const triggers = Array.isArray(cmd.triggers) && cmd.triggers.length ? cmd.triggers : ["/" + cmd.id];
+          return triggers.some((trigger) => trigger.toLowerCase().startsWith(stillFirst));
+        }).slice(0, 8);
+        renderSuggest(matches);
+      });
+    }
+    function renderSuggest(items) {
+      commandSuggest.items = items;
+      commandSuggest.active = 0;
+      if (!items.length) {
+        els.suggestPopup.innerHTML = '<div class="suggest-empty">没有匹配的命令</div>';
+        els.suggestPopup.classList.add("open");
+        commandSuggest.open = true;
+        return;
+      }
+      const html = items.map((cmd, idx) => {
+        const triggers = Array.isArray(cmd.triggers) && cmd.triggers.length ? cmd.triggers : ["/" + cmd.id];
+        const primary = triggers[0];
+        return '<div class="suggest-item' + (idx === 0 ? ' active' : '') + '" role="option" data-idx="' + idx + '">'
+          + '<span class="suggest-trigger">' + escapeHtml(primary) + '</span>'
+          + '<span class="suggest-title">' + escapeHtml(cmd.title || cmd.id) + '</span>'
+          + '</div>';
+      }).join("");
+      els.suggestPopup.innerHTML = html;
+      els.suggestPopup.classList.add("open");
+      commandSuggest.open = true;
+      els.suggestPopup.querySelectorAll(".suggest-item").forEach((node) => {
+        node.addEventListener("click", () => {
+          commandSuggest.active = Number(node.dataset.idx) || 0;
+          acceptSuggest();
+        });
+      });
+    }
+    function moveSuggest(delta) {
+      if (!commandSuggest.items.length) return;
+      const total = commandSuggest.items.length;
+      commandSuggest.active = (commandSuggest.active + delta + total) % total;
+      const nodes = els.suggestPopup.querySelectorAll(".suggest-item");
+      nodes.forEach((node) => node.classList.remove("active"));
+      const target = nodes[commandSuggest.active];
+      if (target) {
+        target.classList.add("active");
+        target.scrollIntoView({ block: "nearest" });
+      }
+    }
+    function acceptSuggest() {
+      const cmd = commandSuggest.items[commandSuggest.active];
+      if (!cmd) { closeSuggest(); return; }
+      const triggers = Array.isArray(cmd.triggers) && cmd.triggers.length ? cmd.triggers : ["/" + cmd.id];
+      els.input.value = triggers[0];
+      els.input.focus();
+      els.input.style.height = "auto";
+      els.input.style.height = Math.max(36, Math.min(180, els.input.scrollHeight)) + "px";
+      closeSuggest();
+    }
+    function closeSuggest() {
+      if (!commandSuggest.open) return;
+      commandSuggest.open = false;
+      commandSuggest.items = [];
+      commandSuggest.active = 0;
+      els.suggestPopup.classList.remove("open");
+      els.suggestPopup.innerHTML = "";
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (ch) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
+    }
     async function readSse(response, assistantId) {
-      if (!response.ok || !response.body) throw new Error("stream failed");
+      if (!response.ok || !response.body) {
+        let detail = "";
+        try {
+          const payload = await response.clone().json();
+          detail = payload?.message || payload?.error || "";
+        } catch {
+          try {
+            detail = await response.clone().text();
+          } catch {
+            detail = "";
+          }
+        }
+        throw new Error(detail ? "stream failed: " + detail : "stream failed (" + response.status + ")");
+      }
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -875,6 +1127,29 @@ export function renderChatPage(): string {
       } else if (event === "agentic_event") {
         // 后端 agentic-handler 的三流事件实时透传：tool_call -> 业务视角的 summary+narrative 配对
         applyAgenticEvent(assistantId, payload.event);
+      } else if (event === "a2ui_envelope") {
+        // 流式 a2UI：streaming-translator 把 lifecycle/tool_call 实时翻译成 envelope
+        const msg = getMsg(assistantId);
+        if (msg && payload.envelope) {
+          const state = ensureA2UIState(msg);
+          applyA2UIEnvelopeToState(state, payload.envelope);
+          state.hasIncrement = true;
+          if (typeof payload.seq === "number") {
+            state.lastSeq = payload.seq;
+            if (payload.run_id) state.runId = payload.run_id;
+            if (payload.session_id) state.sessionId = payload.session_id;
+          }
+        }
+      } else if (event === "a2ui_run_started") {
+        const msg = getMsg(assistantId);
+        if (msg) {
+          const state = ensureA2UIState(msg);
+          state.runId = payload.run_id;
+          state.sessionId = payload.session_id;
+          state.traceId = payload.trace_id;
+        }
+      } else if (event === "a2ui_replay_done" || event === "a2ui_replay_empty") {
+        // 续传完成的标记，前端无需特殊处理
       } else if (event === "delta") {
         appendText(assistantId, payload.text || "");
       } else if (event === "route") {
@@ -927,12 +1202,8 @@ export function renderChatPage(): string {
             text.innerHTML = renderMarkdown(msg.text || "");
           }
           body.appendChild(text);
-          if (msg.sources?.length) {
-            const sources = document.createElement("div");
-            sources.className = "sources";
-            sources.textContent = "\\u6765\\u6e90\\uff1a" + msg.sources.map((s) => clean(s.title + " / " + s.heading)).join("\\uff1b");
-            body.appendChild(sources);
-          }
+          if (msg.sources?.length && !hasA2UISourceSurface(msg)) body.appendChild(renderSourceDisclosure(msg.sources));
+          if (msg.a2ui?.length) body.appendChild(renderA2UISurfaces(msg));
           row.appendChild(body);
         }
         els.messages.appendChild(row);
@@ -1117,12 +1388,17 @@ export function renderChatPage(): string {
       const activeIndex = !msg.failed && (msg.streaming || msg.thinking) ? pairs.length - 1 : -1;
       pairs.forEach((pair, index) => {
         const item = document.createElement("div");
-        item.className = "biz-pair biz-fadein" + (index === activeIndex ? " active" : "");
-        if (pair.summary) {
+        const statusClass = pair.status ? " biz-pair-status-" + pair.status : "";
+        const isActive = index === activeIndex || pair.status === "running";
+        item.className = "biz-pair biz-fadein" + (isActive ? " active" : "") + statusClass;
+        if (pair.summary || pair.status === "running") {
           const s = document.createElement("p");
           s.className = "biz-summary-line";
-          s.innerHTML = '<span class="glyph"><i data-lucide="' + (pair.icon || "circle") + '"></i></span><span class="summary-text"></span>';
-          s.querySelector(".summary-text").textContent = pair.summary;
+          // 运行中的卡片用 loader 图标，失败的用 alert-circle，完成的用原图标
+          const icon = pair.status === "running" ? "loader" : (pair.status === "failed" ? "alert-circle" : (pair.icon || "circle"));
+          s.innerHTML = '<span class="glyph"><i data-lucide="' + icon + '"></i></span><span class="summary-text"></span>';
+          const summaryText = pair.status === "running" && !pair.summary ? "\\u8c03\\u7528\\u5de5\\u5177\\u4e2d\\u2026" : (pair.summary || "");
+          s.querySelector(".summary-text").textContent = summaryText;
           item.appendChild(s);
         }
         if (pair.narrative) {
@@ -1130,6 +1406,12 @@ export function renderChatPage(): string {
           n.className = "biz-narrative";
           n.textContent = pair.narrative;
           item.appendChild(n);
+        }
+        if (pair.errorMessage) {
+          const e = document.createElement("p");
+          e.className = "biz-narrative biz-error";
+          e.textContent = pair.errorMessage;
+          item.appendChild(e);
         }
         body.appendChild(item);
       });
@@ -1503,10 +1785,16 @@ export function renderChatPage(): string {
       pendingDoneEvents.delete(id);
       const msg = getMsg(id);
       if (!msg) return;
+      // 兜底：如果流式期间没有收到 a2ui_envelope，则把 done 全量数组喂入累积态。
+      const state = ensureA2UIState(msg);
+      if (!state.hasIncrement && Array.isArray(payload.a2ui) && payload.a2ui.length) {
+        applyA2UIEnvelopesToState(state, payload.a2ui);
+      }
       patch(id, {
         text: payload.answer || msg.text,
         steps: msg.steps.length ? msg.steps : (payload.debug?.steps || []),
         sources: payload.sources || [],
+        a2ui: payload.a2ui || [],
         debug: payload.debug || {},
         backendLatency: payload.debug?.latency_ms,
         completedAt: Date.now(),
@@ -1529,6 +1817,785 @@ export function renderChatPage(): string {
       msg.answerFinalizing = false;
       touchActiveSession();
       render();
+    }
+    function renderA2UISurfaces(msg) {
+      const wrap = document.createElement("div");
+      wrap.className = "a2ui-surfaces";
+      const surfaces = collectA2UISurfaces(msg);
+      for (const surface of surfaces) {
+        if (!els.debug.checked && isA2UIRuntimeSurface(surface)) continue;
+        const root = renderA2UIProgressSurface(surface)
+          || renderOpenUIView(surface)
+          || (isA2UISourceSurface(surface) ? renderA2UISourceDisclosure(surface) : renderA2UIComponent(surface, surface.root));
+        if (root) {
+          if (surface.data && surface.data._skeleton) root.classList.add("a2ui-skeleton");
+          wrap.appendChild(root);
+        }
+      }
+      return wrap;
+    }
+    function ensureA2UIState(msg) {
+      if (!msg.a2uiState) msg.a2uiState = { surfaces: new Map(), order: [], hasIncrement: false };
+      return msg.a2uiState;
+    }
+    function collectA2UISurfaces(msg) {
+      const state = ensureA2UIState(msg);
+      // 优先使用增量累积态；done 兜底时再 merge 全量 envelopes（避免没接到 a2ui_envelope 的旧路径退化）。
+      if (!state.hasIncrement && (msg.a2ui || []).length) {
+        applyA2UIEnvelopesToState(state, msg.a2ui);
+      }
+      const out = [];
+      for (const id of state.order) {
+        const surface = state.surfaces.get(id);
+        if (!surface || surface.deleted) continue;
+        if (!surface.root || surface.components.size === 0) continue;
+        out.push(surface);
+      }
+      return out;
+    }
+    function applyA2UIEnvelopesToState(state, envelopes) {
+      for (const envelope of envelopes || []) applyA2UIEnvelopeToState(state, envelope);
+    }
+    function applyA2UIEnvelopeToState(state, envelope) {
+      if (envelope.createSurface) {
+        const s = envelope.createSurface;
+        let surface = state.surfaces.get(s.surfaceId);
+        if (!surface) {
+          surface = { id: s.surfaceId, root: s.root, data: {}, components: new Map(), deleted: false };
+          state.surfaces.set(s.surfaceId, surface);
+          state.order.push(s.surfaceId);
+        } else {
+          surface.root = s.root;
+          surface.deleted = false;
+        }
+      }
+      if (envelope.updateDataModel) {
+        const u = envelope.updateDataModel;
+        let surface = state.surfaces.get(u.surfaceId);
+        if (!surface) {
+          surface = { id: u.surfaceId, root: "", data: {}, components: new Map(), deleted: false };
+          state.surfaces.set(u.surfaceId, surface);
+          state.order.push(u.surfaceId);
+        }
+        if (!u.path) {
+          surface.data = u.value || {};
+        } else {
+          const segments = String(u.path).split(/[./]/).filter(Boolean);
+          let cursor = surface.data;
+          for (let i = 0; i < segments.length - 1; i++) {
+            const key = segments[i];
+            if (!cursor[key] || typeof cursor[key] !== "object") cursor[key] = {};
+            cursor = cursor[key];
+          }
+          cursor[segments[segments.length - 1]] = u.value;
+        }
+      }
+      if (envelope.updateComponents) {
+        const u = envelope.updateComponents;
+        let surface = state.surfaces.get(u.surfaceId);
+        if (!surface) {
+          surface = { id: u.surfaceId, root: "", data: {}, components: new Map(), deleted: false };
+          state.surfaces.set(u.surfaceId, surface);
+          state.order.push(u.surfaceId);
+        }
+        for (const item of u.components || []) surface.components.set(item.id, item.component || {});
+      }
+      if (envelope.deleteSurface) {
+        const surface = state.surfaces.get(envelope.deleteSurface.surfaceId);
+        if (surface) surface.deleted = true;
+      }
+    }
+    function renderA2UIProgressSurface(surface) {
+      if (surface.root !== "progress_root") return null;
+      const data = surface.data || {};
+      const tone = String(data.tone || "info");
+      const card = document.createElement("div");
+      card.className = "a2ui-card a2ui-progress a2ui-progress-" + tone;
+      const title = document.createElement("div");
+      title.className = "a2ui-progress-title";
+      title.textContent = String(data.title || "处理中");
+      const detail = document.createElement("div");
+      detail.className = "a2ui-progress-detail";
+      detail.textContent = String(data.detail || "");
+      card.append(title, detail);
+      return card;
+    }
+    function hasA2UISourceSurface(msg) {
+      return (msg.a2ui || []).some((envelope) => {
+        const surfaceId = envelope.createSurface?.surfaceId || envelope.updateComponents?.surfaceId || envelope.updateDataModel?.surfaceId || "";
+        return surfaceId.includes("_sources");
+      });
+    }
+    function isA2UISourceSurface(surface) {
+      return String(surface.id || "").includes("_sources") || surface.root === "sources_root";
+    }
+    function isA2UIRuntimeSurface(surface) {
+      return String(surface.id || "").includes("_runtime")
+        || surface.root === "runtime_root"
+        || surface.data?.business_surface?.kind === "runtime_summary"
+        || surface.data?.openui?.component === "RuntimeSummary";
+    }
+    function renderA2UISourceDisclosure(surface) {
+      const sources = Array.isArray(surface.data?.sources) ? surface.data.sources : [];
+      return renderSourceDisclosure(sources);
+    }
+    function renderOpenUIView(surface) {
+      const view = surface.data?.openui;
+      if (!view?.component || view.protocol !== "openui-bridge/0.1") return null;
+      const props = view.props || {};
+      if (view.component === "CitationDisclosure") return renderSourceDisclosure(props.sources || surface.data?.sources || []);
+      if (view.component === "DealerVehicleProgress") return renderMaterialVehicleProgress(surface, props);
+      if (view.component === "ExpenseEstimate") return renderMaterialExpenseEstimate(surface, props);
+      if (view.component === "LeaveRequestForm") return renderMaterialLeaveRequestForm(surface, props);
+      if (view.component === "ApprovalFlow" || view.component === "ApprovalCard") return renderMaterialApproval(surface, props, view.actions || []);
+      if (view.component === "TaskResumeCard") return renderMaterialTaskResume(surface, props);
+      /* ─── Phase 4 Workbench Surface 6 类 ─── */
+      if (view.component === "ToolCatalogSurface") return renderToolCatalogSurface(surface, props);
+      if (view.component === "RiskListSurface") return renderRiskListSurface(surface, props);
+      if (view.component === "MetricCardsSurface") return renderMetricCardsSurface(surface, props);
+      if (view.component === "EvidenceSurface") return renderEvidenceSurface(surface, props);
+      if (view.component === "TaskTrackingSurface") return renderTaskTrackingSurface(surface, props);
+      if (view.component === "PendingActionSurface") return renderPendingActionSurface(surface, props);
+      return null;
+    }
+    /* ──────────────────────────────────────────────────────────────
+     * Phase 4 Workbench：6 类 Surface 渲染函数
+     * ────────────────────────────────────────────────────────────── */
+
+    /**
+     * ToolCatalogSurface —— 工具目录卡片
+     * props: { title?, tools: [{name, description, risk_level?, category?}] }
+     */
+    function renderToolCatalogSurface(_surface, props) {
+      const tools = Array.isArray(props.tools) ? props.tools : [];
+      if (!tools.length) return null;
+      const card = materialCard(props.title || "可用工具", "已过滤当前用户权限");
+      const list = document.createElement("div");
+      list.className = "material-list";
+      tools.slice(0, 20).forEach((tool) => {
+        const item = document.createElement("div");
+        item.className = "material-item";
+        const title = document.createElement("div");
+        title.className = "material-item-title";
+        title.textContent = clean(tool.name || "-");
+        const row = document.createElement("div");
+        row.className = "material-row";
+        if (tool.category) row.appendChild(materialChip(clean(tool.category)));
+        if (tool.risk_level) {
+          const riskChip = materialChip(clean(tool.risk_level));
+          // 高风险用红色文字（内联 style 最轻量）
+          if (/high|危|拒|reject/i.test(tool.risk_level)) riskChip.style.color = "#c0392b";
+          row.appendChild(riskChip);
+        }
+        const desc = document.createElement("div");
+        desc.className = "material-subtle";
+        desc.textContent = clean(tool.description || "");
+        item.append(title, row);
+        if (tool.description) item.appendChild(desc);
+        list.appendChild(item);
+      });
+      card.appendChild(list);
+      return card;
+    }
+
+    /**
+     * RiskListSurface —— 风险列表卡片
+     * props: { title?, risks: [{id, level, message, tool?, mitigated?}] }
+     */
+    function renderRiskListSurface(_surface, props) {
+      const risks = Array.isArray(props.risks) ? props.risks : [];
+      if (!risks.length) return null;
+      const unmitigated = risks.filter((r) => !r.mitigated);
+      const card = materialCard(props.title || "风险提示", unmitigated.length ? unmitigated.length + " 项待处理" : "全部已处置");
+      const list = document.createElement("div");
+      list.className = "material-list";
+      risks.slice(0, 12).forEach((risk) => {
+        const item = document.createElement("div");
+        item.className = "material-item";
+        const row = document.createElement("div");
+        row.className = "material-row";
+        const levelChip = materialChip(clean(risk.level || "unknown"));
+        const RISK_COLORS = { high: "#c0392b", critical: "#c0392b", medium: "#d68910", low: "#27ae60" };
+        const color = RISK_COLORS[String(risk.level || "").toLowerCase()];
+        if (color) { levelChip.style.color = color; levelChip.style.borderColor = color + "44"; }
+        row.appendChild(levelChip);
+        if (risk.tool) row.appendChild(materialChip(clean(risk.tool)));
+        if (risk.mitigated) row.appendChild(materialChip("已处置"));
+        const msg = document.createElement("div");
+        msg.className = "material-subtle";
+        msg.textContent = clean(risk.message || risk.id || "");
+        item.append(row, msg);
+        list.appendChild(item);
+      });
+      card.appendChild(list);
+      return card;
+    }
+
+    /**
+     * MetricCardsSurface —— 指标卡片组
+     * props: { title?, metrics: [{label, value, unit?, trend?, delta?}] }
+     */
+    function renderMetricCardsSurface(_surface, props) {
+      const metrics = Array.isArray(props.metrics) ? props.metrics : [];
+      if (!metrics.length) return null;
+      const card = materialCard(props.title || "关键指标", "");
+      const grid = document.createElement("div");
+      grid.className = "material-metrics";
+      // MetricCards 支持最多 6 格
+      metrics.slice(0, 6).forEach((m) => {
+        const node = materialMetric(
+          (m.value !== undefined && m.value !== null ? String(m.value) : "-") + (m.unit ? m.unit : ""),
+          clean(m.label || "-")
+        );
+        // 趋势/变化量附在 label 下方
+        if (m.delta !== undefined || m.trend) {
+          const trend = document.createElement("span");
+          trend.className = "material-chip";
+          trend.style.marginTop = "4px";
+          const sign = Number(m.delta) > 0 ? "+" : "";
+          trend.textContent = m.trend ? clean(m.trend) : sign + String(m.delta);
+          trend.style.color = Number(m.delta) >= 0 ? "#27ae60" : "#c0392b";
+          node.appendChild(trend);
+        }
+        grid.appendChild(node);
+      });
+      card.appendChild(grid);
+      return card;
+    }
+
+    /**
+     * EvidenceSurface —— 证据/引用片段列表
+     * props: { title?, items: [{title, source, quote, score?}] }
+     */
+    function renderEvidenceSurface(_surface, props) {
+      const items = Array.isArray(props.items) ? props.items : [];
+      if (!items.length) return null;
+      // 复用 renderSourceDisclosure，注入 items
+      const sources = items.map((item) => ({
+        title: item.title,
+        source: item.source,
+        quote: item.quote,
+        score: typeof item.score === "number" ? item.score : undefined
+      }));
+      const card = materialCard(props.title || "参考依据", sources.length + " 条证据");
+      const disclosure = renderSourceDisclosure(sources);
+      if (disclosure) card.appendChild(disclosure);
+      return card;
+    }
+
+    /**
+     * TaskTrackingSurface —— 任务追踪看板
+     * props: { title?, tasks: [{id, subject, status, priority?, owner?, due_date?, progress?}] }
+     */
+    function renderTaskTrackingSurface(surface, props) {
+      const tasks = Array.isArray(props.tasks) ? props.tasks : [];
+      if (!tasks.length) return null;
+      const done = tasks.filter((t) => /done|completed|closed|已完成/.test(String(t.status || ""))).length;
+      const card = materialCard(props.title || "任务跟踪", done + "/" + tasks.length + " 已完成");
+      // 总进度条
+      const progress = document.createElement("div");
+      progress.className = "material-progress";
+      const bar = document.createElement("span");
+      bar.style.width = (tasks.length ? Math.round(done / tasks.length * 100) : 0) + "%";
+      progress.appendChild(bar);
+      card.appendChild(progress);
+      const list = document.createElement("div");
+      list.className = "material-list";
+      tasks.slice(0, 10).forEach((task) => {
+        const item = document.createElement("div");
+        item.className = "material-item";
+        const title = document.createElement("div");
+        title.className = "material-item-title";
+        title.textContent = clean(task.subject || task.id || "未命名任务");
+        const row = document.createElement("div");
+        row.className = "material-row";
+        const statusLabel = String(task.status || "unknown");
+        const statusChip = materialChip(clean(statusLabel));
+        if (/done|completed|已完成/i.test(statusLabel)) statusChip.style.color = "#27ae60";
+        else if (/blocked|阻塞/i.test(statusLabel)) statusChip.style.color = "#c0392b";
+        row.appendChild(statusChip);
+        if (task.priority) row.appendChild(materialChip(clean(task.priority)));
+        if (task.owner) row.appendChild(materialChip("负责人：" + clean(task.owner)));
+        if (task.due_date) row.appendChild(materialChip("截止：" + clean(task.due_date)));
+        item.append(title, row);
+        // 单任务进度条
+        if (typeof task.progress === "number") {
+          const tp = document.createElement("div");
+          tp.className = "material-progress";
+          const tb = document.createElement("span");
+          tb.style.width = Math.max(0, Math.min(100, task.progress)) + "%";
+          tp.appendChild(tb);
+          item.appendChild(tp);
+        }
+        // TaskTracking 支持继续/忽略动作按钮（可选）
+        if (task.id && (task.resumable || task.allow_resume)) {
+          const actionRow = document.createElement("div");
+          actionRow.className = "material-actions";
+          const ctx = { task_id: task.id, task_list_id: task.task_list_id || "" };
+          actionRow.append(
+            materialActionButton("继续", "task.resume.select", ctx, surface),
+            materialActionButton("忽略", "task.resume.ignore", ctx, surface, true)
+          );
+          item.appendChild(actionRow);
+        }
+        list.appendChild(item);
+      });
+      card.appendChild(list);
+      return card;
+    }
+    /**
+     * PendingActionSurface —— 待确认执行动作面板（Plan Mode / Ask 权限层入口）
+     * props: {
+     *   title?,
+     *   description?,
+     *   actions: [{
+     *     id, tool, args_summary?, risk_level?, reason?, expires_at?,
+     *     allow_confirm?, allow_reject?, allow_modify?
+     *   }]
+     * }
+     *
+     * 对标 Claude Code 的 ask/deny 权限层：中高风险操作不直接执行，
+     * 先展示在此面板，等待用户点击"确认执行"或"拒绝"。
+     * 点击后通过 dispatchA2UIAction 发到 /api/a2ui/action（runtime.pending_action.*）。
+     */
+    function renderPendingActionSurface(surface, props) {
+      const actions = Array.isArray(props.actions) ? props.actions : [];
+      if (!actions.length) return null;
+      const pendingCount = actions.filter((a) => !a.resolved).length;
+      const card = materialCard(
+        props.title || "待确认操作",
+        pendingCount ? pendingCount + " 项等待确认" : "全部已处理"
+      );
+      // 可选：面板描述文字（解释为何需要确认）
+      if (props.description) {
+        const desc = document.createElement("div");
+        desc.className = "material-subtle";
+        desc.style.lineHeight = "1.6";
+        desc.textContent = clean(String(props.description));
+        card.appendChild(desc);
+      }
+      const list = document.createElement("div");
+      list.className = "material-list";
+      actions.slice(0, 10).forEach((action) => {
+        const resolved = !!action.resolved;
+        const item = document.createElement("div");
+        item.className = "material-item";
+        if (resolved) item.style.opacity = "0.55";
+        // 工具名称行
+        const title = document.createElement("div");
+        title.className = "material-item-title";
+        title.textContent = clean(action.tool || "未知操作");
+        // 元信息 chip 行：risk_level + expires_at + action.id
+        const row = document.createElement("div");
+        row.className = "material-row";
+        if (action.risk_level) {
+          const riskChip = materialChip(clean(action.risk_level));
+          const RISK_COLORS = { high: "#c0392b", critical: "#c0392b", medium: "#d68910", low: "#27ae60" };
+          const color = RISK_COLORS[String(action.risk_level).toLowerCase()];
+          if (color) { riskChip.style.color = color; riskChip.style.borderColor = color + "44"; }
+          row.appendChild(riskChip);
+        }
+        if (action.expires_at) row.appendChild(materialChip("过期：" + clean(String(action.expires_at))));
+        if (action.id) row.appendChild(materialChip("ID：" + clean(String(action.id))));
+        item.append(title, row);
+        // 参数摘要（可选）
+        if (action.args_summary) {
+          const argSummary = document.createElement("div");
+          argSummary.className = "material-subtle";
+          argSummary.style.fontFamily = "ui-monospace, Menlo, Consolas, monospace";
+          argSummary.style.fontSize = "12px";
+          argSummary.textContent = clean(String(action.args_summary).slice(0, 200));
+          item.appendChild(argSummary);
+        }
+        // 原因说明
+        if (action.reason) {
+          const reasonEl = document.createElement("div");
+          reasonEl.className = "material-action";
+          reasonEl.textContent = "需要确认：" + clean(String(action.reason));
+          item.appendChild(reasonEl);
+        }
+        // 操作按钮（已处理则不再显示）
+        if (!resolved) {
+          const actionRow = document.createElement("div");
+          actionRow.className = "material-actions";
+          const actionId = String(action.id || "");
+          const canConfirm = action.allow_confirm !== false;
+          const canReject = action.allow_reject !== false;
+          if (canConfirm) {
+            actionRow.appendChild(
+              materialActionButton("确认执行", "runtime.pending_action.confirm", { pending_action_id: actionId }, surface)
+            );
+          }
+          if (action.allow_modify) {
+            actionRow.appendChild(
+              materialActionButton("修改参数", "runtime.pending_action.modify", { pending_action_id: actionId }, surface, true)
+            );
+          }
+          if (canReject) {
+            actionRow.appendChild(
+              materialActionButton("拒绝", "runtime.pending_action.reject", { pending_action_id: actionId }, surface, true)
+            );
+          }
+          item.appendChild(actionRow);
+        } else {
+          // 已处理状态标记
+          const resolvedBadge = document.createElement("div");
+          resolvedBadge.className = "material-chip";
+          resolvedBadge.style.color = "#27ae60";
+          resolvedBadge.textContent = action.resolved_status === "rejected" ? "已拒绝" : "已确认";
+          item.appendChild(resolvedBadge);
+        }
+        list.appendChild(item);
+      });
+      card.appendChild(list);
+      // 底部提示：Plan Mode 状态
+      if (props.plan_mode) {
+        const hint = document.createElement("div");
+        hint.className = "material-subtle";
+        hint.style.marginTop = "4px";
+        hint.style.fontSize = "12px";
+        hint.textContent = "当前处于 Plan Mode，写操作和外部副作用需要手动确认后执行。";
+        card.appendChild(hint);
+      }
+      return card;
+    }
+
+    function renderMaterialVehicleProgress(surface, props) {
+      const orders = Array.isArray(props.orders) ? props.orders : [];
+      const summary = props.summary || {};
+      if (!orders.length) return null;
+      const card = materialCard("车辆交付进度", "由 OpenUI Bridge 映射到本地车辆进度物料");
+      const metrics = document.createElement("div");
+      metrics.className = "material-metrics";
+      metrics.append(
+        materialMetric(summary.total ?? orders.length, "相关订单"),
+        materialMetric(summary.pending_delivery ?? "-", "待交付/整备"),
+        materialMetric(summary.unpaid ?? "-", "未结清")
+      );
+      card.appendChild(metrics);
+      const list = document.createElement("div");
+      list.className = "material-list";
+      orders.slice(0, 6).forEach((order) => {
+        const item = document.createElement("div");
+        item.className = "material-item";
+        const title = document.createElement("div");
+        title.className = "material-item-title";
+        title.textContent = clean([order.customer_name || "客户", [order.series, order.model].filter(Boolean).join(" ")].filter(Boolean).join(" · "));
+        const row = document.createElement("div");
+        row.className = "material-row";
+        row.append(
+          materialChip("订单 " + clean(order.id || "-")),
+          materialChip("交付 " + clean(order.delivery_status || order.order_status || "-")),
+          materialChip("收款 " + clean(order.payment_status || "-"))
+        );
+        const action = document.createElement("div");
+        action.className = "material-action";
+        action.textContent = "下一步：" + inferVehicleNextAction(order);
+        const timeline = renderMaterialTimeline(order.timeline || []);
+        item.append(title, row);
+        if (timeline) item.appendChild(timeline);
+        item.appendChild(action);
+        list.appendChild(item);
+      });
+      card.appendChild(list);
+      return card;
+    }
+    function renderMaterialExpenseEstimate(_surface, props) {
+      const card = materialCard("报销金额测算", props.status === "exceeded" ? "存在超标金额，需要补充说明或审批。" : "按当前制度标准测算。");
+      const metrics = document.createElement("div");
+      metrics.className = "material-metrics";
+      metrics.append(
+        materialMetric(formatMoney(props.claimed_amount), "申报金额"),
+        materialMetric(formatMoney(props.eligible_amount), "预计可报"),
+        materialMetric(formatMoney(props.exceeded_amount), "超标金额")
+      );
+      const basis = document.createElement("div");
+      basis.className = "material-action";
+      basis.textContent = "规则依据：" + clean(props.policy_basis || "按当前制度标准测算");
+      card.append(metrics, basis);
+      return card;
+    }
+    function renderMaterialLeaveRequestForm(surface, props) {
+      const slots = props.slots || {};
+      const missing = Array.isArray(props.missing_slots) ? props.missing_slots : [];
+      const card = materialCard("请假申请", props.step === "completed" ? "已提交" : props.step === "awaiting_confirmation" ? "等待确认提交" : "继续补全请假信息");
+      const progress = document.createElement("div");
+      progress.className = "material-progress";
+      const bar = document.createElement("span");
+      bar.style.width = Math.max(0, Math.min(100, Number(props.completion || 0))) + "%";
+      progress.appendChild(bar);
+      const list = document.createElement("div");
+      list.className = "material-list";
+      [
+        ["请假类型", slots.leave_type],
+        ["开始时间", slots.start_time],
+        ["结束时间", slots.end_time],
+        ["请假事由", slots.reason]
+      ].forEach(([label, value]) => {
+        const item = document.createElement("div");
+        item.className = "material-item";
+        const row = document.createElement("div");
+        row.className = "material-row";
+        row.append(materialChip(label), materialChip(value || "待补充"));
+        item.appendChild(row);
+        list.appendChild(item);
+      });
+      const status = document.createElement("div");
+      status.className = "material-action";
+      status.textContent = missing.length ? "还需补充：" + missing.join("、") : "信息已完整，可继续确认提交。";
+      card.append(progress, list, status);
+      return card;
+    }
+    function renderMaterialApproval(surface, props, actions) {
+      const pending = Array.isArray(props.pending_actions) ? props.pending_actions : [];
+      if (!pending.length) return null;
+      const card = materialCard("审批确认流程", "确认后会执行动作并返回结果。");
+      const timeline = renderMaterialTimeline(props.steps || []);
+      if (timeline) card.appendChild(timeline);
+      const list = document.createElement("div");
+      list.className = "material-list";
+      pending.forEach((action) => {
+        const item = document.createElement("div");
+        item.className = "material-item";
+        const title = document.createElement("div");
+        title.className = "material-item-title";
+        title.textContent = clean(action.tool || "待确认操作");
+        const meta = document.createElement("div");
+        meta.className = "material-subtle";
+        meta.textContent = clean([action.id, action.risk_level, action.expires_at].filter(Boolean).join(" · "));
+        const actionRow = document.createElement("div");
+        actionRow.className = "material-actions";
+        const id = action.id || "";
+        actionRow.append(
+          materialActionButton("确认执行", "runtime.pending_action.confirm", { pending_action_id: id }, surface),
+          materialActionButton("拒绝", "runtime.pending_action.reject", { pending_action_id: id }, surface, true)
+        );
+        item.append(title, meta, actionRow);
+        list.appendChild(item);
+      });
+      card.appendChild(list);
+      return card;
+    }
+    function renderMaterialTaskResume(surface, props) {
+      const tasks = Array.isArray(props.tasks) ? props.tasks : [];
+      if (!tasks.length) return null;
+      const card = materialCard(tasks.length > 1 ? "你想继续哪个任务？" : "继续这个任务？", "从当前消息召回相关长程任务。");
+      const list = document.createElement("div");
+      list.className = "material-list";
+      tasks.forEach((task) => {
+        const item = document.createElement("div");
+        item.className = "material-item";
+        const title = document.createElement("div");
+        title.className = "material-item-title";
+        title.textContent = clean(task.subject || task.active_form || task.id || "未命名任务");
+        const meta = document.createElement("div");
+        meta.className = "material-subtle";
+        meta.textContent = clean([task.status, task.next_action ? "下一步：" + task.next_action : "", task.reason].filter(Boolean).join(" · "));
+        const actions = document.createElement("div");
+        actions.className = "material-actions";
+        const context = { task_id: task.id || "", task_list_id: task.task_list_id || "" };
+        actions.append(
+          materialActionButton("继续这个", "task.resume.select", context, surface),
+          materialActionButton("先不继续", "task.resume.ignore", context, surface, true)
+        );
+        item.append(title, meta, actions);
+        list.appendChild(item);
+      });
+      card.appendChild(list);
+      return card;
+    }
+    function materialCard(titleText, subtitleText) {
+      const card = document.createElement("div");
+      card.className = "material-card";
+      const head = document.createElement("div");
+      head.className = "material-head";
+      const title = document.createElement("div");
+      title.className = "material-title";
+      title.textContent = titleText;
+      const sub = document.createElement("div");
+      sub.className = "material-subtle";
+      sub.textContent = subtitleText;
+      head.append(title);
+      card.append(head, sub);
+      return card;
+    }
+    function materialMetric(value, label) {
+      const node = document.createElement("div");
+      node.className = "material-metric";
+      const strong = document.createElement("strong");
+      strong.textContent = String(value ?? "-");
+      const span = document.createElement("span");
+      span.className = "material-subtle";
+      span.textContent = label;
+      node.append(strong, span);
+      return node;
+    }
+    function materialChip(text) {
+      const node = document.createElement("span");
+      node.className = "material-chip";
+      node.textContent = text;
+      return node;
+    }
+    function renderMaterialTimeline(steps) {
+      if (!Array.isArray(steps) || !steps.length) return null;
+      const node = document.createElement("div");
+      node.className = "material-timeline";
+      steps.forEach((step) => {
+        const item = document.createElement("div");
+        item.className = "material-step " + clean(step.status || "pending");
+        const dot = document.createElement("span");
+        dot.className = "material-step-dot";
+        const label = document.createElement("span");
+        label.textContent = clean(step.label || step.key || "-");
+        item.append(dot, label);
+        node.appendChild(item);
+      });
+      return node;
+    }
+    function formatMoney(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return "-";
+      return Math.round(n).toLocaleString("zh-CN") + " 元";
+    }
+    function materialActionButton(label, name, context, surface, secondary = false) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "a2ui-button" + (secondary ? " secondary" : "");
+      button.textContent = label;
+      button.addEventListener("click", () => dispatchA2UIAction({ event: { name, context } }, surface, button));
+      return button;
+    }
+    function inferVehicleNextAction(order) {
+      if ((order.payment_status || "") !== "已结清") return "优先跟进尾款/金融放款到账";
+      if ((order.invoice_status || "") !== "已开票") return "确认开票节点";
+      if ((order.delivery_status || "") !== "已交付") return "确认整备、上牌和交付排期";
+      return "已完成交付，保持客户回访";
+    }
+    function renderSourceDisclosure(sources) {
+      const cleanSources = (sources || []).filter(Boolean);
+      if (!cleanSources.length) return null;
+      const details = document.createElement("details");
+      details.className = "source-disclosure";
+      const summary = document.createElement("summary");
+      const caret = document.createElement("span");
+      caret.className = "source-caret";
+      const label = document.createElement("span");
+      label.textContent = "引用来源 · " + cleanSources.length;
+      summary.append(caret, label);
+      const panel = document.createElement("div");
+      panel.className = "source-panel";
+      cleanSources.slice(0, 8).forEach((source) => {
+        const item = document.createElement("div");
+        item.className = "source-item";
+        const title = document.createElement("div");
+        title.className = "source-item-title";
+        title.textContent = clean([source.title, source.heading].filter(Boolean).join(" / ") || "来源");
+        item.appendChild(title);
+        const metaParts = [];
+        if (source.source) metaParts.push(source.source);
+        if (typeof source.score === "number") metaParts.push("相关度 " + source.score.toFixed(2));
+        if (metaParts.length) {
+          const meta = document.createElement("div");
+          meta.className = "source-item-meta";
+          meta.textContent = clean(metaParts.join(" · "));
+          item.appendChild(meta);
+        }
+        if (source.quote) {
+          const quote = document.createElement("div");
+          quote.className = "source-item-quote";
+          quote.textContent = clean(String(source.quote).slice(0, 220));
+          item.appendChild(quote);
+        }
+        panel.appendChild(item);
+      });
+      details.append(summary, panel);
+      return details;
+    }
+    function renderA2UIComponent(surface, id) {
+      const component = surface.components.get(id);
+      if (!component) return null;
+      const [type, props] = Object.entries(component)[0] || [];
+      if (!type) return null;
+      if (type === "Card") {
+        const node = document.createElement("div");
+        node.className = "a2ui-card";
+        for (const child of props.children || []) {
+          const childNode = renderA2UIComponent(surface, child);
+          if (childNode) node.appendChild(childNode);
+        }
+        return node;
+      }
+      if (type === "Row") {
+        const node = document.createElement("div");
+        node.className = "a2ui-row";
+        for (const child of props.children || []) {
+          const childNode = renderA2UIComponent(surface, child);
+          if (childNode) node.appendChild(childNode);
+        }
+        return node;
+      }
+      if (type === "List") {
+        const node = document.createElement("div");
+        node.className = "a2ui-list";
+        for (const child of props.children || []) {
+          const childNode = renderA2UIComponent(surface, child);
+          if (childNode) node.appendChild(childNode);
+        }
+        return node;
+      }
+      if (type === "Text") {
+        const node = document.createElement("div");
+        node.className = "a2ui-text";
+        node.innerHTML = renderMarkdown(resolveA2UIText(props.text));
+        return node;
+      }
+      if (type === "Button") {
+        const node = document.createElement("button");
+        node.type = "button";
+        node.className = "a2ui-button" + (/拒绝|取消/.test(resolveA2UIText(props.text)) ? " secondary" : "");
+        node.textContent = resolveA2UIText(props.text);
+        node.addEventListener("click", () => dispatchA2UIAction(props.action, surface, node));
+        return node;
+      }
+      return null;
+    }
+    function resolveA2UIText(value) {
+      if (!value) return "";
+      if (typeof value === "string") return value;
+      if (typeof value.literalString === "string") return value.literalString;
+      if (typeof value.path === "string") return "";
+      return String(value);
+    }
+    async function dispatchA2UIAction(action, surface, button) {
+      const event = action?.event;
+      if (!event?.name || loading) return;
+      button.disabled = true;
+      const original = button.textContent;
+      button.textContent = "处理中";
+      try {
+        const response = await fetch("/api/a2ui/action", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: currentUserId,
+            session_id: activeSessionId,
+            action: {
+              name: event.name,
+              surface_id: surface.id,
+              context: event.context || {}
+            },
+            metadata: {
+              a2uiClientDataModel: { surfaces: { [surface.id]: surface.data || {} } }
+            }
+          })
+        });
+        const payload = await response.json();
+        button.textContent = payload.ok ? "已处理" : "失败";
+        if (!payload.ok) button.disabled = false;
+      } catch {
+        button.textContent = original || "重试";
+        button.disabled = false;
+      }
     }
     function finalizeProcessOnAnswerStart(id) {
       const msg = getMsg(id);
@@ -1558,7 +2625,16 @@ export function renderChatPage(): string {
       if (!msg || !ev) return;
       if (msg.processFinalized) return;
       msg.bizPairs = msg.bizPairs || [];
+      msg.bizPairsByItemId = msg.bizPairsByItemId || Object.create(null);
+      // 优先消费强类型 agentic_item 事件：按 itemId 合并 start/end，避免同一次工具
+      // 调用渲染成两张卡片。旧的 agentic_tool 事件保留作 fallback。
+      if (ev.kind === "agentic_item" && ev.kind === "agentic_item" && ev.stream === "tool" && ev.itemId) {
+        applyToolItemEvent(msg, ev);
+        return;
+      }
       if (ev.kind === "agentic_tool" && ev.type === "tool_call") {
+        // 后端已携带 item_id 的 tool_call，对应的 item start/end 已经处理过了，跳过避免重复。
+        if (ev.item_id && msg.bizPairsByItemId[ev.item_id]) return;
         const pair = toolEventToBizPair(ev);
         if (pair) msg.bizPairs.push(pair);
       } else if (ev.kind === "agentic_lifecycle") {
@@ -1567,6 +2643,80 @@ export function renderChatPage(): string {
           msg.failedReason = ev.reason || ev.error || ev.event;
         }
       }
+    }
+    // 单个 item 的 end 丢包保护时长：60s。超过则标记为失败而不是永久 spinner。
+    const ITEM_WATCHDOG_MS = 60000;
+    function applyToolItemEvent(msg, ev) {
+      const itemId = ev.itemId;
+      const existing = msg.bizPairsByItemId[itemId];
+      if (ev.phase === "start") {
+        if (existing) return; // 重复 start，忽略
+        // 用 args/tool 名构造一张"运行中"卡片，先占位，等 end 再覆盖
+        const pair = toolItemToBizPair(ev) || { icon: "loader", summary: "\\u8c03\\u7528\\u5de5\\u5177\\u4e2d", narrative: "" };
+        pair.itemId = itemId;
+        pair.status = "running";
+        pair.watchdogTimer = window.setTimeout(function() {
+          if (pair.status === "running") {
+            pair.status = "failed";
+            pair.errorMessage = "\\u54cd\\u5e94\\u8d85\\u65f6\\uff08\\u672a\\u6536\\u5230 end \\u4e8b\\u4ef6\\uff09";
+            render();
+          }
+        }, ITEM_WATCHDOG_MS);
+        msg.bizPairs.push(pair);
+        msg.bizPairsByItemId[itemId] = pair;
+        return;
+      }
+      if (ev.phase === "end") {
+        // end 阶段：清掉 watchdog；合并到已有 pair；如果没有 start 过（理论上不应该），就 push 一张
+        if (existing && existing.watchdogTimer) {
+          window.clearTimeout(existing.watchdogTimer);
+          existing.watchdogTimer = null;
+        }
+        const updated = toolItemToBizPair(ev) || existing || { icon: "circle", summary: "", narrative: "" };
+        if (existing) {
+          existing.icon = updated.icon || existing.icon;
+          existing.summary = updated.summary || existing.summary;
+          existing.narrative = updated.narrative || existing.narrative;
+          existing.status = ev.status || "completed";
+          if (ev.error) existing.errorMessage = ev.error.message || ev.error.code;
+        } else {
+          updated.itemId = itemId;
+          updated.status = ev.status || "completed";
+          if (ev.error) updated.errorMessage = ev.error.message || ev.error.code;
+          msg.bizPairs.push(updated);
+          msg.bizPairsByItemId[itemId] = updated;
+        }
+      }
+    }
+    /**
+     * 当 SSE 流结束/中断时，把所有还在 running 的 item 强制收尾。
+     * 防御场景：后端 emit end 之前进程崩溃 / 网络断开 / SSE 提前 close。
+     * 没有这层兜底，UI 会卡在 spinner 永不结束。
+     */
+    function finalizeRunningItems(msg, reason) {
+      if (!msg || !msg.bizPairs) return;
+      for (const pair of msg.bizPairs) {
+        if (pair.status !== "running") continue;
+        if (pair.watchdogTimer) {
+          window.clearTimeout(pair.watchdogTimer);
+          pair.watchdogTimer = null;
+        }
+        pair.status = "failed";
+        pair.errorMessage = reason || "\\u8fde\\u63a5\\u4e2d\\u65ad\\uff0c\\u672a\\u6536\\u5230\\u5b8c\\u6574\\u54cd\\u5e94";
+      }
+    }
+    // 把 agentic_item 翻译成业务 bizPair（与 toolEventToBizPair 等价但读 item 字段）
+    function toolItemToBizPair(ev) {
+      const tool = ev.title || "";
+      const meta = ev.meta || {};
+      // 复用旧的字典：构造一个伪 ev 给 toolEventToBizPair
+      return toolEventToBizPair({
+        tool: tool,
+        observation_summary: ev.error
+          ? { ok: false, message: ev.error.message }
+          : (ev.phase === "end" ? { ok: ev.status !== "failed" } : null),
+        args: meta.args
+      });
     }
     // 把 agentic-handler 的 tool_call 事件翻译成业务视角的 {icon, summary, narrative}
     // 不改 manifest，先在前端做映射；后续 A 阶段再下放到 manifest.display

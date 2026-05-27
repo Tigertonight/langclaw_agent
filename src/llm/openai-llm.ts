@@ -1263,6 +1263,8 @@ function summarizeEnterpriseContextForPrompt(context: DataRecord | null | undefi
     admin_files: adminFiles.map((item: DataRecord) => item.name),
     org_memory: context.org_memory?.items ?? [],
     user_memory: context.user_memory?.items ?? [],
+    tasks: context.tasks ?? null,
+    evolution: context.evolution ?? null,
     policy: context.policy
   };
 }
