@@ -17,6 +17,7 @@
 import { applyPromptCache } from "../llm/prompt-cache.js";
 import { buildItemStartEvent, buildItemEndEvent, nextAgentItemId } from "../runtime/agent-events.js";
 import { RuntimeHooks } from "../runtime/hooks.js";
+import { getAgenticFallbacks } from "../domains/runtime-registry.js";
 import type { IntentManifest, IntentRegistry, JsonObject, JsonValue, Route, ToolCall, ToolResult, UserContext } from "../types/agent-contracts.js";
 
 interface AgenticIntentQueryHandler {
@@ -497,7 +498,7 @@ export class AgenticHandler {
   "tool_name": "<当 action=tool_call 时填工具名>",
   "args": { ... },
   "tools": [{"tool_name": "<可选：多个相互独立的工具并发执行>", "args": { ... }}],
-  "plan": [{"id": "inventory", "tool_name": "intent.dealer.query.inventory", "args": {}, "depends_on": []}],
+  "plan": [{"id": "step1", "tool_name": "intent.<domain>.<action>.<resource>", "args": {}, "depends_on": []}],
   "state_update": {
     "plan": ["下一步计划"],
     "completed": ["已经完成的事实收集/计算"],
@@ -511,7 +512,7 @@ export class AgenticHandler {
       "1. action=tool_call 时只能调 上面列表里的 工具；args 严格按 params_schema。",
       "2. 如果多个 intent.* 查询相互独立，可以用 tools 数组一次返回多个工具，系统会并发执行；有依赖关系的步骤仍分轮执行。",
       "3. 如果任务天然是 DAG（先查多个数据，再用 safe_compute 计算），可以 action=plan 并返回 plan 数组；depends_on 为空的节点会并发执行。",
-      "4. 用户没明确给出的字段填 null；不要瞎猜门店/车系。",
+      "4. 用户没明确给出的字段填 null；不要瞎猜具体值。",
       "5. 有充分信息就直接 action=answer 给最终回答，回答里把『我做了什么、看到了什么、结论』讲清楚。",
       "6. 如果跨意图任务其实只需要单个 intent，仍然走单个 tool_call → answer 两步。",
       "7. 罕见情况：如果你强烈认为现有工具列表完全不够、需要某个全新能力，可以把 action 设为 propose_tool 并附 proposed_tool: {name, what_it_does, why_needed}（仅做记录，本期不会真执行；下一步你还得用现有工具或 answer）。绝大多数任务都不该走这条。"
@@ -630,12 +631,13 @@ export class AgenticHandler {
     pushToolStart?: ToolStartPush;
   }) {
     const text = String(message ?? "");
-    if (!/(维修工单|工单|售后).*(上周|对比|相比|环比|跟上周比|和上周比)/.test(text)) return null;
-    const calls: AgenticToolCall[] = [
-      { tool_name: "intent.dealer.aggregate.repair_orders", args: { metric: "total_receivable", time_range: "本周" } },
-      { tool_name: "intent.dealer.aggregate.repair_orders", args: { metric: "total_receivable", time_range: "上周" } }
-    ];
-    pushLifecycle("local_fallback_started", { reason: "repair_week_over_week" });
+    // 从 registry 动态查找匹配的 agentic fallback
+    const fallbacks = getAgenticFallbacks();
+    const matched = fallbacks.find((fb) => fb.matches(text));
+    if (!matched) return null;
+    const fallbackCalls = matched.calls(text);
+    const calls: AgenticToolCall[] = fallbackCalls.map((c) => ({ tool_name: c.tool_name, args: c.args }));
+    pushLifecycle("local_fallback_started", { reason: matched.id });
     const observations: AgenticObservationItem[] = [];
     for (const [index, call] of calls.entries()) {
       const itemId = pushToolStart?.({ tool: call.tool_name, args: call.args as JsonValue, step: index });
@@ -643,9 +645,10 @@ export class AgenticHandler {
       observations.push({ call, observation });
       pushTool({ step: index, type: "tool_call", tool: call.tool_name, args: call.args, observation_summary: summarizeObservation(observation), item_id: itemId });
     }
-    const current = observations[0]?.observation?.answer ?? "本周暂无数据";
-    const previous = observations[1]?.observation?.answer ?? "上周暂无数据";
-    const answer = `我分别查了本周和上周的售后维修工单结算金额。\n\n本周：${current}\n\n上周：${previous}\n\n当前离线环境无法调用规划模型做进一步归因，但两段口径已经按同一维修工单聚合指标返回，可用于人工对比。`;
+    const answer = matched.composeAnswer(observations.map((item) => ({
+      call: item.call,
+      answer: typeof item.observation?.answer === "string" ? item.observation.answer : undefined,
+    })));
     const flatTraces = mergeStreams(streams);
     pushLifecycle("answered", { source: "local_agentic_fallback" });
     return {

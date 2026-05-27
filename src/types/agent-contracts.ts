@@ -1,72 +1,65 @@
-export type JsonPrimitive = string | number | boolean | null;
-export type JsonValue = JsonPrimitive | JsonObject | JsonValue[];
+/**
+ * Agent Contracts — 运行时类型定义。
+ *
+ * 基础类型（JsonValue、IntentManifest、Route、UserContext 等）已提升到
+ * src/engine/contracts/base-types.ts（frozen 层），此文件 re-export 它们
+ * 以保持向后兼容。运行时独有的类型（RouterLLMResult、AgenticDecision 等）
+ * 仍在此文件中定义。
+ *
+ * 依赖方向：engine/contracts/base-types.ts → 此文件 re-export
+ */
 
-export interface JsonObject {
-  [key: string]: JsonValue | undefined;
-}
+// ── Re-export from contracts base-types (frozen) ─────────────────────────────
 
-export type Confidence = "low" | "medium" | "high";
-export type ExecutionClass = "controlled_execution" | "autonomous_planning";
-export type HandlerType = "intent_query" | "agentic" | "workflow" | "chitchat" | "knowledge_lookup";
+export type {
+  JsonPrimitive,
+  JsonValue,
+  JsonObject,
+  Confidence,
+  ExecutionClass,
+  HandlerType,
+  IntentParamSchemaField,
+  IntentParamSchema,
+  DeterministicRuleManifest,
+  IntentToolBinding,
+  IntentManifest,
+  Route,
+  UserContext,
+  QueryFilter,
+  QuerySort,
+  QueryEntity,
+  QueryMetric,
+  QueryIR,
+  ToolMetadata,
+  ToolExecutionContext,
+  ToolDefinition,
+  ToolResult,
+  ToolCall,
+} from "../engine/contracts/base-types.js";
 
-export interface IntentParamSchemaField {
-  type?: "string" | "number" | "boolean" | "array" | "object" | "enum";
-  required?: boolean;
-  enum?: JsonValue[];
-  values?: JsonValue[];
-  default?: JsonValue;
-  description?: string;
-  examples?: JsonValue[];
-}
+// ── Re-import for local use ──────────────────────────────────────────────────
 
-export type IntentParamSchema = Record<string, IntentParamSchemaField>;
+import type {
+  JsonObject,
+  JsonValue,
+  Confidence,
+  ExecutionClass,
+  HandlerType,
+  IntentManifest,
+  QueryFilter,
+  QuerySort,
+  ToolCall,
+  ToolResult,
+  UserContext,
+  IntentToolBinding,
+} from "../engine/contracts/base-types.js";
 
-export interface DeterministicRuleManifest {
-  name?: string;
-  enabled?: boolean;
-  priority?: number;
-  intent_code?: string;
-  patterns: string[];
-  negative_patterns?: string[];
-  params?: JsonObject;
-  extractors?: Record<string, string>;
-  reasoning?: string;
-}
-
-export interface IntentManifest {
-  intent_code: string;
-  description?: string;
-  execution_class?: ExecutionClass;
-  handler_type: HandlerType;
-  confidence_threshold?: Confidence;
-  params_schema?: IntentParamSchema;
-  deterministic_rules?: DeterministicRuleManifest[];
-  tool_binding?: IntentToolBinding;
-  metric_definitions?: Record<string, JsonObject>;
-  required_permissions?: string[];
-  filter_mapping?: Record<string, JsonObject | JsonObject[]>;
-  [key: string]: unknown;
-}
+// ── Runtime-only types (not in contracts) ────────────────────────────────────
 
 export interface IntentRegistry {
   getCode(intentCode: string): IntentManifest | null | undefined;
   listCodes(): IntentManifest[];
   getAllExamples(): Array<{ intent_code: string; example: string }>;
-}
-
-export interface Route {
-  intent?: string;
-  intent_code: string;
-  execution_class: ExecutionClass;
-  handler_type: HandlerType;
-  params: JsonObject;
-  confidence: Confidence;
-  reasoning?: string;
-  source?: string;
-  param_validation?: {
-    ok: boolean;
-    errors?: string[];
-  };
 }
 
 export interface RouteRequest {
@@ -103,34 +96,6 @@ export interface SessionState {
   [key: string]: unknown;
 }
 
-export interface UserContext {
-  id: string;
-  name?: string;
-  role: string;
-  department?: string;
-  default_store?: string;
-  permissions?: string[];
-  accessible_customer_ids?: string[];
-  [key: string]: unknown;
-}
-
-export interface ToolCall {
-  name: string;
-  args?: JsonObject;
-}
-
-export interface QueryFilter extends JsonObject {
-  field: string;
-  op?: string;
-  operator?: string;
-  value?: JsonValue;
-}
-
-export interface QuerySort extends JsonObject {
-  field: string;
-  direction?: "asc" | "desc" | string;
-}
-
 export interface QueryAggregation {
   type?: string;
   field?: string;
@@ -160,72 +125,6 @@ export interface BusinessQueryArgs extends JsonObject {
   group_by?: string;
   limit?: number;
   display?: QueryDisplay;
-}
-
-export interface ToolMetadata {
-  required_permissions?: string[];
-  intents?: string[];
-  scenarios?: string[];
-  steps?: string[];
-  /** 单工具执行超时（ms），不设则用 ToolRegistry 默认值。 */
-  timeout_ms?: number;
-  /** 风险等级。常见取值: read / write / destructive / sensitive_read / sandboxed_compute。 */
-  risk_level?: string;
-  /** 是否需要用户二次确认 */
-  requires_confirmation?: boolean;
-  [key: string]: unknown;
-}
-
-export interface ToolDefinition {
-  name: string;
-  description: string;
-  schema?: JsonObject;
-  /** 可选 zod schema：定义后 ToolRegistry 会在执行前后做 safeParse 校验。新工具用 defineTool() 自动赋值。 */
-  inputSchema?: unknown;
-  outputSchema?: unknown;
-  metadata?: ToolMetadata;
-  execute(args?: JsonObject, context?: ToolExecutionContext): Promise<unknown> | unknown;
-}
-
-export interface ToolResult {
-  ok?: boolean;
-  /**
-   * 显式失败标记。等价语义于 ok === false，但保留出来是为了与 LLM 的
-   * function-calling 协议（如 Anthropic tool_result 的 is_error）对齐，
-   * 让模型在 transcript 里能直接读到"工具失败"信号并自行决策。
-   */
-  isError?: boolean;
-  tool?: string;
-  error?: string;
-  code?: string;
-  message?: string;
-  data?: {
-    rows?: JsonObject[];
-    fields?: string[];
-    value?: JsonValue;
-    [key: string]: JsonValue | JsonObject[] | string[] | undefined;
-  };
-  [key: string]: unknown;
-}
-
-export interface ToolPlan {
-  calls: ToolCall[];
-}
-
-export interface ToolExecutionContext {
-  user?: UserContext;
-  workspace?: unknown;
-  intent?: string;
-  scenario?: string;
-  step?: string;
-  /**
-   * 由 ToolRegistry.execute 注入的取消信号。工具实现应在 fetch / db 查询等
-   * I/O 处把它透传下去（fetch 第二参 { signal }，pg 用 query.abort 等），
-   * 这样 timeout / 用户取消 / 上层主动 abort 时能真正释放资源。
-   * 旧工具忽略 signal 也不会出错，只是无法真正中断。
-   */
-  signal?: AbortSignal;
-  [key: string]: unknown;
 }
 
 export interface PermissionDecision {
@@ -301,10 +200,8 @@ export interface AgenticStreams {
   tool: AgenticStreamEntry[];
 }
 
-export interface IntentToolBinding {
-  tool_name?: string;
-  resource?: string;
-  operation?: "search" | "aggregate" | string;
+export interface ToolPlan {
+  calls: ToolCall[];
 }
 
 export interface IntentQueryDebug {
@@ -331,41 +228,10 @@ export interface IntentQueryResult {
   toolResults: ToolResult[];
 }
 
-export interface QueryEntity {
-  type?: string;
-  id?: string;
-  name?: string;
-  include_children?: boolean;
-  [key: string]: unknown;
-}
-
-export interface QueryMetric {
-  type?: string;
-  field?: string;
-  as?: string;
-  [key: string]: JsonValue | undefined;
-}
-
-export interface QueryIR {
-  kind: "business_query_ir";
-  version: number;
-  domain: string;
-  target: string;
-  operation: string;
-  entity?: QueryEntity | string | null;
-  filters: QueryFilter[];
-  metrics: QueryMetric[];
-  fields: string[];
-  sort: QuerySort[];
-  limit: number;
-  needsClarification?: string | null;
-  reason?: string;
-}
-
 export interface CompiledBusinessQuery {
   calls: ToolCall[];
   clarification?: string;
-  ir?: QueryIR;
+  ir?: import("../engine/contracts/base-types.js").QueryIR;
 }
 
 export interface SkillDefinition {

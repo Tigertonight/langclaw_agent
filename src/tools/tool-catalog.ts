@@ -1,23 +1,14 @@
 /**
- * ToolCatalog — Phase 4 新增
+ * ToolCatalog
  *
- * 将 ToolRegistry 的所有工具按"企业业务域"分类展示，
+ * 将 ToolRegistry 的所有工具按"业务域"分类展示，
  * 并支持按用户权限过滤，为 `/api/tools/catalog` 接口提供数据源。
  *
- * 业务域分类（对标企业垂类经销商 Agent 场景）：
- * - 经营分析 (dealer.analytics)
- * - 风险监控 (dealer.risk)
- * - 客户线索 (dealer.crm)
- * - 库存订单 (dealer.inventory)
- * - 售后工单 (dealer.aftersales)
- * - 财务与毛利 (dealer.finance)
- * - 知识库 (knowledge)
- * - 安全沙箱 (sandbox)
- * - 任务与调度 (task)
- * - 记忆与会话 (memory)
- * - 系统维护 (system)
+ * 业务域分类通过 DomainRegistry 的 catalogDomains 动态获取，
+ * 各 DomainPack 在注册时声明自己的 catalogDomains（如 dealer.analytics、dealer.crm 等），
+ * 引擎层不硬编码任何业务域名称。
  *
- * 权限分层（对标 Claude Code plan mode）：
+ * 权限分层：
  * - allow/read：低风险读取，自动执行
  * - ask/confirm：中风险，需要用户确认后执行
  * - deny：高风险或无权限，直接拒绝
@@ -26,20 +17,9 @@
 
 import type { ToolDescription } from "./registry.js";
 import type { ToolMetadata, UserContext, JsonObject } from "../types/agent-contracts.js";
+import { getCatalogDomains } from "../domains/runtime-registry.js";
 
-export type BusinessDomain =
-  | "dealer.analytics"
-  | "dealer.risk"
-  | "dealer.crm"
-  | "dealer.inventory"
-  | "dealer.aftersales"
-  | "dealer.finance"
-  | "knowledge"
-  | "sandbox"
-  | "task"
-  | "memory"
-  | "system"
-  | "other";
+export type BusinessDomain = string;
 
 export type PermissionLevel = "allow" | "ask" | "deny";
 export type RiskLevel = "read" | "write" | "sensitive_read" | "destructive" | "sandboxed_compute";
@@ -65,18 +45,42 @@ export interface ToolCatalogResult extends JsonObject {
   deny_tools: string[];
 }
 
-/** 按工具名称前缀推断业务域 */
+/**
+ * 按工具名称前缀推断业务域。
+ * 优先使用 DomainRegistry 中注册的 catalogDomains 进行匹配，
+ * 兜底使用通用前缀规则。
+ */
 function inferDomain(name: string): BusinessDomain {
   const prefix = name.split(".")[0] ?? "";
-  const second = name.split(".")[1] ?? "";
-  if (prefix === "dealer") {
-    if (second.startsWith("risk") || second.startsWith("alert") || second.startsWith("watchdog")) return "dealer.risk";
-    if (second.startsWith("crm") || second.startsWith("lead") || second.startsWith("clue") || second === "clues") return "dealer.crm";
-    if (second.startsWith("inventory") || second.startsWith("stock") || second.startsWith("order")) return "dealer.inventory";
-    if (second.startsWith("aftersale") || second.startsWith("work_order") || second.startsWith("claim")) return "dealer.aftersales";
-    if (second.startsWith("finance") || second.startsWith("profit") || second.startsWith("gross")) return "dealer.finance";
-    return "dealer.analytics";
+
+  // 尝试从 registry 的 catalogDomains 匹配
+  const catalogDomains = getCatalogDomains();
+  if (catalogDomains.length > 0) {
+    // 按 id 长度降序排列，优先匹配更具体的 domain
+    const sorted = [...catalogDomains].sort((a, b) => b.id.length - a.id.length);
+    for (const domain of sorted) {
+      // 匹配规则：工具名以 domain.id 的第一段为前缀
+      const domainPrefix = domain.id.split(".")[0] ?? "";
+      if (prefix === domainPrefix) {
+        // 进一步匹配子域
+        const second = name.split(".")[1] ?? "";
+        const domainSuffix = domain.id.split(".").slice(1).join(".");
+        if (domainSuffix && second.startsWith(domainSuffix.replace(/\./g, "_"))) {
+          return domain.id;
+        }
+      }
+    }
+    // 如果有 catalogDomains 但没有精确匹配子域，尝试匹配顶级域
+    for (const domain of sorted) {
+      const domainPrefix = domain.id.split(".")[0] ?? "";
+      if (prefix === domainPrefix) {
+        // 返回该前缀下的默认域（第一个匹配的）
+        return domain.id;
+      }
+    }
   }
+
+  // 通用前缀规则（不含业务域硬编码）
   if (prefix === "knowledge" || prefix === "rag") return "knowledge";
   if (prefix === "sandbox") return "sandbox";
   if (prefix === "task") return "task";

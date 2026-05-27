@@ -1,6 +1,7 @@
 import { rm } from "node:fs/promises";
 import { resolveProjectPath } from "../data/load-json.js";
 import { resolveUserWorkspace } from "../runtime/workspace-context.js";
+import { ResourceRegistry } from "../resources/registry.js";
 import { ToolRegistry } from "../tools/registry.js";
 import { createSandboxTools } from "../tools/sandbox-tools.js";
 import { createPluginTools } from "../tools/plugin-tools.js";
@@ -23,7 +24,7 @@ try {
     ...createKnowledgeTools({ knowledgeBase: { search: async () => [] } }),
     ...createMaintenanceTools(),
     ...createMemoryTools(),
-    ...createBusinessTools(),
+    ...createBusinessTools({ resourceRegistry: new ResourceRegistry() }),
     ...createPendingActionTools({ toolRegistry: { execute: async () => ({ ok: true }) } })
   ]);
 

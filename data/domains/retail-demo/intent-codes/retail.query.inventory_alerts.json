@@ -1,0 +1,60 @@
+{
+  "intent_code": "retail.query.inventory_alerts",
+  "handler_type": "intent_query",
+  "version": "1",
+  "description": "查询零售门店库存告警信息，包括缺货预警、补货建议等",
+  "params_schema": {
+    "store": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "城西万达旗舰店",
+        "滨江银泰标准店"
+      ]
+    },
+    "alert_level": {
+      "type": "enum",
+      "values": [
+        "关注",
+        "预警",
+        "紧急"
+      ],
+      "required": false
+    },
+    "category": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "原料",
+        "耗材"
+      ]
+    }
+  },
+  "examples": [
+    "查一下库存告警",
+    "哪些原料快没了",
+    "城西万达旗舰店有哪些紧急缺货",
+    "需要补货的耗材有哪些"
+  ],
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "tool_binding": {
+    "tool_name": "query_business_data",
+    "resource": "retail_inventory_alerts"
+  },
+  "required_permissions": ["retail:read"],
+  "filter_mapping": {
+    "store": {
+      "field": "store_name",
+      "op": "contains"
+    },
+    "alert_level": {
+      "field": "alert_level",
+      "op": "eq"
+    },
+    "category": {
+      "field": "category",
+      "op": "eq"
+    }
+  }
+}

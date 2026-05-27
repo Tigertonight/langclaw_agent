@@ -1,11 +1,19 @@
 import type { JsonObject, ToolCall, ToolDefinition, ToolExecutionContext, ToolResult, UserContext } from "../types/agent-contracts.js";
 import type { KnowledgeSearchOptions, KnowledgeSearchResult } from "../rag/local-knowledge-base.js";
+import { getRuntimeRegistry } from "../domains/runtime-registry.js";
+import { INTENTS } from "../agent/ports.js";
 
 interface PrimitiveDefinition {
   name: string;
   description: string;
   schema: JsonObject;
   metadata: JsonObject;
+  /**
+   * 该 primitive 不适用的 intent 列表。
+   * 例如 act primitive 不应在 knowledge_qa 路由下出现（知识问答只读）。
+   * 引擎层 isPrimitiveAvailable 用此列表做通用过滤，避免在 registry 中硬编码具体 intent。
+   */
+  unsupportedIntents?: string[];
 }
 
 interface PrimitiveDescription {
@@ -165,7 +173,8 @@ function defineActPrimitive(): PrimitiveDefinition {
     },
     metadata: {
       primitive_type: "act"
-    }
+    },
+    unsupportedIntents: [INTENTS.KNOWLEDGE_QA]
   };
 }
 
@@ -190,11 +199,21 @@ function defineArtifactPrimitive(): PrimitiveDefinition {
 
 function mapActCall(call: PrimitiveCall): ToolCall | null {
   const { resource, operation, payload } = call.args ?? {};
-  if (resource === "leave_requests" && ["create", "submit"].includes(String(operation ?? ""))) {
-    return {
-      name: "submit_leave_request",
-      args: isJsonObject(payload) ? payload : {}
-    };
+  if (["create", "submit"].includes(String(operation ?? ""))) {
+    // 通过 registry 查找域工具：resource + operation → tool name
+    const registry = getRuntimeRegistry();
+    const toolLabels = registry?.allToolLabels ?? {};
+    // 查找匹配 "submit_<resource_singular>" 或 "create_<resource_singular>" 模式的工具
+    const resourceStr = String(resource ?? "");
+    const singular = resourceStr.endsWith("s") ? resourceStr.slice(0, -1) : resourceStr;
+    const candidateNames = [`submit_${singular}`, `create_${singular}`, `submit_${resourceStr}`, `create_${resourceStr}`];
+    const toolName = candidateNames.find((name) => name in toolLabels);
+    if (toolName) {
+      return {
+        name: toolName,
+        args: isJsonObject(payload) ? payload : {}
+      };
+    }
   }
   return null;
 }
@@ -213,7 +232,8 @@ function buildArtifact(args: JsonObject = {}): JsonObject {
 
 function isPrimitiveAvailable(primitive: PrimitiveDefinition, context: ToolExecutionContext): boolean {
   const route = isJsonObject(context.route) ? context.route : {};
-  if (primitive.name === "act" && route.intent === "knowledge_qa") return false;
+  const intent = typeof route.intent === "string" ? route.intent : null;
+  if (intent && primitive.unsupportedIntents?.includes(intent)) return false;
   return true;
 }
 

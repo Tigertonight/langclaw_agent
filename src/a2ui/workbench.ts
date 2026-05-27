@@ -24,6 +24,7 @@ import type { A2UIEnvelope, A2UIComponentInstance } from "./types.js";
 import { text, button, card, list, row } from "./builders/components.js";
 import type { CatalogEntry, ToolCatalogResult } from "../tools/tool-catalog.js";
 import type { PlanModeDecision } from "../tools/plan-mode.js";
+import { getCatalogDomains, getFieldLabelFromRegistry } from "../domains/runtime-registry.js";
 
 // ── ToolCatalogSurface ────────────────────────────────────────────────────
 
@@ -54,13 +55,8 @@ export function buildToolCatalogSurface(surfaceId: string, data: ToolCatalogSurf
     domainMap.set(entry.domain, list);
   }
 
-  const DOMAIN_LABELS: Record<string, string> = {
-    "dealer.analytics": "经营分析",
-    "dealer.risk":      "风险监控",
-    "dealer.crm":       "客户线索",
-    "dealer.inventory": "库存订单",
-    "dealer.aftersales":"售后工单",
-    "dealer.finance":   "财务与毛利",
+  // 从 registry 动态构建 domain 标签，核心域保留 fallback
+  const CORE_DOMAIN_LABELS: Record<string, string> = {
     "knowledge":        "知识库",
     "sandbox":          "安全沙箱",
     "task":             "任务与调度",
@@ -68,6 +64,10 @@ export function buildToolCatalogSurface(surfaceId: string, data: ToolCatalogSurf
     "system":           "系统维护",
     "other":            "其他"
   };
+  const DOMAIN_LABELS: Record<string, string> = { ...CORE_DOMAIN_LABELS };
+  for (const cd of getCatalogDomains()) {
+    DOMAIN_LABELS[cd.id] = cd.label;
+  }
 
   const PERMISSION_ICONS: Record<string, string> = {
     allow: "✓",
@@ -112,10 +112,6 @@ export interface RiskItem extends JsonObject {
 export function buildRiskListSurface(surfaceId: string, risks: RiskItem[]): A2UIEnvelope {
   const components: A2UIComponentInstance[] = [];
   const LEVEL_ICONS: Record<string, string> = { high: "🔴", medium: "🟡", low: "🟢" };
-  const TYPE_LABELS: Record<string, string> = {
-    inventory: "库存", work_order: "工单", claim: "索赔",
-    lead: "线索", finance: "财务"
-  };
 
   components.push(text("risk_header", `风险列表 — ${risks.length} 项`));
 
@@ -127,7 +123,7 @@ export function buildRiskListSurface(surfaceId: string, risks: RiskItem[]): A2UI
 
   for (const [i, risk] of allRisks.entries()) {
     const icon = LEVEL_ICONS[risk.level] ?? "·";
-    const typeLabel = TYPE_LABELS[risk.type] ?? risk.type;
+    const typeLabel = getFieldLabelFromRegistry(risk.type) ?? risk.type;
     const itemId = `risk_item_${i}`;
     components.push(text(itemId, `${icon} [${typeLabel}] ${risk.title} — ${risk.description.slice(0, 120)}`));
     itemIds.push(itemId);

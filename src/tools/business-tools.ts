@@ -1,20 +1,14 @@
-import { loadJson, saveJson } from "../data/load-json.js";
-import { appendFile, mkdir } from "node:fs/promises";
-import path from "node:path";
-import { resolveProjectPath } from "../data/load-json.js";
-import { buildDealerMetrics } from "../dealer/dealer-metrics.js";
-import type { JsonObject, JsonValue, QueryFilter, QuerySort, ToolDefinition, ToolExecutionContext } from "../types/agent-contracts.js";
+import { loadJson } from "../data/load-json.js";
+import { getResourceDataPath } from "../domains/runtime-registry.js";
+import { ResourceRegistry } from "../resources/registry.js";
+import type { ResourceConfig } from "../resources/types.js";
+import type { JsonObject, JsonValue, QueryFilter, QuerySort, ToolDefinition } from "../types/agent-contracts.js";
+import { INTENTS } from "../agent/ports.js";
 import { defineTool, z, ToolResultBaseSchema } from "./zod-helpers.js";
 
 interface QueryArgs extends JsonObject {
   filters?: QueryFilter[];
   sort?: QuerySort[];
-}
-
-interface LeaveTimeRange {
-  startTime?: string | null;
-  endTime?: string | null;
-  leaveDuration?: string | null;
 }
 
 type DataRow = Record<string, unknown>;
@@ -26,16 +20,8 @@ interface BusinessToolContext {
     name?: string;
     department?: string;
     permissions?: string[];
-    accessible_customer_ids?: string[];
+    [key: string]: unknown;
   };
-}
-
-interface ResourceConfig {
-  file?: string;
-  scopeField?: string;
-  scopeType?: string;
-  fields: string[];
-  loader?: (context: BusinessToolContext) => Promise<DataRow[]>;
 }
 
 interface BusinessQueryArgs extends QueryArgs {
@@ -63,10 +49,6 @@ interface QueryDerivedExpression extends JsonObject {
   op?: string;
   left?: QueryDerivedExpression;
   right?: QueryDerivedExpression;
-}
-
-function normalize(text: unknown): string {
-  return String(text ?? "").trim();
 }
 
 const FilterValueSchema = z.union([
@@ -106,296 +88,22 @@ const BusinessQuerySchema = z.object({
   display: z.unknown().optional()
 }).strict();
 
-const RESOURCE_CONFIG: Record<string, ResourceConfig> = {
-  customers: {
-    file: "data/customers.json",
-    scopeField: "id",
-    fields: [
-      "id",
-      "name",
-      "owner_user_id",
-      "department",
-      "tier",
-      "industry",
-      "industry_category",
-      "annual_revenue",
-      "deal_status",
-      "follow_status",
-      "renewal_status",
-      "last_contacted_at",
-      "next_follow_up_at",
-      "contract_expire_at"
-    ]
-  },
-  orders: {
-    file: "data/orders.json",
-    scopeField: "customer_id",
-    fields: [
-      "id",
-      "customer_id",
-      "customer_name",
-      "status",
-      "amount",
-      "created_at",
-      "expected_delivery"
-    ]
-  },
-  sales_reports: {
-    file: "data/sales_reports.json",
-    fields: [
-      "department",
-      "period",
-      "revenue",
-      "pipeline",
-      "top_customers"
-    ]
-  },
-  employees: {
-    file: "data/wecom-users.json",
-    fields: [
-      "userid",
-      "name",
-      "alias",
-      "department_name",
-      "position",
-      "role",
-      "direct_leader",
-      "reporting",
-      "main_department",
-      "department"
-    ]
-  },
-  departments: {
-    file: "data/wecom-departments.json",
-    fields: [
-      "id",
-      "name",
-      "parentid",
-      "order",
-      "leader_userid",
-      "vertical_relation",
-      "vertical_department",
-      "relation"
-    ]
-  },
-  leave_requests: {
-    file: "data/leave-requests.json",
-    scopeType: "self_user",
-    fields: [
-      "id",
-      "applicant_user_id",
-      "applicant_name",
-      "department",
-      "leave_type",
-      "leave_duration",
-      "start_time",
-      "end_time",
-      "reason",
-      "status",
-      "submitted_at"
-    ]
-  },
-  dealer_stores: {
-    file: "data/dealer-stores.json",
-    fields: ["id", "name", "short_name", "city", "region", "store_type", "manager_user_id", "capacity", "status"]
-  },
-  dealer_vehicles: {
-    file: "data/dealer-vehicles.json",
-    fields: ["vin", "store_id", "store_name", "series", "model", "year", "color", "source_type", "purchase_mode", "cost", "finance_interest_accrued", "landing_cost", "min_sale_price", "inbound_date", "stock_age_days", "stock_warning_level", "status", "certificate_status", "vehicle_tag", "mileage", "sales_order_id"]
-  },
-  dealer_inbounds: {
-    file: "data/dealer-inbounds.json",
-    fields: ["id", "store_id", "store_name", "order_type", "series", "model", "color", "customer_name", "sales_consultant_id", "byd_order_no", "status", "expected_arrival_date", "customer_promised_date", "deposit_amount"]
-  },
-  dealer_quotas: {
-    file: "data/dealer-quotas.json",
-    fields: ["id", "store_id", "store_name", "month", "series", "model", "color", "quota_total", "bound_inbound_count", "available_quota"]
-  },
-  dealer_leads: {
-    file: "data/dealer-leads.json",
-    fields: ["id", "customer_name", "phone_masked", "source", "campaign", "store_id", "store_name", "owner_user_id", "owner_name", "interested_series", "intention_level", "status", "created_at", "assigned_at", "first_contact_at", "last_followup_at", "followup_count", "visit_count", "expected_purchase_date", "lost_reason", "converted_order_id"]
-  },
-  dealer_sales_orders: {
-    file: "data/dealer-sales-orders.json",
-    fields: ["id", "store_id", "store_name", "customer_name", "owner_user_id", "owner_name", "vin", "series", "model", "order_type", "order_status", "payment_status", "invoice_status", "delivery_status", "list_price", "final_price", "landing_cost", "gross_profit", "deposit_amount", "paid_amount", "finance_amount", "created_at", "expected_delivery_date"]
-  },
-  dealer_finance: {
-    file: "data/dealer-finance.json",
-    fields: ["id", "resource_type", "store_id", "store_name", "direction", "category", "amount", "balance_after", "related_order_id", "occurred_at", "status"]
-  },
-  dealer_repair_orders: {
-    file: "data/dealer-repair-orders.json",
-    fields: ["id", "store_id", "store_name", "customer_name", "vin", "series", "service_advisor_id", "service_advisor_name", "order_type", "status", "appointment_at", "reception_at", "promised_finish_at", "labor_amount", "part_amount", "receivable_amount", "warranty_claim_id", "next_service_suggestion"]
-  },
-  dealer_warranty_claims: {
-    file: "data/dealer-warranty-claims.json",
-    fields: ["id", "repair_order_id", "store_id", "store_name", "customer_name", "vin", "series", "fault_category", "fault_code", "claim_status", "claimed_amount", "approved_amount", "difference_amount", "submitted_at", "expected_settlement_at", "evidence_status"]
-  },
-  dealer_metrics: {
-    loader: buildDealerMetrics,
-    fields: ["id", "scope", "store_name", "category", "metric", "value", "unit", "severity", "summary", "recommendation", "related_resource", "related_ids"]
-  }
-};
 
-const FIELD_LABELS = {
-  id: "ID",
-  name: "客户名",
-  customer_name: "客户名",
-  customer_id: "客户ID",
-  owner_user_id: "负责人ID",
-  department: "部门",
-  tier: "等级",
-  industry: "行业",
-  industry_category: "行业类别",
-  annual_revenue: "年度成交额",
-  deal_status: "签单状态",
-  follow_status: "跟进状态",
-  renewal_status: "续签状态",
-  last_contacted_at: "最近联系时间",
-  next_follow_up_at: "下次跟进时间",
-  contract_expire_at: "合同到期时间",
-  status: "状态",
-  amount: "金额",
-  created_at: "创建时间",
-  expected_delivery: "预计交付时间",
-  period: "周期",
-  revenue: "销售收入",
-  pipeline: "Pipeline",
-  userid: "员工ID",
-  alias: "别名",
-  department_name: "所属组织",
-  position: "岗位",
-  role: "角色",
-  direct_leader: "直属上级",
-  reporting: "汇报关系",
-  main_department: "主部门ID",
-  parentid: "上级部门ID",
-  leader_userid: "部门负责人",
-  vertical_relation: "垂直关系",
-  vertical_department: "垂直归属",
-  relation: "协作关系",
-  applicant_user_id: "申请人工号",
-  applicant_name: "申请人",
-  leave_type: "请假类型",
-  leave_duration: "请假时长",
-  start_time: "开始时间",
-  end_time: "结束时间",
-  reason: "请假理由",
-  submitted_at: "提交时间",
-  vin: "VIN",
-  store_id: "门店ID",
-  store_name: "门店",
-  short_name: "门店简称",
-  city: "城市",
-  region: "区域",
-  store_type: "门店类型",
-  manager_user_id: "门店负责人",
-  capacity: "库容",
-  series: "车系",
-  model: "车型",
-  year: "年款",
-  color: "颜色",
-  source_type: "来源类型",
-  purchase_mode: "进车方式",
-  cost: "成本",
-  finance_interest_accrued: "融资利息累计",
-  landing_cost: "综合落地成本",
-  min_sale_price: "最低售价参考",
-  inbound_date: "入库日期",
-  stock_age_days: "库龄天数",
-  stock_warning_level: "库龄预警",
-  certificate_status: "合格证状态",
-  vehicle_tag: "车辆标签",
-  mileage: "里程",
-  sales_order_id: "销售订单",
-  order_type: "订单类型",
-  expected_arrival_date: "预计到店",
-  customer_promised_date: "客户承诺交期",
-  deposit_amount: "定金",
-  month: "月份",
-  quota_total: "总配额",
-  bound_inbound_count: "已绑定在途",
-  available_quota: "剩余配额",
-  phone_masked: "手机号",
-  source: "来源",
-  campaign: "活动",
-  owner_name: "负责人",
-  interested_series: "意向车系",
-  intention_level: "意向等级",
-  assigned_at: "分配时间",
-  first_contact_at: "首次联系",
-  last_followup_at: "最近跟进",
-  followup_count: "跟进次数",
-  visit_count: "到店次数",
-  expected_purchase_date: "预计购车",
-  lost_reason: "战败原因",
-  converted_order_id: "成交订单",
-  order_status: "订单状态",
-  payment_status: "收款状态",
-  invoice_status: "开票状态",
-  delivery_status: "交付状态",
-  list_price: "指导价",
-  final_price: "成交价",
-  gross_profit: "毛利",
-  paid_amount: "已收金额",
-  finance_amount: "金融放款",
-  expected_delivery_date: "预计交付",
-  resource_type: "资金类型",
-  direction: "方向",
-  category: "类别",
-  balance_after: "变动后余额",
-  related_order_id: "关联单据",
-  occurred_at: "发生日期",
-  service_advisor_id: "服务顾问ID",
-  service_advisor_name: "服务顾问",
-  appointment_at: "预约时间",
-  reception_at: "接待时间",
-  promised_finish_at: "承诺完工",
-  labor_amount: "工时费",
-  part_amount: "配件费",
-  receivable_amount: "应收金额",
-  warranty_claim_id: "三包索赔单",
-  next_service_suggestion: "下次服务建议",
-  repair_order_id: "维修工单",
-  fault_category: "故障类别",
-  fault_code: "故障代码",
-  claim_status: "索赔状态",
-  claimed_amount: "申报金额",
-  approved_amount: "核准金额",
-  difference_amount: "差异金额",
-  expected_settlement_at: "预计结算",
-  evidence_status: "证据状态",
-  scope: "范围",
-  metric: "指标",
-  value: "指标值",
-  unit: "单位",
-  severity: "严重程度",
-  summary: "摘要",
-  recommendation: "建议",
-  related_resource: "关联资源",
-  related_ids: "关联记录"
-};
-
-async function findCustomerByName(customerName: unknown): Promise<DataRow | undefined> {
-  const customers = await loadJson("data/customers.json") as DataRow[];
-  const normalized = normalize(customerName);
-  return customers.find((customer) => String(customer.name ?? "").includes(normalized) || normalized.includes(String(customer.name ?? "")));
-}
-
-async function executeBusinessDataQuery(args: BusinessQueryArgs = {}, context: BusinessToolContext) {
+async function executeBusinessDataQuery(args: BusinessQueryArgs = {}, context: BusinessToolContext, registry: ResourceRegistry) {
   args = normalizeQueryArgs(args);
   const resource = String(args.resource ?? "");
-  const config = RESOURCE_CONFIG[resource];
+  const config = registry.get(resource);
   if (!config) {
     return { ok: false, tool: "query_business_data", error: "invalid_resource", message: "不支持该业务资源。" };
   }
 
   const operation = args.operation ?? "search";
   let rows = config.loader ? await config.loader(context) : await loadJson(config.file ?? "") as DataRow[];
-  if (resource === "leave_requests") {
-    rows = rows.map(normalizeLeaveRequestRecord);
+  // 资源特定的数据规范化（如 leave_requests 的时间格式化）
+  if (config.normalizer) {
+    rows = rows.map((row) => config.normalizer!(row));
   }
-  const runtimeFilters = await resolveRuntimeFilters(args.filters ?? [], context);
+  const runtimeFilters = await resolveRuntimeFilters(args.filters ?? [], context, registry);
   rows = await injectUserScope(rows, config, context.user, runtimeFilters);
   rows = applyFilters(rows, runtimeFilters, config.fields);
   const total = rows.length;
@@ -483,7 +191,7 @@ async function executeBusinessDataQuery(args: BusinessQueryArgs = {}, context: B
       total,
       rows: selectedRows,
       fields,
-      field_labels: FIELD_LABELS,
+      field_labels: registry.getFieldLabels(),
       query: sanitizeQuery(args)
     }
   };
@@ -491,6 +199,8 @@ async function executeBusinessDataQuery(args: BusinessQueryArgs = {}, context: B
 
 async function injectUserScope(rows: DataRow[], config: ResourceConfig, user: BusinessToolContext["user"], runtimeFilters: QueryFilter[] = []): Promise<DataRow[]> {
   if (config.scopeType === "self_user") {
+    const idField = config.selfUserIdField ?? "user_id";
+    const nameField = config.selfUserNameField;
     if (runtimeFilters.some((filter) => filter.runtime_scope === "all_org_users") && user.permissions?.includes("org:read")) {
       return rows;
     }
@@ -498,22 +208,25 @@ async function injectUserScope(rows: DataRow[], config: ResourceConfig, user: Bu
       ? await getReportTreeUserIds(user.id)
       : [];
     const allowedIds = new Set([user.id, ...reportIds]);
-    const requestedApplicantIds = getRequestedApplicantIds(runtimeFilters);
-    const hasNamedApplicantFilter = runtimeFilters.some((filter) => filter.field === "applicant_name");
+    const requestedIds = getSelfUserFilteredIds(runtimeFilters, idField);
+    const hasNamedFilter = nameField ? runtimeFilters.some((filter) => filter.field === nameField) : false;
     const hasDepartmentFilter = runtimeFilters.some((filter) => filter.field === "department");
     if (hasDepartmentFilter && user.permissions?.includes("org:read")) {
       return rows;
     }
-    if (requestedApplicantIds.length > 0) {
-      return rows.filter((row) => allowedIds.has(String(row.applicant_user_id ?? "")));
+    if (requestedIds.length > 0) {
+      return rows.filter((row) => allowedIds.has(String(row[idField] ?? "")));
     }
-    if (hasNamedApplicantFilter && user.permissions?.includes("org:read")) {
-      return rows.filter((row) => allowedIds.has(String(row.applicant_user_id ?? "")));
+    if (hasNamedFilter && user.permissions?.includes("org:read")) {
+      return rows.filter((row) => allowedIds.has(String(row[idField] ?? "")));
     }
-    return rows.filter((row) => row.applicant_user_id === user.id);
+    return rows.filter((row) => row[idField] === user.id);
   }
   if (!config.scopeField) return rows;
-  const allowed = new Set(user.accessible_customer_ids ?? []);
+  if (!config.userScopeField) return rows;
+  const userIds = (user as Record<string, unknown>)[config.userScopeField];
+  const accessibleIds = Array.isArray(userIds) ? userIds.map(String) : [];
+  const allowed = new Set(accessibleIds);
   return rows.filter((row) => allowed.has(String(row[config.scopeField])));
 }
 
@@ -583,12 +296,12 @@ function normalizeSort(sort: QuerySort[] = []): QuerySort[] {
     .filter((item) => item.field);
 }
 
-async function resolveRuntimeFilters(filters: QueryFilter[], context: BusinessToolContext): Promise<QueryFilter[]> {
+async function resolveRuntimeFilters(filters: QueryFilter[], context: BusinessToolContext, registry: ResourceRegistry): Promise<QueryFilter[]> {
   const reportIds = filters.some((filter) => filter.value === "__CURRENT_USER_SUBORDINATES__" || filter.value === "__CURRENT_USER_REPORTS__")
     ? await getReportTreeUserIds(context.user.id)
     : [];
   const allOrgIds = filters.some((filter) => filter.value === "__ALL_ORG_USERS__")
-    ? await getAllOrgUserIds()
+    ? await getAllOrgUserIds(registry)
     : [];
   return filters.map((filter) => ({
     ...filter,
@@ -772,7 +485,7 @@ function pickFields(row: DataRow, fields: string[]): DataRow {
 }
 
 async function getReportTreeUserIds(userId: string): Promise<string[]> {
-  const employees = await loadJson("data/wecom-users.json") as DataRow[];
+  const employees = await loadJson(getResourceDataPath("employees") ?? "data/wecom-users.json") as DataRow[];
   const ids = new Set<string>();
   let frontier = [userId];
   while (frontier.length > 0) {
@@ -787,22 +500,25 @@ async function getReportTreeUserIds(userId: string): Promise<string[]> {
   return [...ids];
 }
 
-async function getAllOrgUserIds(): Promise<string[]> {
-  const [employees, leaveRequests] = await Promise.all([
-    loadJson("data/wecom-users.json"),
-    loadJson("data/leave-requests.json")
-  ]);
-  const employeeRows = employees as DataRow[];
-  const leaveRows = leaveRequests as DataRow[];
-  return [...new Set([
-    ...employeeRows.map((employee) => employee.userid),
-    ...leaveRows.map((request) => request.applicant_user_id)
-  ].filter(Boolean).map(String))];
+async function getAllOrgUserIds(registry: ResourceRegistry): Promise<string[]> {
+  const employees = await loadJson(getResourceDataPath("employees") ?? "data/wecom-users.json") as DataRow[];
+  const ids = new Set<string>(employees.map((e) => String(e.userid ?? "")).filter(Boolean));
+  // 从 registry 中所有 scopeType === "self_user" 的资源动态收集用户 ID
+  for (const [, config] of registry.listAll()) {
+    if (config.scopeType !== "self_user") continue;
+    const idField = config.selfUserIdField ?? "user_id";
+    const rows = config.loader ? await config.loader({ user: { id: "" } }) : await loadJson(config.file ?? "") as DataRow[];
+    for (const row of rows) {
+      const val = row[idField];
+      if (val) ids.add(String(val));
+    }
+  }
+  return [...ids];
 }
 
-function getRequestedApplicantIds(filters: QueryFilter[] = []): string[] {
+function getSelfUserFilteredIds(filters: QueryFilter[] = [], idField: string): string[] {
   return filters.flatMap((filter) => {
-    if (filter.field !== "applicant_user_id") return [];
+    if (filter.field !== idField) return [];
     if (filter.op === "eq" && filter.value) return [String(filter.value)];
     if (filter.op === "in" && Array.isArray(filter.value)) return filter.value.map(String);
     return [];
@@ -816,7 +532,7 @@ async function enrichRows(resource: string, rows: DataRow[]): Promise<DataRow[]>
 }
 
 async function enrichEmployeeRows(rows: DataRow[]): Promise<DataRow[]> {
-  const employees = await loadJson("data/wecom-users.json") as DataRow[];
+  const employees = await loadJson(getResourceDataPath("employees") ?? "data/wecom-users.json") as DataRow[];
   const byUserId = new Map(employees.map((employee) => [employee.userid, employee]));
   return rows.map((row) => {
     const directLeaderProfiles = Array.isArray(row.direct_leader)
@@ -831,7 +547,7 @@ async function enrichEmployeeRows(rows: DataRow[]): Promise<DataRow[]> {
 }
 
 async function enrichDepartmentRows(rows: DataRow[]): Promise<DataRow[]> {
-  const employees = await loadJson("data/wecom-users.json") as DataRow[];
+  const employees = await loadJson(getResourceDataPath("employees") ?? "data/wecom-users.json") as DataRow[];
   const byUserId = new Map(employees.map((employee) => [employee.userid, employee]));
   return rows.map((row) => ({
     ...row,
@@ -878,7 +594,8 @@ function sanitizeQuery(args: BusinessQueryArgs): Record<string, unknown> {
   };
 }
 
-export function createBusinessTools(): ToolDefinition[] {
+export function createBusinessTools(options: { resourceRegistry: ResourceRegistry }): ToolDefinition[] {
+  const { resourceRegistry } = options;
   return [
     defineTool({
       name: "query_business_data",
@@ -887,325 +604,14 @@ export function createBusinessTools(): ToolDefinition[] {
         required_permissions: [] as string[],
         risk_level: "read",
         requires_confirmation: false,
-        intents: ["data_query", "mixed"]
+        intents: [INTENTS.DATA_QUERY, INTENTS.MIXED]
       },
       inputSchema: BusinessQuerySchema,
       outputSchema: ToolResultBaseSchema,
       async execute(args, context = {}) {
-        return executeBusinessDataQuery(args as unknown as BusinessQueryArgs, context as BusinessToolContext);
+        return executeBusinessDataQuery(args as unknown as BusinessQueryArgs, context as BusinessToolContext, resourceRegistry);
       }
     }),
-    defineTool({
-      name: "list_my_customers",
-      description: "列出当前登录员工权限范围内可访问的客户列表。",
-      metadata: {
-        required_permissions: ["customer:read"],
-        risk_level: "read",
-        requires_confirmation: false,
-        intents: ["data_query", "mixed"]
-      },
-      inputSchema: z.object({}).strict(),
-      outputSchema: ToolResultBaseSchema,
-      async execute(_args, context = {}) {
-        const user = (context as BusinessToolContext).user;
-        const customers = await loadJson("data/customers.json") as DataRow[];
-        const allowed = new Set(user.accessible_customer_ids ?? []);
-        const matched = customers
-          .filter((customer) => allowed.has(String(customer.id ?? "")))
-          .sort((a, b) => String(a.id ?? "").localeCompare(String(b.id ?? "")));
-        return {
-          ok: true,
-          tool: "list_my_customers",
-          data: {
-            user_id: user.id,
-            customers: matched.map((customer) => ({
-              id: customer.id,
-              name: customer.name,
-              tier: customer.tier,
-              industry: customer.industry,
-              department: customer.department,
-              annual_revenue: customer.annual_revenue,
-              owner_user_id: customer.owner_user_id
-            }))
-          }
-        };
-      }
-    }),
-    defineTool({
-      name: "query_customer",
-      description: "查询客户基础信息，例如客户等级、行业、负责人范围内的年度成交额。",
-      metadata: {
-        required_permissions: ["customer:read"],
-        risk_level: "read",
-        requires_confirmation: false,
-        intents: ["data_query", "mixed"]
-      },
-      inputSchema: z.object({
-        customer_name: z.string().min(1).max(80).describe("客户名称")
-      }).strict(),
-      outputSchema: ToolResultBaseSchema,
-      async execute(args) {
-        const customer = await findCustomerByName(args.customer_name);
-        if (!customer) {
-          return { ok: false, tool: "query_customer", error: "not_found", message: "未找到该客户。" };
-        }
-        return {
-          ok: true,
-          tool: "query_customer",
-          data: {
-            id: customer.id,
-            name: customer.name,
-            tier: customer.tier,
-            industry: customer.industry,
-            department: customer.department,
-            annual_revenue: customer.annual_revenue
-          }
-        };
-      }
-    }),
-    defineTool({
-      name: "query_order",
-      description: "查询客户最近订单状态、金额和预计交付时间。",
-      metadata: {
-        required_permissions: ["order:read"],
-        risk_level: "read",
-        requires_confirmation: false,
-        intents: ["data_query", "mixed"]
-      },
-      inputSchema: z.object({
-        customer_name: z.string().min(1).max(80).describe("客户名称"),
-        period: z.literal("latest").optional().describe("当前只支持 latest")
-      }).strict(),
-      outputSchema: ToolResultBaseSchema,
-      async execute(args) {
-        const orders = await loadJson("data/orders.json") as DataRow[];
-        const normalized = normalize(args.customer_name);
-        const matched = orders
-          .filter((order) => String(order.customer_name ?? "").includes(normalized) || normalized.includes(String(order.customer_name ?? "")))
-          .sort((a, b) => String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")));
-
-        if (matched.length === 0) {
-          return { ok: false, tool: "query_order", error: "not_found", message: "未找到该客户订单。" };
-        }
-
-        return {
-          ok: true,
-          tool: "query_order",
-          data: matched[0]
-        };
-      }
-    }),
-    defineTool({
-      name: "query_sales_report",
-      description: "查询部门销售报表，只返回聚合指标。",
-      metadata: {
-        required_permissions: ["sales_report:read"],
-        risk_level: "sensitive_read",
-        requires_confirmation: false,
-        intents: ["data_query", "mixed"]
-      },
-      inputSchema: z.object({
-        department: z.string().min(1).max(80).describe("部门名称"),
-        period: z.string().regex(/^\d{4}Q[1-4]$/).optional().describe("周期，例如 2026Q2")
-      }).strict(),
-      outputSchema: ToolResultBaseSchema,
-      async execute(args, context = {}) {
-        const user = (context as BusinessToolContext).user;
-        const reports = await loadJson("data/sales_reports.json") as DataRow[];
-        const department = args.department ?? user.department;
-        const period = args.period ?? "2026Q2";
-        const report = reports.find((item) => item.department === department && item.period === period);
-        if (!report) {
-          return { ok: false, tool: "query_sales_report", error: "not_found", message: "未找到该部门报表。" };
-        }
-        return {
-          ok: true,
-          tool: "query_sales_report",
-          data: report
-        };
-      }
-    }),
-    defineTool({
-      name: "submit_leave_request",
-      description: "提交员工请假申请，需要请假类型、开始时间、结束时间和请假事由。",
-      metadata: {
-        required_permissions: ["leave:submit"],
-        risk_level: "write",
-        requires_confirmation: true,
-        scenarios: ["leave_request"],
-        steps: ["awaiting_confirmation"]
-      },
-      inputSchema: z.object({
-        leave_type: z.enum(["年假", "病假", "事假", "调休", "其他"]),
-        start_time: z.string().regex(/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$/, "format YYYY-MM-DD or YYYY-MM-DD HH:MM"),
-        end_time: z.string().regex(/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$/, "format YYYY-MM-DD or YYYY-MM-DD HH:MM"),
-        reason: z.string().min(1).max(500)
-      }).strict(),
-      outputSchema: ToolResultBaseSchema,
-      async execute(args, context) {
-        const user = (context as BusinessToolContext).user;
-        const request = normalizeLeaveRequestRecord({
-          id: `LR-${Date.now()}`,
-          applicant_user_id: user.id,
-          applicant_name: user.name,
-          department: user.department,
-          leave_duration: inferLeaveDuration(args as JsonObject),
-          status: "submitted",
-          ...(args as JsonObject),
-          submitted_at: new Date().toISOString()
-        });
-        const tableFile = "data/leave-requests.json";
-        const existing = await loadJson(tableFile).catch((): DataRow[] => []) as DataRow[];
-        await saveJson(tableFile, existing.concat(request).map(normalizeLeaveRequestRecord) as unknown as JsonValue);
-        const dir = resolveProjectPath("logs");
-        await mkdir(dir, { recursive: true });
-        await appendFile(path.join(dir, "leave_requests.jsonl"), `${JSON.stringify(request)}\n`, "utf8");
-        return {
-          ok: true,
-          tool: "submit_leave_request",
-          data: request as JsonObject
-        };
-      }
-    })
   ];
 }
 
-function inferLeaveDuration(args: JsonObject): string {
-  if (args.leave_duration) return String(args.leave_duration);
-  const text = `${args.start_time ?? ""} ${args.end_time ?? ""} ${args.reason ?? ""}`;
-  const matched = text.match(/(半天|一天|两天|三天|四天|五天|[一二三四五六七八九十\d]+天|[一二三四五六七八九十\d]+小时)/);
-  if (matched) return matched[1];
-  if (String(args.end_time ?? "").startsWith("开始后")) {
-    return String(args.end_time).replace(/^开始后/, "");
-  }
-  return "待补充";
-}
-
-function normalizeLeaveRequestRecord(record: DataRow): DataRow {
-  const startTime = normalizeLeaveDateTime(record.start_time, { fallbackTime: "09:00" });
-  const endTime = normalizeLeaveEndTime(record.end_time, { startTime, leaveDuration: record.leave_duration === undefined ? undefined : String(record.leave_duration) });
-  return {
-    ...record,
-    leave_duration: normalizeLeaveDuration(record.leave_duration, { startTime, endTime }),
-    start_time: startTime,
-    end_time: endTime
-  };
-}
-
-function normalizeLeaveDuration(value: unknown, { startTime, endTime }: LeaveTimeRange = {}): string {
-  const text = String(value ?? "").trim();
-  if (text === "半天") return "半天";
-  if (["一天", "1天"].includes(text)) return "1天";
-  const dayMatch = text.match(/^([一二三四五六七八九十两\d]+)天$/);
-  if (dayMatch) return `${parseChineseNumber(dayMatch[1]) ?? dayMatch[1]}天`;
-  const hourMatch = text.match(/^([一二三四五六七八九十两\d]+)小时$/);
-  if (hourMatch) return `${parseChineseNumber(hourMatch[1]) ?? hourMatch[1]}小时`;
-  if (startTime && endTime) {
-    const inferred = inferDurationFromRange(startTime, endTime);
-    if (inferred) return inferred;
-  }
-  return text || "待补充";
-}
-
-function normalizeLeaveDateTime(value: unknown, { fallbackTime = "09:00" }: { fallbackTime?: string } = {}): string {
-  const text = String(value ?? "").trim();
-  if (!text) return text;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return `${text} ${fallbackTime}`;
-  if (/^\d{4}-\d{2}-\d{2}\s+\d{1,2}:\d{2}$/.test(text)) return normalizeMinutePrecision(text);
-  const sameDayHalf = text.match(/^(\d{4}-\d{2}-\d{2})\s+半天$/);
-  if (sameDayHalf) return `${sameDayHalf[1]} 09:00`;
-  return text;
-}
-
-function normalizeLeaveEndTime(value: unknown, { startTime, leaveDuration }: LeaveTimeRange = {}): string {
-  const text = String(value ?? "").trim();
-  if (!text && startTime && leaveDuration) return deriveEndTimeFromDuration(startTime, leaveDuration);
-  if (/^\d{4}-\d{2}-\d{2}\s+全天$/.test(text)) {
-    const date = text.replace(/\s+全天$/, "");
-    return `${date} 18:00`;
-  }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return `${text} 18:00`;
-  if (/^\d{4}-\d{2}-\d{2}\s+\d{1,2}:\d{2}$/.test(text)) return normalizeMinutePrecision(text);
-  if (text.startsWith("开始后") && startTime) {
-    return deriveEndTimeFromDuration(startTime, text.replace(/^开始后/, ""));
-  }
-  return text;
-}
-
-function deriveEndTimeFromDuration(startTime: string, leaveDuration: string): string {
-  const start = parseDateTime(startTime);
-  if (!start) return "";
-  const duration = normalizeLeaveDuration(leaveDuration);
-  if (duration === "半天") {
-    const end = new Date(start);
-    end.setHours(start.getHours() + 4, 0, 0, 0);
-    return formatDateTime(end);
-  }
-  const dayMatch = duration.match(/^(\d+)天$/);
-  if (dayMatch) {
-    const end = new Date(start);
-    end.setDate(end.getDate() + Number(dayMatch[1]) - 1);
-    end.setHours(18, 0, 0, 0);
-    return formatDateTime(end);
-  }
-  const hourMatch = duration.match(/^(\d+)小时$/);
-  if (hourMatch) {
-    const end = new Date(start);
-    end.setHours(end.getHours() + Number(hourMatch[1]), 0, 0, 0);
-    return formatDateTime(end);
-  }
-  return "";
-}
-
-function inferDurationFromRange(startTime: string, endTime: string): string | null {
-  const start = parseDateTime(startTime);
-  const end = parseDateTime(endTime);
-  if (!start || !end) return null;
-  const diffHours = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60));
-  if (diffHours === 4) return "半天";
-  if (diffHours === 9) return "1天";
-  if (diffHours > 0 && diffHours < 9) return `${diffHours}小时`;
-  if (diffHours >= 9) {
-    const days = Math.max(1, Math.round(diffHours / 9));
-    return `${days}天`;
-  }
-  return null;
-}
-
-function parseDateTime(value: unknown): Date | null {
-  const normalized = String(value ?? "").trim().replace(" ", "T");
-  const date = new Date(normalized);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
-function formatDateTime(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hour = String(date.getHours()).padStart(2, "0");
-  const minute = String(date.getMinutes()).padStart(2, "0");
-  return `${year}-${month}-${day} ${hour}:${minute}`;
-}
-
-function normalizeMinutePrecision(value: unknown): string {
-  const [datePart, timePart] = String(value).trim().split(/\s+/);
-  const [hour, minute] = timePart.split(":");
-  return `${datePart} ${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-}
-
-function parseChineseNumber(text: unknown): number | null {
-  if (/^\d+$/.test(String(text))) return Number(text);
-  return {
-    一: 1,
-    二: 2,
-    两: 2,
-    三: 3,
-    四: 4,
-    五: 5,
-    六: 6,
-    七: 7,
-    八: 8,
-    九: 9,
-    十: 10
-  }[String(text)] ?? null;
-}

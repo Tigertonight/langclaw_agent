@@ -1,5 +1,7 @@
 import type { JsonObject } from "../types/agent-contracts.js";
 import type { AgentSession, SessionHistoryItem } from "../agent/session-store.js";
+import { inferTaskFromRegistry, getStandaloneTaskKeywords, getToolCategoryFromRegistry } from "../domains/runtime-registry.js";
+import { INTENTS } from "../agent/ports.js";
 
 interface ConversationTask {
   intent: string | null;
@@ -119,7 +121,7 @@ function taskFromMetadata(metadata?: JsonObject | null): ConversationTask | null
   if (!metadata?.route && !metadata?.selected_skill && !hasToolCalls) return null;
   const route = isObject(metadata.route) ? metadata.route : {};
   const toolCalls = Array.isArray(metadata.tool_calls) ? metadata.tool_calls.filter(isObject) : [];
-  const firstBusinessCall = toolCalls.find((call) => call.name === "query_business_data");
+  const firstBusinessCall = toolCalls.find((call) => getToolCategoryFromRegistry(String(call.name ?? "")) === "business_query");
   const args = isObject(firstBusinessCall?.args) ? firstBusinessCall.args : {};
   return {
     intent: stringOrNull(route.intent),
@@ -134,46 +136,17 @@ function taskFromMetadata(metadata?: JsonObject | null): ConversationTask | null
 
 function inferTaskFromText(text?: string): ConversationTask | null {
   const value = String(text ?? "");
-  if (/(制度|政策|流程|规则|标准|手册|报销|试用期)/.test(value)) {
+  // 通过 registry 动态查找域特定的任务推断。
+  // 知识/制度问答由 core 域的 knowledge adapter 贡献并显式声明 intent: KNOWLEDGE_QA；
+  // 其他业务/组织查询默认归入 DATA_QUERY。
+  const domainTask = inferTaskFromRegistry(value);
+  if (domainTask) {
     return {
-      intent: "knowledge_qa",
-      intent_code: "knowledge.policy_qa",
-      selected_skill: "knowledge-qa",
-      target: null,
-      operation: null,
-      filters: [],
-      summary: summarizeText(value)
-    };
-  }
-  if (/(请假记录|请假历史|休假记录|休假历史|请假数据|休假数据)/.test(value)) {
-    return {
-      intent: "data_query",
-      intent_code: "attendance.leave_query",
-      selected_skill: "leave-records",
-      target: "leave_requests",
-      operation: "search",
-      filters: [],
-      summary: summarizeText(value)
-    };
-  }
-  if (/(客户|订单|销售额|成交额|pipeline|报表)/i.test(value)) {
-    return {
-      intent: "data_query",
-      intent_code: "business.query",
-      selected_skill: "business-query",
-      target: null,
-      operation: "search",
-      filters: [],
-      summary: summarizeText(value)
-    };
-  }
-  if (/(组织架构|部门|员工|下属|上级|汇报关系)/.test(value)) {
-    return {
-      intent: "data_query",
-      intent_code: "org.employee_query",
-      selected_skill: "business-query",
-      target: "employees",
-      operation: "search",
+      intent: domainTask.intent ?? INTENTS.DATA_QUERY,
+      intent_code: domainTask.intent_code,
+      selected_skill: domainTask.selected_skill,
+      target: domainTask.target,
+      operation: domainTask.operation,
       filters: [],
       summary: summarizeText(value)
     };
@@ -183,7 +156,9 @@ function inferTaskFromText(text?: string): ConversationTask | null {
 
 function analyzeCurrentMessage(message: string | undefined, lastTask: ConversationTask | null): { text: string; is_likely_continuation: boolean; continuation_reason: string } {
   const text = String(message ?? "").trim();
-  const hasStandaloneTask = /(请假|休假|客户|订单|成交额|pipeline|报表|组织架构|组织|员工|部门|负责人|主管|领导|我们店|门店|知识库|制度|政策|流程|规则|标准|手册|报销|试用期)/.test(text);
+  // 所有独立任务关键词均由 domain packs 声明，通过 registry 动态获取
+  const allKeywords = getStandaloneTaskKeywords();
+  const hasStandaloneTask = allKeywords.some((kw) => text.includes(kw));
   const hasRefinementSignal = /(全公司|整个公司|公司全员|所有|全部|最近|近\d+|近[一二两三四五六七八九十]+|本月|上月|今天|昨天|明天|这个月|三个月|半年|一年|按|只看|筛选|换成|改成|范围|时间)/.test(text);
   const isShort = text.length > 0 && text.length <= 24;
   const isLikelyContinuation = Boolean(lastTask) && !hasStandaloneTask && (hasRefinementSignal || isShort);

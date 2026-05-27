@@ -1,4 +1,4 @@
-import type { BusinessQueryArgs, QueryFilter, QuerySort, Route, ToolCall } from "../types/agent-contracts.js";
+import type { BusinessQueryArgs, QueryFilter, QuerySort, Route, ToolCall } from "../../types/agent-contracts.js";
 
 type DealerEvidenceFact =
   | "dealer_metrics"

@@ -11,6 +11,7 @@ interface CliRunResult {
 }
 
 const app = createApp();
+await app.init();
 const mcp = await attachMcpServers(app.toolRegistry);
 const { queryEngine } = app;
 const [, , userArg, ...messageParts] = process.argv;

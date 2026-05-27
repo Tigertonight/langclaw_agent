@@ -1,0 +1,35 @@
+[
+  {
+    "id": "RS001",
+    "name": "城西万达旗舰店",
+    "short_name": "城西万达",
+    "city": "杭州",
+    "region": "华东",
+    "store_type": "旗舰店",
+    "manager": "陈明",
+    "area_sqm": 320,
+    "status": "营业中"
+  },
+  {
+    "id": "RS002",
+    "name": "滨江银泰标准店",
+    "short_name": "滨江银泰",
+    "city": "杭州",
+    "region": "华东",
+    "store_type": "标准店",
+    "manager": "李芳",
+    "area_sqm": 180,
+    "status": "营业中"
+  },
+  {
+    "id": "RS003",
+    "name": "西湖文化广场快闪店",
+    "short_name": "西湖快闪",
+    "city": "杭州",
+    "region": "华东",
+    "store_type": "快闪店",
+    "manager": "王磊",
+    "area_sqm": 80,
+    "status": "营业中"
+  }
+]

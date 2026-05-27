@@ -6,6 +6,7 @@ intent_codes: [dealer.analysis_query]
 triggers: [经营, 分析, 日报, 周报, 复盘, 风险, 最该关注, 优先级, 看板, 总览, 汇总, 建议, 总经理, 体系, 晨会, 行动项, 经营计划, 负责人]
 planning_style: guided
 primitives: [query]
+priority: high
 ---
 
 # Dealer Analysis Skill

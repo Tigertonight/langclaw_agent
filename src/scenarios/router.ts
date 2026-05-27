@@ -1,7 +1,3 @@
-import { INTENTS } from "../agent/ports.js";
-import { LeaveRequestScenario } from "./leave-request.js";
-import type { ToolRegistry } from "../tools/registry.js";
-
 interface ScenarioSession {
   active_intent?: string | null;
 }
@@ -11,12 +7,14 @@ interface Scenario {
 }
 
 export class ScenarioRouter {
-  private readonly scenarios: Map<string, Scenario>;
+  private readonly scenarios = new Map<string, Scenario>();
 
-  constructor({ toolRegistry }: { toolRegistry: ToolRegistry }) {
-    this.scenarios = new Map([
-      [INTENTS.LEAVE_REQUEST, new LeaveRequestScenario({ toolRegistry }) as Scenario]
-    ]);
+  /**
+   * 注册一个场景。
+   * intent_code → Scenario 实例。
+   */
+  register(intentCode: string, scenario: Scenario): void {
+    this.scenarios.set(intentCode, scenario);
   }
 
   canResume(session: ScenarioSession): boolean {

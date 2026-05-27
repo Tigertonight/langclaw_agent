@@ -1,7 +1,7 @@
-import { checkToolPermission } from "../auth/permissions.js";
-import { appendAuditEvent } from "../logs/logger.js";
-import type { ToolRegistry } from "../tools/registry.js";
-import type { JsonObject, ToolCall, ToolResult, UserContext } from "../types/agent-contracts.js";
+import { checkToolPermission } from "../../auth/permissions.js";
+import { appendAuditEvent } from "../../logs/logger.js";
+import type { ToolRegistry } from "../../tools/registry.js";
+import type { JsonObject, ToolCall, ToolResult, UserContext } from "../../types/agent-contracts.js";
 
 const REQUIRED_SLOTS = ["leave_type", "start_time", "end_time", "reason"] as const;
 
@@ -151,7 +151,8 @@ export class LeaveRequestScenario {
 
     const call: ToolCall = {
       name: "submit_leave_request",
-      args: state.slots
+      args: normalizeSlotsForSubmit(state.slots),
+      metadata: this.toolRegistry.describe("submit_leave_request")?.metadata as JsonObject | undefined
     };
     const permission = await checkToolPermission(user, call);
     if (!permission.allow) {
@@ -169,7 +170,12 @@ export class LeaveRequestScenario {
       };
     }
 
-    const result = await this.toolRegistry.execute(call, { user, confirmed: true }) as ToolResult;
+    const result = await this.toolRegistry.execute(call, {
+      user,
+      confirmed: true,
+      scenario: this.intent,
+      step: state.step
+    }) as ToolResult;
     await appendAuditEvent({
       type: "tool.executed",
       tool: call.name,
@@ -334,6 +340,50 @@ function normalizeTimeMatch(match: RegExpMatchArray): string {
   const part = match[2] ?? "";
   const hour = match[3] ? `${match[3]}点` : "";
   return `${date}${part}${hour}`.trim();
+}
+
+function normalizeSlotsForSubmit(slots: LeaveSlots): JsonObject {
+  const startTime = normalizeSubmitDateTime(slots.start_time, { fallbackTime: "09:00" });
+  return {
+    ...slots,
+    start_time: startTime,
+    end_time: normalizeSubmitEndTime(slots.end_time, startTime)
+  };
+}
+
+function normalizeSubmitDateTime(value: unknown, { fallbackTime }: { fallbackTime: string }): string {
+  const text = String(value ?? "").trim();
+  if (/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$/.test(text)) {
+    return text.length === 10 ? `${text} ${fallbackTime}` : text;
+  }
+  const base = relativeDateToDate(text);
+  if (base) return `${base} ${fallbackTime}`;
+  return text;
+}
+
+function normalizeSubmitEndTime(value: unknown, startTime: string): string {
+  const text = String(value ?? "").trim();
+  if (/^\d{4}-\d{2}-\d{2}( \d{2}:\d{2})?$/.test(text)) {
+    return text.length === 10 ? `${text} 18:00` : text;
+  }
+  const startDate = startTime.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+  if (startDate && /同日|当天|下午6点|18点|18:00/.test(text)) return `${startDate} 18:00`;
+  const base = relativeDateToDate(text);
+  if (base) return `${base} 18:00`;
+  return text;
+}
+
+function relativeDateToDate(text: string): string | null {
+  const date = new Date();
+  if (/后天/.test(text)) date.setDate(date.getDate() + 2);
+  else if (/明天/.test(text)) date.setDate(date.getDate() + 1);
+  else if (/今天/.test(text)) date.setDate(date.getDate());
+  else return null;
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, "0"),
+    String(date.getDate()).padStart(2, "0")
+  ].join("-");
 }
 
 function withDayPart(day: string, message: string): string {

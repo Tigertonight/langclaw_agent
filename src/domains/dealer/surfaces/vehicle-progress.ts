@@ -1,9 +1,14 @@
-import { businessSurface } from "../openui-bridge.js";
-import { card, formatCurrency, list, readArray, readPath, row, text, toRecord } from "../builders/components.js";
-import { VehicleOrderSchema, type VehicleOrder } from "./schemas.js";
-import type { SurfacePlugin } from "./types.js";
-import type { A2UIComponentInstance } from "../types.js";
-import type { JsonObject } from "../../types/agent-contracts.js";
+/**
+ * Dealer 域 vehicle-progress Surface 插件。
+ * 从 src/a2ui/plugins/vehicle-progress.ts 迁移而来。
+ */
+
+import { businessSurface } from "../../../a2ui/openui-bridge.js";
+import { card, formatCurrency, list, readArray, readPath, row, text, toRecord } from "../../../a2ui/builders/components.js";
+import { VehicleOrderSchema, type VehicleOrder } from "../schemas.js";
+import type { SurfacePlugin } from "../../../a2ui/plugins/types.js";
+import type { A2UIComponentInstance } from "../../../a2ui/types.js";
+import type { JsonObject } from "../../../types/agent-contracts.js";
 
 interface VehicleProgressData extends JsonObject {
   title: string;

@@ -374,17 +374,18 @@ function createCronHistoryTool(store: UserCronStore): ToolDefinition {
 /* ──────────────────────── Phase 5.2 新增工具 ──────────────────────── */
 
 /**
- * cron.templates —— 列出预置业务场景模板（汽车经销商：日报/库存/工单/线索/财务）。
+ * cron.templates —— 列出预置业务场景模板。
+ * 模板来源于各 DomainPack 的 cronTemplates 声明。
  * 支持按 domain / tag / q 关键字过滤，无需任何用户上下文（read-only 静态数据）。
  */
 function createCronTemplatesTool(): ToolDefinition {
   return {
     name: "cron.templates",
-    description: "列出所有预置的业务场景 cron 模板（汽车经销商：每日日报/库存巡检/超期工单/线索清零/财务异常）。支持按 domain/tag/关键字过滤。",
+    description: "列出所有预置的业务场景 cron 模板。支持按 domain/tag/关键字过滤。",
     schema: {
       type: "object",
       properties: {
-        domain: { type: "string", description: "按业务域过滤：dealer_sales / dealer_inventory / dealer_aftersales / dealer_finance" },
+        domain: { type: "string", description: "按业务域过滤" },
         tag: { type: "string", description: "按标签过滤：daily / weekly / urgent / report / risk 等" },
         q: { type: "string", description: "关键字搜索（名称/描述/id）" }
       }
@@ -476,12 +477,13 @@ function createCronStatusTool(store: UserCronStore): ToolDefinition {
 
 /**
  * cron.apply_template —— 基于预置模板一键创建 cron spec。
+ * 模板来源于各 DomainPack 的 cronTemplates 声明。
  * 用户只需传 template_id 即可；支持覆盖 task / max_steps / allowed_tools 等字段。
  */
 function createCronApplyTemplateTool(store: UserCronStore): ToolDefinition {
   return {
     name: "cron.apply_template",
-    description: "基于预置业务模板快速创建 cron spec（传 template_id 即可）。支持覆盖 task/max_steps/allowed_tools 等字段。用 cron.templates 查看可用模板。",
+    description: "基于预置模板快速创建 cron spec（传 template_id 即可）。支持覆盖 task/max_steps/allowed_tools 等字段。用 cron.templates 查看可用模板。",
     schema: {
       type: "object",
       required: ["template_id"],

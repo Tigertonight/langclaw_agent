@@ -10,7 +10,8 @@ export class A2UICatalogService {
       server_capabilities: {
         supportedCatalogIds: [A2UI_BASIC_CATALOG_ID],
         supportedViewProtocols: [OPENUI_BRIDGE_VERSION],
-        supportedOpenUIComponents: ["ApprovalFlow", "TaskResumeCard", "DealerVehicleProgress", "ExpenseEstimate", "LeaveRequestForm", "CitationDisclosure", "RuntimeSummary"],
+        // 核心 UI 组件；域特定组件（DealerVehicleProgress, LeaveRequestForm 等）通过 Surface 插件动态提供
+        supportedOpenUIComponents: ["ApprovalFlow", "TaskResumeCard", "ExpenseEstimate", "CitationDisclosure", "RuntimeSummary"],
         acceptsClientDataModel: true,
         actions: ["runtime.pending_action.confirm", "runtime.pending_action.reject", "task.resume.select", "task.resume.ignore"]
       }

@@ -1,4 +1,5 @@
 import { loadJson } from "../data/load-json.js";
+import { getResourceDataPath } from "../domains/runtime-registry.js";
 import { fetchJson } from "../integrations/http.js";
 import { TokenCache } from "../integrations/token-cache.js";
 import type { JsonObject, JsonValue, UserContext } from "../types/agent-contracts.js";
@@ -19,6 +20,7 @@ export interface UserIdentity extends UserContext {
   mobile?: string;
   email?: string;
   alias?: string;
+  accessible_customer_ids?: string[];
   wecom?: WeComUserRecord;
 }
 
@@ -102,7 +104,7 @@ export class UserContextResolver {
       email: identity.email,
       alias: identity.alias,
       wecom: identity.wecom,
-      default_store: identity.default_store ?? null,
+      default_store: (identity as { default_store?: string }).default_store ?? null,
       accessible_customer_ids: access.accessible_customer_ids ?? [],
       permissions: access.permissions ?? []
     };
@@ -185,7 +187,7 @@ export class MockWeComDirectory implements UserDirectory {
 
   async loadUsers(): Promise<WeComUserRecord[]> {
     if (!this.usersCache) {
-      this.usersCache = await loadJson<WeComUserRecord[]>("data/wecom-users.json");
+      this.usersCache = await loadJson<WeComUserRecord[]>(getResourceDataPath("employees") ?? "data/wecom-users.json");
     }
     return this.usersCache;
   }

@@ -95,7 +95,10 @@
           "field": "id",
           "as": "order_count"
         }
-      ]
+      ],
+      "grouped_intro_templates": {
+        "order_status": "最近订单按{groupLabel}看，主要是下面这些状态。"
+      }
     },
     "avg_price": {
       "definition": "平均成交价 = avg(final_price)，不含已取消",

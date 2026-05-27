@@ -56,5 +56,13 @@
     "department": "华东销售部",
     "accessible_customer_ids": ["C001", "C002", "C004"],
     "permissions": ["customer:read", "order:read", "sales_report:read", "policy:read", "leave:submit", "org:read"]
+  },
+  {
+    "id": "retail_user_001",
+    "name": "零售测试员",
+    "role": "retail_operator",
+    "department": "零售运营",
+    "accessible_customer_ids": [],
+    "permissions": ["retail:read", "policy:read", "org:read"]
   }
 ]

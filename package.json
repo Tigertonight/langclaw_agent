@@ -9,6 +9,7 @@
     "server": "tsc -p tsconfig.build.json && node dist/server/http.js",
     "eval": "tsc -p tsconfig.build.json && node dist/eval/run-eval.js",
     "eval:dealer": "tsc -p tsconfig.build.json && node dist/eval/dealer-smoke.js",
+    "eval:domain:retail-demo": "tsc -p tsconfig.build.json && node dist/eval/retail-demo-smoke.js",
     "smoke": "tsc -p tsconfig.build.json && node dist/eval/smoke.js",
     "eval:router": "tsc -p tsconfig.build.json && node dist/eval/router-poc.js",
     "router:governance": "tsc -p tsconfig.build.json && node dist/eval/router-governance.js",

@@ -1,5 +1,5 @@
-import { INTENT_CODES } from "../agent/ports.js";
-import type { JsonObject, ToolResult } from "../types/agent-contracts.js";
+import { DEALER_INTENT_CODES } from "./intent-codes.js";
+import type { JsonObject, ToolResult } from "../../types/agent-contracts.js";
 
 interface DealerReportInput {
   question: string;
@@ -63,7 +63,7 @@ export function composeDealerReport({ question, route, toolResults }: DealerRepo
   const metricRows = toolResults
     .filter((result) => result.tool === "query_business_data" && result.data?.resource === "dealer_metrics")
     .flatMap((result) => (result.data?.rows ?? []) as DealerRow[]);
-  if (!metricRows.length || route?.intent_code !== INTENT_CODES.DEALER_ANALYSIS_QUERY) return null;
+  if (!metricRows.length || route?.intent_code !== DEALER_INTENT_CODES.DEALER_ANALYSIS_QUERY) return null;
 
   const rowsByStore = groupBy(metricRows, (row) => row.store_name || "全部门店");
   const storeSummaries = Object.entries(rowsByStore).map(([storeName, rows]) => summarizeDealerStore(storeName, rows));

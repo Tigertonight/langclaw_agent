@@ -4,6 +4,7 @@ import { attachMcpServers, createApp } from "../app.js";
 import { createA2UIModule } from "../a2ui/module.js";
 import { A2UIBadRequestError } from "../a2ui/dto.js";
 import { loadJson } from "../data/load-json.js";
+import { getResourceDataPath } from "../domains/runtime-registry.js";
 import { resolveUserWorkspace, type WorkspaceContext } from "../runtime/workspace-context.js";
 import { renderChatPage } from "./chat-page.js";
 import { basicLiveness, checkReadiness } from "./health.js";
@@ -44,6 +45,7 @@ interface SkillListItem extends JsonObject {
 type RequestBody = Record<string, unknown>;
 
 const app = createApp();
+await app.init();
 const mcp = await attachMcpServers(app.toolRegistry);
 const { agent, queryEngine, skillRegistry, skillLoader, userContextResolver, toolRegistry, intentRegistry, intentRouter, metricsCollector, cronRunner } = app;
 const { chatController: a2uiChatController } = createA2UIModule({
@@ -112,7 +114,7 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
   }
 
   if (req.method === "GET" && pathname === "/api/wecom-users") {
-    const users = await loadJson<WecomUserRecord[]>("data/wecom-users.json");
+    const users = await loadJson<WecomUserRecord[]>(getResourceDataPath("employees") ?? "data/wecom-users.json");
     sendJson(res, 200, {
       users: users.map((user) => ({
         userid: user.userid,
@@ -633,7 +635,7 @@ function startCronHeartbeat(): NodeJS.Timeout | null {
 
 async function cronWorkspaces(): Promise<WorkspaceContext[]> {
   try {
-    const users = await loadJson<WecomUserRecord[]>("data/users.json");
+    const users = await loadJson<WecomUserRecord[]>(getResourceDataPath("employees") ?? "data/users.json");
     return users
       .filter((user) => typeof user.id === "string" && user.id.length > 0)
       .map((user) => resolveUserWorkspace(user.id as string));

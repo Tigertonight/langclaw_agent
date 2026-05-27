@@ -2,6 +2,7 @@ import { access, mkdir, writeFile, unlink } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { resolveProjectPath } from "../data/load-json.js";
+import { getResourceDataPath } from "../domains/runtime-registry.js";
 import type { TokenAuthenticator } from "../security/auth.js";
 
 export interface ReadinessCheckResult {
@@ -24,7 +25,8 @@ export async function checkReadiness(auth: TokenAuthenticator): Promise<Readines
 
   // 1. 关键配置文件可读
   try {
-    await access(resolveProjectPath("data", "customers.json"));
+    const probeFile = getResourceDataPath("customers") ?? "data/customers.json";
+    await access(resolveProjectPath(...probeFile.split("/")));
     checks.config_readable = { ok: true };
   } catch (error) {
     checks.config_readable = { ok: false, detail: error instanceof Error ? error.message : "unknown" };
