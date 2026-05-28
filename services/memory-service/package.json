@@ -22,7 +22,8 @@
     "smoke:messages": "tsx scripts/smoke-messages.ts",
     "smoke:metrics": "tsx scripts/smoke-metrics.ts",
     "smoke:entities": "tsx scripts/smoke-entities.ts",
-    "smoke:all": "npm run smoke && npm run smoke:routes && npm run smoke:embedding && npm run smoke:search && npm run smoke:ingest && npm run smoke:knowledge && npm run smoke:grep && npm run smoke:messages && npm run smoke:metrics && npm run smoke:entities",
+    "smoke:resolver": "tsx scripts/smoke-resolver.ts",
+    "smoke:all": "npm run smoke && npm run smoke:routes && npm run smoke:embedding && npm run smoke:search && npm run smoke:ingest && npm run smoke:knowledge && npm run smoke:grep && npm run smoke:messages && npm run smoke:metrics && npm run smoke:entities && npm run smoke:resolver",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
