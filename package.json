@@ -6,7 +6,7 @@
   "description": "A minimal enterprise agent workflow with tools, permissions, RAG retrieval, reranking, CLI, HTTP API, and evals.",
   "scripts": {
     "chat": "tsc -p tsconfig.build.json && node dist/cli.js",
-    "server": "tsc -p tsconfig.build.json && node dist/server/http.js",
+    "server": "A2UI_AUTH_DISABLED=1 tsc -p tsconfig.build.json && node dist/server/http.js",
     "eval": "tsc -p tsconfig.build.json && node dist/eval/run-eval.js",
     "eval:dealer": "tsc -p tsconfig.build.json && node dist/eval/dealer-smoke.js",
     "eval:domain:retail-demo": "tsc -p tsconfig.build.json && node dist/eval/retail-demo-smoke.js",
