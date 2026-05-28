@@ -133,6 +133,7 @@ async function makeFreshWorkspace(tmpRootHost: string, name: string): Promise<Wo
   await mkdir(path.join(root, "memory"), { recursive: true });
   return {
     user_id: name,
+    business_id: "default",
     root,
     memory_dir: path.join(root, "memory"),
     sessions_dir: path.join(root, "sessions"),

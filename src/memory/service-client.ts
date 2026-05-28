@@ -39,13 +39,22 @@ export function getMemoryClient(): MemoryClient | null {
 }
 
 /**
- * Reads business_id off a UserContext-shaped object. Falls back to env or
- * a literal "default" so the runtime keeps working when the upstream caller
- * hasn't been migrated yet.
+ * 解析 business_id 的优先级：
+ *   1. workspace.business_id（如果调用方传 WorkspaceContext-shape）
+ *   2. user.business_id（duck-typed，向后兼容旧调用点）
+ *   3. env MEMORY_SERVICE_DEFAULT_BUSINESS_ID
+ *   4. "default"
+ *
+ * Spec 1.12 之后调用方应优先传 workspace；user 通道留作迁移期兼容。
  */
-export function resolveBusinessId(user: { business_id?: unknown } | null | undefined): string {
-  const fromUser = user && typeof user.business_id === "string" ? user.business_id : null;
-  return fromUser ?? process.env.MEMORY_SERVICE_DEFAULT_BUSINESS_ID ?? "default";
+export function resolveBusinessId(
+  source: { business_id?: unknown } | null | undefined
+): string {
+  if (source && typeof source === "object") {
+    const candidate = (source as { business_id?: unknown }).business_id;
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+  }
+  return process.env.MEMORY_SERVICE_DEFAULT_BUSINESS_ID ?? "default";
 }
 
 /** Reset cached singleton — used in tests. */

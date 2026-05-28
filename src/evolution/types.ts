@@ -83,6 +83,10 @@ export interface EvolutionResult extends JsonObject {
     memory?: number;
     tasks?: number;
     skills?: number;
+    /** Phase 2.5：通过结构化抽取写入的实体数 */
+    entities?: number;
+    /** Phase 2.5：通过结构化抽取写入的关系数 */
+    relations?: number;
   };
   errors?: JsonValue[];
 }

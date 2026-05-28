@@ -7,7 +7,8 @@ import { EpisodeStore } from "./episode-store.js";
 import { SignalCollector } from "./signal-collector.js";
 import { appendEvolutionLog } from "./log.js";
 import { AutoCompactionTrigger } from "./auto-compaction.js";
-import type { EvolutionResult, EvolutionTurnInput } from "./types.js";
+import { EvolutionExtractor } from "./extractor.js";
+import type { EvolutionResult, EvolutionTurnInput, MemoryAction } from "./types.js";
 
 export class EvolutionRuntime {
   private readonly judge: EvolutionJudge;
@@ -17,6 +18,7 @@ export class EvolutionRuntime {
   private readonly episodeStore: EpisodeStore;
   private readonly signalCollector: SignalCollector;
   private readonly autoCompaction: AutoCompactionTrigger;
+  private readonly extractor?: EvolutionExtractor;
   private readonly onReviewed?: (input: EvolutionTurnInput, result: EvolutionResult) => Promise<void> | void;
 
   constructor({
@@ -26,6 +28,7 @@ export class EvolutionRuntime {
     skillLearner = new SkillLearner(),
     episodeStore = new EpisodeStore(),
     autoCompaction,
+    extractor,
     debounceMs,
     onSessionIdle,
     onReviewed
@@ -36,6 +39,8 @@ export class EvolutionRuntime {
     skillLearner?: SkillLearner;
     episodeStore?: EpisodeStore;
     autoCompaction?: AutoCompactionTrigger;
+    /** Phase 2.5：传 EvolutionExtractor 实例即开启结构化抽取；省略则按 env 自动推断。 */
+    extractor?: EvolutionExtractor | null;
     debounceMs?: number;
     onSessionIdle?: (input: EvolutionTurnInput) => Promise<void> | void;
     onReviewed?: (input: EvolutionTurnInput, result: EvolutionResult) => Promise<void> | void;
@@ -46,6 +51,7 @@ export class EvolutionRuntime {
     this.skillLearner = skillLearner;
     this.episodeStore = episodeStore;
     this.autoCompaction = autoCompaction ?? new AutoCompactionTrigger({ memoryLearner });
+    this.extractor = extractor === null ? undefined : (extractor ?? new EvolutionExtractor());
     this.onReviewed = onReviewed;
     this.signalCollector = new SignalCollector({
       debounceMs,
@@ -85,8 +91,35 @@ export class EvolutionRuntime {
       });
     }
 
-    const [memoryCount, taskCount, skillCount] = await Promise.all([
-      this.memoryLearner.apply({ workspace: input.workspace, actions: guarded.decision.memory_actions, user: input.user }),
+    // Phase 2.5：尝试结构化抽取；失败/禁用时回退到 Phase 1 plain memory_actions 路径。
+    const extraction = await this.runExtraction(input);
+
+    let memoryCount = 0;
+    let entitiesWritten = 0;
+    let relationsWritten = 0;
+    const extractionErrors: string[] = [];
+
+    if (extraction) {
+      // 用结构化 extraction 覆盖 memory_actions（包含 judge 决议中的 actions 与 LLM 抽出的）。
+      const merged = mergeMemoryActions(guarded.decision.memory_actions, extraction.memory_actions);
+      const result = await this.memoryLearner.applyExtraction({
+        workspace: input.workspace,
+        user: input.user,
+        extraction: { ...extraction, memory_actions: merged }
+      });
+      memoryCount = result.memory_changed;
+      entitiesWritten = result.entities_written;
+      relationsWritten = result.relations_written;
+      extractionErrors.push(...result.errors);
+    } else {
+      memoryCount = await this.memoryLearner.apply({
+        workspace: input.workspace,
+        actions: guarded.decision.memory_actions,
+        user: input.user
+      });
+    }
+
+    const [taskCount, skillCount] = await Promise.all([
       this.taskLearner.apply({ workspace: input.workspace, actions: guarded.decision.task_actions }),
       this.skillLearner.apply({ workspace: input.workspace, actions: guarded.decision.skill_actions })
     ]);
@@ -99,10 +132,22 @@ export class EvolutionRuntime {
       applied: {
         memory: memoryCount,
         tasks: taskCount,
-        skills: skillCount
+        skills: skillCount,
+        entities: entitiesWritten,
+        relations: relationsWritten
       },
-      errors: guarded.rejected
+      errors: [...guarded.rejected, ...extractionErrors]
     });
+  }
+
+  private async runExtraction(input: EvolutionTurnInput) {
+    if (!this.extractor) return null;
+    try {
+      const out = await this.extractor.extract(input);
+      return out.ok ? out.data : null;
+    } catch {
+      return null;
+    }
   }
 
   private async finish(input: EvolutionTurnInput, result: EvolutionResult): Promise<EvolutionResult> {
@@ -126,4 +171,21 @@ export class EvolutionRuntime {
 
 function normalizeForLog(value: unknown) {
   return JSON.parse(JSON.stringify(value ?? null));
+}
+
+function mergeMemoryActions(
+  judgeActions: MemoryAction[] | undefined,
+  extractionActions: MemoryAction[] | undefined
+): MemoryAction[] {
+  const out: MemoryAction[] = [];
+  const seen = new Set<string>();
+  for (const list of [judgeActions ?? [], extractionActions ?? []]) {
+    for (const a of list) {
+      const key = `${a.op}:${a.type}:${a.key}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(a);
+    }
+  }
+  return out;
 }
