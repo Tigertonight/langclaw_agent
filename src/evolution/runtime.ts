@@ -86,7 +86,7 @@ export class EvolutionRuntime {
     }
 
     const [memoryCount, taskCount, skillCount] = await Promise.all([
-      this.memoryLearner.apply({ workspace: input.workspace, actions: guarded.decision.memory_actions }),
+      this.memoryLearner.apply({ workspace: input.workspace, actions: guarded.decision.memory_actions, user: input.user }),
       this.taskLearner.apply({ workspace: input.workspace, actions: guarded.decision.task_actions }),
       this.skillLearner.apply({ workspace: input.workspace, actions: guarded.decision.skill_actions })
     ]);

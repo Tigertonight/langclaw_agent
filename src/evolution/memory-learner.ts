@@ -2,10 +2,11 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import type { WorkspaceContext } from "../runtime/workspace-context.js";
-import type { JsonObject } from "../types/agent-contracts.js";
+import type { JsonObject, UserContext } from "../types/agent-contracts.js";
 import type { MemoryAction } from "./types.js";
 import { loadDisabledEvolutionTargets } from "./governance.js";
 import { MemoryIndex } from "../memory/memory-index.js";
+import { getMemoryClient, resolveBusinessId } from "../memory/service-client.js";
 
 interface MemoryFile extends JsonObject {
   owner_user_id: string;
@@ -28,7 +29,7 @@ interface MemoryItem extends JsonObject {
 export class MemoryLearner {
   private readonly memoryIndex = new MemoryIndex();
 
-  async apply({ workspace, actions }: { workspace: WorkspaceContext; actions?: MemoryAction[] }): Promise<number> {
+  async apply({ workspace, actions, user }: { workspace: WorkspaceContext; actions?: MemoryAction[]; user?: UserContext }): Promise<number> {
     const normalized = Array.isArray(actions) ? actions : [];
     if (!normalized.length) return 0;
     const disabled = await loadDisabledEvolutionTargets(workspace);
@@ -73,8 +74,38 @@ export class MemoryLearner {
       await this.save(workspace, memory);
       // Phase 2: 写入后重建 MEMORY.md 索引（异步，不阻塞返回）
       this.memoryIndex.rebuild(workspace, memory.items).catch(() => undefined);
+      // Phase 1.12: 镜像到 memory-service（仅当配置可用，失败不影响主路径）
+      void this.mirrorToService(workspace, user, normalized).catch(() => undefined);
     }
     return changed;
+  }
+
+  private async mirrorToService(
+    workspace: WorkspaceContext,
+    user: UserContext | undefined,
+    actions: MemoryAction[]
+  ): Promise<void> {
+    const client = getMemoryClient();
+    if (!client) return;
+    const ctx = {
+      business_id: resolveBusinessId(user as { business_id?: unknown } | undefined),
+      user_id: workspace.user_id,
+      agent_id: typeof user?.agent_id === "string" ? user.agent_id : undefined
+    };
+    for (const action of actions) {
+      if (action.op === "upsert" && typeof action.value === "string" && action.value.trim()) {
+        await client.createMemory(ctx, {
+          category: mapMemoryCategory(action.type),
+          name: action.key,
+          content: action.value.trim(),
+          source: action.source ?? "evolution",
+          confidence: typeof action.confidence === "number" ? action.confidence : undefined
+        }).catch(() => undefined);
+      }
+      // Note: remove → memory-service uses UUID-based delete; we don't have the
+      // remote id here, so remote retention is best-effort additive in Phase 1.
+      // Cleanup will be reconciled in Phase 2's sync job.
+    }
   }
 
   async load(workspace: WorkspaceContext): Promise<MemoryFile> {
@@ -104,6 +135,21 @@ export class MemoryLearner {
 
   filePath(workspace: WorkspaceContext): string {
     return path.join(workspace.memory_dir, "memory.json");
+  }
+}
+
+/** Map evolution-side type to memory-service 7-class category. */
+function mapMemoryCategory(type: MemoryAction["type"]): "user" | "feedback" | "project" | "reference" | "procedure" | "fact" | "episode" {
+  switch (type) {
+    case "preference": return "user";
+    case "feedback": return "feedback";
+    case "project": return "project";
+    case "reference": return "reference";
+    case "procedure": return "procedure";
+    case "fact": return "fact";
+    case "episode": return "episode";
+    case "user": return "user";
+    default: return "fact";
   }
 }
 
