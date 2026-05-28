@@ -37,6 +37,8 @@
     "memory:toggle": "npx tsx src/eval/memory-service-toggle-smoke.ts",
     "obs:sdk-smoke": "npm --prefix packages/observability-sdk run smoke",
     "obs:plugin-smoke": "npx tsx src/eval/observability-plugin-smoke.ts",
+    "obs:trace-roundtrip": "npx tsx services/observability/scripts/smoke-trace-roundtrip.ts",
+    "obs:up-check": "npx tsx services/observability/scripts/smoke-langfuse-up.ts",
     "vocab:curate": "npx tsx src/cli/vocabulary-cli.ts curate",
     "vocab:diff": "npx tsx src/cli/vocabulary-cli.ts diff",
     "vocab:smoke": "npx tsx src/eval/vocabulary-curator-smoke.ts",

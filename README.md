@@ -99,6 +99,15 @@
 - **RuntimeHookName**：12 个 hook 点（message_received / before_route / after_route / before_tool_call / after_tool_call / agent_finish / session_end / before_prompt_build / before_evolution_judge / after_evolution_apply / subagent_spawn / subagent_finish）
 - **SubagentPlugin**：监听 6 个 hook 点，实现 subagent evidence 追踪、evolution signal 注入、MemoryIndex 重建旁路
 
+### Phase 9 — Observability（Langfuse 路线，独立解耦）
+- **packages/observability-sdk**：`TraceEmitter` 抽象 + `LangfuseAdapter` / `NoopAdapter` + 内置 PII scrub（手机号/身份证/邮箱/中文车牌），开关由 `OBSERVABILITY_ENABLED` + `LANGFUSE_*` 决定，未配置时回落 Noop 零成本
+- **ObservabilityPlugin**：订阅 18 个 runtime hook，按 `run_id` 维持 trace 边界，turn_start 开 trace、turn_end 关 trace；emitter 抛错只 warn 不影响业务
+- **services/observability/**：自部署 Langfuse v3（PG + ClickHouse + Redis + MinIO 6 组件 docker-compose），单租户 by `business_id` tag
+- **dashboards/**（可选）：Vite + React SPA + Express 反代，提供 RAG Recall Inspector 和 Evolution Loop Dashboard
+- 设计文档：[docs/observability-architecture-decision.md](docs/observability-architecture-decision.md) + [docs/observability-tech-spec.md](docs/observability-tech-spec.md)
+- 部署 runbook：[services/observability/docs/deploy.md](services/observability/docs/deploy.md)
+- Tag 命名规范：[services/observability/docs/tag-spec.md](services/observability/docs/tag-spec.md)
+
 ---
 
 ## 快速开始
@@ -149,6 +158,11 @@ npm run chat -- sales_001 "汉EV 卖得还行但毛利好像不太行，看下�
 | `FEISHU_APP_SECRET` | 飞书 App Secret | — |
 | `AGENTIC_DEBUG` | `1` 开启 agentic handler 详细日志 | — |
 | `PORT` / `HOST` | HTTP 服务监听 | `3000` / `0.0.0.0` |
+| `OBSERVABILITY_ENABLED` | `false` 强制关闭 Langfuse 上报（即使 keys 配齐） | `true` |
+| `LANGFUSE_HOST` | Langfuse 自部署地址，例 `http://localhost:3001` | — |
+| `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` | Langfuse project keys | — |
+| `OBS_SCRUB_ENABLED` | trace 上报前 PII 脱敏开关 | `true` |
+| `OBS_SCRUB_DISABLED_RULES` | 逗号分隔关闭某些规则，例 `plate,id_card` | — |
 
 ---
 
@@ -253,6 +267,19 @@ npm run eval:cron-automation # CronTemplates + cron.templates/status/apply  (36 
 npm run eval:skill-governance# evolution.diff/disable + memory.inspect/remove (36 tests)
 npm run eval:gateway         # EnterpriseGateway + 5 渠道适配器 + 审计     (37 tests)
 npm run eval:subagent-hooks  # SubagentPlugin + 12 个 RuntimeHook           (30 tests)
+```
+
+### Observability (Phase 9)
+
+```bash
+# 不依赖外部服务（默认 Noop）
+npm run obs:sdk-smoke         # SDK 开关语义 + scrub + adapter 切换
+npm run obs:plugin-smoke      # ObservabilityPlugin × hook 序列回放（28 tests）
+
+# 需要本地起 Langfuse（services/observability 下 docker compose up -d）
+npm run obs:up-check          # Langfuse Web 健康检查
+LANGFUSE_HOST=... LANGFUSE_PUBLIC_KEY=... LANGFUSE_SECRET_KEY=... \
+  npm run obs:trace-roundtrip # 端到端 trace 上报 + Public API 查询 + tag 过滤
 ```
 
 ### 其他专项

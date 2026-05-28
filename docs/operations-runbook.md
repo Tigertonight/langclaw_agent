@@ -431,3 +431,66 @@ cd services/memory-service && npm run smoke:all
 
 跨租户隔离测试在 `scripts/smoke-routes.ts` 的 tenant scope 章节，期望"跨 business_id
 调用 100% 拒绝"。
+
+## 10. observability（Langfuse）运维
+
+可观测性是**独立解耦**子项目，停掉本服务不影响 agent 业务（plugin 内部全部
+fail-safe，emitter 抛错只 console.warn）。完整部署 runbook 在
+[services/observability/docs/deploy.md](../services/observability/docs/deploy.md)。
+这里只列日常 oncall 该看的东西。
+
+### 10.1 是否启用？
+
+| 状态 | 标志 |
+|---|---|
+| 启用 | `LANGFUSE_HOST` + `LANGFUSE_PUBLIC_KEY` + `LANGFUSE_SECRET_KEY` 全配齐，且 `OBSERVABILITY_ENABLED ≠ false` |
+| 启动时打印 | `[observability] enabled (host=...)` |
+| 未启用 | 启动时无 enable 日志，`getEmitter()` 走 NoopAdapter，零成本 |
+
+紧急关闭：`OBSERVABILITY_ENABLED=false`，重启 agent 服务即可。Langfuse 子项目本身不用动。
+
+### 10.2 健康检查
+
+```bash
+# 1. Langfuse Web 健康
+curl -fsS $LANGFUSE_HOST/api/public/health
+# → {"status":"OK","version":"x.y.z"}
+
+# 2. 6 个容器都 healthy
+cd services/observability && docker compose ps
+
+# 3. Worker 队列堆积（健康时 < 1000）
+docker compose exec redis redis-cli -a "$REDIS_AUTH" llen langfuse:event-queue
+
+# 4. 端到端 trace roundtrip
+LANGFUSE_HOST=... LANGFUSE_PUBLIC_KEY=... LANGFUSE_SECRET_KEY=... \
+  npm run obs:trace-roundtrip
+```
+
+### 10.3 trace 看不到？
+
+排查顺序（v3 是异步队列，1-15 秒延迟正常）：
+
+1. **查 agent 日志**有没有 `[observability]` 字样的 warn → emitter 在端上失败
+2. **看 Langfuse worker**：`docker compose logs langfuse-worker --tail 100`
+   - "S3 upload" error → MinIO bucket 没建好，跑 `docker compose up minio-init` 重建
+   - "ClickHouse" error → ClickHouse 没起来或时区不对（必须 UTC）
+3. **看 Redis 队列**：堆积过千说明 worker 处理慢，加 worker 副本或扩 ClickHouse
+
+### 10.4 PII scrub 没生效？
+
+- 默认 `OBS_SCRUB_ENABLED=true`，覆盖手机号 / 身份证 / 邮箱 / 中文车牌
+- 跑 `npm run obs:sdk-smoke` 验证规则，若新增 PII 类型在 `packages/observability-sdk/src/scrub.ts` 加规则
+- 若误伤业务字段：用 `OBS_SCRUB_DISABLED_RULES=plate,email` 单独关某条规则
+
+### 10.5 升级
+
+**不要跨 major 直升**。从 v2 → v3 必须先到 `langfuse/langfuse:3.29.0` 再升目标版。
+小版本升级流程见 [deploy.md §升级](../services/observability/docs/deploy.md)。
+
+### 10.6 客户私有化交付清单
+
+- 这份 runbook §10
+- [services/observability/docs/deploy.md](../services/observability/docs/deploy.md) 第一次部署
+- [services/observability/docs/tag-spec.md](../services/observability/docs/tag-spec.md) tag 规范
+- 客户 oncall 联系方式 + SLA 文档（待补）
