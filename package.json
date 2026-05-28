@@ -36,6 +36,7 @@
     "memory:1-12-wiring": "npx tsx src/eval/memory-1-12-wiring-smoke.ts",
     "memory:toggle": "npx tsx src/eval/memory-service-toggle-smoke.ts",
     "obs:sdk-smoke": "npm --prefix packages/observability-sdk run smoke",
+    "obs:plugin-smoke": "npx tsx src/eval/observability-plugin-smoke.ts",
     "vocab:curate": "npx tsx src/cli/vocabulary-cli.ts curate",
     "vocab:diff": "npx tsx src/cli/vocabulary-cli.ts diff",
     "vocab:smoke": "npx tsx src/eval/vocabulary-curator-smoke.ts",

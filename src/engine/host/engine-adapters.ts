@@ -46,6 +46,7 @@ import { resolveUserWorkspace } from "../../runtime/workspace-context.js";
 import { createTranscriptPlugin } from "../../runtime/transcript-plugin.js";
 import { createPromptAuthorityAlertPlugin } from "../../runtime/prompt-authority-alert-plugin.js";
 import { MetricsCollector, createMetricsPlugin } from "../../runtime/metrics-collector.js";
+import { createObservabilityPlugin } from "../../runtime/observability-plugin.js";
 import { FileSystemSkillLoader } from "../../runtime/skill-loader.js";
 import { TranscriptStore } from "../../transcript/transcript-store.js";
 import { ScenarioRouter } from "../../scenarios/router.js";
@@ -122,6 +123,10 @@ export function createInfraAdapter(): InfraPort {
 
   hooks.use(createEvolutionSignalPlugin({ evolutionRuntime }));
   hooks.use(createEvolutionIterationPlugin());
+
+  // Observability：内部用 getEmitter() 自动判断是否启用 Langfuse；
+  // 未配置 LANGFUSE_* 或 OBSERVABILITY_ENABLED=false 时回落 Noop，零成本零副作用。
+  hooks.use(createObservabilityPlugin());
 
   // 注：task-continuity / skill-curator / maintenance-scheduler 已迁移到
   // corePack.runtimePlugins，由 EngineHost.init() 末尾统一挂载。
