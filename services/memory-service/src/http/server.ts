@@ -11,6 +11,8 @@ import { registerDocumentRoutes, type DocumentRoutesDeps } from "./routes/docume
 import { registerKnowledgeRoutes, type KnowledgeRoutesDeps } from "./routes/knowledge.js";
 import { registerGrepRoutes, type GrepRoutesDeps } from "./routes/grep.js";
 import { registerMessageRoutes, type MessageRoutesDeps } from "./routes/messages.js";
+import { registerEntityRoutes, type EntityRoutesDeps } from "./routes/entities.js";
+import { registerRelationRoutes, type RelationRoutesDeps } from "./routes/relations.js";
 
 export interface BuildServerOptions {
   memoryRoutes?: MemoryRoutesDeps;
@@ -19,6 +21,8 @@ export interface BuildServerOptions {
   knowledgeRoutes?: KnowledgeRoutesDeps;
   grepRoutes?: GrepRoutesDeps;
   messageRoutes?: MessageRoutesDeps;
+  entityRoutes?: EntityRoutesDeps;
+  relationRoutes?: RelationRoutesDeps;
 }
 
 export type FastifyApp = Awaited<ReturnType<typeof buildServer>>;
@@ -85,6 +89,8 @@ export async function buildServer(options: BuildServerOptions = {}) {
   await registerKnowledgeRoutes(app, options.knowledgeRoutes);
   await registerGrepRoutes(app, options.grepRoutes);
   await registerMessageRoutes(app, options.messageRoutes);
+  await registerEntityRoutes(app, options.entityRoutes);
+  await registerRelationRoutes(app, options.relationRoutes);
 
   return app;
 }
