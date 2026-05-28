@@ -8,6 +8,7 @@ import {
   type MessageListQuery
 } from "../../domain/message.js";
 import { HttpError } from "../errors.js";
+import { withTraceSpan } from "../../observability/tracer.js";
 
 function parseOrThrow<T>(schema: ZodType<T>, payload: unknown): T {
   const parsed = schema.safeParse(payload);
@@ -35,9 +36,12 @@ export async function registerMessageRoutes(
 
   app.post("/v1/messages/batch", async (request: FastifyRequest, reply: { status: (n: number) => void }) => {
     const body = parseOrThrow(MessageBatchSchema, request.body) as MessageBatchInput;
-    const inserted = await repo.insertBatch(request.identity, body.items);
-    reply.status(201);
-    return { ok: true, inserted };
+    return withTraceSpan(request, "memory.messages.batch", async (span) => {
+      const inserted = await repo.insertBatch(request.identity, body.items);
+      span.update({ inserted, total: body.items.length });
+      reply.status(201);
+      return { ok: true, inserted };
+    });
   });
 
   app.get("/v1/messages", async (request: FastifyRequest<{ Querystring: Record<string, string> }>) => {

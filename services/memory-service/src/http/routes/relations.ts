@@ -3,6 +3,7 @@ import type { FastifyRequest } from "fastify";
 import { RelationRepo, toRelationDto } from "../../db/relation-repo.js";
 import { RelationCreateSchema, RelationQuerySchema, type RelationQueryInput } from "../../domain/relation.js";
 import { HttpError } from "../errors.js";
+import { withTraceSpan } from "../../observability/tracer.js";
 
 function parseOrThrow<T>(schema: ZodType<T>, payload: unknown): T {
   const parsed = schema.safeParse(payload);
@@ -32,9 +33,12 @@ export async function registerRelationRoutes(
 
   app.post("/v1/relations", async (request: FastifyRequest, reply: { status: (n: number) => void }) => {
     const body = parseOrThrow(RelationCreateSchema, request.body);
-    const row = await repo.create(request.identity, body);
-    reply.status(201);
-    return { ok: true, relation: toRelationDto(row) };
+    return withTraceSpan(request, "memory.relation.create", async (span) => {
+      const row = await repo.create(request.identity, body);
+      span.update({ relation_id: row.id, predicate: row.predicate });
+      reply.status(201);
+      return { ok: true, relation: toRelationDto(row) };
+    });
   });
 
   app.post("/v1/relations/query", async (request: FastifyRequest) => {

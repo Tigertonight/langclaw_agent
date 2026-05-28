@@ -4,6 +4,7 @@ import { DocumentBatchIngestSchema, DocumentIngestSchema } from "../../domain/do
 import { IngestionPipeline } from "../../ingest/pipeline.js";
 import { DocumentRepo, documentRowToDto } from "../../db/document-repo.js";
 import { HttpError } from "../errors.js";
+import { withTraceSpan } from "../../observability/tracer.js";
 
 const ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -39,28 +40,41 @@ export async function registerDocumentRoutes(
 
   app.post("/v1/documents", async (request: FastifyRequest, reply: { status: (n: number) => void }) => {
     const body = parseOrThrow(DocumentIngestSchema, request.body);
-    const result = await pipeline.ingestOne(request.identity, body);
-    reply.status(result.status === "unchanged" ? 200 : 201);
-    return {
-      ok: true,
-      document: result.document,
-      status: result.status,
-      chunks_count: result.chunks_count
-    };
+    return withTraceSpan(request, "memory.document.ingest", async (span) => {
+      const result = await pipeline.ingestOne(request.identity, body);
+      span.update({
+        document_id: result.document.id,
+        status: result.status,
+        chunks_count: result.chunks_count
+      });
+      reply.status(result.status === "unchanged" ? 200 : 201);
+      return {
+        ok: true,
+        document: result.document,
+        status: result.status,
+        chunks_count: result.chunks_count
+      };
+    });
   });
 
   app.post("/v1/documents/ingest", async (request: FastifyRequest) => {
     const body = parseOrThrow(DocumentBatchIngestSchema, request.body);
-    const results = await pipeline.ingestBatch(request.identity, body.items);
-    return {
-      ok: true,
-      results: results.map((r) => ({
-        source_path: r.document.source_path,
-        id: r.document.id,
-        status: r.status,
-        chunks_count: r.chunks_count
-      }))
-    };
+    return withTraceSpan(request, "memory.document.ingest_batch", async (span) => {
+      const results = await pipeline.ingestBatch(request.identity, body.items);
+      span.update({
+        total: results.length,
+        chunks_count: results.reduce((acc, r) => acc + r.chunks_count, 0)
+      });
+      return {
+        ok: true,
+        results: results.map((r) => ({
+          source_path: r.document.source_path,
+          id: r.document.id,
+          status: r.status,
+          chunks_count: r.chunks_count
+        }))
+      };
+    });
   });
 
   app.get("/v1/documents", async (request: FastifyRequest<{ Querystring: { category?: string; limit?: string } }>) => {
@@ -99,8 +113,11 @@ export async function registerDocumentRoutes(
 
   app.delete("/v1/documents/:id", async (request: FastifyRequest<{ Params: { id: string } }>) => {
     assertUuid(request.params.id);
-    const ok = await repo.softDelete(request.identity, request.params.id);
-    if (!ok) throw HttpError.notFound("document not found");
-    return { ok: true, deleted: true };
+    return withTraceSpan(request, "memory.document.delete", async (span) => {
+      const ok = await repo.softDelete(request.identity, request.params.id);
+      if (!ok) throw HttpError.notFound("document not found");
+      span.update({ document_id: request.params.id });
+      return { ok: true, deleted: true };
+    });
   });
 }

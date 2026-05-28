@@ -45,6 +45,7 @@ const RULES: ScrubRule[] = [
     pattern: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/g,
     replacer: (m) => {
       const [user, domain] = m.split("@");
+      if (!user || !domain) return "[REDACTED:email]";
       const head = user.slice(0, Math.min(2, user.length));
       return `[REDACTED:email:${head}***@${domain}]`;
     }

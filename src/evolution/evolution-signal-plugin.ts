@@ -2,6 +2,7 @@ import type { EvolutionRuntime } from "./runtime.js";
 import type { RuntimePlugin } from "../runtime/hooks.js";
 import { resolveUserWorkspace } from "../runtime/workspace-context.js";
 import type { JsonObject, ToolResult, UserContext } from "../types/agent-contracts.js";
+import { getActiveTraceContext } from "../runtime/observability-plugin.js";
 
 export function createEvolutionSignalPlugin({ evolutionRuntime }: { evolutionRuntime: EvolutionRuntime }): RuntimePlugin {
   return {
@@ -12,6 +13,8 @@ export function createEvolutionSignalPlugin({ evolutionRuntime }: { evolutionRun
         const sessionId = typeof event.session_id === "string" ? event.session_id : "";
         if (!userId || !sessionId) return;
         const user = readUser(event, userId);
+        const runId = typeof event.run_id === "string" ? event.run_id : undefined;
+        const traceCtx = getActiveTraceContext(runId);
         evolutionRuntime.collectTurn({
           trigger: "agent_finish",
           user,
@@ -24,7 +27,9 @@ export function createEvolutionSignalPlugin({ evolutionRuntime }: { evolutionRun
           toolResults: Array.isArray(event.tool_results) ? event.tool_results as ToolResult[] : [],
           enterpriseContext: event.enterprise_context,
           conversationContext: event.conversation_context,
-          agentSteps: Array.isArray(event.agent_steps) ? event.agent_steps as Array<Record<string, unknown>> : []
+          agentSteps: Array.isArray(event.agent_steps) ? event.agent_steps as Array<Record<string, unknown>> : [],
+          traceId: traceCtx?.trace_id,
+          runId: traceCtx?.run_id ?? runId
         });
       });
     }

@@ -9,6 +9,7 @@ import {
   type MemoryListQuery
 } from "../../domain/memory.js";
 import { HttpError } from "../errors.js";
+import { withTraceSpan } from "../../observability/tracer.js";
 
 const ID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -49,13 +50,16 @@ export async function registerMemoryRoutes(
 
   app.post("/v1/memories", async (request: FastifyRequest, reply: { status: (n: number) => void }) => {
     const body = parseOrThrow(MemoryCreateSchema, request.body);
-    const row = await repo.create(request.identity, body);
-    reply.status(201);
-    return {
-      ok: true,
-      memory: toMemoryDto(row),
-      embedding_status: EMBEDDING_STATUS.QUEUED
-    };
+    return withTraceSpan(request, "memory.create", async (span) => {
+      const row = await repo.create(request.identity, body);
+      span.update({ memory_id: row.id, category: row.category });
+      reply.status(201);
+      return {
+        ok: true,
+        memory: toMemoryDto(row),
+        embedding_status: EMBEDDING_STATUS.QUEUED
+      };
+    });
   });
 
   app.get("/v1/memories", async (request: FastifyRequest) => {
@@ -79,20 +83,26 @@ export async function registerMemoryRoutes(
   app.patch("/v1/memories/:id", async (request: FastifyRequest<{ Params: { id: string } }>) => {
     assertUuid(request.params.id);
     const patch = parseOrThrow(MemoryPatchSchema, request.body);
-    const row = await repo.patch(request.identity, request.params.id, patch);
-    if (!row) throw HttpError.notFound("memory not found");
-    const reembed = patch.content !== undefined;
-    return {
-      ok: true,
-      memory: toMemoryDto(row),
-      embedding_status: reembed ? EMBEDDING_STATUS.QUEUED : EMBEDDING_STATUS.DONE
-    };
+    return withTraceSpan(request, "memory.patch", async (span) => {
+      const row = await repo.patch(request.identity, request.params.id, patch);
+      if (!row) throw HttpError.notFound("memory not found");
+      const reembed = patch.content !== undefined;
+      span.update({ memory_id: row.id, reembed });
+      return {
+        ok: true,
+        memory: toMemoryDto(row),
+        embedding_status: reembed ? EMBEDDING_STATUS.QUEUED : EMBEDDING_STATUS.DONE
+      };
+    });
   });
 
   app.delete("/v1/memories/:id", async (request: FastifyRequest<{ Params: { id: string } }>) => {
     assertUuid(request.params.id);
-    const ok = await repo.softDelete(request.identity, request.params.id);
-    if (!ok) throw HttpError.notFound("memory not found");
-    return { ok: true, deleted: true };
+    return withTraceSpan(request, "memory.delete", async (span) => {
+      const ok = await repo.softDelete(request.identity, request.params.id);
+      if (!ok) throw HttpError.notFound("memory not found");
+      span.update({ memory_id: request.params.id });
+      return { ok: true, deleted: true };
+    });
   });
 }

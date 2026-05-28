@@ -155,11 +155,16 @@ export class MemoryLearner {
   async applyExtraction({
     workspace,
     user,
-    extraction
+    extraction,
+    traceId,
+    runId
   }: {
     workspace: WorkspaceContext;
     user?: UserContext;
     extraction: ExtractionResult;
+    /** 上游传入的 trace 上下文，会通过 SDK 注入到 memory-service HTTP 头部 */
+    traceId?: string;
+    runId?: string;
   }): Promise<{ memory_changed: number; entities_written: number; relations_written: number; errors: string[] }> {
     const errors: string[] = [];
     let memory_changed = 0;
@@ -177,7 +182,9 @@ export class MemoryLearner {
     const ctx: CallContext = {
       business_id: workspace.business_id ?? resolveBusinessId(user as { business_id?: unknown } | undefined),
       user_id: workspace.user_id,
-      agent_id: typeof user?.agent_id === "string" ? user.agent_id : undefined
+      agent_id: typeof user?.agent_id === "string" ? user.agent_id : undefined,
+      trace_id: traceId,
+      run_id: runId
     };
 
     const localIdToFullId = new Map<string, string>();

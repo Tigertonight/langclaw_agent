@@ -411,7 +411,35 @@ rm users/<user_id>/workspace/memory/.memory-service-queue.jsonl
 | ingest 报 422 invalid_request | content 超过 2MB / source_path 超长 | 切大文件；改用 streaming ingest（待加） |
 | `/readyz` 503 | DB 连接池打满 / 扩展未装 | `pg_isready`；`SELECT * FROM pg_extension WHERE extname IN ('vector','pg_trgm')` |
 
-### 9.7 关键日志关键字
+### 9.7 Trace 续接（与 Langfuse 联动）
+
+memory-service 在收到带 `x-trace-id` 头的请求时，会把以下 span 挂到 agent 的同一 trace 下；不带头则起独立 root trace。
+
+| span 名 | 来源路由 | 关键 attrs |
+|---|---|---|
+| `memory.search.lex` / `memory.search.vector` / `memory.search.rrf` | search hybrid 流水线子 span | hits 数 |
+| `memory.entity.upsert` | `POST /v1/entities` | entity_id, type |
+| `memory.entity.resolve` | `POST /v1/entities/resolve` | matched, candidates |
+| `memory.relation.create` | `POST /v1/relations` | relation_id, predicate |
+| `memory.messages.batch` | `POST /v1/messages/batch` | inserted, total |
+| `memory.create` / `memory.patch` / `memory.delete` | `/v1/memories` 写路径 | memory_id, category, reembed |
+| `memory.document.ingest` / `memory.document.ingest_batch` / `memory.document.delete` | `/v1/documents` 写路径 | document_id, status, chunks_count |
+
+读路径（list/get）刻意不发 span（量大，意义不高）。
+
+trace_id 来自 evolution 链路：`ObservabilityPlugin` 在 `turn_start` 把 run_id→trace_id 镜像到 `activeContexts`，
+`evolution-signal-plugin` 在 `turn_end` 调 `getActiveTraceContext(run_id)` 把 trace 上下文写入 `EvolutionTurnInput.traceId/runId`，
+跨 SignalCollector 的异步去抖边界存活；`memory-learner.applyExtraction` 把它们注入 `CallContext` 让 memory-sdk 自动发 `x-trace-id` 头。
+
+启用条件（同 §10.1）：memory-service 自身配齐 `LANGFUSE_HOST` + 两把 key + `OBSERVABILITY_ENABLED ≠ false`。
+
+排查"agent trace 里看不到 memory.* span"：
+1. memory-service 启动日志有没有 `[observability] enabled (host=...)`
+2. agent → memory-service 的请求带没带 `x-trace-id` 头（curl/抓包）
+3. agent 端 `getActiveTraceContext(run_id)` 是否能查到（通常 ObservabilityPlugin 必须先注册才会写镜像）
+4. 跑 `cd services/memory-service && npm run smoke:trace` 验证 SDK 接入本身没坏
+
+### 9.8 关键日志关键字
 
 | 关键字 | 含义 |
 |---|---|
@@ -421,7 +449,7 @@ rm users/<user_id>/workspace/memory/.memory-service-queue.jsonl
 | `[memory-service] enabled` | OpenClaw 侧已启用镜像 |
 | `[memory-service] disabled by MEMORY_SERVICE_ENABLED` | OpenClaw 侧显式关 |
 
-### 9.8 多租户隔离 sanity check
+### 9.9 多租户隔离 sanity check
 
 任何 SQL / route 改动后建议跑：
 

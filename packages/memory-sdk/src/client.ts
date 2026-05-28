@@ -17,6 +17,14 @@ export interface CallContext {
   user_id: string;
   agent_id?: string;
   scope?: string[];
+  /**
+   * 可选 trace 上下文，用于把 memory-service 侧的 span 挂到调用方 trace 下。
+   * 由调用方从 ObservabilityPlugin 维护的 run_id→trace 映射里取，None 则 memory-service
+   * 自己起独立 trace。Headers: x-trace-id / x-parent-span-id / x-run-id
+   */
+  trace_id?: string;
+  parent_span_id?: string;
+  run_id?: string;
 }
 
 export interface MemoryListItem {
@@ -421,12 +429,16 @@ export class MemoryClient {
       scope: ctx.scope
     });
     const url = `${this.baseUrl}${path}`;
+    const headers: Record<string, string> = {
+      "content-type": "application/json",
+      [this.headerName]: token
+    };
+    if (ctx.trace_id) headers["x-trace-id"] = ctx.trace_id;
+    if (ctx.parent_span_id) headers["x-parent-span-id"] = ctx.parent_span_id;
+    if (ctx.run_id) headers["x-run-id"] = ctx.run_id;
     const res = await request(url, {
       method: method as "GET",
-      headers: {
-        "content-type": "application/json",
-        [this.headerName]: token
-      },
+      headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
       headersTimeout: this.timeoutMs,
       bodyTimeout: this.timeoutMs

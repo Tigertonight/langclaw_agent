@@ -32,6 +32,28 @@ export interface ObservabilityPluginOptions {
   env?: Env;
 }
 
+/**
+ * 跨服务 trace 续接所需的最小上下文。供 service-client 等下游调用方查询，
+ * 把 trace_id / run_id 注入到外部 HTTP 调用的 headers 里。
+ */
+export interface ActiveTraceContext {
+  trace_id: string;
+  run_id: string;
+}
+
+/** run_id → trace_id 镜像。turn_start 写入，turn_end 删除。 */
+const activeContexts = new Map<string, ActiveTraceContext>();
+
+/**
+ * 按 run_id 查询当前正在跑的 trace 上下文。
+ * 用于把 memory-service 等下游服务的 span 挂到同一 trace 下。
+ * 没有匹配 / observability 未启用 时返回 undefined（调用方应判空跳过）。
+ */
+export function getActiveTraceContext(runId: string | undefined | null): ActiveTraceContext | undefined {
+  if (!runId) return undefined;
+  return activeContexts.get(runId);
+}
+
 interface PerRunState {
   trace: TraceHandle;
   /** 工具名 → 当前未结束的 span（同一个工具被并发调用时只追踪最近的） */
@@ -64,6 +86,7 @@ export function createObservabilityPlugin(
           /* ignore */
         }
         runs.delete(runId);
+        activeContexts.delete(runId);
       }
     }
   };
@@ -116,6 +139,7 @@ export function createObservabilityPlugin(
             toolSpans: new Map(),
             startedAt: Date.now()
           });
+          activeContexts.set(runId, { trace_id: trace.traceId, run_id: runId });
         })
       );
 
@@ -432,6 +456,7 @@ export function createObservabilityPlugin(
             answer: pickStr(event, "answer_preview") ?? pickStr(event, "answer")
           });
           runs.delete(runId);
+          activeContexts.delete(runId);
         })
       );
     }

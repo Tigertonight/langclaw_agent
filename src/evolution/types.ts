@@ -35,6 +35,13 @@ export interface EvolutionTurnInput {
   enterpriseContext?: unknown;
   agentSteps?: Array<Record<string, unknown>>;
   sessionTrace?: EvolutionSessionTrace;
+  /**
+   * 在 turn_end 时从 ObservabilityPlugin.getActiveTraceContext() 抓拍到的 trace_id / run_id。
+   * SignalCollector 异步触发 reviewTurn 时 trace 已经 end，但 traceId 仍可用——
+   * memory-service 收到后会把 evolution write span 续到同一 trace 下。
+   */
+  traceId?: string;
+  runId?: string;
 }
 
 export interface EvolutionDecision {

@@ -105,7 +105,9 @@ export class EvolutionRuntime {
       const result = await this.memoryLearner.applyExtraction({
         workspace: input.workspace,
         user: input.user,
-        extraction: { ...extraction, memory_actions: merged }
+        extraction: { ...extraction, memory_actions: merged },
+        traceId: input.traceId,
+        runId: input.runId
       });
       memoryCount = result.memory_changed;
       entitiesWritten = result.entities_written;

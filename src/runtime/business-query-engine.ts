@@ -5,6 +5,7 @@ import type { EvolutionTurnInput } from "../evolution/types.js";
 import { ContextAssembler } from "./context-assembler.js";
 import type { RuntimeHooks } from "./hooks.js";
 import { resolveUserWorkspace, type WorkspaceContext } from "./workspace-context.js";
+import { getActiveTraceContext } from "./observability-plugin.js";
 
 interface BusinessAgent {
   run(input: { userId?: string; userContext?: Record<string, unknown>; wecomUserId?: string; message: string; sessionId?: string; runId?: string; debug?: boolean }): Promise<unknown>;
@@ -234,7 +235,8 @@ export class BusinessQueryEngine {
       toolPlan: extractToolPlan(record),
       toolResults: extractToolResults(record),
       enterpriseContext,
-      agentSteps: extractAgentSteps(record)
+      agentSteps: extractAgentSteps(record),
+      runId
     });
 
     return {
@@ -396,7 +398,8 @@ export class BusinessQueryEngine {
       toolPlan: extractToolPlan(lastRecord),
       toolResults: extractToolResults(lastRecord),
       enterpriseContext,
-      agentSteps: extractAgentSteps(lastRecord)
+      agentSteps: extractAgentSteps(lastRecord),
+      runId
     });
 
     return output;
@@ -435,9 +438,11 @@ export class BusinessQueryEngine {
     toolResults?: unknown[];
     enterpriseContext?: unknown;
     agentSteps?: unknown[];
+    runId?: string;
   }): void {
     if (!this.evolutionRuntime) return;
     try {
+      const traceCtx = input.runId ? getActiveTraceContext(input.runId) : undefined;
       const turnInput: EvolutionTurnInput = {
         trigger: "agent_finish",
         user: input.user,
@@ -449,7 +454,9 @@ export class BusinessQueryEngine {
         toolPlan: { calls: [] },
         toolResults: [],
         enterpriseContext: input.enterpriseContext,
-        agentSteps: (Array.isArray(input.agentSteps) ? input.agentSteps : []) as Array<Record<string, unknown>>
+        agentSteps: (Array.isArray(input.agentSteps) ? input.agentSteps : []) as Array<Record<string, unknown>>,
+        traceId: traceCtx?.trace_id,
+        runId: traceCtx?.run_id ?? input.runId
       };
       this.evolutionRuntime.collectTurn(turnInput);
     } catch (error) {

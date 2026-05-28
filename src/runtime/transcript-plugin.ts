@@ -5,6 +5,7 @@ import { resolveUserWorkspace } from "./workspace-context.js";
 import { getMemoryClient } from "../memory/service-client.js";
 import { QueuedMemoryClient } from "../memory/queued-client.js";
 import type { MessageItem } from "../../packages/memory-sdk/src/index.js";
+import { getActiveTraceContext } from "./observability-plugin.js";
 
 export interface TranscriptPluginOptions {
   transcriptStore?: TranscriptStore;
@@ -121,10 +122,14 @@ export function createTranscriptPlugin({
         if (!items.length) return;
         const indices = allocateTurnIndices(sessionId, items.length);
         items.forEach((m, i) => { m.turn_index = indices[i]; });
+        const runId = typeof event.run_id === "string" ? event.run_id : undefined;
+        const traceCtx = getActiveTraceContext(runId);
         const ctx = {
           business_id: workspace.business_id,
           user_id: workspace.user_id,
-          agent_id: typeof event.agent_id === "string" ? event.agent_id : undefined
+          agent_id: typeof event.agent_id === "string" ? event.agent_id : undefined,
+          trace_id: traceCtx?.trace_id,
+          run_id: traceCtx?.run_id ?? runId
         };
         await queued.batchMessages(ctx, items);
       });

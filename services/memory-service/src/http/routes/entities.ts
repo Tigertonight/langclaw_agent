@@ -12,6 +12,7 @@ import {
 import { ResolveRequestSchema, type ResolveRequest } from "../../domain/resolver.js";
 import { EntityMergeSchema } from "../../domain/merge.js";
 import { HttpError } from "../errors.js";
+import { withTraceSpan } from "../../observability/tracer.js";
 
 function parseOrThrow<T>(schema: ZodType<T>, payload: unknown): T {
   const parsed = schema.safeParse(payload);
@@ -50,9 +51,12 @@ export async function registerEntityRoutes(
   // upsert by default — Phase 2 spec calls /v1/entities an "upsert" endpoint.
   app.post("/v1/entities", async (request: FastifyRequest, reply: { status: (n: number) => void }) => {
     const body = parseOrThrow(EntityCreateSchema, request.body);
-    const row = await repo.upsert(request.identity, body);
-    reply.status(201);
-    return { ok: true, entity: toEntityDto(row) };
+    return withTraceSpan(request, "memory.entity.upsert", async (span) => {
+      const row = await repo.upsert(request.identity, body);
+      span.update({ entity_id: row.id, type: row.type });
+      reply.status(201);
+      return { ok: true, entity: toEntityDto(row) };
+    });
   });
 
   app.get("/v1/entities", async (request: FastifyRequest) => {
@@ -93,8 +97,14 @@ export async function registerEntityRoutes(
   // 作为 matched，否则只回候选列表由调用方/LLM 决策。
   app.post("/v1/entities/resolve", async (request: FastifyRequest) => {
     const body = parseOrThrow(ResolveRequestSchema, request.body) as ResolveRequest;
-    const result = await resolver.resolve(request.identity, body);
-    return { ok: true, ...result };
+    return withTraceSpan(request, "memory.entity.resolve", async (span) => {
+      const result = await resolver.resolve(request.identity, body);
+      span.update({
+        matched: result.matched ? result.matched.id : null,
+        candidates: result.candidates.length
+      });
+      return { ok: true, ...result };
+    });
   });
 
   // 2.7 实体合并：把 source 软合并到 target，关系自动迁移到 target，

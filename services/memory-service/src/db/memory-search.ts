@@ -5,6 +5,7 @@ import type { MemorySearchInput, SearchHit } from "../domain/search.js";
 import { RRF_K } from "../domain/search.js";
 import { vectorToSql } from "../embedding/serialize.js";
 import { getEmbeddingProvider } from "../embedding/index.js";
+import type { SpanHandle } from "../../../../packages/observability-sdk/src/index.js";
 
 type Executor = Pool | PoolClient;
 
@@ -23,7 +24,11 @@ const CANDIDATE_LIMIT = 50;
 export class MemorySearch {
   constructor(private readonly executor: Executor = pool) {}
 
-  async search(identity: Identity, input: MemorySearchInput): Promise<SearchHit[]> {
+  async search(
+    identity: Identity,
+    input: MemorySearchInput,
+    parentSpan?: SpanHandle
+  ): Promise<SearchHit[]> {
     const filterClauses: string[] = [
       "business_id = $1",
       "user_id = $2",
@@ -46,19 +51,66 @@ export class MemorySearch {
     const where = filterClauses.join(" AND ");
 
     if (input.mode === "lexical") {
-      const rows = await this.lexical(input.query, where, params);
+      const rows = await this.tracedLexical(input.query, where, params, parentSpan);
       return rows.slice(0, input.top_k).map((r) => toHit(r, "lexical"));
     }
     if (input.mode === "vector") {
-      const rows = await this.vector(input.query, where, params);
+      const rows = await this.tracedVector(input.query, where, params, parentSpan);
       return rows.slice(0, input.top_k).map((r) => toHit(r, "vector"));
     }
     // hybrid
     const [lex, vec] = await Promise.all([
-      this.lexical(input.query, where, params),
-      this.vector(input.query, where, params)
+      this.tracedLexical(input.query, where, params, parentSpan),
+      this.tracedVector(input.query, where, params, parentSpan)
     ]);
-    return rrfMerge(lex, vec, input.top_k);
+    return tracedRrf(lex, vec, input.top_k, parentSpan);
+  }
+
+  private async tracedLexical(
+    query: string,
+    where: string,
+    baseParams: unknown[],
+    parentSpan?: SpanHandle
+  ): Promise<RankedRow[]> {
+    if (!parentSpan) return this.lexical(query, where, baseParams);
+    const span = parentSpan.childSpan({
+      name: "memory.search.lex",
+      input: { query, top_k: CANDIDATE_LIMIT }
+    });
+    try {
+      const rows = await this.lexical(query, where, baseParams);
+      span.end({
+        hits: rows.map((r) => ({ id: r.id, score: r.score, name: r.name }))
+      });
+      return rows;
+    } catch (err) {
+      span.end(undefined, err);
+      throw err;
+    }
+  }
+
+  private async tracedVector(
+    query: string,
+    where: string,
+    baseParams: unknown[],
+    parentSpan?: SpanHandle
+  ): Promise<RankedRow[]> {
+    if (!parentSpan) return this.vector(query, where, baseParams);
+    const span = parentSpan.childSpan({
+      name: "memory.search.vector",
+      input: { query, top_k: CANDIDATE_LIMIT }
+    });
+    try {
+      const rows = await this.vector(query, where, baseParams);
+      span.update({ model: getEmbeddingProvider().modelTag });
+      span.end({
+        hits: rows.map((r) => ({ id: r.id, score: r.score, name: r.name }))
+      });
+      return rows;
+    } catch (err) {
+      span.end(undefined, err);
+      throw err;
+    }
   }
 
   private async lexical(query: string, where: string, baseParams: unknown[]): Promise<RankedRow[]> {
@@ -112,6 +164,33 @@ function toHit(row: RankedRow, kind: "lexical" | "vector"): SearchHit {
     score_breakdown: { [kind]: row.score },
     created_at: row.created_at.toISOString()
   };
+}
+
+function tracedRrf(
+  lex: RankedRow[],
+  vec: RankedRow[],
+  topK: number,
+  parentSpan?: SpanHandle
+): SearchHit[] {
+  if (!parentSpan) return rrfMerge(lex, vec, topK);
+  const span = parentSpan.childSpan({
+    name: "memory.search.rrf",
+    input: { lex_count: lex.length, vec_count: vec.length, top_k: topK, k: RRF_K }
+  });
+  try {
+    const merged = rrfMerge(lex, vec, topK);
+    span.end({
+      hits: merged.map((h) => ({
+        id: h.id,
+        score: h.score,
+        score_breakdown: h.score_breakdown
+      }))
+    });
+    return merged;
+  } catch (err) {
+    span.end(undefined, err);
+    throw err;
+  }
 }
 
 /**
