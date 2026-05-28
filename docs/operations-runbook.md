@@ -260,3 +260,174 @@ find "$BACKUP_DIR" -name "*.tar.gz" -mtime +30 -delete
 | `chat_stream_disconnected` | 客户端断开 SSE |
 
 每条日志带 `trace_id`，可以在 LB / 应用层关联同一个请求。
+
+---
+
+## 9. memory-service 运维
+
+`services/memory-service` 是独立 HTTP 服务，承载多租户记忆 + RAG + 实体图谱。
+本节覆盖启停、开关、embedding 切换、离线队列处置、ingest 回滚。
+
+### 9.1 启停 & 健康检查
+
+```bash
+cd services/memory-service
+
+# 1) 起 Postgres（pgvector + pg_trgm 扩展，Dockerfile.pg 自带）
+docker compose up -d
+# 校验：docker ps 看到 memory-service-pg 容器 healthy
+
+# 2) 跑迁移（幂等）
+npm run migrate
+# 期望日志：migration_already_applied 或 applied
+
+# 3) 起服务（dev 模式带 watch）
+npm run dev
+# 生产用 npm run build && npm start
+
+# 4) 健康检查
+curl -s http://localhost:4310/healthz   # 进程存活
+curl -s http://localhost:4310/readyz    # DB 可达 + 扩展就绪
+```
+
+### 9.2 OpenClaw 侧的开关（Spec 1.12）
+
+OpenClaw 通过 `src/memory/service-client.ts` 决定是否镜像写到 memory-service。
+开关语义（按优先级）：
+
+| 环境变量 | 行为 |
+|---|---|
+| `MEMORY_SERVICE_ENABLED=false`（或 0/no/off） | 强制关闭，即使 URL+SECRET 都配了 |
+| `MEMORY_SERVICE_ENABLED=true` 但缺 URL/SECRET | warn 日志后关闭，不抛 |
+| `MEMORY_SERVICE_URL` + `MEMORY_SERVICE_SECRET` 均配齐 | 启用 |
+| 其他（缺 URL 或 SECRET） | 关闭（向后兼容旧部署） |
+
+启动时打一条 info：
+- `[memory-service] enabled (url=...)` — 启用
+- `[memory-service] disabled by MEMORY_SERVICE_ENABLED` — 显式关
+- 没看到任何一条 → 检查代码路径有没有调到 `getMemoryClient()`
+
+故障定位"为什么 evolution 没镜像到 memory-service"：grep 启动日志里这条 info；如果 enabled
+但远端没收到数据，下一步看 9.5（离线队列）。
+
+### 9.3 Embedding 模型切换演练（reembed）
+
+支持的 provider（在 `services/memory-service/.env` 切换）：
+- `bge-m3-ollama` — 调本地 Ollama 服务，需要 `ollama pull bge-m3`（~2GB），1024 维
+- `hash-fallback` — 0 依赖占位，单测/本地开发用，**召回质量不可信**
+
+切换步骤：
+
+```bash
+cd services/memory-service
+
+# 1) 改 .env：EMBEDDING_PROVIDER + EMBEDDING_MODEL_TAG（必须改 tag，否则 worker 不会重算）
+#    例：bge-m3-ollama → bge-m3:v2 或者反过来切到 hash-fallback:v1
+
+# 2) 重启服务（worker 启动时会扫到 embedding_model 不一致的行）
+npm run dev   # 或 systemctl restart memory-service
+
+# 3) 监控 worker 进度（structured log）
+#    embedding_worker_persisted {table=document_chunks count=16 model=bge-m3:v2}
+docker logs memory-service-pg | grep -i embedding   # 服务侧
+docker exec memory-service-pg psql -U memory -d memory_service -c \
+  "SET search_path=app_memory; SELECT embedding_model, COUNT(*) FROM document_chunks GROUP BY embedding_model;"
+
+# 4) 手动 drain（CI / 大规模迁移用）
+npm run reembed -- --target=document_chunks --batch=64
+# 进度：覆盖率 / 速率 / 失败数会写 stdout
+
+# 5) 验证：search 返回结果且 score > 0
+```
+
+注意：
+- 切换期间检索 SQL `WHERE embedding_model = $current_active`，旧 model 的行**暂时检索不到**直到 worker 跑完
+- 大表（>100k 行）建议先 `DROP INDEX` 向量索引，reembed 完再 `CREATE INDEX`，否则 HNSW 重建很慢
+
+### 9.4 文档 ingest 回滚
+
+ingest 用的是 hash 增量，重复 ingest 同一目录会全部 unchanged。回滚单篇：
+
+```bash
+# 用 grep 或 list 找到 document id
+TOKEN=$(cd services/memory-service && npx tsx scripts/sign-identity-cli.ts \
+  --business <biz> --user <admin>)
+curl -s -H "X-Memory-Identity: $TOKEN" \
+  "http://localhost:4310/v1/documents?category=internal_docs&limit=200" | jq '.items[].id'
+
+# 软删（不物理删，可以从 DB 恢复）
+curl -X DELETE -H "X-Memory-Identity: $TOKEN" \
+  http://localhost:4310/v1/documents/<doc-id>
+```
+
+整个目录回滚：
+
+```sql
+-- 进 PG
+docker exec -it memory-service-pg psql -U memory -d memory_service
+SET search_path = app_memory;
+UPDATE documents SET deleted_at = now() WHERE business_id='default' AND category='internal_docs';
+-- 物理清理（确认没人 read 后）
+DELETE FROM document_chunks WHERE business_id='default' AND document_id IN (
+  SELECT id FROM documents WHERE deleted_at IS NOT NULL
+);
+DELETE FROM documents WHERE deleted_at IS NOT NULL;
+```
+
+### 9.5 离线队列查看 / 清理
+
+OpenClaw 在 memory-service 不可用时会把写操作（createMemory / batchMessages /
+createRelation）落到本地 JSONL 队列，下次成功调用前 best-effort flush。
+
+队列文件路径（按 user 隔离）：
+```
+<workspace>/users/<user_id>/workspace/memory/.memory-service-queue.jsonl
+```
+
+故障定位"消息没出现在 memory-service"：
+
+```bash
+# 1) 看队列大小（每行一条 entry）
+find users/*/workspace/memory/.memory-service-queue.jsonl -exec wc -l {} \;
+
+# 2) 看队列内容（确认 ctx + payload）
+tail -5 users/<user_id>/workspace/memory/.memory-service-queue.jsonl | jq
+
+# 3) 清空（确认数据可弃后）
+rm users/<user_id>/workspace/memory/.memory-service-queue.jsonl
+```
+
+下次 OpenClaw 运行有任何 memory-service 写调用时会自动 flush。也可以用 SDK 主动
+触发：`new QueuedMemoryClient({...}).flush()`。
+
+队列默认上限 1000 条，超出会丢最早的。生产环境监控这个文件大小避免堆积。
+
+### 9.6 常见故障判断
+
+| 症状 | 怀疑 | 处置 |
+|---|---|---|
+| `unauthorized` / `identity signature mismatch` | 客户端 SECRET 与服务端 `SERVICE_TOKEN_SECRET` 不一致；或 token issued_at 超过 5 分钟 | 对齐 secret；检查机器时钟 |
+| 检索返回空但 grep 有结果 | embedding 还没跑（异步）或 `embedding_model` 不匹配 | 看 worker 日志、SQL 校验覆盖率 |
+| ingest 报 422 invalid_request | content 超过 2MB / source_path 超长 | 切大文件；改用 streaming ingest（待加） |
+| `/readyz` 503 | DB 连接池打满 / 扩展未装 | `pg_isready`；`SELECT * FROM pg_extension WHERE extname IN ('vector','pg_trgm')` |
+
+### 9.7 关键日志关键字
+
+| 关键字 | 含义 |
+|---|---|
+| `migration_already_applied` | 启动迁移幂等通过 |
+| `embedding_worker_persisted` | embedding worker 完成一批写入 |
+| `embedding_worker_tick_failed` | worker 异常（不会停服务，下次 tick 重试） |
+| `[memory-service] enabled` | OpenClaw 侧已启用镜像 |
+| `[memory-service] disabled by MEMORY_SERVICE_ENABLED` | OpenClaw 侧显式关 |
+
+### 9.8 多租户隔离 sanity check
+
+任何 SQL / route 改动后建议跑：
+
+```bash
+cd services/memory-service && npm run smoke:all
+```
+
+跨租户隔离测试在 `scripts/smoke-routes.ts` 的 tenant scope 章节，期望"跨 business_id
+调用 100% 拒绝"。

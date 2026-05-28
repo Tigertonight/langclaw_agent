@@ -1,15 +1,16 @@
 /**
  * Thin adapter wiring the @openclaw/memory-sdk into the OpenClaw runtime.
  *
- * Activation is fully env-driven and opt-in:
- *   MEMORY_SERVICE_URL    → if unset, the adapter is disabled and getMemoryClient() returns null.
- *   MEMORY_SERVICE_SECRET → HMAC secret matching memory-service SERVICE_TOKEN_SECRET.
- *   MEMORY_SERVICE_HEADER → header name (default X-Memory-Identity).
- *   MEMORY_SERVICE_AGENT  → optional default agent_id stamped on tokens.
+ * Activation 显式开关 + 配置：
+ *   MEMORY_SERVICE_ENABLED → "true"/"1" 显式打开；缺省时只要 URL+SECRET 同时存在也算打开
+ *                            （向后兼容旧部署）。设为 "false" 可强制关闭即使 URL 配了。
+ *   MEMORY_SERVICE_URL     → 远端地址，未配置则禁用。
+ *   MEMORY_SERVICE_SECRET  → HMAC secret，未配置则禁用。
+ *   MEMORY_SERVICE_HEADER  → header 名（默认 X-Memory-Identity）。
+ *   MEMORY_SERVICE_AGENT   → 可选默认 agent_id。
  *
- * We intentionally do NOT throw at import time when env is missing — many
- * existing eval/CLI scripts run without the memory service, and we want the
- * integration to be a soft enhancement, not a hard dependency.
+ * 启用与否在 process 内只决策一次，启动时打一条 info 日志，便于排查
+ * "为什么 evolution 没镜像到 memory-service" 这类故障。
  */
 
 import { IdentityProvider, MemoryClient } from "../../packages/memory-sdk/src/index.js";
@@ -17,12 +18,34 @@ import { IdentityProvider, MemoryClient } from "../../packages/memory-sdk/src/in
 let cached: MemoryClient | null = null;
 let initialized = false;
 
+function isExplicitlyDisabled(flag: string | undefined): boolean {
+  if (!flag) return false;
+  const v = flag.trim().toLowerCase();
+  return v === "false" || v === "0" || v === "no" || v === "off";
+}
+
+function isExplicitlyEnabled(flag: string | undefined): boolean {
+  if (!flag) return false;
+  const v = flag.trim().toLowerCase();
+  return v === "true" || v === "1" || v === "yes" || v === "on";
+}
+
 export function getMemoryClient(): MemoryClient | null {
   if (initialized) return cached;
   initialized = true;
+  const flag = process.env.MEMORY_SERVICE_ENABLED;
   const url = process.env.MEMORY_SERVICE_URL;
   const secret = process.env.MEMORY_SERVICE_SECRET;
+
+  if (isExplicitlyDisabled(flag)) {
+    console.info("[memory-service] disabled by MEMORY_SERVICE_ENABLED");
+    cached = null;
+    return null;
+  }
   if (!url || !secret) {
+    if (isExplicitlyEnabled(flag)) {
+      console.warn("[memory-service] MEMORY_SERVICE_ENABLED=true but URL or SECRET missing — disabled");
+    }
     cached = null;
     return null;
   }
@@ -35,6 +58,7 @@ export function getMemoryClient(): MemoryClient | null {
     identityProvider: provider,
     identityHeader: process.env.MEMORY_SERVICE_HEADER
   });
+  console.info(`[memory-service] enabled (url=${url})`);
   return cached;
 }
 
