@@ -16,7 +16,18 @@ export type {
   MemorySearchInput,
   GrepInput,
   MessageItem,
-  DocumentIngestInput
+  DocumentIngestInput,
+  EntityRecord,
+  UpsertEntityInput,
+  PatchEntityInput,
+  ResolveEntityInput,
+  ResolveCandidate,
+  ResolveResult,
+  RelationRecord,
+  CreateRelationInput,
+  QueryRelationsInput,
+  MergeEntityInput,
+  MergeOutcome
 } from "./client.js";
 
 export { buildMemoryTools } from "./tools.js";

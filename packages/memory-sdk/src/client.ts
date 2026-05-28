@@ -114,6 +114,118 @@ export interface GrepInput {
   filters?: { category?: string[]; tags?: string[]; since?: string };
 }
 
+// ─── Phase 2: entities / relations ─────────────────────────────────────────
+
+export interface EntityRecord {
+  id: string;
+  business_id: string;
+  type: string;
+  name: string;
+  aliases: string[];
+  external_ids: Record<string, string>;
+  attributes: Record<string, unknown>;
+  embedding_model: string | null;
+  embedded_at: string | null;
+  created_at: string;
+  updated_at: string;
+  merged_into: string | null;
+}
+
+export interface UpsertEntityInput {
+  /** Local id (without business_id prefix). e.g. "customer:c001". */
+  local_id: string;
+  type: string;
+  name: string;
+  aliases?: string[];
+  external_ids?: Record<string, string>;
+  attributes?: Record<string, unknown>;
+}
+
+export interface PatchEntityInput {
+  type?: string;
+  name?: string;
+  aliases?: string[];
+  external_ids?: Record<string, string>;
+  attributes?: Record<string, unknown>;
+}
+
+export interface ResolveEntityInput {
+  type: string;
+  external_ids?: Record<string, string>;
+  strong_attributes?: Record<string, string>;
+  name_hint?: string;
+  max_candidates?: number;
+  match_threshold?: number;
+}
+
+export interface ResolveCandidate {
+  entity: EntityRecord;
+  score: number;
+  reasons: string[];
+}
+
+export interface ResolveResult {
+  matched: EntityRecord | null;
+  candidates: ResolveCandidate[];
+}
+
+export interface RelationRecord {
+  id: string;
+  business_id: string;
+  subject_id: string;
+  predicate: string;
+  object_id: string | null;
+  object_value: unknown | null;
+  occurred_at: string | null;
+  source_memory_id: string | null;
+  confidence: number;
+  metadata: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface CreateRelationInput {
+  subject_id: string;
+  predicate: string;
+  object_id?: string | null;
+  object_value?: unknown;
+  occurred_at?: string | null;
+  source_memory_id?: string | null;
+  confidence?: number;
+  metadata?: Record<string, unknown>;
+}
+
+export interface QueryRelationsInput {
+  subject_id?: string;
+  predicate?: string;
+  object_id?: string;
+  occurred_from?: string;
+  occurred_to?: string;
+  limit?: number;
+  cursor?: string;
+}
+
+export interface MergeEntityInput {
+  source_id: string;
+  reason?: string;
+  merged_by?: string;
+}
+
+export interface MergeOutcome {
+  target: EntityRecord;
+  source: EntityRecord;
+  relations_migrated: number;
+  log: {
+    id: string;
+    business_id: string;
+    source_entity_id: string;
+    target_entity_id: string;
+    reason: string | null;
+    merged_by: string | null;
+    merged_at: string;
+    rolled_back_at: string | null;
+  };
+}
+
 export class MemoryServiceError extends Error {
   constructor(
     message: string,
@@ -218,6 +330,77 @@ export class MemoryClient {
   // ─── messages ──────────────────────────────────────────────────────────
   async batchMessages(ctx: CallContext, items: MessageItem[]): Promise<{ inserted: number }> {
     return this.call(ctx, "POST", "/v1/messages/batch", { items });
+  }
+
+  // ─── Phase 2: entities ─────────────────────────────────────────────────
+  async upsertEntity(ctx: CallContext, input: UpsertEntityInput): Promise<EntityRecord> {
+    const res = await this.call<{ entity: EntityRecord }>(ctx, "POST", "/v1/entities", input);
+    return res.entity;
+  }
+
+  async getEntity(ctx: CallContext, id: string): Promise<EntityRecord> {
+    const res = await this.call<{ entity: EntityRecord }>(ctx, "GET", `/v1/entities/${id}`);
+    return res.entity;
+  }
+
+  async patchEntity(ctx: CallContext, id: string, patch: PatchEntityInput): Promise<EntityRecord> {
+    const res = await this.call<{ entity: EntityRecord }>(ctx, "PATCH", `/v1/entities/${id}`, patch);
+    return res.entity;
+  }
+
+  async deleteEntity(ctx: CallContext, id: string): Promise<void> {
+    await this.call(ctx, "DELETE", `/v1/entities/${id}`);
+  }
+
+  async listEntities(
+    ctx: CallContext,
+    query: {
+      type?: string;
+      name_contains?: string;
+      external_id_key?: string;
+      external_id_value?: string;
+      limit?: number;
+      cursor?: string;
+    } = {}
+  ): Promise<{ items: EntityRecord[]; next_cursor: string | null }> {
+    const qs = new URLSearchParams();
+    if (query.type) qs.set("type", query.type);
+    if (query.name_contains) qs.set("name_contains", query.name_contains);
+    if (query.external_id_key) qs.set("external_id_key", query.external_id_key);
+    if (query.external_id_value) qs.set("external_id_value", query.external_id_value);
+    if (query.limit) qs.set("limit", String(query.limit));
+    if (query.cursor) qs.set("cursor", query.cursor);
+    const path = qs.toString() ? `/v1/entities?${qs}` : "/v1/entities";
+    return this.call(ctx, "GET", path);
+  }
+
+  async resolveEntity(ctx: CallContext, input: ResolveEntityInput): Promise<ResolveResult> {
+    return this.call<ResolveResult>(ctx, "POST", "/v1/entities/resolve", input);
+  }
+
+  async mergeEntity(ctx: CallContext, targetId: string, input: MergeEntityInput): Promise<MergeOutcome> {
+    return this.call<MergeOutcome>(ctx, "POST", `/v1/entities/${targetId}/merge`, input);
+  }
+
+  async unmergeEntity(ctx: CallContext, sourceId: string): Promise<unknown> {
+    return this.call(ctx, "POST", `/v1/entities/${sourceId}/unmerge`, {});
+  }
+
+  // ─── Phase 2: relations ────────────────────────────────────────────────
+  async createRelation(ctx: CallContext, input: CreateRelationInput): Promise<RelationRecord> {
+    const res = await this.call<{ relation: RelationRecord }>(ctx, "POST", "/v1/relations", input);
+    return res.relation;
+  }
+
+  async queryRelations(
+    ctx: CallContext,
+    input: QueryRelationsInput
+  ): Promise<{ items: RelationRecord[]; next_cursor: string | null }> {
+    return this.call(ctx, "POST", "/v1/relations/query", input);
+  }
+
+  async deleteRelation(ctx: CallContext, id: string): Promise<void> {
+    await this.call(ctx, "DELETE", `/v1/relations/${id}`);
   }
 
   // ─── ops ───────────────────────────────────────────────────────────────

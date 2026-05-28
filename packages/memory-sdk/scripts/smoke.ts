@@ -33,9 +33,13 @@ expect("issued_at present", typeof decoded.issued_at === "number");
 // ─── 2. Tool defs ───────────────────────────────────────────────────────────
 const client = new MemoryClient({ baseUrl: "http://localhost:0", identityProvider: ip });
 const tools = buildMemoryTools({ client });
-expect("7 tools registered", tools.length === 7);
+expect("11 tools registered", tools.length === 11);
 const names = new Set(tools.map((t) => t.name));
-for (const expectedName of ["memory_search", "memory_grep", "memory_create", "memory_update", "memory_delete", "document_grep", "document_get"]) {
+for (const expectedName of [
+  "memory_search", "memory_grep", "memory_create", "memory_update", "memory_delete",
+  "document_grep", "document_get",
+  "entity_get", "entity_resolve", "query_relations", "create_relation"
+]) {
   expect(`tool ${expectedName} present`, names.has(expectedName));
 }
 for (const t of tools) {
@@ -85,6 +89,50 @@ const server = createServer((req, res) => {
       res.end(JSON.stringify({ ok: false, error: "not_found", message: "memory not found" }));
       return;
     }
+    if (req.url === "/v1/entities" && req.method === "POST") {
+      res.writeHead(201, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: true, entity: {
+        id: "biz1:customer:c001", business_id: "biz1", type: "customer", name: "n",
+        aliases: [], external_ids: { crm_id: "X" }, attributes: {},
+        embedding_model: null, embedded_at: null,
+        created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", merged_into: null
+      }}));
+      return;
+    }
+    if (req.url === "/v1/entities/resolve" && req.method === "POST") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: true, matched: null, candidates: [
+        { entity: { id: "biz1:customer:c001", business_id: "biz1", type: "customer", name: "n", aliases: [], external_ids: {}, attributes: {}, embedding_model: null, embedded_at: null, created_at: "2026-01-01T00:00:00Z", updated_at: "2026-01-01T00:00:00Z", merged_into: null }, score: 0.4, reasons: ["attributes.email=a@b.com"] }
+      ]}));
+      return;
+    }
+    if (req.url === "/v1/relations/query" && req.method === "POST") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: true, items: [{
+        id: "33333333-3333-3333-3333-333333333333", business_id: "biz1",
+        subject_id: "biz1:customer:c001", predicate: "ordered",
+        object_id: "biz1:product:p1", object_value: null,
+        occurred_at: null, source_memory_id: null, confidence: 1, metadata: {},
+        created_at: "2026-01-01T00:00:00Z"
+      }], next_cursor: null }));
+      return;
+    }
+    if (req.url === "/v1/relations" && req.method === "POST") {
+      res.writeHead(201, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: true, relation: {
+        id: "44444444-4444-4444-4444-444444444444", business_id: "biz1",
+        subject_id: "biz1:customer:c001", predicate: "prefers",
+        object_id: null, object_value: { brand: "Toyota" },
+        occurred_at: null, source_memory_id: null, confidence: 1, metadata: {},
+        created_at: "2026-01-01T00:00:00Z"
+      }}));
+      return;
+    }
+    if (req.url === "/v1/entities/biz1:customer:c001/merge" && req.method === "POST") {
+      res.writeHead(200, { "content-type": "application/json" });
+      res.end(JSON.stringify({ ok: true, target: { id: "biz1:customer:c001" }, source: { id: "biz1:customer:c002" }, relations_migrated: 3, log: { id: "55555555-5555-5555-5555-555555555555" } }));
+      return;
+    }
     res.writeHead(500); res.end("unexpected: " + req.url);
   });
 });
@@ -132,6 +180,48 @@ try {
   await realClient.getMemory(ctx, "error-test");
 } catch (err) { caught = err; }
 expect("404 surfaces as MemoryServiceError", caught instanceof MemoryServiceError && (caught as MemoryServiceError).statusCode === 404);
+
+// Phase 2: entities / relations
+const entity = await realClient.upsertEntity(ctx, {
+  local_id: "customer:c001", type: "customer", name: "n",
+  external_ids: { crm_id: "X" }
+});
+expect("upsertEntity returns full id", entity.id === "biz1:customer:c001");
+const lastUpsert = captured[captured.length - 1]!;
+expect("upsertEntity posts to /v1/entities", lastUpsert.url === "/v1/entities" && lastUpsert.method === "POST");
+expect("upsertEntity body has local_id", lastUpsert.body.includes("\"local_id\":\"customer:c001\""));
+
+const resolved = await realClient.resolveEntity(ctx, {
+  type: "customer", strong_attributes: { email: "a@b.com" }
+});
+expect("resolveEntity returns candidates", resolved.candidates.length === 1);
+expect("resolveEntity candidate has reasons", resolved.candidates[0]!.reasons.length > 0);
+expect("resolveEntity matched=null below threshold", resolved.matched === null);
+
+const rels = await realClient.queryRelations(ctx, { subject_id: "biz1:customer:c001" });
+expect("queryRelations returns 1 item", rels.items.length === 1);
+expect("queryRelations item has predicate", rels.items[0]!.predicate === "ordered");
+
+const newRel = await realClient.createRelation(ctx, {
+  subject_id: "biz1:customer:c001", predicate: "prefers",
+  object_value: { brand: "Toyota" }
+});
+expect("createRelation returns relation", newRel.id === "44444444-4444-4444-4444-444444444444");
+
+const merged = await realClient.mergeEntity(ctx, "biz1:customer:c001", {
+  source_id: "biz1:customer:c002", reason: "duplicate"
+});
+expect("mergeEntity returns relations_migrated", merged.relations_migrated === 3);
+expect("mergeEntity returns log", merged.log.id === "55555555-5555-5555-5555-555555555555");
+
+// Phase 2 tools wired through MemoryClient
+const newTools = buildMemoryTools({ client: realClient });
+const resolveTool = newTools.find((t) => t.name === "entity_resolve")!;
+const toolResolved = await resolveTool.invoke(ctx, { type: "customer", strong_attributes: { email: "a@b.com" } }) as typeof resolved;
+expect("entity_resolve tool invokes correctly", toolResolved.candidates.length === 1);
+const queryTool = newTools.find((t) => t.name === "query_relations")!;
+const toolRels = await queryTool.invoke(ctx, { subject_id: "biz1:customer:c001" }) as typeof rels;
+expect("query_relations tool invokes correctly", toolRels.items.length === 1);
 
 await new Promise<void>((resolve) => server.close(() => resolve()));
 
