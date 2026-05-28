@@ -1,0 +1,15 @@
+FROM crpi-xzfvrq00a1ykf5fu.cn-hangzhou.personal.cr.aliyuncs.com/bigstupideer/postgres:16-alpine
+
+# Build pgvector v0.8.0 from source against this image's PG16.
+# The Alpine `postgresql-pgvector` apk package ships PG18 binaries which
+# don't match the upstream postgres:16-alpine layout, so we compile.
+# Build without LLVM JIT to avoid pulling clang/llvm.
+RUN set -eux; \
+    apk add --no-cache --virtual .build-deps \
+        build-base git ca-certificates; \
+    git clone --depth 1 --branch v0.8.0 https://github.com/pgvector/pgvector.git /tmp/pgvector; \
+    cd /tmp/pgvector; \
+    make OPTFLAGS="" with_llvm=no; \
+    make install with_llvm=no; \
+    rm -rf /tmp/pgvector; \
+    apk del .build-deps
