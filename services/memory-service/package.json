@@ -1,0 +1,51 @@
+{
+  "name": "@openclaw/memory-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Multi-tenant memory + RAG service for OpenClaw and other agent frameworks.",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "dev": "tsx watch src/server.ts",
+    "migrate": "tsx scripts/migrate.ts",
+    "reembed": "tsx scripts/reembed.ts",
+    "ingest": "tsx scripts/ingest-docs.ts",
+    "smoke": "tsx scripts/smoke.ts",
+    "smoke:routes": "tsx scripts/smoke-memory-routes.ts",
+    "smoke:embedding": "tsx scripts/smoke-embedding.ts",
+    "smoke:search": "tsx scripts/smoke-search.ts",
+    "smoke:ingest": "tsx scripts/smoke-ingest.ts",
+    "smoke:knowledge": "tsx scripts/smoke-knowledge.ts",
+    "smoke:grep": "tsx scripts/smoke-grep.ts",
+    "smoke:messages": "tsx scripts/smoke-messages.ts",
+    "smoke:metrics": "tsx scripts/smoke-metrics.ts",
+    "smoke:entities": "tsx scripts/smoke-entities.ts",
+    "smoke:resolver": "tsx scripts/smoke-resolver.ts",
+    "smoke:all": "npm run smoke && npm run smoke:routes && npm run smoke:embedding && npm run smoke:search && npm run smoke:ingest && npm run smoke:knowledge && npm run smoke:grep && npm run smoke:messages && npm run smoke:metrics && npm run smoke:entities && npm run smoke:resolver",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "fastify": "^4.28.0",
+    "@fastify/sensible": "^5.6.0",
+    "pg": "^8.13.0",
+    "pgvector": "^0.2.0",
+    "zod": "^3.23.8",
+    "pino": "^9.5.0",
+    "dotenv": "^16.4.5",
+    "undici": "^6.20.0",
+    "unified": "^11.0.5",
+    "remark-parse": "^11.0.0",
+    "remark-frontmatter": "^5.0.0",
+    "remark-gfm": "^4.0.0",
+    "yaml": "^2.5.1",
+    "ulid": "^2.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.0",
+    "@types/pg": "^8.11.10",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  }
+}

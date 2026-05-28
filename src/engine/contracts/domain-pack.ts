@@ -74,6 +74,10 @@ import type {
 } from "./evidence-contract.js";
 
 import type {
+  EvolutionExtractionContract,
+} from "./evolution-extraction-contract.js";
+
+import type {
   RuntimePluginDefinition,
 } from "./runtime-plugin-contract.js";
 
@@ -595,6 +599,18 @@ export interface DomainPack {
    * 多个域的关键词会合并去重。
    */
   importantSentenceKeywords?: ImportantSentenceKeyword[];
+
+  /**
+   * Phase 2.5：evolution 阶段结构化抽取词表（Engine ↔ DomainPack 边界）。
+   *
+   * 留空时 DomainRegistry 会回退到 loadVocabulary(packId) 读取
+   * data/domains/<pack.id>/vocabulary.yaml。两者都缺即视为 EMPTY contract，
+   * evolution extraction 仍可运行但退化为通用抽取。
+   *
+   * 通常 pack 不需要在代码里写 contract，让 vocabulary.yaml + curator 维护。
+   * 这里留口子是给"代码内联词表"或"测试桩"使用。
+   */
+  extractionContract?: EvolutionExtractionContract;
 
   // ── 生命周期钩子 ────────────────────────────────────────────────────────
 

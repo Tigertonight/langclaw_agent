@@ -2,10 +2,13 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import type { WorkspaceContext } from "../runtime/workspace-context.js";
-import type { JsonObject } from "../types/agent-contracts.js";
+import type { JsonObject, UserContext } from "../types/agent-contracts.js";
 import type { MemoryAction } from "./types.js";
 import { loadDisabledEvolutionTargets } from "./governance.js";
 import { MemoryIndex } from "../memory/memory-index.js";
+import { getMemoryClient, resolveBusinessId } from "../memory/service-client.js";
+import type { ExtractionResult, ExtractedEntity, ExtractedRelation } from "./structured-output.js";
+import type { CallContext } from "../../packages/memory-sdk/src/index.js";
 
 interface MemoryFile extends JsonObject {
   owner_user_id: string;
@@ -28,7 +31,7 @@ interface MemoryItem extends JsonObject {
 export class MemoryLearner {
   private readonly memoryIndex = new MemoryIndex();
 
-  async apply({ workspace, actions }: { workspace: WorkspaceContext; actions?: MemoryAction[] }): Promise<number> {
+  async apply({ workspace, actions, user }: { workspace: WorkspaceContext; actions?: MemoryAction[]; user?: UserContext }): Promise<number> {
     const normalized = Array.isArray(actions) ? actions : [];
     if (!normalized.length) return 0;
     const disabled = await loadDisabledEvolutionTargets(workspace);
@@ -73,8 +76,38 @@ export class MemoryLearner {
       await this.save(workspace, memory);
       // Phase 2: 写入后重建 MEMORY.md 索引（异步，不阻塞返回）
       this.memoryIndex.rebuild(workspace, memory.items).catch(() => undefined);
+      // Phase 1.12: 镜像到 memory-service（仅当配置可用，失败不影响主路径）
+      void this.mirrorToService(workspace, user, normalized).catch(() => undefined);
     }
     return changed;
+  }
+
+  private async mirrorToService(
+    workspace: WorkspaceContext,
+    user: UserContext | undefined,
+    actions: MemoryAction[]
+  ): Promise<void> {
+    const client = getMemoryClient();
+    if (!client) return;
+    const ctx = {
+      business_id: workspace.business_id ?? resolveBusinessId(user as { business_id?: unknown } | undefined),
+      user_id: workspace.user_id,
+      agent_id: typeof user?.agent_id === "string" ? user.agent_id : undefined
+    };
+    for (const action of actions) {
+      if (action.op === "upsert" && typeof action.value === "string" && action.value.trim()) {
+        await client.createMemory(ctx, {
+          category: mapMemoryCategory(action.type),
+          name: action.key,
+          content: action.value.trim(),
+          source: action.source ?? "evolution",
+          confidence: typeof action.confidence === "number" ? action.confidence : undefined
+        }).catch(() => undefined);
+      }
+      // Note: remove → memory-service uses UUID-based delete; we don't have the
+      // remote id here, so remote retention is best-effort additive in Phase 1.
+      // Cleanup will be reconciled in Phase 2's sync job.
+    }
   }
 
   async load(workspace: WorkspaceContext): Promise<MemoryFile> {
@@ -104,6 +137,152 @@ export class MemoryLearner {
 
   filePath(workspace: WorkspaceContext): string {
     return path.join(workspace.memory_dir, "memory.json");
+  }
+
+  /**
+   * Phase 2.5 — 把结构化抽取结果写入 memory-service。
+   *
+   * 流程：
+   *   1) 应用 memory_actions → 走原 apply() 路径（写 memory.json + 镜像 memory-service）。
+   *   2) 对每个 entity：先 resolveEntity，没匹配则 upsertEntity，得到正式 full_id，
+   *      建立 local_id → full_id 的映射。
+   *   3) 对每个 relation：把 subject/object 的 local_id 替换成 full_id，
+   *      调用 createRelation。
+   *
+   * 当 memory-service 未配置（getMemoryClient 返回 null）时，第 2/3 步降级为 no-op，
+   * 仅 memory_actions 走本地 memory.json 路径，与 Phase 1 保持兼容。
+   */
+  async applyExtraction({
+    workspace,
+    user,
+    extraction
+  }: {
+    workspace: WorkspaceContext;
+    user?: UserContext;
+    extraction: ExtractionResult;
+  }): Promise<{ memory_changed: number; entities_written: number; relations_written: number; errors: string[] }> {
+    const errors: string[] = [];
+    let memory_changed = 0;
+    let entities_written = 0;
+    let relations_written = 0;
+
+    if (extraction.memory_actions?.length) {
+      memory_changed = await this.apply({ workspace, user, actions: extraction.memory_actions as MemoryAction[] });
+    }
+
+    const client = getMemoryClient();
+    if (!client) {
+      return { memory_changed, entities_written, relations_written, errors };
+    }
+    const ctx: CallContext = {
+      business_id: workspace.business_id ?? resolveBusinessId(user as { business_id?: unknown } | undefined),
+      user_id: workspace.user_id,
+      agent_id: typeof user?.agent_id === "string" ? user.agent_id : undefined
+    };
+
+    const localIdToFullId = new Map<string, string>();
+    for (const entity of extraction.entities ?? []) {
+      try {
+        const fullId = await this.resolveOrUpsertEntity(client, ctx, entity);
+        localIdToFullId.set(entity.local_id, fullId);
+        entities_written += 1;
+      } catch (err) {
+        errors.push(`entity:${entity.local_id}:${err instanceof Error ? err.message : "unknown"}`);
+      }
+    }
+
+    for (const relation of extraction.relations ?? []) {
+      const subjectId = resolveRef(relation.subject, localIdToFullId);
+      if (!subjectId) {
+        errors.push(`relation_subject_unresolved:${refLabel(relation.subject)}`);
+        continue;
+      }
+      let objectId: string | undefined;
+      if (relation.object) {
+        const oid = resolveRef(relation.object, localIdToFullId);
+        if (!oid) {
+          errors.push(`relation_object_unresolved:${refLabel(relation.object)}`);
+          continue;
+        }
+        objectId = oid;
+      }
+      try {
+        await client.createRelation(ctx, {
+          subject_id: subjectId,
+          predicate: relation.predicate,
+          object_id: objectId ?? null,
+          object_value: relation.object_value,
+          occurred_at: relation.occurred_at ?? null,
+          confidence: relation.confidence,
+          metadata: relation.metadata
+        });
+        relations_written += 1;
+      } catch (err) {
+        errors.push(`relation:${relation.predicate}:${err instanceof Error ? err.message : "unknown"}`);
+      }
+    }
+
+    return { memory_changed, entities_written, relations_written, errors };
+  }
+
+  private async resolveOrUpsertEntity(
+    client: NonNullable<ReturnType<typeof getMemoryClient>>,
+    ctx: CallContext,
+    entity: ExtractedEntity
+  ): Promise<string> {
+    const resolved = await client.resolveEntity(ctx, {
+      type: entity.type,
+      external_ids: entity.external_ids,
+      strong_attributes: entity.strong_attributes,
+      name_hint: entity.name
+    }).catch(() => null);
+
+    if (resolved?.matched) return resolved.matched.id;
+
+    const upserted = await client.upsertEntity(ctx, {
+      local_id: entity.local_id,
+      type: entity.type,
+      name: entity.name,
+      aliases: entity.aliases,
+      external_ids: entity.external_ids,
+      attributes: mergeAttrs(entity.attributes, entity.strong_attributes)
+    });
+    return upserted.id;
+  }
+}
+
+function resolveRef(
+  ref: { local_id: string } | { full_id: string },
+  map: Map<string, string>
+): string | undefined {
+  if ("full_id" in ref) return ref.full_id;
+  return map.get(ref.local_id);
+}
+
+function refLabel(ref: { local_id: string } | { full_id: string }): string {
+  return "full_id" in ref ? ref.full_id : ref.local_id;
+}
+
+function mergeAttrs(
+  attrs: Record<string, unknown> | undefined,
+  strong: Record<string, string> | undefined
+): Record<string, unknown> | undefined {
+  if (!attrs && !strong) return undefined;
+  return { ...(attrs ?? {}), ...(strong ?? {}) };
+}
+
+/** Map evolution-side type to memory-service 7-class category. */
+function mapMemoryCategory(type: MemoryAction["type"]): "user" | "feedback" | "project" | "reference" | "procedure" | "fact" | "episode" {
+  switch (type) {
+    case "preference": return "user";
+    case "feedback": return "feedback";
+    case "project": return "project";
+    case "reference": return "reference";
+    case "procedure": return "procedure";
+    case "fact": return "fact";
+    case "episode": return "episode";
+    case "user": return "user";
+    default: return "fact";
   }
 }
 

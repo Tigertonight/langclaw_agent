@@ -31,6 +31,13 @@
     "workspace:isolation": "tsc -p tsconfig.build.json && node dist/eval/workspace-isolation.js",
     "evolution:smoke": "tsc -p tsconfig.build.json && node dist/eval/evolution-runtime.js",
     "evolution:governance": "tsc -p tsconfig.build.json && node dist/eval/evolution-governance.js",
+    "evolution:extraction": "npx tsx src/eval/evolution-extraction-smoke.ts",
+    "evolution:extraction-wiring": "npx tsx src/eval/evolution-extraction-wiring-smoke.ts",
+    "memory:1-12-wiring": "npx tsx src/eval/memory-1-12-wiring-smoke.ts",
+    "memory:toggle": "npx tsx src/eval/memory-service-toggle-smoke.ts",
+    "vocab:curate": "npx tsx src/cli/vocabulary-cli.ts curate",
+    "vocab:diff": "npx tsx src/cli/vocabulary-cli.ts diff",
+    "vocab:smoke": "npx tsx src/eval/vocabulary-curator-smoke.ts",
     "memory:evolution-stack": "tsc -p tsconfig.build.json && node dist/eval/memory-evolution-stack.js",
     "hook:evolution-loop": "tsc -p tsconfig.build.json && node dist/eval/hook-runtime-evolution-loop.js",
     "business:runtime": "tsc -p tsconfig.build.json && node dist/eval/business-agent-runtime.js",
@@ -42,7 +49,6 @@
     "task:smoke": "tsc -p tsconfig.build.json && node dist/eval/task-store.js",
     "config:check": "tsc -p tsconfig.build.json && node dist/eval/config-check.js",
     "tool:validation": "tsc -p tsconfig.build.json && node dist/eval/tool-input-validation.js",
-    "tool:timeout": "tsc -p tsconfig.build.json && node dist/eval/tool-timeout.js",
     "tool:error-msg": "tsc -p tsconfig.build.json && node dist/eval/tool-error-message.js",
     "store:concurrency": "tsc -p tsconfig.build.json && node dist/eval/store-concurrency.js",
     "ops:endpoints": "tsc -p tsconfig.build.json && node dist/eval/ops-endpoints.js",
@@ -76,6 +82,7 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
+    "yaml": "^2.9.0",
     "zod": "^4.4.3"
   }
 }

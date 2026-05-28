@@ -112,6 +112,28 @@ export type {
   ExtractedFact,
 } from "./evidence-contract.js";
 
+// ── Evolution Extraction Contract (experimental) ─────────────────────────────
+export type {
+  EvolutionExtractionContract,
+  ExtractionFewShotExample,
+} from "./evolution-extraction-contract.js";
+
+export {
+  EMPTY_EXTRACTION_CONTRACT,
+} from "./evolution-extraction-contract.js";
+
+// ── Vocabulary Schema (experimental) ─────────────────────────────────────────
+export type {
+  VocabularyEntry,
+  FewShotExample,
+  VocabularyFile,
+} from "./vocabulary-schema.js";
+
+export {
+  VocabularyFileSchema,
+  parseVocabularyFile,
+} from "./vocabulary-schema.js";
+
 // ── Runtime Plugin Contract (stable) ─────────────────────────────────────────
 export type {
   RuntimePluginDefinition,

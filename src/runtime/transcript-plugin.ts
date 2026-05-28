@@ -2,8 +2,42 @@ import { TranscriptStore } from "../transcript/transcript-store.js";
 import type { JsonObject, ToolResult } from "../types/agent-contracts.js";
 import type { RuntimePlugin } from "./hooks.js";
 import { resolveUserWorkspace } from "./workspace-context.js";
+import { getMemoryClient } from "../memory/service-client.js";
+import { QueuedMemoryClient } from "../memory/queued-client.js";
+import type { MessageItem } from "../../packages/memory-sdk/src/index.js";
 
-export function createTranscriptPlugin({ transcriptStore = new TranscriptStore() }: { transcriptStore?: TranscriptStore } = {}): RuntimePlugin {
+export interface TranscriptPluginOptions {
+  transcriptStore?: TranscriptStore;
+  /**
+   * 注入 QueuedMemoryClient 工厂，主要给 smoke 用。生产路径下走默认逻辑：
+   * getMemoryClient() → 包一层 QueuedMemoryClient（按 workspace 自动隔离队列文件）。
+   * 返回 null 时跳过 memory-service 写入（保留与 Phase 1 的兼容）。
+   */
+  memoryClientFactory?: (workspace: ReturnType<typeof resolveUserWorkspace>) => QueuedMemoryClient | null;
+}
+
+export function createTranscriptPlugin({
+  transcriptStore = new TranscriptStore(),
+  memoryClientFactory
+}: TranscriptPluginOptions = {}): RuntimePlugin {
+  // 每个 session 维护一个递增的 turn_index 计数器，用于 batchMessages。
+  const nextTurnIndex = new Map<string, number>();
+  const allocateTurnIndices = (sessionId: string, count: number): number[] => {
+    const start = nextTurnIndex.get(sessionId) ?? 0;
+    nextTurnIndex.set(sessionId, start + count);
+    return Array.from({ length: count }, (_, i) => start + i);
+  };
+  const queuedClientCache = new Map<string, QueuedMemoryClient | null>();
+  const resolveQueuedClient = (workspace: ReturnType<typeof resolveUserWorkspace>): QueuedMemoryClient | null => {
+    if (memoryClientFactory) return memoryClientFactory(workspace);
+    const cacheKey = `${workspace.business_id}:${workspace.user_id}`;
+    if (queuedClientCache.has(cacheKey)) return queuedClientCache.get(cacheKey) ?? null;
+    const base = getMemoryClient();
+    const wrapped = base ? new QueuedMemoryClient({ client: base, workspace }) : null;
+    queuedClientCache.set(cacheKey, wrapped);
+    return wrapped;
+  };
+
   return {
     name: "transcript-store",
     register(hooks) {
@@ -65,7 +99,8 @@ export function createTranscriptPlugin({ transcriptStore = new TranscriptStore()
         const userId = typeof event.user_id === "string" ? event.user_id : "";
         const sessionId = typeof event.session_id === "string" ? event.session_id : "";
         if (!userId || !sessionId) return;
-        await transcriptStore.appendTurn(resolveUserWorkspace(userId), sessionId, {
+        const workspace = resolveUserWorkspace(userId);
+        await transcriptStore.appendTurn(workspace, sessionId, {
           runId: typeof event.run_id === "string" ? event.run_id : undefined,
           message: String(event.message ?? ""),
           answer: String(event.answer ?? ""),
@@ -74,6 +109,24 @@ export function createTranscriptPlugin({ transcriptStore = new TranscriptStore()
           toolResults: Array.isArray(event.tool_results) ? event.tool_results as ToolResult[] : [],
           agentSteps: Array.isArray(event.agent_steps) ? event.agent_steps as Array<Record<string, unknown>> : []
         });
+
+        // Spec 1.12：把 user/assistant 消息镜像到 memory-service。
+        const queued = resolveQueuedClient(workspace);
+        if (!queued) return;
+        const message = String(event.message ?? "");
+        const answer = String(event.answer ?? "");
+        const items: MessageItem[] = [];
+        if (message) items.push({ session_id: sessionId, turn_index: 0, role: "user", content: message });
+        if (answer) items.push({ session_id: sessionId, turn_index: 0, role: "assistant", content: answer });
+        if (!items.length) return;
+        const indices = allocateTurnIndices(sessionId, items.length);
+        items.forEach((m, i) => { m.turn_index = indices[i]; });
+        const ctx = {
+          business_id: workspace.business_id,
+          user_id: workspace.user_id,
+          agent_id: typeof event.agent_id === "string" ? event.agent_id : undefined
+        };
+        await queued.batchMessages(ctx, items);
       });
     }
   };

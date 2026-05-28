@@ -4,6 +4,12 @@ import type { UserContext } from "../types/agent-contracts.js";
 
 export interface WorkspaceContext {
   user_id: string;
+  /**
+   * Multi-tenant 维度。memory-service 用 (business_id, user_id) 做隔离。
+   * 由 resolveUserWorkspace 从 user.business_id / 环境变量
+   * MEMORY_SERVICE_DEFAULT_BUSINESS_ID 解析；缺省 "default"。
+   */
+  business_id: string;
   root: string;
   memory_dir: string;
   sessions_dir: string;
@@ -29,8 +35,10 @@ export function resolveUserWorkspace(user: Pick<UserContext, "id"> | string): Wo
   const userId = typeof user === "string" ? user : user.id;
   const safeId = safeUserId(userId || "anonymous");
   const root = resolveProjectPath("users", safeId, "workspace");
+  const businessId = resolveBusinessIdFromUser(typeof user === "string" ? undefined : user);
   return {
     user_id: safeId,
+    business_id: businessId,
     root,
     memory_dir: safeJoinWorkspace(root, "memory"),
     sessions_dir: safeJoinWorkspace(root, "sessions"),
@@ -39,6 +47,19 @@ export function resolveUserWorkspace(user: Pick<UserContext, "id"> | string): Wo
     sandboxes_dir: safeJoinWorkspace(root, "sandboxes"),
     logs_dir: safeJoinWorkspace(root, "logs")
   };
+}
+
+/**
+ * 解析 business_id：user.business_id（duck-typed）→ env → "default"。
+ * 与 src/memory/service-client.resolveBusinessId 行为一致；放在 workspace 层
+ * 是为了让 multi-tenant 维度在 workspace 创建时就锁定。
+ */
+export function resolveBusinessIdFromUser(user: unknown): string {
+  if (user && typeof user === "object") {
+    const candidate = (user as { business_id?: unknown }).business_id;
+    if (typeof candidate === "string" && candidate.trim()) return candidate.trim();
+  }
+  return process.env.MEMORY_SERVICE_DEFAULT_BUSINESS_ID ?? "default";
 }
 
 export function safeUserId(userId: unknown): string {
