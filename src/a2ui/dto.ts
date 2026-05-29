@@ -13,6 +13,8 @@ export interface A2UIChatRequestDto extends JsonObject {
   user_context?: JsonObject;
   debug?: boolean;
   client_capabilities?: ClientCapabilitiesDto;
+  /** 由 /api/attachments 返回的 attachment id 列表（可选；最多 5 个） */
+  attachment_ids?: string[];
 }
 
 export interface A2UIActionRequestDto extends JsonObject {
@@ -32,6 +34,9 @@ export function parseA2UIChatRequest(body: Record<string, unknown>): A2UIChatReq
   if (typeof body.user_id !== "string" || typeof body.message !== "string") {
     throw new A2UIBadRequestError("user_id 和 message 必填。");
   }
+  const attachmentIds = Array.isArray(body.attachment_ids)
+    ? body.attachment_ids.filter((v): v is string => typeof v === "string").slice(0, 5)
+    : undefined;
   return {
     user_id: body.user_id,
     message: body.message,
@@ -39,7 +44,8 @@ export function parseA2UIChatRequest(body: Record<string, unknown>): A2UIChatReq
     wecom_userid: typeof body.wecom_userid === "string" ? body.wecom_userid : undefined,
     user_context: isJsonObject(body.user_context) ? normalizeJsonObject(body.user_context) : undefined,
     debug: body.debug === true,
-    client_capabilities: isJsonObject(body.client_capabilities) ? parseClientCapabilities(body.client_capabilities) : undefined
+    client_capabilities: isJsonObject(body.client_capabilities) ? parseClientCapabilities(body.client_capabilities) : undefined,
+    attachment_ids: attachmentIds
   };
 }
 

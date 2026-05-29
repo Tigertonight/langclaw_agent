@@ -51,6 +51,17 @@ export function createTranscriptPlugin({
           message_preview: String(event.message ?? "").slice(0, 300)
         });
       });
+      hooks.on("attachments_attached", async (event) => {
+        const userId = typeof event.user_id === "string" ? event.user_id : "";
+        const sessionId = typeof event.session_id === "string" ? event.session_id : "";
+        if (!userId || !sessionId) return;
+        // 只写 metadata（filename/kind/size），不重复写解析后的正文——正文已通过
+        // expandedMessage 进了本轮 LLM prompt；transcript 这层只为 audit / UI 留个痕迹。
+        await transcriptStore.append(resolveUserWorkspace(userId), sessionId, "attachments_attached", {
+          run_id: typeof event.run_id === "string" ? event.run_id : undefined,
+          attachments: Array.isArray(event.attachments) ? event.attachments as JsonObject[] : []
+        });
+      });
       hooks.on("context_ingest", async (event) => {
         const userId = typeof event.user_id === "string" ? event.user_id : "";
         const sessionId = typeof event.session_id === "string" ? event.session_id : "";

@@ -15,6 +15,7 @@ interface QueryEngineLike {
     message: string;
     sessionId?: string;
     debug?: boolean;
+    attachmentIds?: string[];
   }): Promise<Record<string, unknown>>;
   /** Phase 1 新增：流式路径也通过 QueryEngine 管理生命周期 */
   submitStream?(input: {
@@ -24,6 +25,7 @@ interface QueryEngineLike {
     message: string;
     sessionId?: string;
     debug?: boolean;
+    attachmentIds?: string[];
     onEvent?: (event: JsonObject) => Promise<void> | void;
   }): Promise<unknown>;
 }
@@ -238,7 +240,8 @@ function toQueryInput(dto: A2UIChatRequestDto) {
     wecomUserId: dto.wecom_userid,
     message: dto.message,
     sessionId: dto.session_id,
-    debug: dto.debug === true
+    debug: dto.debug === true,
+    attachmentIds: dto.attachment_ids
   };
 }
 

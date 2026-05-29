@@ -160,12 +160,49 @@ export function renderChatPage(): string {
     .msg.user { display: flex; justify-content: flex-end; }
     .bubble { max-width: min(640px, 100%); background: var(--soft); border: 1px solid #ededed; border-radius: 8px; padding: 11px 15px; }
     .assistant-body { padding: 0 4px; }
-    .composer { flex: 0 0 auto; padding: 16px 20px 22px; background: linear-gradient(to top, #fff 80%, rgba(255,255,255,0)); }
-    .composer-inner {
-      width: min(820px, 100%); margin: 0 auto; display: flex; gap: 10px; align-items: center;
-      border: 1px solid #d4d4d4; border-radius: 8px; padding: 9px 9px 9px 14px; background: #fff;
+    .composer { flex: 0 0 auto; padding: 16px 20px 22px; background: linear-gradient(to top, #fff 80%, rgba(255,255,255,0)); position: relative; }
+    .composer.dragover::before {
+      content: "拖到这里上传 (最多 5 个，单文件 ≤ 20MB)";
+      position: absolute; inset: 8px 16px; border: 2px dashed #111; border-radius: 12px;
+      background: rgba(255,255,255,.92); display: flex; align-items: center; justify-content: center;
+      color: #111; font-weight: 600; font-size: 14px; z-index: 10; pointer-events: none;
+    }
+    .composer-shell {
+      width: min(820px, 100%); margin: 0 auto;
+      border: 1px solid #d4d4d4; border-radius: 8px; background: #fff;
       box-shadow: 0 16px 44px rgba(0,0,0,.09);
     }
+    .attach-strip {
+      display: none; flex-wrap: wrap; gap: 6px;
+      padding: 8px 12px 0; border-bottom: 0;
+    }
+    .attach-strip.has-items { display: flex; }
+    .attach-chip {
+      display: inline-flex; align-items: center; gap: 6px; max-width: 240px;
+      padding: 4px 8px; border-radius: 999px; background: #f4f4f5;
+      border: 1px solid #e4e4e7; font-size: 12px; line-height: 1.4; color: #333;
+    }
+    .attach-chip.uploading { color: #777; background: #fafafa; }
+    .attach-chip.failed { color: #b91c1c; border-color: #fecaca; background: #fef2f2; }
+    .attach-chip .chip-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .attach-chip .chip-meta { color: #999; font-size: 11px; flex-shrink: 0; }
+    .attach-chip .chip-remove {
+      border: 0; background: transparent; padding: 0 2px; cursor: pointer;
+      color: #888; font-size: 14px; line-height: 1;
+    }
+    .attach-chip .chip-remove:hover { color: #111; }
+    .composer-inner {
+      display: flex; gap: 10px; align-items: center;
+      padding: 9px 9px 9px 14px;
+    }
+    .attach-btn {
+      flex: 0 0 auto; width: 32px; height: 32px; border-radius: 6px;
+      border: 1px solid transparent; background: transparent; cursor: pointer;
+      display: inline-flex; align-items: center; justify-content: center;
+      color: #555; font-size: 18px;
+    }
+    .attach-btn:hover { background: #f4f4f5; color: #111; }
+    .attach-btn:disabled { opacity: .4; cursor: not-allowed; }
     textarea {
       flex: 1; border: 0; outline: 0; resize: none; min-height: 36px; max-height: 180px;
       font: inherit; line-height: 24px; padding: 6px 0; overflow-y: hidden;
@@ -576,11 +613,16 @@ export function renderChatPage(): string {
       <div id="messages" class="messages"></div>
       <div class="composer-suggest"><div id="suggestPopup" class="suggest-popup" role="listbox" aria-label="&#x547D;&#x4EE4;&#x5EFA;&#x8BAE;"></div></div>
       <form id="form" class="composer">
-        <div class="composer-inner">
-          <textarea id="input" rows="1" placeholder="&#x8F93;&#x5165;&#x95EE;&#x9898;&#x6216;&#x4E1A;&#x52A1;&#x6307;&#x4EE4;&#xFF08;&#x6309; / &#x67E5;&#x770B;&#x5FEB;&#x6377;&#x547D;&#x4EE4;&#xFF09;"></textarea>
-          <button id="send" class="send" type="submit">&#x53D1;&#x9001;</button>
+        <div class="composer-shell">
+          <div id="attachStrip" class="attach-strip" aria-label="&#x5DF2;&#x9009;&#x9644;&#x4EF6;"></div>
+          <div class="composer-inner">
+            <button id="attachBtn" class="attach-btn" type="button" title="&#x6DFB;&#x52A0;&#x9644;&#x4EF6;&#xFF08;&#x6700;&#x591A; 5 &#x4E2A;&#xFF09;" aria-label="&#x6DFB;&#x52A0;&#x9644;&#x4EF6;">&#x1F4CE;</button>
+            <input id="attachInput" type="file" multiple style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.zip,.txt,.md,.log,.json,image/*" />
+            <textarea id="input" rows="1" placeholder="&#x8F93;&#x5165;&#x95EE;&#x9898;&#x6216;&#x4E1A;&#x52A1;&#x6307;&#x4EE4;&#xFF08;&#x6309; / &#x67E5;&#x770B;&#x5FEB;&#x6377;&#x547D;&#x4EE4;&#xFF09;"></textarea>
+            <button id="send" class="send" type="submit">&#x53D1;&#x9001;</button>
+          </div>
         </div>
-        <div class="hint">Enter &#x53D1;&#x9001; &#183; Shift+Enter &#x6362;&#x884C; &#183; / &#x547D;&#x4EE4;&#x8865;&#x5168;</div>
+        <div class="hint">Enter &#x53D1;&#x9001; &#183; Shift+Enter &#x6362;&#x884C; &#183; / &#x547D;&#x4EE4;&#x8865;&#x5168; &#183; &#x62D6;&#x62FD;&#x6216;&#x7C98;&#x8D34;&#x4E0A;&#x4F20;&#x9644;&#x4EF6;</div>
       </form>
     </section>
     <div id="personModalBackdrop" class="person-modal-backdrop" aria-hidden="true">
@@ -651,7 +693,11 @@ export function renderChatPage(): string {
       sidebarBackdrop: document.querySelector("#sidebarBackdrop"),
       debug: document.querySelector("#debugToggle"),
       chatTitle: document.querySelector("#chatTitle"),
-      chatSubtitle: document.querySelector("#chatSubtitle")
+      chatSubtitle: document.querySelector("#chatSubtitle"),
+      attachBtn: document.querySelector("#attachBtn"),
+      attachInput: document.querySelector("#attachInput"),
+      attachStrip: document.querySelector("#attachStrip"),
+      composer: document.querySelector("#form")
     };
     clearLegacySessions();
     let sessions = loadSessions();
@@ -918,21 +964,182 @@ export function renderChatPage(): string {
       // 阻止 textarea blur 抢先关闭弹层
       event.preventDefault();
     });
+
+    // ── 附件上传 ─────────────────────────────────────────────
+    const ATTACH_MAX = 5;
+    const attachState = { items: [], uploading: 0 };
+
+    function fmtBytes(n) {
+      if (n < 1024) return n + "B";
+      if (n < 1024 * 1024) return (n / 1024).toFixed(1) + "KB";
+      return (n / 1024 / 1024).toFixed(1) + "MB";
+    }
+    function renderAttachments() {
+      const strip = els.attachStrip;
+      strip.innerHTML = "";
+      if (!attachState.items.length) {
+        strip.classList.remove("has-items");
+        return;
+      }
+      strip.classList.add("has-items");
+      attachState.items.forEach((item) => {
+        const chip = document.createElement("div");
+        chip.className = "attach-chip" + (item.status === "uploading" ? " uploading" : item.status === "failed" ? " failed" : "");
+        const name = document.createElement("span");
+        name.className = "chip-name";
+        name.textContent = item.filename;
+        chip.appendChild(name);
+        const meta = document.createElement("span");
+        meta.className = "chip-meta";
+        if (item.status === "uploading") meta.textContent = "上传中…";
+        else if (item.status === "failed") meta.textContent = item.failure || "失败";
+        else meta.textContent = item.kind === "failed" ? "解析失败" : (item.kind || "") + " · " + fmtBytes(item.size_bytes || 0);
+        chip.appendChild(meta);
+        const rm = document.createElement("button");
+        rm.type = "button";
+        rm.className = "chip-remove";
+        rm.setAttribute("aria-label", "移除");
+        rm.textContent = "×";
+        rm.addEventListener("click", () => {
+          attachState.items = attachState.items.filter((x) => x.localId !== item.localId);
+          renderAttachments();
+        });
+        chip.appendChild(rm);
+        strip.appendChild(chip);
+      });
+    }
+    async function uploadFiles(fileList) {
+      const files = Array.from(fileList || []);
+      if (!files.length) return;
+      const remaining = ATTACH_MAX - attachState.items.length;
+      if (remaining <= 0) {
+        alert("最多 " + ATTACH_MAX + " 个附件");
+        return;
+      }
+      const accepted = files.slice(0, remaining);
+      if (files.length > remaining) {
+        alert("只接收前 " + remaining + " 个文件，其余已忽略");
+      }
+      const localItems = accepted.map((f) => ({
+        localId: id(),
+        filename: f.name,
+        size_bytes: f.size,
+        status: "uploading"
+      }));
+      attachState.items.push(...localItems);
+      attachState.uploading += localItems.length;
+      renderAttachments();
+
+      const fd = new FormData();
+      fd.append("user_id", currentUserId);
+      if (activeSessionId) fd.append("session_id", activeSessionId);
+      accepted.forEach((f) => fd.append("files", f, f.name));
+      try {
+        const res = await fetch("/api/attachments", { method: "POST", body: fd });
+        if (!res.ok) {
+          const txt = await res.text().catch(() => "");
+          throw new Error("HTTP " + res.status + " " + txt.slice(0, 120));
+        }
+        const json = await res.json();
+        const returned = Array.isArray(json && json.attachments) ? json.attachments : [];
+        // 按顺序回填到 localItems（后端按 files 顺序返回）
+        localItems.forEach((local, idx) => {
+          const ret = returned[idx];
+          if (!ret) {
+            local.status = "failed";
+            local.failure = "无返回";
+          } else {
+            local.id = ret.id;
+            local.kind = ret.kind;
+            local.size_bytes = ret.size_bytes ?? local.size_bytes;
+            local.status = "ready";
+            local.failure = ret.failure_reason;
+          }
+        });
+      } catch (err) {
+        localItems.forEach((local) => {
+          local.status = "failed";
+          local.failure = (err && err.message) || "上传失败";
+        });
+      } finally {
+        attachState.uploading = Math.max(0, attachState.uploading - localItems.length);
+        renderAttachments();
+      }
+    }
+    els.attachBtn.addEventListener("click", () => {
+      if (attachState.items.length >= ATTACH_MAX) {
+        alert("最多 " + ATTACH_MAX + " 个附件");
+        return;
+      }
+      els.attachInput.click();
+    });
+    els.attachInput.addEventListener("change", (event) => {
+      const files = event.target.files;
+      uploadFiles(files);
+      els.attachInput.value = ""; // 允许同名文件再次选择
+    });
+    // 拖拽：仅在 composer 区域响应，避免误触整页
+    let dragDepth = 0;
+    els.composer.addEventListener("dragenter", (event) => {
+      if (!event.dataTransfer || !Array.from(event.dataTransfer.types || []).includes("Files")) return;
+      event.preventDefault();
+      dragDepth += 1;
+      els.composer.classList.add("dragover");
+    });
+    els.composer.addEventListener("dragover", (event) => {
+      if (event.dataTransfer && Array.from(event.dataTransfer.types || []).includes("Files")) {
+        event.preventDefault();
+      }
+    });
+    els.composer.addEventListener("dragleave", () => {
+      dragDepth = Math.max(0, dragDepth - 1);
+      if (dragDepth === 0) els.composer.classList.remove("dragover");
+    });
+    els.composer.addEventListener("drop", (event) => {
+      if (!event.dataTransfer || !event.dataTransfer.files || !event.dataTransfer.files.length) return;
+      event.preventDefault();
+      dragDepth = 0;
+      els.composer.classList.remove("dragover");
+      uploadFiles(event.dataTransfer.files);
+    });
+    // 粘贴图片
+    els.input.addEventListener("paste", (event) => {
+      const cd = event.clipboardData;
+      if (!cd || !cd.items) return;
+      const files = [];
+      for (let i = 0; i < cd.items.length; i++) {
+        const it = cd.items[i];
+        if (it.kind === "file") {
+          const f = it.getAsFile();
+          if (f) files.push(f);
+        }
+      }
+      if (files.length) {
+        event.preventDefault();
+        uploadFiles(files);
+      }
+    });
+
     els.form.addEventListener("submit", async (event) => {
       event.preventDefault();
       const text = els.input.value.trim();
       if (!text || loading) return;
+      if (attachState.uploading > 0) return; // 等附件上传完
+      const attachmentIds = attachState.items.filter((a) => a.status === "ready").map((a) => a.id);
       els.input.value = "";
       els.input.style.height = "auto";
       const assistantId = id();
       messages.push({ id: id(), role: "user", text });
       messages.push({ id: assistantId, role: "assistant", text: "", steps: [], sources: [], streaming: true, thinking: true, startedAt: Date.now() });
       touchActiveSession(text);
+      // 发送后清空附件列表（attachment_id 在服务端 30min TTL 内仍可被后续重发引用，但这里默认本轮发完即清）
+      attachState.items = [];
+      renderAttachments();
       render();
-      await sendMessage(text, assistantId);
+      await sendMessage(text, assistantId, attachmentIds);
     });
 
-    async function sendMessage(text, assistantId) {
+    async function sendMessage(text, assistantId, attachmentIds) {
       loading = true;
       setBusy(true);
       const controller = new AbortController();
@@ -949,7 +1156,8 @@ export function renderChatPage(): string {
             user_context: userContext,
             message: text,
             session_id: activeSessionId,
-            debug: els.debug.checked
+            debug: els.debug.checked,
+            attachment_ids: Array.isArray(attachmentIds) && attachmentIds.length ? attachmentIds : undefined
           })
         });
         await readSse(response, assistantId);
@@ -972,6 +1180,7 @@ export function renderChatPage(): string {
       els.personTrigger.disabled = value;
       els.newChat.disabled = value;
       els.deleteChat.disabled = value || sessionsForUser(currentUserId).length <= 1;
+      els.attachBtn.disabled = value;
     }
     async function ensureUserContext(userId) {
       if (userContextCache.has(userId)) return userContextCache.get(userId);

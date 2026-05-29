@@ -26,7 +26,8 @@ export type RuntimeHookName =
   | "before_evolution_judge" // evolution 判断前（可抑制或补充 signal）
   | "after_evolution_apply"  // evolution 应用后（可触发通知或 compaction）
   | "subagent_spawn"         // 子 agent 创建（workspace 隔离前）
-  | "subagent_finish";       // 子 agent 完成（结果写回 parent task）
+  | "subagent_finish"        // 子 agent 完成（结果写回 parent task）
+  | "attachments_attached";  // 用户在本轮上传 / 引用了附件，载荷含 attachment metadata
 
 export type RuntimeHookHandler = ((event: JsonObject) => Promise<void | JsonObject> | void | JsonObject) & { pluginName?: string };
 

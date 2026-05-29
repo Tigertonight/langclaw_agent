@@ -21,7 +21,8 @@ export type TranscriptEventType =
   | "task_updated"
   | "error"
   | "interruption"
-  | "turn_end";
+  | "turn_end"
+  | "attachments_attached";
 
 export interface TranscriptEvent extends JsonObject {
   id: string;

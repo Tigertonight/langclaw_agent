@@ -6,6 +6,8 @@ import { ContextAssembler } from "./context-assembler.js";
 import type { RuntimeHooks } from "./hooks.js";
 import { resolveUserWorkspace, type WorkspaceContext } from "./workspace-context.js";
 import { getActiveTraceContext } from "./observability-plugin.js";
+import { getAttachmentStore } from "../attachments/index.js";
+import type { AttachmentContext } from "../attachments/index.js";
 
 interface BusinessAgent {
   run(input: { userId?: string; userContext?: Record<string, unknown>; wecomUserId?: string; message: string; sessionId?: string; runId?: string; debug?: boolean }): Promise<unknown>;
@@ -38,6 +40,12 @@ export interface QueryEngineInput {
   message: string;
   sessionId?: string;
   debug?: boolean;
+  /**
+   * 用户在 /api/attachments 上传后拿到的 attachment id 列表（最多 5 个）。
+   * BQE 会按 id 拉 AttachmentContext，把可读文本拼到 message 前形成扩展 prompt。
+   * 图片附件不入 prompt，仅在 transcript 留 metadata（待 vision 模型上线再启用）。
+   */
+  attachmentIds?: string[];
 }
 
 export interface QueryEngineStreamInput extends QueryEngineInput {
@@ -133,6 +141,22 @@ export class BusinessQueryEngine {
     const workspace = resolveUserWorkspace(user);
     const sessionId = input.sessionId ?? createDefaultSessionId(user.id);
 
+    // 1.5 加载附件并把可读文本拼到用户消息前，作为本轮提示词的扩展。
+    // 整个下游链路（contextAssembler / agent / LLM）继续看到一个 string，无需感知附件。
+    const { expandedMessage, attachments } = expandMessageWithAttachments(
+      workspace.business_id,
+      user.id,
+      input
+    );
+    if (attachments.length > 0) {
+      await this.hooks?.emit("attachments_attached", {
+        user_id: user.id,
+        session_id: sessionId,
+        run_id: runId,
+        attachments: summarizeAttachments(attachments)
+      });
+    }
+
     // 2. 加载当前会话快照（用于 context building 和 evolution）
     const session = await this.loadSession(sessionId, workspace);
 
@@ -143,7 +167,7 @@ export class BusinessQueryEngine {
       enterpriseContext = await this.enterpriseContextProvider.load({
         user,
         workspace,
-        message: input.message,
+        message: expandedMessage,
         sessionId
       });
     } catch (error) {
@@ -165,7 +189,7 @@ export class BusinessQueryEngine {
     const assembled = this.contextAssembler.assemble({
       user,
       workspace,
-      message: input.message,
+      message: expandedMessage,
       enterpriseContext
     });
 
@@ -194,7 +218,7 @@ export class BusinessQueryEngine {
       userId: input.userId,
       userContext: input.userContext,
       wecomUserId: input.wecomUserId,
-      message: input.message,
+      message: expandedMessage,
       sessionId,
       runId,
       debug: input.debug
@@ -292,6 +316,19 @@ export class BusinessQueryEngine {
     });
     const workspace = resolveUserWorkspace(user);
     const sessionId = input.sessionId ?? createDefaultSessionId(user.id);
+    const { expandedMessage, attachments: streamAttachments } = expandMessageWithAttachments(
+      workspace.business_id,
+      user.id,
+      input
+    );
+    if (streamAttachments.length > 0) {
+      await this.hooks?.emit("attachments_attached", {
+        user_id: user.id,
+        session_id: sessionId,
+        run_id: runId,
+        attachments: summarizeAttachments(streamAttachments)
+      });
+    }
     const session = await this.loadSession(sessionId, workspace);
 
     let enterpriseContext: unknown = {};
@@ -300,7 +337,7 @@ export class BusinessQueryEngine {
       enterpriseContext = await this.enterpriseContextProvider.load({
         user,
         workspace,
-        message: input.message,
+        message: expandedMessage,
         sessionId
       });
     } catch (error) {
@@ -321,7 +358,7 @@ export class BusinessQueryEngine {
     const assembled = this.contextAssembler.assemble({
       user,
       workspace,
-      message: input.message,
+      message: expandedMessage,
       enterpriseContext
     });
 
@@ -361,7 +398,7 @@ export class BusinessQueryEngine {
       userId: input.userId,
       userContext: input.userContext,
       wecomUserId: input.wecomUserId,
-      message: input.message,
+      message: expandedMessage,
       sessionId,
       runId,
       debug: input.debug,
@@ -657,4 +694,65 @@ function summarizeSourceAttribution(output: Record<string, unknown>): JsonObject
       score: typeof source.score === "number" ? source.score : null
     }))
   };
+}
+
+/**
+ * 把用户上传的附件文本拼到消息前，作为本轮提示词扩展。
+ *
+ * 输出格式：
+ *   [user attached N files]
+ *   --- file: foo.pdf (text, 12345 chars total) ---
+ *   {parsed text}
+ *   --- file: photo.jpg (image, not yet supported by current LLM) ---
+ *   --- file: corrupt.docx (parse failed: ...) ---
+ *
+ *   {original user message}
+ *
+ * 返回的 attachments 给上游做 transcript channel / metadata 用（本期 transcript 那一步还没接，但留口子）。
+ */
+export function expandMessageWithAttachments(
+  businessId: string,
+  userId: string,
+  input: QueryEngineInput
+): { expandedMessage: string; attachments: AttachmentContext[] } {
+  const ids = input.attachmentIds;
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return { expandedMessage: input.message, attachments: [] };
+  }
+  const store = getAttachmentStore();
+  const attachments = store.getMany(businessId, userId, ids);
+  if (attachments.length === 0) {
+    return { expandedMessage: input.message, attachments: [] };
+  }
+
+  const blocks: string[] = [];
+  for (const a of attachments) {
+    if (a.kind === "text") {
+      const truncatedNote = a.text_chars_truncated && a.text_chars_truncated > 0
+        ? ` (truncated, ${a.text_chars_total} chars total, showing first ${a.text.length})`
+        : "";
+      blocks.push(`--- file: ${a.filename} (text${truncatedNote}) ---\n${a.text}`);
+    } else if (a.kind === "image") {
+      blocks.push(`--- file: ${a.filename} (image, ${a.size_bytes} bytes; current LLM does not read images, treat as if user described it) ---`);
+    } else {
+      blocks.push(`--- file: ${a.filename} (parse failed: ${a.failure_reason ?? "unknown"}) ---`);
+    }
+  }
+  const header = `[user attached ${attachments.length} file${attachments.length > 1 ? "s" : ""}]`;
+  const expandedMessage = `${header}\n${blocks.join("\n\n")}\n\n${input.message}`;
+  return { expandedMessage, attachments };
+}
+
+function summarizeAttachments(attachments: AttachmentContext[]): JsonObject[] {
+  return attachments.map((a) => ({
+    id: a.id,
+    filename: a.filename,
+    mime_type: a.mime_type,
+    size_bytes: a.size_bytes,
+    kind: a.kind,
+    text_chars_total: a.text_chars_total ?? 0,
+    text_chars_truncated: a.text_chars_truncated ?? 0,
+    failure_reason: a.failure_reason ?? null,
+    storage_key: a.storage_key
+  }));
 }

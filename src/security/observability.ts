@@ -20,7 +20,9 @@ export type MetricName =
   | "tool_execute_timeout"
   | "plugin_extract_failed"
   | "plugin_build_failed"
-  | "plugin_extract_skipped";
+  | "plugin_extract_skipped"
+  | "attachment_upload_total"
+  | "attachment_upload_failed";
 
 interface MetricBucket {
   count: number;

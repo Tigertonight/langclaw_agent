@@ -1,0 +1,26 @@
+{
+  "name": "@openclaw/storage-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "S3-compatible object storage client (MinIO/OSS/S3) for chat attachments.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "smoke": "tsx scripts/smoke.ts"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.668.0",
+    "@aws-sdk/s3-request-presigner": "^3.668.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.16.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  }
+}

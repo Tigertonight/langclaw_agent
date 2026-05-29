@@ -15,6 +15,7 @@ import { sharedMetrics, logEvent, newTraceId, startRequest, type RequestContext 
 import type { JsonObject } from "../types/agent-contracts.js";
 // Phase 4: Tool Catalog
 import { ToolCatalog } from "../tools/tool-catalog.js";
+import { handleAttachmentUpload } from "./attachments-route.js";
 
 interface WecomUserRecord extends JsonObject {
   userid?: string;
@@ -75,7 +76,8 @@ const PROTECTED_PATHS = new Set([
   "/api/chat",
   "/api/chat/stream",
   "/api/a2ui/action",
-  "/api/a2ui/history"
+  "/api/a2ui/history",
+  "/api/attachments"
 ]);
 const cronHeartbeat = startCronHeartbeat();
 
@@ -442,6 +444,34 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
         error: "toggle_failed",
         message: error instanceof Error ? error.message : "unknown error"
       });
+    }
+    return;
+  }
+
+  if (req.method === "POST" && pathname === "/api/attachments") {
+    try {
+      // 这里不能复用 readJson + guardRequest（multipart 不是 JSON）。
+      // 只复用 ip 限流 + auth；user 限流跳过——附件上传不当 chat 算次数。
+      const ip = readClientIp(req);
+      try {
+        rateLimiter.acquireIp(ip);
+      } catch (error) {
+        metrics.inc("rate_limited_total", { scope: "ip" });
+        throw error;
+      }
+      await handleAttachmentUpload(req, res, {
+        authenticate: (r, body) => {
+          const a = auth.authenticate(r, body);
+          return { userId: a.userId, tenantId: a.tenantId };
+        },
+        log: (level, event, fields) => {
+          logEvent(level, event, { trace_id: ctx.traceId, ...fields });
+        }
+      });
+      metrics.inc("attachment_upload_total", {});
+    } catch (error) {
+      metrics.inc("attachment_upload_failed", { reason: errorReason(error) });
+      handleError(error, res, ctx, { path: pathname });
     }
     return;
   }
