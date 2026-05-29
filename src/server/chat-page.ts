@@ -161,52 +161,175 @@ export function renderChatPage(): string {
     .bubble { max-width: min(640px, 100%); background: var(--soft); border: 1px solid #ededed; border-radius: 8px; padding: 11px 15px; }
     .assistant-body { padding: 0 4px; }
     .composer { flex: 0 0 auto; padding: 16px 20px 22px; background: linear-gradient(to top, #fff 80%, rgba(255,255,255,0)); position: relative; }
-    .composer.dragover::before {
-      content: "拖到这里上传 (最多 5 个，单文件 ≤ 20MB)";
-      position: absolute; inset: 8px 16px; border: 2px dashed #111; border-radius: 12px;
-      background: rgba(255,255,255,.92); display: flex; align-items: center; justify-content: center;
-      color: #111; font-weight: 600; font-size: 14px; z-index: 10; pointer-events: none;
-    }
     .composer-shell {
       width: min(820px, 100%); margin: 0 auto;
-      border: 1px solid #d4d4d4; border-radius: 8px; background: #fff;
+      border: 1px solid #d4d4d4; border-radius: 12px; background: #fff;
       box-shadow: 0 16px 44px rgba(0,0,0,.09);
+      transition: border-color .15s ease, box-shadow .15s ease;
     }
+    .composer-shell:focus-within { border-color: #111; }
+    /* 全屏拖拽 overlay（覆盖整个窗口，参考 Claude/ChatGPT） */
+    #dropOverlay {
+      position: fixed; inset: 0; z-index: 1000; display: none;
+      background: rgba(17,17,17,.45); backdrop-filter: blur(2px);
+      align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    #dropOverlay.active { display: flex; }
+    #dropOverlay .drop-card {
+      background: #fff; border-radius: 16px; padding: 32px 48px;
+      border: 2px dashed #111; box-shadow: 0 24px 64px rgba(0,0,0,.25);
+      text-align: center;
+    }
+    #dropOverlay .drop-icon { line-height: 0; margin-bottom: 12px; color: #111; display: inline-flex; }
+    #dropOverlay .drop-icon svg { width: 40px; height: 40px; stroke-width: 1.6; }
+    #dropOverlay .drop-title { font-weight: 600; font-size: 16px; color: #111; margin-bottom: 6px; }
+    #dropOverlay .drop-sub { font-size: 13px; color: #6b6b6b; }
+    /* Chip strip：在 textarea 上方紧贴显示已选文件 */
     .attach-strip {
-      display: none; flex-wrap: wrap; gap: 6px;
-      padding: 8px 12px 0; border-bottom: 0;
+      display: none; flex-wrap: wrap; gap: 8px;
+      padding: 10px 12px 4px;
     }
     .attach-strip.has-items { display: flex; }
     .attach-chip {
-      display: inline-flex; align-items: center; gap: 6px; max-width: 240px;
-      padding: 4px 8px; border-radius: 999px; background: #f4f4f5;
-      border: 1px solid #e4e4e7; font-size: 12px; line-height: 1.4; color: #333;
+      display: inline-flex; align-items: center; gap: 8px; max-width: 280px;
+      padding: 6px 8px 6px 8px; border-radius: 8px; background: #f4f4f5;
+      border: 1px solid #e4e4e7; font-size: 12.5px; line-height: 1.3; color: #333;
+      position: relative; min-width: 140px;
     }
-    .attach-chip.uploading { color: #777; background: #fafafa; }
-    .attach-chip.failed { color: #b91c1c; border-color: #fecaca; background: #fef2f2; }
-    .attach-chip .chip-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .attach-chip .chip-meta { color: #999; font-size: 11px; flex-shrink: 0; }
+    .attach-chip.uploading { background: #fafafa; }
+    .attach-chip.failed { border-color: #fecaca; background: #fef2f2; }
+    .attach-chip .chip-icon {
+      flex: 0 0 28px; width: 28px; height: 28px; border-radius: 6px;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: #fff; border: 1px solid #e4e4e7; color: #555;
+    }
+    .attach-chip .chip-icon svg { width: 16px; height: 16px; stroke-width: 1.6; }
+    .attach-chip.failed .chip-icon { color: #b91c1c; border-color: #fecaca; background: #fff; }
+    /* 不同文件类型用色调区分（参考 Notion 文件块） */
+    .attach-chip[data-kind="pdf"] .chip-icon { color: #b91c1c; }
+    .attach-chip[data-kind="word"] .chip-icon { color: #1d4ed8; }
+    .attach-chip[data-kind="excel"] .chip-icon { color: #047857; }
+    .attach-chip[data-kind="ppt"] .chip-icon { color: #c2410c; }
+    .attach-chip[data-kind="zip"] .chip-icon { color: #6b21a8; }
+    .attach-chip[data-kind="image"] .chip-icon { color: #0891b2; }
+    .attach-chip .chip-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+    .attach-chip .chip-name { font-weight: 500; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .attach-chip.uploading .chip-name { color: #555; }
+    .attach-chip.failed .chip-name { color: #b91c1c; }
+    .attach-chip .chip-meta { color: #888; font-size: 11.5px; }
     .attach-chip .chip-remove {
-      border: 0; background: transparent; padding: 0 2px; cursor: pointer;
-      color: #888; font-size: 14px; line-height: 1;
+      flex: 0 0 auto; width: 20px; height: 20px; border: 0; background: transparent;
+      padding: 0; cursor: pointer; color: #888; line-height: 0;
+      border-radius: 4px; display: inline-flex; align-items: center; justify-content: center;
     }
-    .attach-chip .chip-remove:hover { color: #111; }
+    .attach-chip .chip-remove svg { width: 14px; height: 14px; stroke-width: 2; }
+    .attach-chip .chip-remove:hover { color: #111; background: rgba(0,0,0,.05); }
+    /* 上传中底部进度条 */
+    .attach-chip .chip-progress {
+      position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
+      background: linear-gradient(90deg, #111 0%, #111 40%, transparent 40%, transparent 100%);
+      background-size: 250% 100%;
+      animation: chipProgress 1.1s linear infinite;
+      border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;
+    }
+    @keyframes chipProgress {
+      0% { background-position: 100% 0; }
+      100% { background-position: -150% 0; }
+    }
     .composer-inner {
-      display: flex; gap: 10px; align-items: center;
-      padding: 9px 9px 9px 14px;
+      display: flex; gap: 8px; align-items: flex-end;
+      padding: 8px 8px 8px 10px;
     }
     .attach-btn {
-      flex: 0 0 auto; width: 32px; height: 32px; border-radius: 6px;
+      flex: 0 0 auto; width: 34px; height: 34px; border-radius: 8px;
       border: 1px solid transparent; background: transparent; cursor: pointer;
       display: inline-flex; align-items: center; justify-content: center;
-      color: #555; font-size: 18px;
+      color: #6b6b6b; transition: background .12s ease, color .12s ease;
     }
+    .attach-btn svg { width: 18px; height: 18px; stroke-width: 1.8; }
     .attach-btn:hover { background: #f4f4f5; color: #111; }
-    .attach-btn:disabled { opacity: .4; cursor: not-allowed; }
-    textarea {
-      flex: 1; border: 0; outline: 0; resize: none; min-height: 36px; max-height: 180px;
-      font: inherit; line-height: 24px; padding: 6px 0; overflow-y: hidden;
+    .attach-btn:active { background: #e8e8ea; }
+    .attach-btn:disabled { opacity: .35; cursor: not-allowed; background: transparent; }
+    /* Composer 上方一行：推荐命令 chip（在 composer-shell 之外） */
+    .composer-rec {
+      width: min(820px, calc(100vw - 40px)); margin: 0 auto 10px;
+      display: none; align-items: center; gap: 8px;
     }
+    .composer-rec.has-content { display: flex; }
+    .cmd-chips {
+      flex: 1; min-width: 0; display: flex; gap: 8px;
+      overflow: hidden;
+    }
+    .cmd-chips.expanded { flex-wrap: wrap; overflow: visible; }
+    .cmd-chip {
+      flex: 0 0 auto;
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 5px 12px; border-radius: 8px; cursor: pointer;
+      background: #fff; color: #444; border: 1px solid #d4d4d4;
+      font: inherit; font-size: 13px; line-height: 1.4; white-space: nowrap;
+      transition: border-color .12s ease, color .12s ease, background .12s ease;
+    }
+    .cmd-chip:hover { border-color: #111; color: #111; }
+    .cmd-chip:active { background: #f4f4f5; }
+    .cmd-chip.primary { border-color: #111; color: #111; font-weight: 500; }
+    .cmd-chip.primary:hover { background: #f4f4f5; }
+    .rec-toggle {
+      flex: 0 0 auto; width: 30px; height: 30px; border-radius: 8px;
+      border: 1px solid #d4d4d4; background: #fff; cursor: pointer;
+      color: #6b6b6b; display: none; align-items: center; justify-content: center;
+      transition: border-color .12s ease, color .12s ease;
+    }
+    .rec-toggle.visible { display: inline-flex; }
+    .rec-toggle:hover { border-color: #111; color: #111; }
+    .rec-toggle svg { width: 14px; height: 14px; stroke-width: 1.8; transition: transform .15s ease; }
+    .rec-toggle.expanded svg { transform: rotate(180deg); }
+    /* 顶部 toast，错误/提示用 */
+    #toastStack {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+      z-index: 1100; display: flex; flex-direction: column; gap: 8px;
+      pointer-events: none;
+    }
+    #toastStack .toast {
+      pointer-events: auto;
+      padding: 10px 14px; border-radius: 8px; font-size: 13px;
+      background: #111; color: #fff; box-shadow: 0 8px 24px rgba(0,0,0,.18);
+      max-width: 380px; line-height: 1.45;
+      animation: toastIn .18s ease-out;
+    }
+    #toastStack .toast.warn { background: #92400e; }
+    #toastStack .toast.error { background: #991b1b; }
+    @keyframes toastIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    /* Composer 输入框：contenteditable div 模拟富文本输入，支持内嵌 tag */
+    #input {
+      flex: 1; border: 0; outline: 0;
+      min-height: 36px; max-height: 180px; overflow-y: auto;
+      font: inherit; line-height: 24px; padding: 6px 0;
+      white-space: pre-wrap; word-break: break-word;
+    }
+    #input:empty::before {
+      content: attr(data-placeholder); color: var(--faint); pointer-events: none;
+    }
+    /* 命令 tag：嵌在输入流中，整体不可编辑 */
+    .cmd-tag {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 1px 4px 1px 8px; margin-right: 4px;
+      border-radius: 6px; background: #111; color: #fff;
+      font-size: 13px; line-height: 22px; vertical-align: baseline;
+      user-select: none; white-space: nowrap;
+    }
+    .cmd-tag-label { display: inline-block; }
+    .cmd-tag-remove {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 16px; height: 16px; border: 0; border-radius: 4px;
+      background: transparent; color: rgba(255,255,255,.7); cursor: pointer;
+      padding: 0; margin-left: 2px;
+    }
+    .cmd-tag-remove:hover { background: rgba(255,255,255,.18); color: #fff; }
+    .cmd-tag-remove svg { width: 12px; height: 12px; }
     .send { height: 36px; min-width: 72px; border: 0; border-radius: 6px; background: #111; color: #fff; font-weight: 600; cursor: pointer; }
     .send:disabled { background: #cfcfcf; cursor: not-allowed; }
     .hint { width: min(820px, calc(100vw - 40px)); margin: 7px auto 0; color: var(--faint); font-size: 12px; }
@@ -565,7 +688,7 @@ export function renderChatPage(): string {
       .debug-toggle span { display: none; }
     }
   </style>
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="/assets/lucide.min.js"></script>
 </head>
 <body>
   <main>
@@ -613,16 +736,20 @@ export function renderChatPage(): string {
       <div id="messages" class="messages"></div>
       <div class="composer-suggest"><div id="suggestPopup" class="suggest-popup" role="listbox" aria-label="&#x547D;&#x4EE4;&#x5EFA;&#x8BAE;"></div></div>
       <form id="form" class="composer">
+        <div id="composerRec" class="composer-rec" aria-label="&#x63A8;&#x8350;&#x547D;&#x4EE4;">
+          <div id="cmdChips" class="cmd-chips" role="toolbar" aria-label="&#x63A8;&#x8350;&#x547D;&#x4EE4;"></div>
+          <button id="recToggle" class="rec-toggle" type="button" aria-label="&#x5C55;&#x5F00;&#x66F4;&#x591A;&#x63A8;&#x8350;" aria-expanded="false" title="&#x5C55;&#x5F00;/&#x6536;&#x8D77;"><i data-lucide="chevron-down"></i></button>
+        </div>
         <div class="composer-shell">
           <div id="attachStrip" class="attach-strip" aria-label="&#x5DF2;&#x9009;&#x9644;&#x4EF6;"></div>
           <div class="composer-inner">
-            <button id="attachBtn" class="attach-btn" type="button" title="&#x6DFB;&#x52A0;&#x9644;&#x4EF6;&#xFF08;&#x6700;&#x591A; 5 &#x4E2A;&#xFF09;" aria-label="&#x6DFB;&#x52A0;&#x9644;&#x4EF6;">&#x1F4CE;</button>
+            <button id="attachBtn" class="attach-btn" type="button" title="&#x6DFB;&#x52A0;&#x9644;&#x4EF6;&#xFF08;&#x6700;&#x591A; 5 &#x4E2A;&#xFF09;" aria-label="&#x6DFB;&#x52A0;&#x9644;&#x4EF6;"><i data-lucide="paperclip"></i></button>
             <input id="attachInput" type="file" multiple style="display:none" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.ppt,.pptx,.zip,.txt,.md,.log,.json,image/*" />
-            <textarea id="input" rows="1" placeholder="&#x8F93;&#x5165;&#x95EE;&#x9898;&#x6216;&#x4E1A;&#x52A1;&#x6307;&#x4EE4;&#xFF08;&#x6309; / &#x67E5;&#x770B;&#x5FEB;&#x6377;&#x547D;&#x4EE4;&#xFF09;"></textarea>
+            <div id="input" role="textbox" contenteditable="true" aria-multiline="true" spellcheck="false" data-placeholder="&#x8F93;&#x5165;&#x95EE;&#x9898;&#x6216;&#x4E1A;&#x52A1;&#x6307;&#x4EE4;&#xFF08;&#x6309; / &#x67E5;&#x770B;&#x5FEB;&#x6377;&#x547D;&#x4EE4;&#xFF09;"></div>
             <button id="send" class="send" type="submit">&#x53D1;&#x9001;</button>
           </div>
         </div>
-        <div class="hint">Enter &#x53D1;&#x9001; &#183; Shift+Enter &#x6362;&#x884C; &#183; / &#x547D;&#x4EE4;&#x8865;&#x5168; &#183; &#x62D6;&#x62FD;&#x6216;&#x7C98;&#x8D34;&#x4E0A;&#x4F20;&#x9644;&#x4EF6;</div>
+        <div class="hint">Enter &#x53D1;&#x9001; &#183; Shift+Enter &#x6362;&#x884C; &#183; / &#x547D;&#x4EE4; &#183; &#x62D6;&#x62FD;&#x6216;&#x7C98;&#x8D34;&#x6587;&#x4EF6;&#x4E0A;&#x4F20; &#xB7; &#x6700;&#x591A; 5 &#x4E2A; &#xB7; &#x5355;&#x4EF6; &#x2264; 20MB</div>
       </form>
     </section>
     <div id="personModalBackdrop" class="person-modal-backdrop" aria-hidden="true">
@@ -638,6 +765,14 @@ export function renderChatPage(): string {
       </div>
     </div>
   </main>
+  <div id="dropOverlay" aria-hidden="true">
+    <div class="drop-card">
+      <div class="drop-icon"><i data-lucide="upload-cloud"></i></div>
+      <div class="drop-title">&#x91CA;&#x653E;&#x4EE5;&#x4E0A;&#x4F20;</div>
+      <div class="drop-sub">&#x6700;&#x591A; 5 &#x4E2A;&#xFF0C;&#x5355;&#x4EF6; &#x2264; 20MB &#xB7; pdf/word/excel/ppt/zip/&#x56FE;&#x7247;</div>
+    </div>
+  </div>
+  <div id="toastStack" aria-live="polite"></div>
   <script>
     const STR = {
       welcome: "\\u4f60\\u597d\\uff0c\\u6211\\u662f\\u4f01\\u4e1a Agent\\u3002\\u4f60\\u53ef\\u4ee5\\u8be2\\u95ee\\u4e1a\\u52a1\\u6570\\u636e\\u3001\\u77e5\\u8bc6\\u5e93\\u6216\\u9700\\u8981\\u5b89\\u5168\\u6c99\\u7bb1\\u5904\\u7406\\u7684\\u8ba1\\u7b97\\u4efb\\u52a1\\u3002",
@@ -697,6 +832,9 @@ export function renderChatPage(): string {
       attachBtn: document.querySelector("#attachBtn"),
       attachInput: document.querySelector("#attachInput"),
       attachStrip: document.querySelector("#attachStrip"),
+      composerRec: document.querySelector("#composerRec"),
+      cmdChips: document.querySelector("#cmdChips"),
+      recToggle: document.querySelector("#recToggle"),
       composer: document.querySelector("#form")
     };
     clearLegacySessions();
@@ -866,6 +1004,8 @@ export function renderChatPage(): string {
       saveSessions();
       render();
       ensureUserContext(currentUserId).catch(() => {});
+      recommendedFetchedFor = "";
+      loadRecommendedCommands(currentUserId);
     }
     function renameSession(sessionId, title) {
       const session = sessions.find((item) => item.id === sessionId);
@@ -938,12 +1078,107 @@ export function renderChatPage(): string {
     });
     els.sidebarToggle.addEventListener("click", () => document.body.classList.toggle("sidebar-open"));
     els.sidebarBackdrop.addEventListener("click", () => document.body.classList.remove("sidebar-open"));
+    // ── contenteditable 输入框：等价封装（替代 textarea.value） ──────────
+    let isComposing = false; // IME 中文输入态
+    function getInputValue() {
+      // 把内嵌 tag 序列化成 "/cmd "，其余文本节点直接拼接，<br> 转成换行
+      let out = "";
+      const walk = (node) => {
+        for (const child of node.childNodes) {
+          if (child.nodeType === 3) { out += child.nodeValue || ""; continue; }
+          if (child.nodeType !== 1) continue;
+          const el = child;
+          if (el.classList && el.classList.contains("cmd-tag")) {
+            const cmd = el.getAttribute("data-cmd") || "";
+            out += cmd;
+            continue;
+          }
+          if (el.tagName === "BR") { out += "\\n"; continue; }
+          if (el.tagName === "DIV" || el.tagName === "P") {
+            if (out && !out.endsWith("\\n")) out += "\\n";
+            walk(el);
+            continue;
+          }
+          walk(el);
+        }
+      };
+      walk(els.input);
+      return out;
+    }
+    function clearInput() {
+      els.input.innerHTML = "";
+    }
+    function setInputText(text) {
+      els.input.innerHTML = "";
+      if (text) els.input.appendChild(document.createTextNode(text));
+    }
+    function placeCaretAtEnd() {
+      const range = document.createRange();
+      range.selectNodeContents(els.input);
+      range.collapse(false);
+      const sel = window.getSelection();
+      if (sel) { sel.removeAllRanges(); sel.addRange(range); }
+    }
+    function hasInputTag() {
+      return !!els.input.querySelector(".cmd-tag");
+    }
+    function removeInputTag() {
+      const tag = els.input.querySelector(".cmd-tag");
+      if (tag) tag.remove();
+    }
+    function insertInputTag(label, command) {
+      // 一次只允许一个 tag — 先移除旧的
+      removeInputTag();
+      const tag = document.createElement("span");
+      tag.className = "cmd-tag";
+      tag.contentEditable = "false";
+      tag.setAttribute("data-cmd", command);
+      // 标签里直接显示 label，data-cmd 保存完整命令（含 /）
+      const cleanLabel = command.startsWith("/") ? command.slice(1) : command;
+      const labelEl = document.createElement("span");
+      labelEl.className = "cmd-tag-label";
+      labelEl.textContent = cleanLabel;
+      tag.appendChild(labelEl);
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "cmd-tag-remove";
+      removeBtn.setAttribute("aria-label", "移除命令");
+      removeBtn.contentEditable = "false";
+      removeBtn.innerHTML = '<i data-lucide="x"></i>';
+      removeBtn.addEventListener("mousedown", (e) => { e.preventDefault(); });
+      removeBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        removeInputTag();
+        els.input.focus();
+        els.input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      tag.appendChild(removeBtn);
+      // 插到最前面，光标移到 tag 之后
+      els.input.insertBefore(tag, els.input.firstChild);
+      const space = document.createTextNode("\\u00a0");
+      tag.after(space);
+      const range = document.createRange();
+      range.setStartAfter(space);
+      range.collapse(true);
+      const sel = window.getSelection();
+      if (sel) { sel.removeAllRanges(); sel.addRange(range); }
+      els.input.focus();
+      try { if (window.lucide && window.lucide.createIcons) window.lucide.createIcons(); } catch (e) {}
+      els.input.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+
+    els.input.addEventListener("compositionstart", () => { isComposing = true; });
+    els.input.addEventListener("compositionend", () => {
+      isComposing = false;
+      updateCommandSuggest();
+    });
     els.input.addEventListener("input", () => {
-      els.input.style.height = "auto";
-      els.input.style.height = Math.max(36, Math.min(180, els.input.scrollHeight)) + "px";
+      if (isComposing) return;
       updateCommandSuggest();
     });
     els.input.addEventListener("keydown", (event) => {
+      if (isComposing) return;
       if (commandSuggest.open) {
         if (event.key === "ArrowDown") { event.preventDefault(); moveSuggest(1); return; }
         if (event.key === "ArrowUp") { event.preventDefault(); moveSuggest(-1); return; }
@@ -957,7 +1192,47 @@ export function renderChatPage(): string {
       if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
         els.form.requestSubmit();
+        return;
       }
+      if (event.key === "Enter" && event.shiftKey) {
+        // 手动插换行：默认行为在 contenteditable 里会插 <div>，体验差
+        event.preventDefault();
+        const sel = window.getSelection();
+        if (!sel || !sel.rangeCount) return;
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        const br = document.createElement("br");
+        range.insertNode(br);
+        // 在 br 后面再加一个 zero-width 文本节点，让光标能放过去
+        const zwsp = document.createTextNode("\\u200b");
+        br.after(zwsp);
+        range.setStartAfter(zwsp);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    });
+    // 粘贴：去富文本，只保留纯文本（图片粘贴在下方专门处理）
+    els.input.addEventListener("paste", (event) => {
+      const cd = event.clipboardData;
+      if (!cd) return;
+      // 如果带文件（图片）— 让下方的 paste 监听去处理
+      if (cd.files && cd.files.length) return;
+      event.preventDefault();
+      const text = cd.getData("text/plain");
+      if (!text) return;
+      const sel = window.getSelection();
+      if (!sel || !sel.rangeCount) {
+        els.input.appendChild(document.createTextNode(text));
+      } else {
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        range.insertNode(document.createTextNode(text));
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+      els.input.dispatchEvent(new Event("input", { bubbles: true }));
     });
     els.input.addEventListener("blur", () => { setTimeout(closeSuggest, 120); });
     els.suggestPopup.addEventListener("mousedown", (event) => {
@@ -965,14 +1240,106 @@ export function renderChatPage(): string {
       event.preventDefault();
     });
 
-    // ── 附件上传 ─────────────────────────────────────────────
-    const ATTACH_MAX = 5;
-    const attachState = { items: [], uploading: 0 };
+    // ── 推荐命令 chip 行（在 composer-shell 上方独立一行） ─────────────────
+    let recommendedFetchedFor = "";
 
+    function refreshRecVisibility() {
+      const rec = els.composerRec;
+      if (!rec) return;
+      const hasChips = els.cmdChips && els.cmdChips.children.length > 0;
+      rec.classList.toggle("has-content", hasChips);
+    }
+    function refreshRecOverflow() {
+      // 收起态下 chip 行用 overflow:hidden，超出宽度时显示折叠按钮
+      if (!els.cmdChips || !els.recToggle) return;
+      if (els.cmdChips.classList.contains("expanded")) {
+        els.recToggle.classList.add("visible");
+        return;
+      }
+      const overflow = els.cmdChips.scrollWidth > els.cmdChips.clientWidth + 2;
+      els.recToggle.classList.toggle("visible", overflow);
+    }
+    async function loadRecommendedCommands(userId) {
+      if (!els.cmdChips || !userId || userId === recommendedFetchedFor) return;
+      recommendedFetchedFor = userId;
+      try {
+        const res = await fetch("/api/recommended-commands?user_id=" + encodeURIComponent(userId));
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const json = await res.json();
+        renderRecommendedChips(Array.isArray(json.commands) ? json.commands : []);
+      } catch {
+        renderRecommendedChips([]);
+      }
+    }
+    function renderRecommendedChips(list) {
+      if (!els.cmdChips) return;
+      els.cmdChips.innerHTML = "";
+      list.slice(0, 8).forEach((cmd, index) => {
+        if (!cmd || typeof cmd.label !== "string" || typeof cmd.command !== "string") return;
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "cmd-chip" + (index === 0 ? " primary" : "");
+        chip.textContent = cmd.label;
+        chip.title = cmd.command;
+        chip.addEventListener("click", () => {
+          insertInputTag(cmd.label, cmd.command);
+        });
+        els.cmdChips.appendChild(chip);
+      });
+      refreshRecVisibility();
+      // 等渲染稳定后判定是否需要折叠按钮
+      requestAnimationFrame(refreshRecOverflow);
+    }
+    if (els.recToggle) {
+      els.recToggle.addEventListener("click", () => {
+        const expanded = els.cmdChips.classList.toggle("expanded");
+        els.recToggle.classList.toggle("expanded", expanded);
+        els.recToggle.setAttribute("aria-expanded", expanded ? "true" : "false");
+        refreshRecOverflow();
+      });
+    }
+    window.addEventListener("resize", () => requestAnimationFrame(refreshRecOverflow));
+
+    if (window.lucide) lucide.createIcons();
+    loadRecommendedCommands(currentUserId);
+
+    // ── 附件上传（参考 Claude / ChatGPT / Notion 交互） ──────────────────
+    const ATTACH_MAX = 5;
+    const ATTACH_MAX_BYTES = 20 * 1024 * 1024;
+    const attachState = { items: [], uploading: 0 };
+    const dropOverlay = document.getElementById("dropOverlay");
+    const toastStack = document.getElementById("toastStack");
+
+    function showToast(text, level) {
+      if (!toastStack) return;
+      const el = document.createElement("div");
+      el.className = "toast" + (level === "warn" ? " warn" : level === "error" ? " error" : "");
+      el.textContent = text;
+      toastStack.appendChild(el);
+      setTimeout(() => {
+        el.style.transition = "opacity .2s";
+        el.style.opacity = "0";
+        setTimeout(() => el.remove(), 220);
+      }, 3200);
+    }
     function fmtBytes(n) {
-      if (n < 1024) return n + "B";
-      if (n < 1024 * 1024) return (n / 1024).toFixed(1) + "KB";
-      return (n / 1024 / 1024).toFixed(1) + "MB";
+      if (!Number.isFinite(n) || n < 0) return "";
+      if (n < 1024) return n + " B";
+      if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+      return (n / 1024 / 1024).toFixed(1) + " MB";
+    }
+    // 返回 lucide 图标名 + chip 颜色分类。kind=失败时直接走 alert-circle。
+    function iconForFile(filename, kind) {
+      const ext = (filename.split(".").pop() || "").toLowerCase();
+      if (kind === "failed") return { icon: "alert-circle", category: "failed" };
+      if (kind === "image" || ["png","jpg","jpeg","gif","webp","bmp","svg"].includes(ext)) return { icon: "image", category: "image" };
+      if (["pdf"].includes(ext)) return { icon: "file-text", category: "pdf" };
+      if (["doc","docx"].includes(ext)) return { icon: "file-text", category: "word" };
+      if (["xls","xlsx","csv"].includes(ext)) return { icon: "file-spreadsheet", category: "excel" };
+      if (["ppt","pptx"].includes(ext)) return { icon: "presentation", category: "ppt" };
+      if (["zip","tar","gz","rar","7z"].includes(ext)) return { icon: "file-archive", category: "zip" };
+      if (["json","md","txt","log"].includes(ext)) return { icon: "file-text", category: "" };
+      return { icon: "file", category: "" };
     }
     function renderAttachments() {
       const strip = els.attachStrip;
@@ -985,41 +1352,83 @@ export function renderChatPage(): string {
       attachState.items.forEach((item) => {
         const chip = document.createElement("div");
         chip.className = "attach-chip" + (item.status === "uploading" ? " uploading" : item.status === "failed" ? " failed" : "");
+        chip.title = item.filename + (item.failure ? " — " + item.failure : "");
+
+        const iconInfo = iconForFile(item.filename, item.status === "failed" ? "failed" : item.kind);
+        if (iconInfo.category) chip.setAttribute("data-kind", iconInfo.category);
+
+        const icon = document.createElement("span");
+        icon.className = "chip-icon";
+        const ic = document.createElement("i");
+        ic.setAttribute("data-lucide", iconInfo.icon);
+        icon.appendChild(ic);
+        chip.appendChild(icon);
+
+        const body = document.createElement("span");
+        body.className = "chip-body";
         const name = document.createElement("span");
         name.className = "chip-name";
         name.textContent = item.filename;
-        chip.appendChild(name);
+        body.appendChild(name);
         const meta = document.createElement("span");
         meta.className = "chip-meta";
-        if (item.status === "uploading") meta.textContent = "上传中…";
-        else if (item.status === "failed") meta.textContent = item.failure || "失败";
-        else meta.textContent = item.kind === "failed" ? "解析失败" : (item.kind || "") + " · " + fmtBytes(item.size_bytes || 0);
-        chip.appendChild(meta);
+        if (item.status === "uploading") {
+          meta.textContent = "上传中…";
+        } else if (item.status === "failed") {
+          meta.textContent = item.failure || "失败";
+        } else if (item.kind === "failed") {
+          meta.textContent = "已上传 · 解析失败";
+        } else if (item.kind === "image") {
+          meta.textContent = "图片 · " + fmtBytes(item.size_bytes);
+        } else {
+          const chars = item.text_chars_total ? "，" + item.text_chars_total + " 字" : "";
+          meta.textContent = fmtBytes(item.size_bytes) + chars;
+        }
+        body.appendChild(meta);
+        chip.appendChild(body);
+
         const rm = document.createElement("button");
         rm.type = "button";
         rm.className = "chip-remove";
-        rm.setAttribute("aria-label", "移除");
-        rm.textContent = "×";
+        rm.setAttribute("aria-label", "移除 " + item.filename);
+        const rmIcon = document.createElement("i");
+        rmIcon.setAttribute("data-lucide", "x");
+        rm.appendChild(rmIcon);
         rm.addEventListener("click", () => {
           attachState.items = attachState.items.filter((x) => x.localId !== item.localId);
           renderAttachments();
         });
         chip.appendChild(rm);
+
+        if (item.status === "uploading") {
+          const bar = document.createElement("span");
+          bar.className = "chip-progress";
+          chip.appendChild(bar);
+        }
         strip.appendChild(chip);
       });
+      // 重新扫描注入 SVG
+      if (window.lucide) lucide.createIcons();
     }
     async function uploadFiles(fileList) {
-      const files = Array.from(fileList || []);
-      if (!files.length) return;
+      const all = Array.from(fileList || []);
+      if (!all.length) return;
+      // 体积过滤
+      const tooBig = all.filter((f) => f.size > ATTACH_MAX_BYTES);
+      const sized = all.filter((f) => f.size <= ATTACH_MAX_BYTES);
+      tooBig.forEach((f) => showToast(f.name + " 超过 20MB，已跳过", "warn"));
+
       const remaining = ATTACH_MAX - attachState.items.length;
       if (remaining <= 0) {
-        alert("最多 " + ATTACH_MAX + " 个附件");
+        showToast("已达 " + ATTACH_MAX + " 个附件上限", "warn");
         return;
       }
-      const accepted = files.slice(0, remaining);
-      if (files.length > remaining) {
-        alert("只接收前 " + remaining + " 个文件，其余已忽略");
+      const accepted = sized.slice(0, remaining);
+      if (sized.length > remaining) {
+        showToast("只接收前 " + remaining + " 个，其余已忽略", "warn");
       }
+      if (!accepted.length) return;
+
       const localItems = accepted.map((f) => ({
         localId: id(),
         filename: f.name,
@@ -1038,37 +1447,41 @@ export function renderChatPage(): string {
         const res = await fetch("/api/attachments", { method: "POST", body: fd });
         if (!res.ok) {
           const txt = await res.text().catch(() => "");
-          throw new Error("HTTP " + res.status + " " + txt.slice(0, 120));
+          throw new Error("HTTP " + res.status + " " + txt.slice(0, 160));
         }
         const json = await res.json();
         const returned = Array.isArray(json && json.attachments) ? json.attachments : [];
-        // 按顺序回填到 localItems（后端按 files 顺序返回）
         localItems.forEach((local, idx) => {
           const ret = returned[idx];
           if (!ret) {
             local.status = "failed";
-            local.failure = "无返回";
+            local.failure = "服务端未返回";
           } else {
             local.id = ret.id;
             local.kind = ret.kind;
             local.size_bytes = ret.size_bytes ?? local.size_bytes;
+            local.text_chars_total = ret.text_chars_total ?? 0;
             local.status = "ready";
             local.failure = ret.failure_reason;
           }
         });
       } catch (err) {
+        const msg = (err && err.message) || "上传失败";
         localItems.forEach((local) => {
           local.status = "failed";
-          local.failure = (err && err.message) || "上传失败";
+          local.failure = msg;
         });
+        showToast("上传失败：" + msg, "error");
       } finally {
         attachState.uploading = Math.max(0, attachState.uploading - localItems.length);
         renderAttachments();
       }
     }
+
+    // 点击 📎 → 选文件
     els.attachBtn.addEventListener("click", () => {
       if (attachState.items.length >= ATTACH_MAX) {
-        alert("最多 " + ATTACH_MAX + " 个附件");
+        showToast("已达 " + ATTACH_MAX + " 个附件上限", "warn");
         return;
       }
       els.attachInput.click();
@@ -1076,33 +1489,41 @@ export function renderChatPage(): string {
     els.attachInput.addEventListener("change", (event) => {
       const files = event.target.files;
       uploadFiles(files);
-      els.attachInput.value = ""; // 允许同名文件再次选择
+      els.attachInput.value = "";
     });
-    // 拖拽：仅在 composer 区域响应，避免误触整页
+
+    // 全屏拖拽：监听 window，所有位置都能 drop（参考 Claude / ChatGPT）
     let dragDepth = 0;
-    els.composer.addEventListener("dragenter", (event) => {
-      if (!event.dataTransfer || !Array.from(event.dataTransfer.types || []).includes("Files")) return;
+    function hasFiles(dt) {
+      if (!dt) return false;
+      const types = Array.from(dt.types || []);
+      return types.includes("Files");
+    }
+    window.addEventListener("dragenter", (event) => {
+      if (!hasFiles(event.dataTransfer)) return;
       event.preventDefault();
       dragDepth += 1;
-      els.composer.classList.add("dragover");
+      dropOverlay.classList.add("active");
     });
-    els.composer.addEventListener("dragover", (event) => {
-      if (event.dataTransfer && Array.from(event.dataTransfer.types || []).includes("Files")) {
-        event.preventDefault();
-      }
+    window.addEventListener("dragover", (event) => {
+      if (!hasFiles(event.dataTransfer)) return;
+      event.preventDefault(); // 必须 preventDefault，否则 drop 不触发
     });
-    els.composer.addEventListener("dragleave", () => {
+    window.addEventListener("dragleave", (event) => {
+      if (!hasFiles(event.dataTransfer)) return;
       dragDepth = Math.max(0, dragDepth - 1);
-      if (dragDepth === 0) els.composer.classList.remove("dragover");
+      if (dragDepth === 0) dropOverlay.classList.remove("active");
     });
-    els.composer.addEventListener("drop", (event) => {
-      if (!event.dataTransfer || !event.dataTransfer.files || !event.dataTransfer.files.length) return;
+    window.addEventListener("drop", (event) => {
+      if (!hasFiles(event.dataTransfer)) return;
       event.preventDefault();
       dragDepth = 0;
-      els.composer.classList.remove("dragover");
-      uploadFiles(event.dataTransfer.files);
+      dropOverlay.classList.remove("active");
+      const files = event.dataTransfer.files;
+      if (files && files.length) uploadFiles(files);
     });
-    // 粘贴图片
+
+    // 粘贴图片（textarea 聚焦时）
     els.input.addEventListener("paste", (event) => {
       const cd = event.clipboardData;
       if (!cd || !cd.items) return;
@@ -1122,12 +1543,14 @@ export function renderChatPage(): string {
 
     els.form.addEventListener("submit", async (event) => {
       event.preventDefault();
-      const text = els.input.value.trim();
+      const text = getInputValue().trim();
       if (!text || loading) return;
-      if (attachState.uploading > 0) return; // 等附件上传完
+      if (attachState.uploading > 0) {
+        showToast("附件还在上传中，等一下再发", "warn");
+        return;
+      }
       const attachmentIds = attachState.items.filter((a) => a.status === "ready").map((a) => a.id);
-      els.input.value = "";
-      els.input.style.height = "auto";
+      clearInput();
       const assistantId = id();
       messages.push({ id: id(), role: "user", text });
       messages.push({ id: assistantId, role: "assistant", text: "", steps: [], sources: [], streaming: true, thinking: true, startedAt: Date.now() });
@@ -1216,14 +1639,14 @@ export function renderChatPage(): string {
       return result;
     }
     function updateCommandSuggest() {
-      const value = els.input.value;
-      // 只在第一行、以 / 开头时触发
+      // 有 tag 时不触发 / 命令面板（一次只允许一个命令）
+      if (hasInputTag()) { closeSuggest(); return; }
+      const value = getInputValue();
       const firstLine = value.split("\\n")[0] || "";
       if (!firstLine.startsWith("/")) { closeSuggest(); return; }
-      const query = firstLine.toLowerCase();
       loadCommandsForUser(currentUserId).then((commands) => {
-        // 比较时机：用户可能已经把 / 删掉了，重新检查
-        const stillFirst = (els.input.value.split("\\n")[0] || "").toLowerCase();
+        if (hasInputTag()) { closeSuggest(); return; }
+        const stillFirst = (getInputValue().split("\\n")[0] || "").toLowerCase();
         if (!stillFirst.startsWith("/")) { closeSuggest(); return; }
         const matches = commands.filter((cmd) => {
           const triggers = Array.isArray(cmd.triggers) && cmd.triggers.length ? cmd.triggers : ["/" + cmd.id];
@@ -1275,10 +1698,11 @@ export function renderChatPage(): string {
       const cmd = commandSuggest.items[commandSuggest.active];
       if (!cmd) { closeSuggest(); return; }
       const triggers = Array.isArray(cmd.triggers) && cmd.triggers.length ? cmd.triggers : ["/" + cmd.id];
-      els.input.value = triggers[0];
-      els.input.focus();
-      els.input.style.height = "auto";
-      els.input.style.height = Math.max(36, Math.min(180, els.input.scrollHeight)) + "px";
+      const trigger = triggers[0];
+      // 把 / 命令面板选中的也变成 tag，跟 chip 体验一致
+      const label = cmd.title || cmd.id || trigger;
+      setInputText("");
+      insertInputTag(label, trigger);
       closeSuggest();
     }
     function closeSuggest() {

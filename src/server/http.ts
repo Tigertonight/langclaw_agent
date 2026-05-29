@@ -1,5 +1,8 @@
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 import { attachMcpServers, createApp } from "../app.js";
 import { createA2UIModule } from "../a2ui/module.js";
 import { A2UIBadRequestError } from "../a2ui/dto.js";
@@ -112,6 +115,38 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
   if (req.method === "GET" && (pathname === "/" || pathname === "/chat")) {
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     res.end(renderChatPage());
+    return;
+  }
+
+  if (req.method === "GET" && pathname === "/assets/lucide.min.js") {
+    try {
+      const here = path.dirname(fileURLToPath(import.meta.url));
+      // From src/server/http.ts (or dist/src/server/http.js), node_modules sits at project root.
+      // Walk up looking for it so both tsx and built dist work.
+      let dir = here;
+      let lucidePath: string | null = null;
+      for (let i = 0; i < 6; i++) {
+        const p = path.join(dir, "node_modules", "lucide", "dist", "umd", "lucide.min.js");
+        try {
+          readFileSync(p);
+          lucidePath = p;
+          break;
+        } catch {}
+        dir = path.dirname(dir);
+      }
+      if (!lucidePath) {
+        res.writeHead(404).end("lucide not found");
+        return;
+      }
+      const buf = readFileSync(lucidePath);
+      res.writeHead(200, {
+        "Content-Type": "application/javascript; charset=utf-8",
+        "Cache-Control": "public, max-age=86400"
+      });
+      res.end(buf);
+    } catch (err) {
+      res.writeHead(500).end(String(err));
+    }
     return;
   }
 
@@ -373,6 +408,37 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
         });
       }
       sendJson(res, 200, { commands: visible, user_id: userId });
+    } catch (error) {
+      sendJson(res, 500, {
+        error: "internal_error",
+        message: error instanceof Error ? error.message : "unknown error"
+      });
+    }
+    return;
+  }
+
+  if (req.method === "GET" && pathname === "/api/recommended-commands") {
+    try {
+      const userId = (typeof req.headers["x-user-id"] === "string" ? req.headers["x-user-id"] : url.searchParams.get("user_id")) || "";
+      if (!userId) {
+        sendJson(res, 401, { error: "unauthorized", message: "请提供 X-User-Id 或 ?user_id=" });
+        return;
+      }
+      let user;
+      try {
+        user = await userContextResolver.resolve({ userId });
+      } catch (error) {
+        sendJson(res, 401, { error: "unauthorized", message: error instanceof Error ? error.message : "unknown user" });
+        return;
+      }
+      let mapping: Record<string, Array<{ id: string; label: string; command: string }>> = {};
+      try {
+        mapping = await loadJson("data/recommended-commands.json");
+      } catch {
+        mapping = {};
+      }
+      const list = (typeof user.role === "string" && mapping[user.role]) || mapping["_default"] || [];
+      sendJson(res, 200, { commands: list, role: user.role ?? null, user_id: userId });
     } catch (error) {
       sendJson(res, 500, {
         error: "internal_error",

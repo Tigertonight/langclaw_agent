@@ -1,0 +1,36 @@
+{
+  "_default": [
+    { "id": "today_leads", "label": "今日新线索", "command": "/今日新线索" },
+    { "id": "follow_up", "label": "待跟进客户", "command": "/待跟进客户" },
+    { "id": "store_kpi", "label": "门店业绩", "command": "/门店业绩" },
+    { "id": "report", "label": "写日报", "command": "/写日报" }
+  ],
+  "store_general_manager": [
+    { "id": "store_kpi", "label": "门店业绩", "command": "/门店业绩" },
+    { "id": "today_leads", "label": "今日新线索", "command": "/今日新线索" },
+    { "id": "team_attendance", "label": "团队考勤", "command": "/团队考勤" },
+    { "id": "report", "label": "写日报", "command": "/写日报" }
+  ],
+  "sales_manager": [
+    { "id": "today_leads", "label": "今日新线索", "command": "/今日新线索" },
+    { "id": "follow_up", "label": "待跟进客户", "command": "/待跟进客户" },
+    { "id": "team_kpi", "label": "团队业绩", "command": "/团队业绩" },
+    { "id": "report", "label": "写日报", "command": "/写日报" }
+  ],
+  "sales_consultant": [
+    { "id": "follow_up", "label": "待跟进客户", "command": "/待跟进客户" },
+    { "id": "today_leads", "label": "今日新线索", "command": "/今日新线索" },
+    { "id": "my_kpi", "label": "我的业绩", "command": "/我的业绩" },
+    { "id": "report", "label": "写日报", "command": "/写日报" }
+  ],
+  "finance_specialist": [
+    { "id": "store_revenue", "label": "门店营收", "command": "/门店营收" },
+    { "id": "settlement", "label": "结算明细", "command": "/结算明细" },
+    { "id": "expense", "label": "费用统计", "command": "/费用统计" }
+  ],
+  "warehouse_specialist": [
+    { "id": "stock", "label": "库存盘点", "command": "/库存盘点" },
+    { "id": "inbound", "label": "今日入库", "command": "/今日入库" },
+    { "id": "outbound", "label": "今日出库", "command": "/今日出库" }
+  ]
+}
