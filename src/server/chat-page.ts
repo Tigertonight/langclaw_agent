@@ -27,7 +27,7 @@ export function renderChatPage(): string {
     * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; overflow: hidden; background: var(--bg); color: var(--text); }
     body { font-size: 14px; }
-    main { height: 100%; min-height: 0; display: grid; grid-template-columns: 278px 1fr; }
+    main { height: 100%; min-height: 0; display: grid; grid-template-columns: 278px minmax(0, 1fr); }
     .sidebar {
       min-width: 0; height: 100%; display: grid; grid-template-rows: auto auto 1fr auto; gap: 12px;
       padding: 12px; border-right: 1px solid var(--border); background: var(--sidebar);
@@ -156,13 +156,13 @@ export function renderChatPage(): string {
     .messages {
       min-height: 0; overflow-x: hidden; overflow-y: auto; padding: 28px 20px; display: flex; flex-direction: column; gap: 22px; align-items: center;
     }
-    .msg { width: min(820px, 100%); line-height: 1.72; font-size: 15px; }
+    .msg { width: min(880px, 100%); line-height: 1.72; font-size: 15px; }
     .msg.user { display: flex; justify-content: flex-end; }
     .bubble { max-width: min(640px, 100%); background: var(--soft); border: 1px solid #ededed; border-radius: 8px; padding: 11px 15px; }
     .assistant-body { padding: 0 4px; }
     .composer { flex: 0 0 auto; padding: 16px 20px 22px; background: linear-gradient(to top, #fff 80%, rgba(255,255,255,0)); position: relative; }
     .composer-shell {
-      width: min(820px, 100%); margin: 0 auto;
+      width: min(880px, 100%); margin: 0 auto;
       border: 1px solid #d4d4d4; border-radius: 12px; background: #fff;
       box-shadow: 0 16px 44px rgba(0,0,0,.09);
       transition: border-color .15s ease, box-shadow .15s ease;
@@ -253,7 +253,7 @@ export function renderChatPage(): string {
     .attach-btn:disabled { opacity: .35; cursor: not-allowed; background: transparent; }
     /* Composer 上方一行：推荐命令 chip（在 composer-shell 之外） */
     .composer-rec {
-      width: min(820px, calc(100vw - 40px)); margin: 0 auto 10px;
+      width: min(880px, calc(100vw - 40px)); margin: 0 auto 10px;
       display: none; align-items: center; gap: 8px;
     }
     .composer-rec.has-content { display: flex; }
@@ -332,9 +332,9 @@ export function renderChatPage(): string {
     .cmd-tag-remove svg { width: 12px; height: 12px; }
     .send { height: 36px; min-width: 72px; border: 0; border-radius: 6px; background: #111; color: #fff; font-weight: 600; cursor: pointer; }
     .send:disabled { background: #cfcfcf; cursor: not-allowed; }
-    .hint { width: min(820px, calc(100vw - 40px)); margin: 7px auto 0; color: var(--faint); font-size: 12px; }
+    .hint { width: min(880px, calc(100vw - 40px)); margin: 7px auto 0; color: var(--faint); font-size: 12px; }
     .composer-suggest {
-      width: min(820px, calc(100vw - 40px)); margin: 0 auto; position: relative;
+      width: min(880px, calc(100vw - 40px)); margin: 0 auto; position: relative;
     }
     .composer-suggest .suggest-popup {
       position: absolute; left: 0; right: 0; bottom: 0;
@@ -668,6 +668,76 @@ export function renderChatPage(): string {
       from { opacity: .35; transform: translateY(4px) scale(.995); filter: blur(1px); }
       to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
     }
+
+    /* ── Landing 视图 ─────────────────────────────────────────────
+       同一个页面，靠 body[data-view] 切换 landing ↔ chat。
+       默认 chat 视图保持不变；landing 时把 messages 隐藏、hero 显示，
+       composer 通过 grid 调整到屏幕中段。 */
+    .landing-hero { display: none; }
+    body[data-view="landing"] .messages { display: none; }
+    body[data-view="landing"] .composer-rec { display: none !important; }
+    body[data-view="landing"] .landing-hero {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 22px; padding: 24px 20px 12px;
+      width: 100%; max-width: 880px; margin: 0 auto; box-sizing: border-box;
+      animation: landingFadeIn .28s ease both;
+    }
+    body[data-view="landing"] .landing-cards {
+      max-width: 100%; box-sizing: border-box;
+    }
+    body[data-view="landing"] .chat-shell {
+      /* topbar / hero(自动撑) / composer / hint  ——把 composer 推到中段 */
+      grid-template-rows: 56px 1fr auto;
+    }
+    body[data-view="landing"] .composer { padding-top: 4px; padding-bottom: 14px; background: transparent; }
+    body[data-view="landing"] .hint { opacity: .7; }
+    .landing-title {
+      font-size: 32px; font-weight: 650; line-height: 1.25;
+      color: #111; text-align: center; letter-spacing: -.01em;
+      margin: 0;
+    }
+    .landing-cards {
+      display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px; width: 100%; margin-top: 6px;
+    }
+    .landing-card {
+      display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
+      padding: 14px 14px 14px; min-height: 100px;
+      background: #fff; border: 1px solid var(--border); border-radius: 12px;
+      cursor: pointer; text-align: left; font: inherit; color: #111;
+      transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease;
+    }
+    .landing-card:hover { border-color: #111; transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,.06); }
+    .landing-card:active { transform: translateY(0); }
+    .landing-card .card-label { font-size: 14px; font-weight: 600; color: #111; }
+    .landing-card .card-hint {
+      font-size: 12.5px; color: var(--muted); line-height: 1.5;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    @keyframes landingFadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── 超宽屏：主内容跟着可用宽度放大，避免大块留白 ───────────── */
+    @media (min-width: 1600px) {
+      .msg,
+      .composer-shell,
+      .composer-rec,
+      .hint,
+      .composer-suggest { width: min(1080px, calc(100vw - 360px)); }
+      body[data-view="landing"] .landing-hero { max-width: 1080px; }
+    }
+    @media (min-width: 2000px) {
+      .msg,
+      .composer-shell,
+      .composer-rec,
+      .hint,
+      .composer-suggest { width: min(1200px, calc(100vw - 360px)); }
+      body[data-view="landing"] .landing-hero { max-width: 1200px; }
+    }
+
     @media (max-width: 760px) {
       main { grid-template-columns: 1fr; }
       .sidebar {
@@ -686,11 +756,18 @@ export function renderChatPage(): string {
       .person-modal-backdrop { padding: 14px; align-items: flex-start; }
       .person-modal { margin-top: 42px; max-height: calc(100vh - 84px); }
       .debug-toggle span { display: none; }
+      /* Landing 移动端 */
+      .landing-title { font-size: 22px; }
+      .landing-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      .landing-card { min-height: 92px; padding: 12px; gap: 6px; }
+      .landing-card .card-label { font-size: 13.5px; }
+      .landing-card .card-hint { font-size: 12px; }
+      body[data-view="landing"] .landing-hero { padding: 16px 14px 8px; gap: 16px; }
     }
   </style>
   <script src="/assets/lucide.min.js"></script>
 </head>
-<body>
+<body data-view="landing">
   <main>
     <aside class="sidebar" aria-label="&#x4F1A;&#x8BDD;&#x7BA1;&#x7406;">
       <div class="side-head">
@@ -732,6 +809,10 @@ export function renderChatPage(): string {
             <span>Debug</span>
           </label>
         </div>
+      </div>
+      <div id="landingHero" class="landing-hero" aria-label="&#x6B22;&#x8FCE;&#x9875;">
+        <h1 id="landingTitle" class="landing-title"></h1>
+        <div id="landingCards" class="landing-cards" role="list"></div>
       </div>
       <div id="messages" class="messages"></div>
       <div class="composer-suggest"><div id="suggestPopup" class="suggest-popup" role="listbox" aria-label="&#x547D;&#x4EE4;&#x5EFA;&#x8BAE;"></div></div>
@@ -776,6 +857,7 @@ export function renderChatPage(): string {
   <script>
     const STR = {
       welcome: "\\u4f60\\u597d\\uff0c\\u6211\\u662f\\u4f01\\u4e1a Agent\\u3002\\u4f60\\u53ef\\u4ee5\\u8be2\\u95ee\\u4e1a\\u52a1\\u6570\\u636e\\u3001\\u77e5\\u8bc6\\u5e93\\u6216\\u9700\\u8981\\u5b89\\u5168\\u6c99\\u7bb1\\u5904\\u7406\\u7684\\u8ba1\\u7b97\\u4efb\\u52a1\\u3002",
+      landingTitle: "\\u4f60\\u597d\\uff0c\\u6211\\u662f\\u4f01\\u4e1a Agent",
       running: "\\u6b63\\u5728\\u5904\\u7406",
       done: "\\u5df2\\u5904\\u7406",
       thinking: "\\u6211\\u5148\\u7406\\u89e3\\u4f60\\u7684\\u95ee\\u9898\\uff0c\\u518d\\u5224\\u65ad\\u9700\\u8981\\u54ea\\u4e9b\\u80fd\\u529b\\u6765\\u56de\\u7b54\\u3002",
@@ -835,6 +917,9 @@ export function renderChatPage(): string {
       composerRec: document.querySelector("#composerRec"),
       cmdChips: document.querySelector("#cmdChips"),
       recToggle: document.querySelector("#recToggle"),
+      landingHero: document.querySelector("#landingHero"),
+      landingTitle: document.querySelector("#landingTitle"),
+      landingCards: document.querySelector("#landingCards"),
       composer: document.querySelector("#form")
     };
     clearLegacySessions();
@@ -931,7 +1016,7 @@ export function renderChatPage(): string {
         title: STR.untitled,
         createdAt: now,
         updatedAt: now,
-        messages: [createWelcomeMessage()]
+        messages: []
       };
       sessions.unshift(session);
       if (activate) {
@@ -940,8 +1025,14 @@ export function renderChatPage(): string {
       }
       return session;
     }
-    function createWelcomeMessage() {
-      return { id: id(), role: "assistant", text: STR.welcome, steps: [], sources: [] };
+    // 旧会话可能存有一条预置 welcome 消息——视作空会话以便走 landing 视图
+    function isEffectivelyEmpty(msgs) {
+      if (!Array.isArray(msgs) || msgs.length === 0) return true;
+      if (msgs.length === 1) {
+        const only = msgs[0];
+        return only && only.role === "assistant" && only.text === STR.welcome && !only.steps?.length;
+      }
+      return false;
     }
     function loadSessions() {
       try {
@@ -1289,6 +1380,33 @@ export function renderChatPage(): string {
       refreshRecVisibility();
       // 等渲染稳定后判定是否需要折叠按钮
       requestAnimationFrame(refreshRecOverflow);
+      renderLandingCards(list);
+    }
+    function renderLandingCards(list) {
+      if (!els.landingCards) return;
+      els.landingCards.innerHTML = "";
+      list.slice(0, 4).forEach((cmd) => {
+        if (!cmd || typeof cmd.label !== "string" || typeof cmd.command !== "string") return;
+        const card = document.createElement("button");
+        card.type = "button";
+        card.className = "landing-card";
+        card.setAttribute("role", "listitem");
+        card.title = cmd.command;
+        const labelEl = document.createElement("span");
+        labelEl.className = "card-label";
+        labelEl.textContent = cmd.label;
+        const hintEl = document.createElement("span");
+        hintEl.className = "card-hint";
+        hintEl.textContent = (typeof cmd.hint === "string" && cmd.hint.trim()) ? cmd.hint : cmd.command;
+        card.appendChild(labelEl);
+        card.appendChild(hintEl);
+        card.addEventListener("click", () => {
+          insertInputTag(cmd.label, cmd.command);
+          // landing 视图下点击卡片 = 选好命令、focus 输入框，等用户补充文本/按发送
+          if (els.input && typeof els.input.focus === "function") els.input.focus();
+        });
+        els.landingCards.appendChild(card);
+      });
     }
     if (els.recToggle) {
       els.recToggle.addEventListener("click", () => {
@@ -1802,9 +1920,15 @@ export function renderChatPage(): string {
       }
       render();
     }
+    function applyView() {
+      const view = isEffectivelyEmpty(messages) ? "landing" : "chat";
+      if (document.body.dataset.view !== view) document.body.dataset.view = view;
+      if (els.landingTitle && !els.landingTitle.textContent) els.landingTitle.textContent = STR.landingTitle;
+    }
     function render() {
       renderPersonPicker();
       renderSessionList();
+      applyView();
       const active = getActiveSession();
       const user = getCurrentUser();
       els.chatTitle.textContent = active?.title || STR.untitled;

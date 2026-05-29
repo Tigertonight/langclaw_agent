@@ -1,36 +1,36 @@
 {
   "_default": [
-    { "id": "today_leads", "label": "今日新线索", "command": "/今日新线索" },
-    { "id": "follow_up", "label": "待跟进客户", "command": "/待跟进客户" },
-    { "id": "store_kpi", "label": "门店业绩", "command": "/门店业绩" },
-    { "id": "report", "label": "写日报", "command": "/写日报" }
+    { "id": "today_leads", "label": "今日新线索", "command": "/今日新线索", "hint": "看今天新进的客户线索、来源与跟进优先级" },
+    { "id": "follow_up", "label": "待跟进客户", "command": "/待跟进客户", "hint": "罗列今天必须联系的客户与上次沟通要点" },
+    { "id": "store_kpi", "label": "门店业绩", "command": "/门店业绩", "hint": "今日成交、试驾、留资三项指标对比昨日" },
+    { "id": "report", "label": "写日报", "command": "/写日报", "hint": "按你今天的动作自动起草一份日报草稿" }
   ],
   "store_general_manager": [
-    { "id": "store_kpi", "label": "门店业绩", "command": "/门店业绩" },
-    { "id": "today_leads", "label": "今日新线索", "command": "/今日新线索" },
-    { "id": "team_attendance", "label": "团队考勤", "command": "/团队考勤" },
-    { "id": "report", "label": "写日报", "command": "/写日报" }
+    { "id": "store_kpi", "label": "门店业绩", "command": "/门店业绩", "hint": "全店今日成交/留资/试驾，含同环比与异常预警" },
+    { "id": "today_leads", "label": "今日新线索", "command": "/今日新线索", "hint": "今天新进线索量、来源结构与未分配数量" },
+    { "id": "team_attendance", "label": "团队考勤", "command": "/团队考勤", "hint": "今日出勤、迟到与请假名单一目了然" },
+    { "id": "report", "label": "写日报", "command": "/写日报", "hint": "汇总门店当日关键数据生成管理日报" }
   ],
   "sales_manager": [
-    { "id": "today_leads", "label": "今日新线索", "command": "/今日新线索" },
-    { "id": "follow_up", "label": "待跟进客户", "command": "/待跟进客户" },
-    { "id": "team_kpi", "label": "团队业绩", "command": "/团队业绩" },
-    { "id": "report", "label": "写日报", "command": "/写日报" }
+    { "id": "today_leads", "label": "今日新线索", "command": "/今日新线索", "hint": "今天进店与网电线索分布，待分配数量" },
+    { "id": "follow_up", "label": "待跟进客户", "command": "/待跟进客户", "hint": "团队成员今天必须跟进的客户清单" },
+    { "id": "team_kpi", "label": "团队业绩", "command": "/团队业绩", "hint": "组员当月达成率排行与缺口分析" },
+    { "id": "report", "label": "写日报", "command": "/写日报", "hint": "团队当日核心进展自动汇总成日报" }
   ],
   "sales_consultant": [
-    { "id": "follow_up", "label": "待跟进客户", "command": "/待跟进客户" },
-    { "id": "today_leads", "label": "今日新线索", "command": "/今日新线索" },
-    { "id": "my_kpi", "label": "我的业绩", "command": "/我的业绩" },
-    { "id": "report", "label": "写日报", "command": "/写日报" }
+    { "id": "follow_up", "label": "待跟进客户", "command": "/待跟进客户", "hint": "我今天该联系谁、上次聊了什么、下一步是什么" },
+    { "id": "today_leads", "label": "今日新线索", "command": "/今日新线索", "hint": "今天分到我手上的新客户与基础画像" },
+    { "id": "my_kpi", "label": "我的业绩", "command": "/我的业绩", "hint": "本月成交、留资、跟进达标率与排名" },
+    { "id": "report", "label": "写日报", "command": "/写日报", "hint": "把今天接待与跟进自动整理成日报草稿" }
   ],
   "finance_specialist": [
-    { "id": "store_revenue", "label": "门店营收", "command": "/门店营收" },
-    { "id": "settlement", "label": "结算明细", "command": "/结算明细" },
-    { "id": "expense", "label": "费用统计", "command": "/费用统计" }
+    { "id": "store_revenue", "label": "门店营收", "command": "/门店营收", "hint": "整车、保险、金融三类营收当月累计与缺口" },
+    { "id": "settlement", "label": "结算明细", "command": "/结算明细", "hint": "今日待结算订单、金额与缺单提醒" },
+    { "id": "expense", "label": "费用统计", "command": "/费用统计", "hint": "本月各类费用结构与同比变化" }
   ],
   "warehouse_specialist": [
-    { "id": "stock", "label": "库存盘点", "command": "/库存盘点" },
-    { "id": "inbound", "label": "今日入库", "command": "/今日入库" },
-    { "id": "outbound", "label": "今日出库", "command": "/今日出库" }
+    { "id": "stock", "label": "库存盘点", "command": "/库存盘点", "hint": "在库车型/配件数量、滞销与紧缺标记" },
+    { "id": "inbound", "label": "今日入库", "command": "/今日入库", "hint": "今天入库车辆与配件清单及对应单据" },
+    { "id": "outbound", "label": "今日出库", "command": "/今日出库", "hint": "今天出库流向、提车人与待签收件" }
   ]
 }

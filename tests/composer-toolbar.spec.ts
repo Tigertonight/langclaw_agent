@@ -1,4 +1,9 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, Page } from "@playwright/test";
+
+// chips 仅在 chat 视图（已有消息）时可见。所有用例先把视图强切到 chat。
+async function enterChatView(page: Page) {
+  await page.evaluate(() => { document.body.dataset.view = "chat"; });
+}
 
 test.describe("composer recommended chips (A2)", () => {
   test("chips render outside the composer-shell, first one is primary, no JS errors", async ({ page }) => {
@@ -8,6 +13,7 @@ test.describe("composer recommended chips (A2)", () => {
 
     await page.goto("/");
     await page.waitForLoadState("networkidle");
+    await enterChatView(page);
 
     const rec = page.locator("#composerRec");
     await expect(rec).toBeVisible();
@@ -23,6 +29,7 @@ test.describe("composer recommended chips (A2)", () => {
   test("clicking chip inserts tag (not plain text) into contenteditable input", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
+    await enterChatView(page);
 
     const chip = page.locator("#cmdChips .cmd-chip").first();
     const chipLabel = ((await chip.textContent()) || "").trim();
@@ -45,6 +52,7 @@ test.describe("composer recommended chips (A2)", () => {
   test("only one tag is allowed; clicking another chip replaces it", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
+    await enterChatView(page);
 
     const chips = page.locator("#cmdChips .cmd-chip");
     const count = await chips.count();
@@ -62,6 +70,7 @@ test.describe("composer recommended chips (A2)", () => {
   test("submit serializes tag back into command + text", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
+    await enterChatView(page);
 
     let captured: any = null;
     await page.route("**/api/chat/stream", async (route) => {
@@ -87,6 +96,7 @@ test.describe("composer recommended chips (A2)", () => {
   test("collapse toggle appears when chips overflow", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
+    await enterChatView(page);
 
     await page.evaluate(() => {
       const list = document.getElementById("cmdChips");
@@ -106,6 +116,7 @@ test.describe("composer recommended chips (A2)", () => {
   test("placeholder shows when input is fully empty", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
+    await enterChatView(page);
 
     const input = page.locator("#input");
     const placeholder = await input.getAttribute("data-placeholder");
@@ -123,6 +134,7 @@ test.describe("composer recommended chips (A2)", () => {
   test("screenshot tag in input", async ({ page }) => {
     await page.goto("/");
     await page.waitForLoadState("networkidle");
+    await enterChatView(page);
     await page.waitForFunction(() => !!document.querySelector("#cmdChips .cmd-chip"));
 
     await page.locator(".composer").screenshot({ path: "test-results/screenshots/rec-empty.png" });

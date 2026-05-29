@@ -431,7 +431,7 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
         sendJson(res, 401, { error: "unauthorized", message: error instanceof Error ? error.message : "unknown user" });
         return;
       }
-      let mapping: Record<string, Array<{ id: string; label: string; command: string }>> = {};
+      let mapping: Record<string, Array<{ id: string; label: string; command: string; hint?: string }>> = {};
       try {
         mapping = await loadJson("data/recommended-commands.json");
       } catch {
