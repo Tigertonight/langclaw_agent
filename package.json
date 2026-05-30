@@ -5,6 +5,10 @@
   "type": "module",
   "description": "A minimal enterprise agent workflow with tools, permissions, RAG retrieval, reranking, CLI, HTTP API, and evals.",
   "scripts": {
+    "postinstall": "node scripts/postinstall.mjs",
+    "preflight": "node scripts/preflight.mjs",
+    "start": "node scripts/start.mjs",
+    "start:dev": "npm run server",
     "chat": "tsc -p tsconfig.build.json && node dist/cli.js",
     "server": "A2UI_AUTH_DISABLED=1 tsx --env-file=.env src/server/http.ts",
     "server:build": "A2UI_AUTH_DISABLED=1 tsc -p tsconfig.build.json && node --env-file=.env dist/src/server/http.js",
@@ -96,9 +100,11 @@
     "adm-zip": "^0.5.17",
     "busboy": "^1.6.0",
     "jszip": "^3.10.1",
+    "langfuse": "^3.38.20",
     "lucide": "^1.17.0",
     "mammoth": "^1.12.0",
     "pdf-parse": "^2.4.5",
+    "undici": "^6.26.0",
     "xlsx": "^0.18.5",
     "yaml": "^2.9.0",
     "zod": "^4.4.3"

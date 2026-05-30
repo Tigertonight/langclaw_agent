@@ -48,8 +48,11 @@ interface UploadConfig {
 
 function loadUploadConfig(): UploadConfig {
   const env = process.env;
+  const explicitlyDisabled = env.ATTACHMENTS_ENABLED === "false";
+  // 没配 S3 也视为禁用 — 避免上传报 500，前端能拿到清晰的 503
+  const s3Configured = !!(env.S3_ENDPOINT && env.S3_BUCKET);
   return {
-    enabled: env.ATTACHMENTS_ENABLED !== "false",
+    enabled: !explicitlyDisabled && s3Configured,
     maxFiles: parsePositiveInt(env.ATTACHMENTS_MAX_FILES_PER_REQUEST, 5),
     maxFileSizeBytes: parsePositiveInt(env.ATTACHMENTS_MAX_FILE_SIZE_MB, 20) * 1024 * 1024,
     maxTextChars: parsePositiveInt(env.ATTACHMENTS_MAX_TEXT_CHARS, 20000)
@@ -88,7 +91,10 @@ export async function handleAttachmentUpload(
 ): Promise<void> {
   const config = loadUploadConfig();
   if (!config.enabled) {
-    sendJson(res, 503, { error: "attachments_disabled", message: "ATTACHMENTS_ENABLED=false" });
+    const reason = process.env.ATTACHMENTS_ENABLED === "false"
+      ? "ATTACHMENTS_ENABLED=false"
+      : "S3_ENDPOINT/S3_BUCKET 未配置（开发期请：docker compose -f docker-compose.attachments.yml up -d）";
+    sendJson(res, 503, { error: "attachments_disabled", message: reason });
     return;
   }
 

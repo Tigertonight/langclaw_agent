@@ -31,28 +31,33 @@ docker --version
 
 ---
 
-## A. 本地试跑（5 分钟）
+## A. 本地试跑（3 分钟）
 
 最快验证代码能跑、能聊天、UI 长什么样。
 
 ```bash
-# 1. 安装依赖
+# 1. 安装依赖（postinstall 自动：建运行时目录 + 复制 .env.example → .env）
 npm install
 
-# 2. 准备 .env（最小集合）
-cp .env.example .env
-# 编辑 .env，填一个 key 就行：
-#   LLM_API_KEY=你的_minimax_或_deepseek_或_openai_key
-# 不填也能跑，但 LLM 会回落到本地 deterministic stub，回答很机械
+# 2. 编辑 .env 填一项即可：
+#    LLM_API_KEY=你的_minimax_或_deepseek_或_openai_key
+# 不填也能启动，preflight 会 ⚠ 提示，发消息时 LLM 调用会失败
 
-# 3. 启动
-npm run server
+# 3. 启动（preflight 自检 → 没编译过先编译 → 起服务）
+npm start
 # 访问 http://localhost:3000
 ```
 
 **期望结果**：浏览器进入 landing 页，看到 4 张推荐卡片；点击或在输入框打字、回车后切到 chat 视图，能看到流式回答。
 
-> 💡 此模式下附件上传不可用（没起 MinIO）。要联调附件请走 B 或 C。
+> 💡 附件上传：默认未配 S3 自动降级（按钮可见但上传返回 503）。
+> 想联调，跑 `docker compose -f docker-compose.attachments.yml up -d` 即可（默认值已对齐）。
+
+**开发热路径**（改完代码立即生效，不用每次重启）：
+
+```bash
+npm run start:dev    # 等价 npm run server，tsx 直跑 TS
+```
 
 ---
 

@@ -119,30 +119,34 @@
 
 ## 快速开始
 
+**3 步起服务**：
+
 ```bash
-# 安装依赖
+# 1. 装依赖（postinstall 自动建好运行时目录 + 复制 .env.example → .env）
 npm install
 
-# 配置环境变量（至少需要 LLM_API_KEY）
-cp .env.example .env
-# 编辑 .env，填入：
-#   LLM_BASE_URL=https://api.minimaxi.com/v1
-#   LLM_API_KEY=你的_key
-#   LLM_MODEL=MiniMax-M2.7
+# 2. 编辑 .env，填一项 LLM_API_KEY 就够（其余都有合理默认）
+#    LLM_API_KEY=你的_minimax_或_deepseek_或_openai_key
 
-# 编译 + 类型检查
-npm run build:ts
-npm run typecheck
-
-# 配置自检
-npm run config:check
-
-# 启动 HTTP 服务（含内置聊天页）
-npm run server
+# 3. 启动（自带 preflight 自检，dist 不存在自动编译）
+npm start
 # 打开 http://localhost:3000
+```
 
-# CLI 调试
-npm run chat -- sales_001 "汉EV 卖得还行但毛利好像不太行，看下原因"
+附件功能可选（不配置自动降级，主流程不影响）：
+
+```bash
+docker compose -f docker-compose.attachments.yml up -d   # MinIO + 自动建 bucket
+```
+
+其他命令：
+
+```bash
+npm run start:dev    # 开发热路径（tsx 直跑 TS，改完即生效）
+npm run preflight    # 仅跑启动前自检
+npm run typecheck    # 类型检查
+npm run config:check # 配置一致性自检
+npm run chat -- sales_001 "汉EV 卖得还行但毛利好像不太行，看下原因"   # CLI 调试
 ```
 
 ---

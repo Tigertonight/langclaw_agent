@@ -9,6 +9,13 @@
 
 ## [Unreleased]
 
+### 启动体验
+- **3 步起服务**：`npm install` → 编辑 `.env` 填 `LLM_API_KEY` → `npm start`
+- `postinstall` 自动建运行时目录 + 复制 `.env.example → .env`
+- `npm start` 自带 preflight 自检（Node 版本 / .env / 端口 / S3 可达），dist 不存在自动编译
+- 附件功能未配 S3 自动降级为 503，不再上传报 500
+- 新增 `npm run preflight` / `npm run start:dev`
+
 ### 部署 / 文档
 - 新增 [DEPLOY.md](DEPLOY.md) 部署运行手册（本地 / 测试 / 生产三档 + 反代 + 验收 + 故障排查）
 - 新增 [API.md](API.md) HTTP/SSE 接口契约（含断线续传、错误模型、限流）
