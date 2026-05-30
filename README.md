@@ -3,6 +3,10 @@
 > 面向汽车 4S 店内部使用的企业级 Agent，对标 **Claude Code / OpenClaw / Hermes Agent**，覆盖从意图路由到多 Agent 协作的完整生命周期。
 
 > 📦 **要部署上线？** 看 [DEPLOY.md](DEPLOY.md) — 含本地 / 测试 / 生产三档 runbook、反代配置、验收清单、故障排查。
+> 🔌 **要做接口对接？** 看 [API.md](API.md) — HTTP / SSE 全量契约、断线续传、错误模型、限流。
+> 🛡️ **要看权限矩阵？** 看 [ROLES.md](ROLES.md) — 角色、权限、数据范围、鉴权链路。
+> 💬 **要看业务命令字典？** 看 [COMMANDS.md](COMMANDS.md) — 角色推荐 chips、命令 → intent 绑定。
+> 📜 **要看变更历史？** 看 [CHANGELOG.md](CHANGELOG.md) — 版本里程碑与升级注意事项。
 > 🔧 **要做开发？** 继续往下读。
 
 ---
