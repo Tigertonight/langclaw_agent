@@ -47,7 +47,7 @@ export async function checkReadiness(auth: TokenAuthenticator): Promise<Readines
   if (auth.isLoaded()) {
     checks.auth_loaded = { ok: true, detail: auth.loadedAt() ?? undefined };
   } else {
-    checks.auth_loaded = { ok: false, detail: "no tokens loaded; set A2UI_AUTH_TOKENS or A2UI_AUTH_TOKENS_FILE" };
+    checks.auth_loaded = { ok: false, detail: "no tokens loaded; set OPENUI_AUTH_TOKENS or OPENUI_AUTH_TOKENS_FILE" };
   }
 
   const ok = Object.values(checks).every((entry) => entry.ok);

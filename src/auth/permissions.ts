@@ -52,7 +52,7 @@ const TOOL_POLICIES: ToolPolicy[] = [
   },
   {
     name: "runtime_tools",
-    matches: ({ toolCall }) => /^(runtime|task|memory|evolution|maintenance|plugin)\./.test(toolCall.name),
+    matches: ({ toolCall }) => /^(runtime|task|memory|evolution|maintenance|plugin|a2ui|openui)\./.test(toolCall.name),
     authorize: async () => allow(),
   },
   {

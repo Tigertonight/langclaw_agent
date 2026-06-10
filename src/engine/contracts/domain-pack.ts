@@ -25,7 +25,7 @@ import type {
 } from "./base-types.js";
 import type { ResourceConfig as RuntimeResourceConfig, FieldLabels } from "../../resources/types.js";
 import type { CommandDefinition } from "../../router/command-registry.js";
-import type { SurfacePlugin } from "../../a2ui/plugins/types.js";
+import type { SurfacePlugin } from "../../openui-lang/compat.js";
 
 // ── Contract imports ─────────────────────────────────────────────────────────
 
@@ -184,12 +184,13 @@ export interface DomainPack {
   fieldLabels?: FieldLabels;
   /** Skill 配置 */
   skills?: DomainSkillConfig[];
-  /** A2UI Surface 构建器 */
+  /** OpenUI Lang Surface 构建器 */
   surfaces?: DomainSurfaceBuilder[];
   /**
-   * A2UI Surface 插件（SurfacePlugin 协议）。
+   * OpenUI Lang Surface 插件（SurfacePlugin 协议）。
    * 与 surfaces（DomainSurfaceBuilder）互补：surfacePlugins 遵循 SurfacePlugin 协议，
-   * 由 A2UI adapter 引擎直接调度（extract → build → envelope）。
+   * 由 OpenUI Lang response builder 直接调度（extract → build → OpenUI surface），
+   * legacy A2UI envelope 仅在兼容 adapter 中投影。
    * DomainRegistry 会自动合并所有域的 surfacePlugins 到全局列表。
    */
   surfacePlugins?: SurfacePlugin<unknown>[];

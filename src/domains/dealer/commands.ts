@@ -9,6 +9,42 @@ import type { CommandDefinition } from "../../router/command-registry.js";
 
 export const DEALER_COMMANDS: CommandDefinition[] = [
   {
+    id: "store_kpi",
+    intentCode: "dealer.query.metrics",
+    title: "门店业绩",
+    triggers: ["/门店业绩", "/经营指标", "/store-kpi"],
+    match: ({ message }) => {
+      const text = message.trim();
+      if (text === "/门店业绩" || text === "/经营指标" || text === "/store-kpi") {
+        return {
+          intentCode: "dealer.query.metrics",
+          params: { category: "sales" },
+          reasoning: "命中预注册命令 /门店业绩，直接查询经销商经营指标（category=sales）。",
+          source: "registered_command:store_kpi",
+        };
+      }
+      return null;
+    },
+  },
+  {
+    id: "store_kpi_sales_orders",
+    intentCode: "dealer.aggregate.sales_orders",
+    title: "门店成交指标",
+    triggers: ["/成交指标", "/订单指标"],
+    match: ({ message }) => {
+      const text = message.trim();
+      if (text === "/成交指标" || text === "/订单指标") {
+        return {
+          intentCode: "dealer.aggregate.sales_orders",
+          params: { metric: "order_count", time_range: "本月" },
+          reasoning: "命中预注册命令 /成交指标，直接统计本月成交订单数。",
+          source: "registered_command:store_kpi_sales_orders",
+        };
+      }
+      return null;
+    },
+  },
+  {
     id: "today_orders",
     intentCode: "dealer.query.sales_orders",
     title: "今日订单",

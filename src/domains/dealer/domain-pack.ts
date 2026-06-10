@@ -7,7 +7,7 @@
  */
 
 import type { DomainPack, AgenticFallbackDefinition, ReportComposerDefinition, EvidenceInferenceDefinition, SkillMappingDefinition, IntentCodeInferenceFn, UserFieldSourceDefinition } from "../types.js";
-import { registerComponentMapping } from "../../a2ui/openui-bridge.js";
+import { registerComponentMapping } from "../../openui-lang/compat.js";
 import { DEALER_RESOURCES, DEALER_FIELD_LABELS } from "./resources.js";
 import { DEALER_COMMANDS } from "./commands.js";
 import { DEALER_DETERMINISTIC_RULES, DEALER_EXTRACTORS } from "./deterministic-rules.js";
@@ -176,7 +176,7 @@ export const dealerPack: DomainPack = {
     "销售", "售后", "工单", "三包", "索赔", "财务",
   ],
 
-  // ── A2UI Surface 插件 ──
+  // ── OpenUI Lang surface 插件 ──
   surfacePlugins: [vehicleProgressPlugin],
 
   // ── 短修正识别模式（门店名、车型名） ──

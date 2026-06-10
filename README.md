@@ -75,10 +75,10 @@
 - **CompactBoundary**：transcript 边界事件标记，支持断点恢复
 - **ContextAssembler**：集成 TokenBudget，返回 `token_budget_usage` + `compaction_needed` 信号
 
-### Phase 4 — Tool Catalog + Plan Mode + A2UI
+### Phase 4 — Tool Catalog + Plan Mode + OpenUI Lang
 - **ToolCatalog**：11 域分类（memory/task/cron/transcript/evolution/gateway/agent/dealer/knowledge/workflow/system），三级权限（read/ask/deny）
 - **PlanModeGuard**：计划模式守卫，`plan_only` / `strict` / `auto_confirm` 三种策略
-- **A2UI Workbench**：6 个 Surface builder（card/table/timeline/form/chart/markdown）
+- **OpenUI Lang Workbench**：6 个 Surface builder（card/table/timeline/form/chart/markdown），旧 A2UI v0.9 envelope 作为兼容输出
 
 ### Phase 5 — Task Tools + Cron Automation
 - **TaskStore + readHighwatermark**：高水位标记，按 `taskListId` 分别追踪已处理任务
@@ -183,7 +183,8 @@ npm run chat -- sales_001 "汉EV 卖得还行但毛利好像不太行，看下�
 src/
   agent/          Orchestrator（run + runStream）+ SessionStore
   agentic/        AgentRunner（子 Agent 轻量循环）
-  a2ui/           A2UI Workbench + Adapter + ChatController
+  openui-lang/    OpenUI Lang protocol facade + generic structured surfaces
+  a2ui/           Legacy envelope compatibility + Basic/OpenUI render adapters
   context/        TokenBudget + MicroCompact + SessionCompact + CompactBoundary
   cron/           UserCronStore + CronExpression + CronTemplates + AgentJobRunner
   dealer/         DealerMetrics + DealerEvidence + DealerReportComposer
@@ -223,9 +224,9 @@ docs/
   architecture.md                 长期架构设计
   architecture-intent-router.md  Intent Router 设计演进
   operations-runbook.md           运维手册
-  a2ui-*.md                       A2UI 流式设计文档
+  a2ui-*.md                       legacy A2UI / OpenUI Lang 迁移设计文档
   knowledge/                      业务知识库（制度/手册/销售手册/安全策略）
-  mockups/                        A2UI 流式 UI mockup（HTML 原型）
+  mockups/                        legacy A2UI / OpenUI Lang 流式 UI mockup（HTML 原型）
 ```
 
 ---
@@ -300,7 +301,7 @@ npm run smoke                # 通用冒烟
 npm run arch:smoke           # 架构冒烟
 npm run eval:router          # Intent Router POC（100 用例）
 npm run eval:dealer          # 汽车经销冒烟
-npm run a2ui:regression      # A2UI 回归
+npm run openui:regression    # OpenUI Lang 回归（旧 a2ui:regression 仍保留）
 npm run evolution:governance # Evolution Governance
 npm run store:concurrency    # Store 并发安全
 npm run eval:query-engine-transcript  # Transcript 事件完整性

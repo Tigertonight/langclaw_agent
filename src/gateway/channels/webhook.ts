@@ -81,7 +81,8 @@ export class WebhookChannelAdapter implements GatewayChannelAdapter {
 
   async deliver(outbound: GatewayOutbound): Promise<{ ok: boolean; error?: string }> {
     // 如果 metadata 里有 reply_url，POST 回去
-    const replyUrl = outbound.a2ui?.reply_url as string | undefined
+    const structured = outbound.openui ?? outbound.a2ui;
+    const replyUrl = structured?.reply_url as string | undefined
       ?? (outbound as unknown as Record<string, unknown>)?.reply_url as string | undefined;
 
     if (!replyUrl) {
@@ -95,7 +96,10 @@ export class WebhookChannelAdapter implements GatewayChannelAdapter {
         user_id: outbound.user_id,
         message_id: outbound.inbound_message_id
       };
-      if (outbound.a2ui) body.a2ui = outbound.a2ui;
+      if (structured) {
+        body.openui = structured;
+        if (outbound.a2ui) body.a2ui = outbound.a2ui;
+      }
       const headers: Record<string, string> = { "Content-Type": "application/json" };
       if (this.secret) headers["X-Webhook-Secret"] = this.secret;
       const resp = await fetch(replyUrl, {

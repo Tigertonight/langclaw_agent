@@ -70,11 +70,11 @@ function inferDomain(name: string): BusinessDomain {
         }
       }
     }
-    // 如果有 catalogDomains 但没有精确匹配子域，尝试匹配顶级域
-    for (const domain of sorted) {
+    // 如果有 catalogDomains 但没有精确匹配子域，按 DomainPack 声明顺序匹配顶级域。
+    // 声明顺序表达该业务域的默认 catalog（例如 dealer 默认落到 dealer.analytics）。
+    for (const domain of catalogDomains) {
       const domainPrefix = domain.id.split(".")[0] ?? "";
       if (prefix === domainPrefix) {
-        // 返回该前缀下的默认域（第一个匹配的）
         return domain.id;
       }
     }

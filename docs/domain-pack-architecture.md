@@ -14,7 +14,7 @@ Compaction
 ToolRegistry
 ToolCatalog
 PlanMode
-A2UI Workbench
+OpenUI Lang Workbench
 Task / Cron
 Gateway
 Skill Governance
@@ -42,7 +42,7 @@ src/eval/router-poc.ts             dealer 回归和 runtime 回归混在一起
 
 ```text
 runtime core:
-  QueryEngine / ToolRegistry / Router / Handler / A2UI / Gateway
+  QueryEngine / ToolRegistry / Router / Handler / OpenUI Lang / Gateway
 
 domain pack:
   resources / tools / intents / commands / deterministic rules / transforms / surfaces / evals
@@ -64,7 +64,7 @@ src/router/*
 src/handlers/*
 src/tools/registry.ts
 src/server/http.ts
-src/a2ui/adapter.ts
+src/openui-lang/*
 ```
 
 ## 非目标
@@ -76,7 +76,7 @@ src/a2ui/adapter.ts
 重写 QueryEngine
 重写 ToolRegistry
 重写 IntentRouter LLM prompt
-重写 A2UI 协议
+重写 OpenUI Lang 协议
 迁移所有历史 eval 命名
 ```
 
@@ -546,7 +546,7 @@ npm run eval:tool-catalog
 npm run eval:tool-catalog-http
 ```
 
-### 7. A2UI Surface 解耦
+### 7. OpenUI Lang Surface 解耦
 
 当前问题：
 
@@ -566,7 +566,7 @@ export interface DomainSurfaceBuilder {
   id: string;
   domain: string;
   supports(input: SurfaceBuildInput): boolean;
-  build(input: SurfaceBuildInput): A2UIEnvelope | null;
+  build(input: SurfaceBuildInput): OpenUILangSurface | null;
 }
 ```
 
@@ -583,8 +583,8 @@ knowledge sources
 验收：
 
 ```text
-npm run a2ui:adapter
-npm run a2ui:regression
+npm run openui:adapter
+npm run openui:regression
 ```
 
 ## 迁移路线
@@ -1042,7 +1042,7 @@ npm run eval:router           # 100/100
 # 新增 ExtractorSpec 单元测试
 ```
 
-### Milestone 5：Catalog + A2UI Domain Surface
+### Milestone 5：Catalog + OpenUI Lang Domain Surface
 
 > **优先级**：P2
 > **状态**：待开发
@@ -1055,8 +1055,8 @@ npm run eval:router           # 100/100
 ```text
 src/tools/tool-catalog.ts                 接入 DomainRegistry.allCatalogDomains
 src/domains/dealer/catalog-domains.ts     新增
-src/domains/dealer/a2ui-surfaces.ts       新增
-src/a2ui/adapter.ts                       接入 DomainRegistry.allSurfaceBuilders
+src/domains/dealer/openui-surfaces.ts     新增
+src/openui-lang/response.ts               接入 DomainRegistry.allSurfaceBuilders
 ```
 
 验收：
@@ -1064,8 +1064,8 @@ src/a2ui/adapter.ts                       接入 DomainRegistry.allSurfaceBuilde
 ```text
 npm run eval:tool-catalog
 npm run eval:tool-catalog-http
-npm run a2ui:adapter
-npm run a2ui:regression
+npm run openui:adapter
+npm run openui:regression
 ```
 
 ### Milestone 6：文档和评测拆分

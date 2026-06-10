@@ -41,7 +41,9 @@ export interface GatewayOutbound {
   channel: string;
   /** 回复文本 */
   text: string;
-  /** A2UI 结构化内容（可选） */
+  /** OpenUI Lang 结构化内容（可选） */
+  openui?: JsonObject;
+  /** Legacy A2UI 兼容别名（旧渠道适配器仍可读取） */
   a2ui?: JsonObject;
   /** 是否成功投递 */
   delivered: boolean;
@@ -62,7 +64,7 @@ export interface GatewayChannelAdapter {
   normalize(rawPayload: unknown): GatewayInbound | null;
   /**
    * 向渠道投递回复。
-   * outbound 含 user_id / channel / text / a2ui。
+   * outbound 含 user_id / channel / text / openui。
    * 不抛错：失败返回 { ok: false, error }。
    */
   deliver(outbound: GatewayOutbound): Promise<{ ok: boolean; error?: string }>;
@@ -98,6 +100,8 @@ export interface GatewayProcessResult {
   user_id: string;
   channel: string;
   answer?: string;
+  openui?: JsonObject;
+  /** Legacy A2UI 兼容别名。 */
   a2ui?: JsonObject;
   delivered: boolean;
   duration_ms: number;

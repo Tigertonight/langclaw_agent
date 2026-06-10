@@ -1,12 +1,23 @@
-import { buildA2UIResponse, type ClientCapabilities } from "./adapter.js";
-import { A2UIIncrementalEnvelopeParser } from "./incremental-envelope-parser.js";
-import type { A2UIEnvelope } from "./types.js";
+/**
+ * Legacy translator service facade.
+ *
+ * New code should use OpenUI Lang response builders directly. This class keeps
+ * the old batch translation API while delegating to OpenUI Lang compatibility
+ * envelopes and parser validation.
+ */
+
+import { buildOpenUILangLegacyEnvelopes } from "../openui-lang/response.js";
+import { OpenUILangIncrementalEnvelopeParser } from "../openui-lang/streaming.js";
+import type { OpenUILangClientCapabilities, OpenUILangCompatEnvelope } from "../openui-lang/types.js";
 
 export class A2UITranslatorService {
-  constructor(private readonly parser = new A2UIIncrementalEnvelopeParser()) {}
+  constructor(private readonly parser = new OpenUILangIncrementalEnvelopeParser()) {}
 
-  translateAgentResult(result: unknown, options: { clientCapabilities?: ClientCapabilities; includeRuntime?: boolean } = {}): A2UIEnvelope[] {
-    return this.parser.parse(buildA2UIResponse({
+  translateAgentResult(
+    result: unknown,
+    options: { clientCapabilities?: OpenUILangClientCapabilities; includeRuntime?: boolean } = {}
+  ): OpenUILangCompatEnvelope[] {
+    return this.parser.parse(buildOpenUILangLegacyEnvelopes({
       result,
       clientCapabilities: options.clientCapabilities,
       includeRuntime: options.includeRuntime === true

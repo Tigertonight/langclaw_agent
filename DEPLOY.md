@@ -179,8 +179,9 @@ S3_PUBLIC_BASE_URL=             # 留空 → 后端走预签名 URL（推荐）
 
 **安全相关（重要）**：
 ```bash
-# 不要设这一项！它会绕过 A2UI 鉴权
-# A2UI_AUTH_DISABLED=
+# 不要设这一项！它会绕过 OpenUI/API 鉴权
+# OPENUI_AUTH_DISABLED=
+# A2UI_AUTH_DISABLED=          # legacy alias，也不要设
 AGENTIC_DEBUG=                  # 生产留空
 ```
 
@@ -383,7 +384,8 @@ sudo systemctl restart enterprise-agent
 ## 安全清单（上线前过一遍）
 
 - [ ] `.env` 没 commit 进 git（`.gitignore` 已含）
-- [ ] `A2UI_AUTH_DISABLED` **未设**
+- [ ] `OPENUI_AUTH_DISABLED` **未设**
+- [ ] `A2UI_AUTH_DISABLED` **未设**（legacy alias）
 - [ ] `AGENTIC_DEBUG` **未设**
 - [ ] HTTPS 证书有效，HTTP 强制 301
 - [ ] 对象存储 bucket 关闭公网匿名读（除非业务允许），后端走预签名

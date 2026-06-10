@@ -15,6 +15,7 @@
  *     由系统决定是否实现。本期不做，但 normalizeAction 已经预留了分支。
  */
 import { applyPromptCache } from "../llm/prompt-cache.js";
+import { createOpenUILangGenerationPrompt } from "../openui-lang/generation-prompt.js";
 import { buildItemStartEvent, buildItemEndEvent, nextAgentItemId } from "../runtime/agent-events.js";
 import { RuntimeHooks } from "../runtime/hooks.js";
 import { getAgenticFallbacks } from "../domains/runtime-registry.js";
@@ -515,7 +516,10 @@ export class AgenticHandler {
       "4. 用户没明确给出的字段填 null；不要瞎猜具体值。",
       "5. 有充分信息就直接 action=answer 给最终回答，回答里把『我做了什么、看到了什么、结论』讲清楚。",
       "6. 如果跨意图任务其实只需要单个 intent，仍然走单个 tool_call → answer 两步。",
-      "7. 罕见情况：如果你强烈认为现有工具列表完全不够、需要某个全新能力，可以把 action 设为 propose_tool 并附 proposed_tool: {name, what_it_does, why_needed}（仅做记录，本期不会真执行；下一步你还得用现有工具或 answer）。绝大多数任务都不该走这条。"
+      "7. 需要结构化 UI 展示时优先调用 tool.openui.lang.delegate；调用后不要再输出 Markdown 文案。",
+      "8. 罕见情况：如果你强烈认为现有工具列表完全不够、需要某个全新能力，可以把 action 设为 propose_tool 并附 proposed_tool: {name, what_it_does, why_needed}（仅做记录，本期不会真执行；下一步你还得用现有工具或 answer）。绝大多数任务都不该走这条。",
+      "",
+      createOpenUILangGenerationPrompt()
     ].join("\n");
   }
 

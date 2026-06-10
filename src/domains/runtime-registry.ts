@@ -80,8 +80,8 @@ export interface RuntimeRegistryAccessor {
   readonly allStandaloneTaskKeywords: string[];
   /** 域特定的短修正 delta 规则 */
   readonly allCorrectionDeltaRules: CorrectionDeltaRule[];
-  /** 域特定的 A2UI Surface 插件 */
-  readonly allSurfacePlugins: import("../a2ui/plugins/types.js").SurfacePlugin<unknown>[];
+  /** 域特定的 OpenUI Lang surface 插件 */
+  readonly allSurfacePlugins: import("../openui-lang/compat.js").SurfacePlugin<unknown>[];
   /** 域特定的短修正识别模式 */
   readonly allShortCorrectionPatterns: RegExp[];
   /** 域特定的 metric 关键词映射 */
@@ -579,9 +579,9 @@ export function getCorrectionDeltaRules(): CorrectionDeltaRule[] {
 }
 
 /**
- * 获取所有域注册的 A2UI Surface 插件。
+ * 获取所有域注册的 OpenUI Lang surface 插件。
  */
-export function getSurfacePlugins(): import("../a2ui/plugins/types.js").SurfacePlugin<unknown>[] {
+export function getSurfacePlugins(): import("../openui-lang/compat.js").SurfacePlugin<unknown>[] {
   return _accessor?.allSurfacePlugins ?? [];
 }
 

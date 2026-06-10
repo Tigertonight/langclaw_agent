@@ -27,8 +27,9 @@ interface TokenRecord {
  * Bearer token 鉴权器。
  *
  * 配置方式（按优先级，前者覆盖后者）：
- *   1. A2UI_AUTH_TOKENS_FILE   指向 JSON 文件，支持热重载（fs.watch + admin 接口）
- *   2. A2UI_AUTH_TOKENS        JSON 字符串，启动时加载一次
+ *   1. OPENUI_AUTH_TOKENS_FILE   指向 JSON 文件，支持热重载（fs.watch + admin 接口）
+ *   2. OPENUI_AUTH_TOKENS        JSON 字符串，启动时加载一次
+ *   3. A2UI_AUTH_*              旧兼容别名
  *
  * 文件格式：
  *   { "tk_abc": { "user_id": "u001", "tenant_id": "tenantA", "is_admin": true },
@@ -36,7 +37,7 @@ interface TokenRecord {
  *
  * revoked_at 带值即视为已吊销，不再生效。
  *
- * 本地 dev：A2UI_AUTH_DISABLED=1 时跳过校验，body.user_id 直接信任。
+ * 本地 dev：OPENUI_AUTH_DISABLED=1 时跳过校验，body.user_id 直接信任。
  */
 export class TokenAuthenticator {
   private tokens = new Map<string, TokenRecord>();
@@ -47,13 +48,13 @@ export class TokenAuthenticator {
   private lastLoadedAt: string | null = null;
 
   constructor(env: NodeJS.ProcessEnv = process.env) {
-    this.disabled = env.A2UI_AUTH_DISABLED === "1";
-    this.tokensFile = env.A2UI_AUTH_TOKENS_FILE;
+    this.disabled = (env.OPENUI_AUTH_DISABLED ?? env.A2UI_AUTH_DISABLED) === "1";
+    this.tokensFile = env.OPENUI_AUTH_TOKENS_FILE ?? env.A2UI_AUTH_TOKENS_FILE;
     if (this.tokensFile && existsSync(this.tokensFile)) {
       this.loadFromFile(this.tokensFile);
       this.watchFile(this.tokensFile);
     } else {
-      this.loadFromInline(env.A2UI_AUTH_TOKENS);
+      this.loadFromInline(env.OPENUI_AUTH_TOKENS ?? env.A2UI_AUTH_TOKENS);
     }
   }
 

@@ -5,7 +5,7 @@
  *   1. 接收来自任意渠道的 GatewayInbound（或 raw payload + channelName）
  *   2. resolve sender → user_id / workspace
  *   3. 调用 BusinessQueryEngine.submitMessage() 处理消息
- *   4. 向渠道投递 GatewayOutbound（文本 + A2UI）
+ *   4. 向渠道投递 GatewayOutbound（文本 + OpenUI Lang）
  *   5. 写渠道审计事件（<workspace>/logs/gateway/audit.jsonl）
  *
  * 不负责：
@@ -98,6 +98,7 @@ export class EnterpriseGateway {
     const workspace = resolveUserWorkspace(userId);
 
     let answer = "";
+    let openui: JsonObject | undefined;
     let a2ui: JsonObject | undefined;
     let engineError: string | undefined;
 
@@ -113,6 +114,7 @@ export class EnterpriseGateway {
         }
       });
       answer = typeof result.answer === "string" ? result.answer : "";
+      openui = (result.openui ?? result.a2ui) as JsonObject | undefined;
       a2ui = result.a2ui as JsonObject | undefined;
     } catch (err) {
       engineError = err instanceof Error ? err.message : String(err);
@@ -125,6 +127,7 @@ export class EnterpriseGateway {
       user_id: userId,
       channel: inbound.channel,
       text: answer,
+      openui,
       a2ui,
       delivered: false,
       delivered_at: outboundAt.toISOString()
@@ -168,6 +171,7 @@ export class EnterpriseGateway {
       user_id: userId,
       channel: inbound.channel,
       answer,
+      openui,
       a2ui,
       delivered,
       duration_ms: duration,

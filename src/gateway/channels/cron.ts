@@ -102,7 +102,7 @@ export class CronChannelAdapter implements GatewayChannelAdapter {
       text,
       delivered: false,
       delivered_at: new Date().toISOString(),
-      a2ui: {
+      openui: {
         type: "cron_result",
         spec_id: spec.id,
         status: entry.status,

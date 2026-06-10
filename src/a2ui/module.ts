@@ -1,3 +1,11 @@
+/**
+ * Legacy A2UI module facade.
+ *
+ * New code must use createOpenUILangModule from ../openui-lang/module.js. This
+ * module keeps old A2UI entrypoints operational by wrapping the OpenUI Lang
+ * service/controller and projecting legacy response/event shapes.
+ */
+
 import { A2UIChatController } from "./chat-controller.js";
 import { A2UIChatService } from "./chat-service.js";
 import type { JsonObject, ToolExecutionContext, UserContext } from "../types/agent-contracts.js";
@@ -11,6 +19,15 @@ interface QueryEngineLike {
     sessionId?: string;
     debug?: boolean;
   }): Promise<Record<string, unknown>>;
+  submitStream?(input: {
+    userId: string;
+    userContext?: JsonObject;
+    wecomUserId?: string;
+    message: string;
+    sessionId?: string;
+    debug?: boolean;
+    onEvent?: (event: JsonObject) => Promise<void> | void;
+  }): Promise<unknown>;
 }
 
 interface StreamAgentLike {

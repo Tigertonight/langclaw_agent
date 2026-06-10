@@ -4,6 +4,7 @@ import { inferIntentCode } from "../agent/intent-codes.js";
 import { INTENT_CODES, INTENTS } from "../agent/ports.js";
 import { getRegisteredResourceIds, getRegisteredDomainNames, getAnswerPromptHints, getRouterPromptHints, isDomainDataQueryIntent, isAnalysisIntentCode, inferDomainFromIntentCodeViaRegistry, inferAnalysisIntentFromRegistry, isAnyDomainDataQuestion, inferIntentCodeFromRegistry, buildClassifierIntentList, buildDataQueryDescription, buildClassifierIntentDescriptions, getClassificationKeywords, getAgenticQuestionPatterns } from "../domains/runtime-registry.js";
 import { applyPromptCache } from "./prompt-cache.js";
+import { createOpenUILangGenerationPrompt } from "../openui-lang/generation-prompt.js";
 import type { JsonObject, QueryEntity, QueryIR, Route, ToolCall, ToolResult, UserContext } from "../types/agent-contracts.js";
 
 /** 核心 intent + 域注册的 intent（延迟求值，确保 registry 已初始化） */
@@ -1022,9 +1023,10 @@ function createAgentPlanningSystemPrompt(): string {
     "如果任务需要多个资源才能回答，使用 query_irs 一次规划多条查询。",
     "如果 deterministic_plan 已经足够，可以复用同等语义的 query_ir；如果它遗漏资源，你应该补齐。",
     "如果信息不足以安全查询，输出 clarification。",
-    "filters 可以使用 __CURRENT_USER__、__CURRENT_USER_REPORTS__、__CURRENT_USER_SUBORDINATES__、__ALL_ORG_USERS__ 这类运行时占位符。",
-    "同一字段多个候选值必须使用 in，不要输出多个 eq 形成 AND 冲突。",
-  ];
+	    "filters 可以使用 __CURRENT_USER__、__CURRENT_USER_REPORTS__、__CURRENT_USER_SUBORDINATES__、__ALL_ORG_USERS__ 这类运行时占位符。",
+	    "同一字段多个候选值必须使用 in，不要输出多个 eq 形成 AND 冲突。",
+	    "如果最终展示明显需要列表、表格、卡片、表单、图表式趋势、审批动作或引用来源，应让后续 agent 调用 openui.lang.delegate，不要把结构化 UI 降级成 Markdown 表格。",
+	  ];
   // 从 registry 动态注入各 domain 的路由提示词片段（包含资源归属规则等）
   const domainHints = getRouterPromptHints();
   return [...baseHints, ...domainHints].join("\n");
@@ -1042,12 +1044,15 @@ function createAgenticDecisionSystemPrompt(): string {
     "工具调用可以直接输出 action.tools=[{name,args}]，也可以输出 query_ir/query_irs 让系统编译为受权限控制的工具调用。",
     "优先输出 query_ir 或 query_irs，不要在 action.tools 中展开完整 fields、sort、display 等冗长参数，除非工具 schema 没有对应的 query_ir 表达方式。",
     "如果确实直接输出 action.tools，args 只保留必要字段，例如 resource、operation、filters、metrics、limit。",
-    "不要重复 previous_calls 中已经查过的同一资源、同一过滤条件，除非明确需要换字段或换范围。",
-    "不要编造工具结果。回答必须留到已有工具结果足够时再做。",
-    "skill 是候选能力说明，不是硬性路线；你可以参考它，但要根据当前观察动态决定下一步。",
-    "权限、数据范围和工具 schema 必须遵守，不能要求绕过权限。"
-  ].join("\n");
-}
+	    "不要重复 previous_calls 中已经查过的同一资源、同一过滤条件，除非明确需要换字段或换范围。",
+	    "不要编造工具结果。回答必须留到已有工具结果足够时再做。",
+	    "skill 是候选能力说明，不是硬性路线；你可以参考它，但要根据当前观察动态决定下一步。",
+	    "权限、数据范围和工具 schema 必须遵守，不能要求绕过权限。",
+	    "如果最终展示明显需要结构化 UI，选择 tool.openui.lang.delegate；调用后不要生成普通 Markdown 正文。",
+	    "",
+	    createOpenUILangGenerationPrompt()
+	  ].join("\n");
+	}
 
 async function normalizeAgenticDecision(parsed: DataRecord, { route, question, local, previousCalls = [], fallback }: { route?: Partial<Route>; question?: string; local: LocalLLMClient; previousCalls?: ToolCall[]; fallback: DataRecord }): Promise<DataRecord> {
   const action = parsed?.action ?? {};

@@ -2,13 +2,13 @@
  * Engine Contract: Surface
  * Stability: stable
  *
- * UI Surface 协议。DomainPack 通过此协议声明 A2UI Surface 构建器。
- * Engine 的 A2UI adapter 消费这些构建器生成业务 UI 面板。
+ * UI Surface 协议。DomainPack 通过此协议声明 OpenUI Lang Surface 构建器。
+ * Engine 的 OpenUI Lang response builder 消费这些构建器生成业务 UI 面板。
  */
 
 import type { JsonObject, ToolResult, Route, UserContext } from "./base-types.js";
 
-// ─── A2UI Surface ────────────────────────────────────────────────────────────
+// ─── OpenUI Lang Surface ─────────────────────────────────────────────────────
 
 export interface SurfaceBuildInput {
   intentCode: string;

@@ -13,7 +13,7 @@ import { ATTENDANCE_FILTER_TRANSFORMS } from "./filter-transforms.js";
 import { attendanceQueryAdapter } from "./query-adapter.js";
 import { LeaveRequestScenario } from "./leave-request-scenario.js";
 import { createLeaveRequestTools } from "./tools.js";
-import { registerComponentMapping } from "../../a2ui/openui-bridge.js";
+import { registerComponentMapping } from "../../openui-lang/compat.js";
 import { leaveRecordsSkillContractEnforcer } from "./skill-contracts.js";
 import { leaveRequestPlugin } from "./surfaces/leave-request.js";
 
@@ -122,7 +122,7 @@ export const attendancePack: DomainPack = {
   // ── 独立任务关键词 ──
   standaloneTaskKeywords: ["请假", "休假", "年假", "病假", "事假", "调休"],
 
-  // ── A2UI Surface 插件 ──
+  // ── OpenUI Lang surface 插件 ──
   surfacePlugins: [leaveRequestPlugin],
 
   // ── 前端组件渲染器 ──
@@ -130,35 +130,13 @@ export const attendancePack: DomainPack = {
     {
       name: "LeaveRequestForm",
       code: `(function(surface, props) {
-      var slots = props.slots || {};
       var missing = Array.isArray(props.missing_slots) ? props.missing_slots : [];
-      var card = materialCard("请假申请", props.step === "completed" ? "已提交" : props.step === "awaiting_confirmation" ? "等待确认提交" : "继续补全请假信息");
-      var progress = document.createElement("div");
-      progress.className = "material-progress";
-      var bar = document.createElement("span");
-      bar.style.width = Math.max(0, Math.min(100, Number(props.completion || 0))) + "%";
-      progress.appendChild(bar);
-      var list = document.createElement("div");
-      list.className = "material-list";
-      [
-        ["请假类型", slots.leave_type],
-        ["开始时间", slots.start_time],
-        ["结束时间", slots.end_time],
-        ["请假事由", slots.reason]
-      ].forEach(function(pair) {
-        var label = pair[0], value = pair[1];
-        var item = document.createElement("div");
-        item.className = "material-item";
-        var row = document.createElement("div");
-        row.className = "material-row";
-        row.append(materialChip(label), materialChip(value || "待补充"));
-        item.appendChild(row);
-        list.appendChild(item);
-      });
-      var status = document.createElement("div");
-      status.className = "material-action";
-      status.textContent = missing.length ? "还需补充：" + missing.join("、") : "信息已完整，可继续确认提交。";
-      card.append(progress, list, status);
+      var subtitle = props.step === "completed" ? "已提交"
+        : props.step === "awaiting_confirmation" ? "确认以下请假信息后提交"
+        : missing.length ? "请补全以下信息" : "信息已完整，可继续确认提交";
+      var card = materialCard("请假申请", subtitle);
+      var form = renderOpenUILangForm(props.form, surface);
+      if (form) card.appendChild(form);
       return card;
     })`,
     },

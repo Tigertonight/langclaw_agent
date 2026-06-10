@@ -14,8 +14,8 @@
  * PendingAction 机制：
  * - ask 级别工具触发时，生成 PendingAction 记录（写入 PendingActionStore）
  * - 返回 { ok: false, code: "confirmation_required", pending_action_id: "..." }
- * - A2UI 收到后渲染 PendingActionSurface，等待用户 confirm/cancel
- * - 用户 confirm 后调用 /api/actions/{id}/confirm，PlanModeGuard 重新执行工具
+ * - OpenUI Lang 收到后渲染 PendingActionSurface，等待用户 confirm/cancel
+ * - 用户 confirm 后调用 /api/openui/action，PlanModeGuard 重新执行工具
  */
 
 import type { JsonObject, ToolMetadata, UserContext } from "../types/agent-contracts.js";

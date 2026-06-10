@@ -1,28 +1,12 @@
-import { A2UI_BASIC_CATALOG_ID, A2UI_VERSION, OPENUI_BRIDGE_VERSION } from "./types.js";
-import type { JsonObject } from "../types/agent-contracts.js";
+/**
+ * Legacy A2UI catalog-service facade.
+ *
+ * Catalog capabilities are now defined by OpenUI Lang. A2UI v0.9 catalog ids
+ * are exposed only as compatibility metadata.
+ */
 
-const BASIC_COMPONENTS = new Set(["Text", "Image", "Icon", "Video", "AudioPlayer", "Row", "Column", "List", "Card", "Tabs", "Button"]);
-
-export class A2UICatalogService {
-  capabilities(): JsonObject {
-    return {
-      version: A2UI_VERSION,
-      server_capabilities: {
-        supportedCatalogIds: [A2UI_BASIC_CATALOG_ID],
-        supportedViewProtocols: [OPENUI_BRIDGE_VERSION],
-        // 核心 UI 组件；域特定组件（DealerVehicleProgress, LeaveRequestForm 等）通过 Surface 插件动态提供
-        supportedOpenUIComponents: ["ApprovalFlow", "TaskResumeCard", "ExpenseEstimate", "CitationDisclosure", "RuntimeSummary"],
-        acceptsClientDataModel: true,
-        actions: ["runtime.pending_action.confirm", "runtime.pending_action.reject", "task.resume.select", "task.resume.ignore"]
-      }
-    };
-  }
-
-  defaultCatalogId(): string {
-    return A2UI_BASIC_CATALOG_ID;
-  }
-
-  isSupportedComponent(name: string): boolean {
-    return BASIC_COMPONENTS.has(name);
-  }
-}
+export {
+  BASIC_OPENUI_LANG_COMPONENTS as BASIC_A2UI_COMPONENTS,
+  CORE_OPENUI_LANG_COMPONENTS as CORE_OPENUI_COMPONENTS,
+  OpenUILangCatalogService as A2UICatalogService
+} from "../openui-lang/catalog-service.js";

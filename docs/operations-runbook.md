@@ -19,13 +19,15 @@ npm run server
 |---|---|---|
 | `PORT` | 3000 | HTTP 监听端口 |
 | `HOST` | 0.0.0.0 | HTTP 监听地址 |
-| `A2UI_AUTH_TOKENS_FILE` | (未设置) | 推荐：tokens 文件路径，支持热重载 |
-| `A2UI_AUTH_TOKENS` | (未设置) | 备用：tokens JSON 字符串，启动时一次加载 |
-| `A2UI_AUTH_DISABLED` | (未设置) | `=1` 时跳过鉴权（仅 dev） |
-| `A2UI_USER_QPM` | 30 | 单用户每分钟请求上限 |
-| `A2UI_IP_QPM` | 60 | 单 IP 每分钟请求上限 |
-| `A2UI_STREAMS_PER_USER` | 3 | 单用户最大并发 SSE 流 |
+| `OPENUI_AUTH_TOKENS_FILE` | (未设置) | 推荐：tokens 文件路径，支持热重载 |
+| `OPENUI_AUTH_TOKENS` | (未设置) | 备用：tokens JSON 字符串，启动时一次加载 |
+| `OPENUI_AUTH_DISABLED` | (未设置) | `=1` 时跳过鉴权（仅 dev） |
+| `OPENUI_USER_QPM` | 30 | 单用户每分钟请求上限 |
+| `OPENUI_IP_QPM` | 60 | 单 IP 每分钟请求上限 |
+| `OPENUI_STREAMS_PER_USER` | 3 | 单用户最大并发 SSE 流 |
 | `CHAT_STREAM_TIMEOUT_MS` | 60000 | SSE 单次响应超时 |
+
+`A2UI_*` 环境变量仍作为 legacy alias 读取；新部署请统一使用 `OPENUI_*`。
 
 ## 2. 健康检查（K8s / LB）
 
@@ -90,7 +92,7 @@ scrape_configs:
 | `chat_stream_total` | counter | SSE 流式请求数 |
 | `auth_failed_total` | counter | 鉴权失败数 |
 | `rate_limited_total` | counter | 命中限流的请求数 |
-| `envelope_emitted_total` | counter | a2UI envelope 推送数 |
+| `envelope_emitted_total` | counter | OpenUI Lang envelope 推送数 |
 | `envelope_rejected_total` | counter | envelope 校验失败数（应保持 0） |
 | `tool_input_invalid_total` | counter | 工具入参 zod 校验失败数 |
 | `tool_execute_failed_total` | counter | 工具执行抛异常数 |
@@ -117,7 +119,7 @@ histogram_quantile(0.95, rate(finalize_latency_ms_sum[5m])) > 5000
 
 ### 文件格式
 
-`A2UI_AUTH_TOKENS_FILE` 指向的 JSON：
+`OPENUI_AUTH_TOKENS_FILE` 指向的 JSON：
 
 ```json
 {
@@ -231,11 +233,11 @@ find "$BACKUP_DIR" -name "*.tar.gz" -mtime +30 -delete
 按 JSON 里 `checks` 字段判断：
 - `config_readable: false` → `data/customers.json` 缺失或权限问题
 - `users_writable: false` → `users/` 目录权限/磁盘满
-- `auth_loaded: false` → `A2UI_AUTH_TOKENS_FILE` 未配置或文件解析失败
+- `auth_loaded: false` → `OPENUI_AUTH_TOKENS_FILE` 未配置或文件解析失败
 
 ### 6.4 "envelope 持续被 rejected"
 
-`envelope_rejected_total` 不应该持续涨。如果涨，看日志 `a2ui_envelope_rejected` 找具体 issue，通常是上游 plugin 输出 schema 不对——告知 plugin 作者修。
+`envelope_rejected_total` 不应该持续涨。如果涨，看日志 `envelope_rejected` 找具体 issue，通常是上游 plugin 输出 schema 不对——告知 plugin 作者修。
 
 ## 7. 滚动重启 / 升级
 

@@ -13,7 +13,7 @@
 ```mermaid
 flowchart TB
   subgraph Entry["入口与渠道层"]
-    HTTP["HTTP Server\n/api/chat / SSE / A2UI"]
+    HTTP["HTTP Server\n/api/openui / SSE / legacy A2UI"]
     CLI["CLI\nnpm run chat"]
     Gateway["EnterpriseGateway\nWeb / WeCom / Feishu / DingTalk / Webhook / Cron"]
   end
@@ -110,10 +110,10 @@ sequenceDiagram
   T->>D: query resource / knowledge / sandbox / cron / memory
   D-->>T: tool result / evidence
   T-->>H: governed result
-  H-->>O: answer + trace + A2UI
+  H-->>O: answer + trace + OpenUI Lang
   O-->>QE: output
   QE->>S: query_engine_summary + usage + evolution signal
-  QE-->>G: answer, trace, context_budget, A2UI
+  QE-->>G: answer, trace, context_budget, OpenUI Lang
   G-->>U: deliver response
 ```
 
@@ -173,7 +173,7 @@ flowchart TB
     Resources["resources / field labels"]
     QueryAdapters["query adapters / filter transforms"]
     Tools["tools / permission rules"]
-    Surfaces["A2UI surfaces"]
+    Surfaces["OpenUI Lang surfaces"]
     Plugins["runtime plugins"]
   end
 
@@ -188,7 +188,7 @@ flowchart TB
 
 | 层级 | 关键模块 | 职责 |
 |---|---|---|
-| 入口 | `src/server/http.ts`, `src/cli.ts`, `src/gateway/*` | HTTP、SSE、A2UI、CLI、多 IM/Webhook/Cron 渠道接入 |
+| 入口 | `src/server/http.ts`, `src/cli.ts`, `src/gateway/*` | HTTP、SSE、OpenUI Lang、CLI、多 IM/Webhook/Cron 渠道接入 |
 | 运行时 | `src/app.ts`, `src/engine/host/*`, `src/runtime/*` | 应用启动、EngineHost 装配、QueryEngine 生命周期、Hooks、上下文组装 |
 | 决策 | `src/router/*`, `data/intent-codes/*` | 命令、确定性规则、LLM 意图路由、参数校验与降级 |
 | 执行 | `src/handlers/*`, `src/agent/*`, `src/agentic/*` | 结构化查询、闲聊、自主规划、多步骤工具调用、子 Agent |

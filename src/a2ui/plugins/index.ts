@@ -1,12 +1,13 @@
 import { approvalPlugin } from "./approval.js";
 import { expenseEstimatePlugin } from "./expense-estimate.js";
+import { genericOpenUIPlugin } from "./generic-openui.js";
 import { runtimePlugin } from "./runtime.js";
 import { sourcesPlugin } from "./sources.js";
 import { taskResumePlugin } from "./task-resume.js";
 import { getSurfacePlugins } from "../../domains/runtime-registry.js";
 import type { SurfacePlugin } from "./types.js";
 
-export { approvalPlugin, expenseEstimatePlugin, runtimePlugin, sourcesPlugin, taskResumePlugin };
+export { approvalPlugin, expenseEstimatePlugin, genericOpenUIPlugin, runtimePlugin, sourcesPlugin, taskResumePlugin };
 export type { SurfacePlugin, SurfaceBuildOutput, SurfacePluginContext } from "./types.js";
 
 /**
@@ -29,6 +30,7 @@ export function defaultSurfacePlugins(): SurfacePlugin<unknown>[] {
     approvalPlugin as SurfacePlugin<unknown>,
     taskResumePlugin as SurfacePlugin<unknown>,
     ...domainPlugins,
+    genericOpenUIPlugin as SurfacePlugin<unknown>,
     expenseEstimatePlugin as SurfacePlugin<unknown>,
     sourcesPlugin as SurfacePlugin<unknown>,
     runtimePlugin as SurfacePlugin<unknown>

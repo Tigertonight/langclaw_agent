@@ -1,14 +1,24 @@
 /**
  * Attendance 域 leave-request Surface 插件。
- * 从 src/a2ui/plugins/leave-request.ts 迁移而来。
+ * OpenUI Lang leave-request surface plugin.
  */
 
-import { businessSurface } from "../../../a2ui/openui-bridge.js";
-import { card, list, readArray, readArrayLike, readPath, text, toRecord } from "../../../a2ui/builders/components.js";
+import {
+  OPENUI_FORM_SUBMIT_ACTION,
+  approvalActions,
+  businessSurface,
+  card,
+  createFormContract,
+  list,
+  readArray,
+  readArrayLike,
+  readPath,
+  text,
+  toRecord,
+  type OpenUILangCompatComponentInstance,
+  type SurfacePlugin
+} from "../../../openui-lang/compat.js";
 import { LeaveScenarioSchema } from "../schemas.js";
-import { approvalActions } from "../../../a2ui/plugins/approval.js";
-import type { SurfacePlugin } from "../../../a2ui/plugins/types.js";
-import type { A2UIComponentInstance } from "../../../a2ui/types.js";
 import type { JsonObject } from "../../../types/agent-contracts.js";
 
 export const leaveRequestPlugin: SurfacePlugin<JsonObject> = {
@@ -19,7 +29,10 @@ export const leaveRequestPlugin: SurfacePlugin<JsonObject> = {
     root: "leave_request_root",
     data: {
       ...data,
-      ...businessSurface("leave_request_form", "请假申请", data, leaveRequestActions(data))
+      ...businessSurface("leave_request_form", "请假申请", {
+        ...data,
+        form: leaveRequestFormContract(data)
+      }, leaveRequestActions(data))
     },
     components: leaveRequestComponents(data)
   })
@@ -29,7 +42,36 @@ function leaveRequestActions(input: JsonObject): JsonObject[] {
   return readArray(input.pending_actions).length ? approvalActions(readArray(input.pending_actions)) : [];
 }
 
-function leaveRequestComponents(data: JsonObject): A2UIComponentInstance[] {
+function leaveRequestFormContract(input: JsonObject) {
+  const slots = toRecord(input.slots) ?? {};
+  return createFormContract({
+    fields: [
+      {
+        name: "leave_type",
+        label: "请假类型",
+        component: "Select",
+        required: true,
+        options: ["年假", "病假", "事假", "调休"].map((value) => ({ label: value, value }))
+      },
+      { name: "start_time", label: "开始时间", component: "DateTime", required: true },
+      { name: "end_time", label: "结束时间", component: "DateTime", required: true },
+      { name: "reason", label: "请假事由", component: "TextArea", required: true }
+    ],
+    initialValues: {
+      leave_type: slots.leave_type ?? "",
+      start_time: slots.start_time ?? "",
+      end_time: slots.end_time ?? "",
+      reason: slots.reason ?? ""
+    },
+    submitAction: {
+      name: OPENUI_FORM_SUBMIT_ACTION,
+      label: "提交请假申请",
+      context: { source: "openui.leave_request_form", form_kind: "leave_request_form" }
+    }
+  });
+}
+
+function leaveRequestComponents(data: JsonObject): OpenUILangCompatComponentInstance[] {
   const slots = toRecord(data.slots) ?? {};
   return [
     card("leave_request_root", ["leave_request_title", "leave_request_slots", "leave_request_status"]),

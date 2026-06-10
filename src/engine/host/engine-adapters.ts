@@ -53,6 +53,7 @@ import { ScenarioRouter } from "../../scenarios/router.js";
 import { SkillRegistryStore } from "../../skills/registry-store.js";
 import { SkillRuntime } from "../../skills/runtime.js";
 import { AgenticSkillView } from "../../skills/agentic-skill-view.js";
+import { createOpenUILangDelegateTool } from "../../openui-lang/delegate-tool.js";
 import { createBusinessTools } from "../../tools/business-tools.js";
 import { createKnowledgeTools } from "../../tools/knowledge-tools.js";
 import { createMaintenanceTools } from "../../tools/maintenance-tools.js";
@@ -193,6 +194,7 @@ export function createToolAdapter(deps: ToolAdapterDeps): ToolPort {
     ...createMemoryTools(),
     ...createTaskTools(),
     ...createEvolutionTools({ evolutionRuntime: infra.evolutionRuntime }),
+    createOpenUILangDelegateTool(),
   ];
   const toolPolicyStore = loadToolPolicyStore();
   const toolRegistry = new ToolRegistry(baseTools, {

@@ -1,7 +1,7 @@
 import { rm } from "node:fs/promises";
 import { resolveProjectPath } from "../data/load-json.js";
 import { resolveUserWorkspace } from "../runtime/workspace-context.js";
-import { A2UIEnvelopeStore } from "../a2ui/envelope-store.js";
+import { OpenUILangEnvelopeStore } from "../openui-lang/envelope-store.js";
 import { PendingActionStore } from "../runtime/pending-action-store.js";
 
 const workspace = resolveUserWorkspace(`eval_concurrency_${Date.now()}`);
@@ -23,7 +23,7 @@ try {
 }
 
 async function testEnvelopeAppendSequential(): Promise<void> {
-  const store = new A2UIEnvelopeStore();
+  const store = new OpenUILangEnvelopeStore();
   const N = 100;
   const tasks: Promise<{ seq: number }>[] = [];
   for (let i = 0; i < N; i += 1) {

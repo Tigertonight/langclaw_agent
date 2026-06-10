@@ -4,8 +4,8 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { attachMcpServers, createApp } from "../app.js";
-import { createA2UIModule } from "../a2ui/module.js";
-import { A2UIBadRequestError } from "../a2ui/dto.js";
+import { createOpenUILangModule } from "../openui-lang/module.js";
+import { OpenUILangBadRequestError } from "../openui-lang/dto.js";
 import { loadJson } from "../data/load-json.js";
 import { getResourceDataPath } from "../domains/runtime-registry.js";
 import { resolveUserWorkspace, type WorkspaceContext } from "../runtime/workspace-context.js";
@@ -52,7 +52,7 @@ const app = createApp();
 await app.init();
 const mcp = await attachMcpServers(app.toolRegistry);
 const { agent, queryEngine, skillRegistry, skillLoader, userContextResolver, toolRegistry, intentRegistry, intentRouter, metricsCollector, cronRunner } = app;
-const { chatController: a2uiChatController } = createA2UIModule({
+const { chatController: openuiChatController } = createOpenUILangModule({
   queryEngine,
   streamAgent: agent,
   toolRegistry,
@@ -70,9 +70,9 @@ const inFlight = new Set<ServerResponse>();
 const auth = new TokenAuthenticator();
 const rateLimiter = new RateLimiter(
   60_000,
-  readPositiveNumberEnv("A2UI_USER_QPM", 30),
-  readPositiveNumberEnv("A2UI_IP_QPM", 60),
-  readPositiveNumberEnv("A2UI_STREAMS_PER_USER", 3)
+  readPositiveNumberEnvAny(["OPENUI_USER_QPM", "A2UI_USER_QPM"], 30),
+  readPositiveNumberEnvAny(["OPENUI_IP_QPM", "A2UI_IP_QPM"], 60),
+  readPositiveNumberEnvAny(["OPENUI_STREAMS_PER_USER", "A2UI_STREAMS_PER_USER"], 3)
 );
 const metrics = sharedMetrics;
 const PROTECTED_PATHS = new Set([
@@ -80,6 +80,10 @@ const PROTECTED_PATHS = new Set([
   "/api/chat/stream",
   "/api/a2ui/action",
   "/api/a2ui/history",
+  "/api/openui/action",
+  "/api/openui/history",
+  "/api/openui/chat",
+  "/api/openui/chat/stream",
   "/api/attachments"
 ]);
 const cronHeartbeat = startCronHeartbeat();
@@ -88,6 +92,11 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
   setCors(res);
   const url = new URL(req.url ?? "/", "http://localhost");
   const pathname = url.pathname;
+  const isOpenUICapabilitiesPath = pathname === "/api/openui/capabilities" || pathname === "/api/a2ui/capabilities";
+  const isOpenUIHistoryPath = pathname === "/api/openui/history" || pathname === "/api/a2ui/history";
+  const isOpenUIActionPath = pathname === "/api/openui/action" || pathname === "/api/a2ui/action";
+  const isOpenUIChatPath = pathname === "/api/openui/chat" || pathname === "/api/chat";
+  const isOpenUIChatStreamPath = pathname === "/api/openui/chat/stream" || pathname === "/api/chat/stream";
   const ctx = startRequest();
   res.setHeader("X-Trace-Id", ctx.traceId);
 
@@ -185,8 +194,8 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
     return;
   }
 
-  if (req.method === "GET" && pathname === "/api/a2ui/capabilities") {
-    sendJson(res, 200, a2uiChatController.capabilities());
+  if (req.method === "GET" && isOpenUICapabilitiesPath) {
+    sendJson(res, 200, openuiChatController.capabilities());
     return;
   }
 
@@ -219,7 +228,7 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
     return;
   }
 
-  if (req.method === "GET" && pathname === "/api/a2ui/history") {
+  if (req.method === "GET" && isOpenUIHistoryPath) {
     try {
       const userId = url.searchParams.get("user_id") ?? "";
       const sessionId = url.searchParams.get("session_id") ?? "";
@@ -230,14 +239,14 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
         sendJson(res, 400, { error: "bad_request", message: "user_id 和 session_id 必填。" });
         return;
       }
-      const result = await a2uiChatController.history({
+      const result = await openuiChatController.history({
         userId, sessionId, runId,
         sinceSeq: Number.isFinite(sinceSeq) ? Number(sinceSeq) : undefined
-      });
+      }, { eventProtocol: pathname.includes("/openui/") ? "openui" : "legacy" });
       sendJson(res, 200, result);
     } catch (error) {
       sendJson(res, 500, {
-        error: "a2ui_history_failed",
+        error: pathname.includes("/openui/") ? "openui_history_failed" : "a2ui_history_failed",
         message: error instanceof Error ? error.message : "unknown error",
         trace_id: ctx.traceId
       });
@@ -245,12 +254,12 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
     return;
   }
 
-  if (req.method === "POST" && pathname === "/api/a2ui/action") {
+  if (req.method === "POST" && isOpenUIActionPath) {
     try {
       const body = await readJson(req);
       const authCtx = guardRequest(req, body, pathname, ctx);
       metrics.inc("action_invoked_total", { tenant: authCtx.tenantId });
-      const result = await a2uiChatController.action(body);
+      const result = await openuiChatController.action(body);
       if (result.ok === false) {
         metrics.inc("action_forbidden_total", { tenant: authCtx.tenantId, reason: stringFromUnknown(result.error) });
       }
@@ -542,12 +551,12 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
     return;
   }
 
-  if (req.method === "POST" && pathname === "/api/chat") {
+  if (req.method === "POST" && isOpenUIChatPath) {
     try {
       const body = await readJson(req);
       const authCtx = guardRequest(req, body, pathname, ctx);
       metrics.inc("chat_request_total", { tenant: authCtx.tenantId });
-      const result = await a2uiChatController.chat(body);
+      const result = await openuiChatController.chat(body);
       sendJson(res, 200, { ...result, trace_id: ctx.traceId });
     } catch (error) {
       metrics.inc("chat_request_failed", { reason: errorReason(error) });
@@ -556,7 +565,7 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
     return;
   }
 
-  if (req.method === "POST" && pathname === "/api/chat/stream") {
+  if (req.method === "POST" && isOpenUIChatStreamPath) {
     let streamClosed = false;
     let releaseStream: (() => void) | null = null;
     let authCtx: AuthContext | null = null;
@@ -591,12 +600,12 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
       }, sseHeartbeatMs);
 
       await withTimeout(
-        a2uiChatController.stream(body, async (event, sseId) => {
+        openuiChatController.stream(body, async (event, sseId) => {
           if (!streamClosed && !res.destroyed) sendSse(res, event.type, event, sseId);
-          if (event.type === "a2ui_envelope") {
+          if (event.type === "a2ui_envelope" || event.type === "openui_envelope") {
             metrics.inc("envelope_emitted_total", { tenant: authCtx?.tenantId });
           }
-        }, { traceId: ctx.traceId, namespace: authCtx.tenantId, sinceSeq: resumeSince }),
+        }, { traceId: ctx.traceId, namespace: authCtx.tenantId, sinceSeq: resumeSince, eventProtocol: pathname.includes("/openui/") ? "openui" : "legacy" }),
         chatStreamTimeoutMs,
         "chat_stream_timeout"
       );
@@ -711,6 +720,14 @@ function readPositiveNumberEnv(name: string, fallback: number): number {
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
+function readPositiveNumberEnvAny(names: readonly string[], fallback: number): number {
+  for (const name of names) {
+    const value = Number(process.env[name]);
+    if (Number.isFinite(value) && value > 0) return value;
+  }
+  return fallback;
+}
+
 function startCronHeartbeat(): NodeJS.Timeout | null {
   if (process.env.CRON_HEARTBEAT_DISABLED === "true") return null;
   const intervalMs = readPositiveNumberEnv("CRON_HEARTBEAT_MS", 60_000);
@@ -790,7 +807,7 @@ function parseRangeMs(range: string | null): number | null {
 }
 
 function isBadRequestError(error: unknown): boolean {
-  return error instanceof A2UIBadRequestError || (Boolean(error) && typeof error === "object" && (error as { code?: unknown }).code === "bad_request");
+  return error instanceof OpenUILangBadRequestError || (Boolean(error) && typeof error === "object" && (error as { code?: unknown }).code === "bad_request");
 }
 
 function errorReason(error: unknown): string {

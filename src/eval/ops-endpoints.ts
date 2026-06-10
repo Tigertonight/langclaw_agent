@@ -34,7 +34,7 @@ function testLiveness(): void {
 }
 
 async function testReadinessOk(): Promise<void> {
-  const auth = new TokenAuthenticator({ A2UI_AUTH_TOKENS: '{"tk_x":{"user_id":"u1"}}' });
+  const auth = new TokenAuthenticator({ OPENUI_AUTH_TOKENS: '{"tk_x":{"user_id":"u1"}}' });
   const r = await checkReadiness(auth);
   if (!r.ok) failures.push(`readiness ok: expected ok, got ${JSON.stringify(r)}`);
   if (!r.checks.config_readable.ok) failures.push("readiness: config_readable failed");
@@ -56,7 +56,7 @@ async function testTokenFileLoadAndReload(): Promise<void> {
   await mkdir(tmpDir, { recursive: true });
   const tokenFile = `${tmpDir}/tokens.json`;
   await writeFile(tokenFile, JSON.stringify({ tk_a: { user_id: "u_a" } }), "utf8");
-  const auth = new TokenAuthenticator({ A2UI_AUTH_TOKENS_FILE: tokenFile });
+  const auth = new TokenAuthenticator({ OPENUI_AUTH_TOKENS_FILE: tokenFile });
   if (!auth.isLoaded()) failures.push("token file: initial load failed");
   // reload after rewrite
   await writeFile(tokenFile, JSON.stringify({ tk_a: { user_id: "u_a" }, tk_b: { user_id: "u_b" } }), "utf8");
@@ -69,7 +69,7 @@ async function testTokenFileLoadAndReload(): Promise<void> {
 
 async function testTokenRevocation(): Promise<void> {
   const auth = new TokenAuthenticator({
-    A2UI_AUTH_TOKENS: JSON.stringify({
+    OPENUI_AUTH_TOKENS: JSON.stringify({
       tk_revoked: { user_id: "u1", revoked_at: "2020-01-01T00:00:00Z" },
       tk_active: { user_id: "u1" }
     })
@@ -95,7 +95,7 @@ async function testTokenRevocation(): Promise<void> {
 
 function testAdminToken(): void {
   const auth = new TokenAuthenticator({
-    A2UI_AUTH_TOKENS: JSON.stringify({
+    OPENUI_AUTH_TOKENS: JSON.stringify({
       tk_admin: { user_id: "u_admin", is_admin: true },
       tk_user: { user_id: "u_user" }
     })

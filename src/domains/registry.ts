@@ -144,8 +144,8 @@ export class DomainRegistry {
   readonly allCapabilityDescriptions: string[] = [];
   /** 所有 domain 注册的 standaloneTaskKeywords */
   readonly allStandaloneTaskKeywords: string[] = [];
-  /** 所有 domain 注册的 surfacePlugins（A2UI SurfacePlugin 协议） */
-  readonly allSurfacePlugins: import("../a2ui/plugins/types.js").SurfacePlugin<unknown>[] = [];
+  /** 所有 domain 注册的 surfacePlugins（OpenUI Lang surface 协议） */
+  readonly allSurfacePlugins: import("../openui-lang/compat.js").SurfacePlugin<unknown>[] = [];
   /** 所有 domain 注册的 shortCorrectionPatterns */
   readonly allShortCorrectionPatterns: RegExp[] = [];
   /** 所有 domain 注册的 metricKeywordMappings */
@@ -809,7 +809,7 @@ export class DomainRegistry {
         this.allCorrectionDeltaRules.push(...pack.correctionDeltaRules);
       }
 
-      // Surface Plugins (A2UI SurfacePlugin 协议)
+      // Surface Plugins (OpenUI Lang surface 协议)
       if (pack.surfacePlugins) {
         this.allSurfacePlugins.push(...pack.surfacePlugins);
       }
@@ -1033,7 +1033,7 @@ export function createRegistrationContext(deps: {
   // SurfaceBuilderCollector (no-op placeholder)
   const surfaceRegistry: SurfaceBuilderCollector = {
     add(_builder: DomainSurfaceBuilder): void {
-      // Milestone 5 will wire this to A2UI
+      // Milestone 5 will wire this to OpenUI Lang surface builders
     },
   };
 

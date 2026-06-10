@@ -1,11 +1,11 @@
 import { createApp } from "../app.js";
-import { createA2UIModule } from "../a2ui/module.js";
-import type { A2UIEnvelope } from "../a2ui/types.js";
+import { createOpenUILangModule } from "../openui-lang/module.js";
+import type { OpenUILangDocument, OpenUILangWireEnvelope } from "../openui-lang/index.js";
 
 const app = createApp();
 await app.init();
 const { agent, queryEngine, toolRegistry, userContextResolver } = app;
-const { chatController } = createA2UIModule({ queryEngine, streamAgent: agent, toolRegistry, userContextResolver });
+const { chatController } = createOpenUILangModule({ queryEngine, streamAgent: agent, toolRegistry, userContextResolver });
 
 interface Case {
   label: string;
@@ -77,22 +77,23 @@ for (const c of cases) {
   console.log(`  user=${c.userId}  session=${c.sessionId ?? "(none)"}  msg="${c.message}"`);
   console.log("=".repeat(70));
 
-  let result: { a2ui?: A2UIEnvelope[]; answer?: string };
+  let result: { openui?: OpenUILangDocument; openui_compat?: OpenUILangWireEnvelope[]; a2ui?: OpenUILangWireEnvelope[]; answer?: string };
   try {
     result = await chatController.chat({
       user_id: c.userId,
       session_id: c.sessionId,
       message: c.message,
       debug: true
-    }) as { a2ui?: A2UIEnvelope[]; answer?: string };
+    }) as { openui?: OpenUILangDocument; openui_compat?: OpenUILangWireEnvelope[]; a2ui?: OpenUILangWireEnvelope[]; answer?: string };
   } catch (error) {
     console.log(`  ✗ ERROR: ${error instanceof Error ? error.message : String(error)}`);
     failures += 1;
     continue;
   }
 
-  const envelopes = result.a2ui ?? [];
-  const surfaces = collectSurfaces(envelopes);
+  const surfaces = result.openui?.protocol === "openui-lang/1.0"
+    ? collectDocumentSurfaces(result.openui)
+    : collectSurfaces(result.openui_compat ?? result.a2ui ?? []);
   console.log(`  answer: ${truncate(result.answer ?? "(no answer)", 120)}`);
   console.log(`  surfaces produced: ${surfaces.length === 0 ? "(none)" : surfaces.map((s) => s.surfaceId).join(", ")}`);
   for (const s of surfaces) {
@@ -110,7 +111,7 @@ for (const c of cases) {
 }
 
 if (failures > 0) {
-  throw new Error(`a2ui regression failed: ${failures} case(s) missing expected surfaces`);
+  throw new Error(`openui regression failed: ${failures} case(s) missing expected surfaces`);
 }
 
 interface SurfaceSummary {
@@ -120,7 +121,7 @@ interface SurfaceSummary {
   componentNames: string[];
 }
 
-function collectSurfaces(envelopes: A2UIEnvelope[]): SurfaceSummary[] {
+function collectSurfaces(envelopes: OpenUILangWireEnvelope[]): SurfaceSummary[] {
   const map = new Map<string, SurfaceSummary>();
   for (const env of envelopes) {
     const create = (env as { createSurface?: { surfaceId?: string; root?: string } }).createSurface;
@@ -150,6 +151,15 @@ function collectSurfaces(envelopes: A2UIEnvelope[]): SurfaceSummary[] {
     }
   }
   return [...map.values()];
+}
+
+function collectDocumentSurfaces(document: OpenUILangDocument): SurfaceSummary[] {
+  return document.surfaces.map((surface) => ({
+    surfaceId: surface.id,
+    root: surface.root,
+    componentCount: surface.nodes.length,
+    componentNames: [...new Set(surface.nodes.map((node) => node.componentName))]
+  }));
 }
 
 function truncate(s: string, n: number): string {

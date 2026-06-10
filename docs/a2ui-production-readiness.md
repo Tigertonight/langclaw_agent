@@ -1,19 +1,21 @@
-# a2UI 生产可用化 (Phase A + B + C 收口)
+# OpenUI Lang 生产可用化 (Phase A + B + C 收口)
 
 本文档记录从 PoC 到"小规模可生产"过程中补齐的能力清单，覆盖鉴权、限流、observability、持久化、多租户、续传与契约校验。
+
+当前主协议为 **OpenUI Lang `openui-lang/1.0`**。旧 A2UI v0.9 envelope 仅作为 wire compatibility / 历史回放兼容层保留；文中出现的 `src/a2ui/*`、`A2UI_*` 或 `/api/a2ui/*` 均表示 legacy 兼容实现或旧配置别名，新接入应优先使用 `src/openui-lang/*`、`OPENUI_*` 和 `/api/openui/*`。
 
 ## 1. 鉴权 (P0-1)
 
 - 实现位置：`src/security/auth.ts`，`TokenAuthenticator`
-- 接入点：`src/server/http.ts:guardRequest()`，覆盖 `/api/chat`、`/api/chat/stream`、`/api/a2ui/action`、`/api/a2ui/history`
+- 接入点：`src/server/http.ts:guardRequest()`，覆盖 `/api/openui/chat`、`/api/openui/chat/stream`、`/api/openui/action`、`/api/openui/history`
 - 配置：
-  - `A2UI_AUTH_TOKENS='{"tk_abc":{"user_id":"u001","tenant_id":"tenantA"}}'`
-  - 本地开发：`A2UI_AUTH_DISABLED=1`
+  - `OPENUI_AUTH_TOKENS='{"tk_abc":{"user_id":"u001","tenant_id":"tenantA"}}'`
+  - 本地开发：`OPENUI_AUTH_DISABLED=1`
 - 失败语义：401 (token 缺失/无效)，403 (`body.user_id` 与 token 绑定不一致)
 
 ## 2. action 防伪 (P0-2)
 
-- `src/a2ui/action-registry.ts:A2UIActionRegistry.validatePendingAction`
+- `src/openui-lang/action-registry.ts:OpenUILangActionRegistry.validatePendingAction`（`src/a2ui/action-registry.ts:A2UIActionRegistry` 仅为 legacy alias）
 - 校验顺序：存在 → user_id 匹配 → session_id 匹配（如果客户端给了 session）→ status===pending → 未过期
 - 任意一项失败抛 `ActionError`，HTTP 层翻成 400/403/404 + 明确 `error` code
 
@@ -21,9 +23,9 @@
 
 - `src/security/rate-limiter.ts`
 - 三层窗口：
-  - per-IP QPM (默认 60)：`A2UI_IP_QPM`
-  - per-user QPM (默认 30)：`A2UI_USER_QPM`
-  - per-user 并发 SSE (默认 3)：`A2UI_STREAMS_PER_USER`
+  - per-IP QPM (默认 60)：`OPENUI_IP_QPM`
+  - per-user QPM (默认 30)：`OPENUI_USER_QPM`
+  - per-user 并发 SSE (默认 3)：`OPENUI_STREAMS_PER_USER`
 - 命中返回 429，带 `Retry-After` 与 `retry_after_ms`
 
 ## 4. Observability (P1-7)
@@ -47,13 +49,14 @@
   - `/ready` readiness（检查 config 可读 / users 目录可写 / tokens 已加载，503 表示不就绪）
 - 详细运维细节见 [`operations-runbook.md`](./operations-runbook.md)
 
-## 5. envelope 持久化 + 历史可见 (P0-3)
+## 5. OpenUI envelope 持久化 + 历史可见 (P0-3)
 
-- `src/a2ui/envelope-store.ts:A2UIEnvelopeStore`
-- 落盘路径：`users/{user}/workspace/runtime/a2ui-envelopes.json`
+- `src/openui-lang/history-store.ts:OpenUILangHistoryStore` 是新接入的 OpenUI Lang history facade，返回 OpenUI event/document。
+- `src/openui-lang/envelope-store.ts:OpenUILangEnvelopeStore` 是主存储实现；legacy 文件名 `runtime/a2ui-envelopes.json` 仅为历史兼容。
+- 落盘路径：`users/{user}/workspace/runtime/a2ui-envelopes.json`（legacy 文件名，内容承载 OpenUI Lang 兼容 envelope）
 - 每条 envelope 携带 `seq` (per-run 单调递增) 与 `ts`
 - 上限：单 run 500 envelope，单 session 20 run（按 updated_at 滚动剔除）
-- 历史接口：`GET /api/a2ui/history?user_id=&session_id=[&run_id=&since_seq=]`
+- 历史接口：`GET /api/openui/history?user_id=&session_id=[&run_id=&since_seq=]`
   - 不带 run_id：返回 latestRun 的所有 envelope（页面刷新场景）
   - 带 run_id + since_seq：返回该 run 的 seq > since_seq 增量
 
@@ -62,27 +65,27 @@
 - 服务端：`src/server/http.ts` POST `/api/chat/stream` 同时支持
   - HTTP `Last-Event-ID: {runId}:{seq}` header
   - body `since_seq` 字段（fetch 场景）
-- 命中续传时不再触发 agent run，而是从 envelope-store latestRun 中重放 seq > sinceSeq 的内容，事件类型 `a2ui_envelope` (replayed=true) + `a2ui_replay_done`
+- 命中续传时不再触发 agent run，而是从 envelope-store latestRun 中重放 seq > sinceSeq 的内容，事件类型 `openui_envelope` (replayed=true) + `openui_replay_done`
 - 前端：`src/server/chat-page.ts` 在每个 envelope 上记录 `state.lastSeq`，触发重连时将其作为 `since_seq` 回传
 
 ## 7. 多租户 surfaceId namespace (P1-8)
 
-- `src/a2ui/adapter.ts:buildA2UIResponse({ namespace })` 为所有 surfaceId 加 tenant 前缀
-- chat-controller 通过 `surfacePrefix = ${tenantId}_agent` 把租户身份穿透到 streaming-translator 与 buildA2UIResponse，progress surface 同样带 tenant 前缀
+- `src/openui-lang/response.ts:buildOpenUILangResponse({ namespace })` 为所有 OpenUI Lang surfaceId 加 tenant 前缀；`src/a2ui/adapter.ts:buildA2UIResponse()` 仅作为 legacy envelope adapter 保留。
+- chat-controller 通过 `surfacePrefix = ${tenantId}_agent` 把租户身份穿透到 streaming-translator 与 OpenUI response builder，progress surface 同样带 tenant 前缀
 - 同一前端实例如果同时承载多 tenant，可以通过 surfaceId 前缀直接区分桶位
 
 ## 8. action registry + capability 反映 (P1-5)
 
-- `A2UIActionRegistry`：默认实现 4 个 action (`runtime.pending_action.confirm/reject`、`task.resume.select/ignore`)
+- `OpenUILangActionRegistry`：默认实现 4 个 action (`runtime.pending_action.confirm/reject`、`task.resume.select/ignore`)；`A2UIActionRegistry` 仅为旧类名 alias。
 - `register()` 让上层无需改 chat-service 就能扩展
 - `capabilities().server_capabilities.actions` 自动反映已注册列表（不再是写死的字符串）
 
 ## 9. catalog contract test (P2-2)
 
-- `src/eval/a2ui-adapter.ts` 末尾新增两条静态契约：
+- `src/eval/openui-adapter.ts` 末尾新增两条静态契约：
   - 所有 plugin build 出来的 component 必须落在 BASIC catalog 11 个组件内
   - 所有 Button event.name 必须出现在 capabilities.actions 列表里
-- 跑法：`npm run a2ui:adapter`
+- 跑法：`npm run openui:adapter`
 
 ## 10. 工具入参契约 (P1-9)
 
@@ -116,7 +119,7 @@
 ### 10.3 Plugin extract 鲁棒性
 
 - `src/plugins/loader.ts` extract 层走 readPath + zod safeParse，结构失败时回退到 regex
-- 失败路径在 `src/a2ui/adapter.ts` emit `plugin_extract_failed` metric + warn 日志，不打断主流程
+- 失败路径在 `src/openui-lang/response.ts` emit `openui_surface_rejected` / `plugin_extract_failed` 相关 metric + warn 日志，不打断主流程；`src/a2ui/adapter.ts` 仅投影 legacy envelope。
 
 ### 10.4 验证
 
@@ -153,7 +156,7 @@
 | Store | 关键路径 | 锁策略 |
 |---|---|---|
 | `PendingActionStore.create / .mark` | `runtime/pending-actions.json` | mutate（数组追加/状态修改） |
-| `A2UIEnvelopeStore.append` | `runtime/a2ui-envelopes.json` | mutate（嵌套结构读改写） |
+| `OpenUILangEnvelopeStore.append` | `runtime/a2ui-envelopes.json`（legacy 文件名） | mutate（嵌套结构读改写） |
 | `TaskStore.updateActiveIndex` | `tasks/active.json` | mutate（汇总写入） |
 | `TaskStore.save / .get`（单 task 单文件） | `tasks/lists/.../task.json` | 不加锁（writeFile 在 POSIX 上是 rename，本身原子） |
 
@@ -190,14 +193,14 @@
   - 超时仍未结束：给每条连接 emit `event: shutdown` 让客户端走重连路径，再强制 `res.end()`
   - 全程结构化日志 `shutdown_started` / `shutdown_listener_closed` / `shutdown_forcing_streams` / `shutdown_complete`
 
-## 14. a2UI 韧性三件套 (P1)
+## 14. OpenUI Lang 韧性三件套 (P1)
 
 线上会被网络抖动 / plugin bug / 客户端版本差咬到的三个口子。
 
 ### 14.1 Action 幂等
 
-- 实现位置：`src/a2ui/idempotency-cache.ts:IdempotencyCache`、`src/a2ui/chat-service.ts:handleAction`
-- 行为：客户端在 `/api/a2ui/action` body 里带 `client_action_id`（自己生成的 uuid），server 端按 `(user_id, client_action_id)` 去重，60s 内重复请求直接返回上次结果（响应里多一个 `idempotent_replay: true` 字段）
+- 实现位置：`src/openui-lang/idempotency-cache.ts:OpenUILangIdempotencyCache`、`src/openui-lang/module.ts:OpenUILangChatService.handleAction`；`src/a2ui/*` 仅为 legacy alias/facade。
+- 行为：客户端在 `/api/openui/action` body 里带 `client_action_id`（自己生成的 uuid），server 端按 `(user_id, client_action_id)` 去重，60s 内重复请求直接返回上次结果（响应里多一个 `idempotent_replay: true` 字段）
 - 设计：内存 LRU + TTL，重启清零（client retry 是秒级，重启清零可接受）；多机部署需要换 Redis adapter
 - 校验：`client_action_id` 必须匹配 `^[A-Za-z0-9_.\-:]{1,128}$`，否则 400
 - Metric：`action_idempotent_replay_total{action}`
@@ -205,7 +208,7 @@
 
 ### 14.2 Envelope 大小 / 嵌套深度硬限制
 
-- 实现位置：`src/a2ui/adapter.ts:checkSurfaceWithinLimits`
+- 实现位置：`src/openui-lang/response.ts:checkSurfaceWithinLimits`
 - 限制（导出为 `ENVELOPE_LIMITS`）：
   - `maxSerializedBytes`: 256KB
   - `maxComponents`: 200 / surface
@@ -215,7 +218,7 @@
 
 ### 14.3 客户端能力协商 + 组件降级
 
-- 实现位置：`src/a2ui/adapter.ts:downgradeUnsupported`、dto `client_capabilities`
+- 实现位置：`src/openui-lang/response.ts:downgradeUnsupported`、dto `client_capabilities`
 - 行为：chat 请求里带 `client_capabilities: { catalog_version?, supported_components?: string[] }`
   - 不传 → 不做降级（向后兼容老客户端）
   - 传了 supported_components → adapter 把不在列表里的 `componentName` 替换成 `Text`，文案 "（客户端不支持组件 X，已降级为文本）"
@@ -224,8 +227,8 @@
 
 ### 14.4 验证
 
-- `npm run a2ui:resilience`（`src/eval/a2ui-resilience.ts`）
-- 6 用例：components 数超限 / 嵌套深度超限 / 序列化字节超限 / 组件降级 / IdempotencyCache 命中 + TTL / IdempotencyCache LRU 驱逐
+- `npm run openui:resilience`（`src/eval/openui-resilience.ts`；`npm run a2ui:resilience` 为 legacy alias）
+- 6 用例：components 数超限 / 嵌套深度超限 / 序列化字节超限 / 组件降级 / OpenUILangIdempotencyCache 命中 + TTL / OpenUILangIdempotencyCache LRU 驱逐
 
 ## 15. 流式增量 (Phase 1 - 已上线)
 
@@ -239,17 +242,17 @@
 ## 部署 checklist
 
 ```bash
-export A2UI_AUTH_TOKENS='{"tk_xxx":{"user_id":"u001","tenant_id":"tenantA"}}'
-export A2UI_USER_QPM=30
-export A2UI_IP_QPM=60
-export A2UI_STREAMS_PER_USER=3
+export OPENUI_AUTH_TOKENS='{"tk_xxx":{"user_id":"u001","tenant_id":"tenantA"}}'
+export OPENUI_USER_QPM=30
+export OPENUI_IP_QPM=60
+export OPENUI_STREAMS_PER_USER=3
 export CHAT_STREAM_TIMEOUT_MS=60000
 export TOOL_EXECUTE_TIMEOUT_MS=30000
 export SSE_HEARTBEAT_MS=15000
 export SHUTDOWN_DRAIN_MS=30000
 
-npm run a2ui:adapter    # 静态契约 + 流式 fixture
-npm run a2ui:resilience # envelope 限额 / 客户端能力协商 / action 幂等
+npm run openui:adapter    # 静态契约 + 流式 fixture
+npm run openui:resilience # envelope 限额 / 客户端能力协商 / action 幂等
 npm run tool:validation # 工具入参 zod 校验
 npm run tool:error-msg  # 错误文案锁定
 npm run tool:timeout    # 工具超时 + 取消传播

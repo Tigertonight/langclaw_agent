@@ -21,7 +21,7 @@
   - `GET /api/tools/catalog`
 - [Skills](#skills)
 - [附件](#附件)
-- [A2UI 流式回放](#a2ui-流式回放)
+- [OpenUI Lang 流式结构化 UI](#openui-lang-流式结构化-ui)
 - [可观测](#可观测)
 - [运维 / 管理](#运维--管理)
 - [错误模型](#错误模型)
@@ -42,7 +42,7 @@
 
 `user_id` 必须能在 `data/users.json` 解析到记录。`tenantId` 由 token / 用户记录解析得到，未配置时为 `default`。
 
-**生产部署务必关闭** `A2UI_AUTH_DISABLED`，否则鉴权被旁路。详见 [DEPLOY.md §C3](DEPLOY.md#c3-配置-env生产关键项)。
+**生产部署务必关闭** `OPENUI_AUTH_DISABLED`，否则鉴权被旁路。`A2UI_AUTH_DISABLED` 仅作为旧兼容别名保留。详见 [DEPLOY.md §C3](DEPLOY.md#c3-配置-env生产关键项)。
 
 ---
 
@@ -170,14 +170,15 @@ data: <JSON>
 
 | event | 含义 | 字段示例 |
 |---|---|---|
-| `a2ui_run_started` | 一次回答开始 | `{run_id, session_id, trace_id}` |
+| `openui_run_started` | 一次 OpenUI Lang 结构化渲染 run 开始 | `{run_id, session_id, trace_id, protocol}` |
 | `route` | 路由决策结果 | `{route: {handler_type, intent_code, ...}}` |
 | `thinking` | 中间思考（流式） | `{text, delta, step}` |
 | `agentic_event` | agentic handler 子事件 | `{event: {kind, ...}}` |
 | `delta` | 回答 token 增量 | `{text}` |
-| `a2ui_envelope` | A2UI Surface 卡片 | `{envelope: {kind, data, ...}}` |
-| `a2ui_replay_empty` | 回放无新事件 | `{trace_id}` |
-| `a2ui_replay_done` | 回放结束 | `{...}` |
+| `openui_envelope` | OpenUI Lang surface 增量事件，带 legacy envelope 兼容字段 | `{protocol, openui_event: {type, surfaceId, ...}, envelope: {createSurface/updateDataModel/updateComponents, ...}}` |
+| `openui_replay_empty` | OpenUI Lang 回放无新事件 | `{trace_id, protocol}` |
+| `openui_replay_done` | OpenUI Lang 回放结束 | `{..., protocol}` |
+| `a2ui_run_started` / `a2ui_envelope` / `a2ui_replay_*` | legacy 事件名，仅旧 `/api/chat/stream` 路径保留 | 同 OpenUI 事件 |
 | `session.updated` | session 元数据更新 | `{session: {...}}` |
 | `done` | 整轮结束 | `{answer, intent, tool_calls, ...}` |
 | `error` | 出错（流仍 200） | `{error, message, trace_id}` |
@@ -466,15 +467,36 @@ Content-Type: text/csv
 
 ---
 
-## A2UI 流式回放
+## OpenUI Lang 流式结构化 UI
 
-### `GET /api/a2ui/history`
+当前主协议为 **OpenUI Lang `openui-lang/1.0`**。`/api/openui/*` 主响应中的 `openui` 字段是 OpenUI Lang document（`{ protocol, version, surfaces }`）；legacy A2UI v0.9 envelope 只保留在 `openui_compat`、SSE `envelope`、历史回放和 `/api/a2ui/*` 兼容路径中，供当前内置 Web 前端和旧客户端继续消费。
 
-拉取一个 session 的 A2UI envelope 历史，用于刷新页面后恢复对话。
+开发侧主入口：
+
+- `createOpenUILangModule()`：HTTP / chat controller 默认入口。
+- `buildOpenUILangResponse()`：agent result → OpenUI Lang document（`{ protocol, version, surfaces }`）的主 builder。
+- `buildOpenUILangLegacyEnvelopes()` / `buildA2UIResponse()`：OpenUI Lang surface → legacy A2UI v0.9 envelope 的兼容 adapter。
+- `src/a2ui/*`：仅作为 legacy alias/facade 保留；协议核心、catalog、action registry、renderer port 和 surface builder 均以 `src/openui-lang/*` 为准。
+
+主路径：
+
+- `GET /api/openui/capabilities`
+- `GET /api/openui/history`
+- `POST /api/openui/action`
+- `POST /api/openui/chat`
+- `POST /api/openui/chat/stream`
+
+兼容路径 `/api/a2ui/*` 和 `/api/chat*` 仍保留，继续返回 legacy A2UI 兼容数组。
+
+`/api/openui/chat/stream` 使用 `openui_run_started`、`openui_envelope`、`openui_replay_empty`、`openui_replay_done` 事件名；legacy `/api/chat/stream` 仍使用 `a2ui_*` 事件名。OpenUI SSE 增量事件包含主字段 `openui_event`，并保留 `envelope` 作为浏览器/历史兼容字段；OpenUI `done` 事件包含 `openui` document 和 `openui_compat` 兼容数组，不再暴露顶层 `a2ui`。
+
+### `GET /api/openui/history`
+
+拉取一个 session 的 OpenUI Lang 历史，用于刷新页面后恢复对话。OpenUI 主路径返回 `events[].openui_event` 和重建后的 `openui` document；legacy envelope 仅保留在 `events[].envelope` 与 `openui_compat` 中。
 
 **请求**
 ```
-GET /api/a2ui/history?user_id=sales_001&session_id=sess_001&run_id=run_xxx&since_seq=0
+GET /api/openui/history?user_id=sales_001&session_id=sess_001&run_id=run_xxx&since_seq=0
 ```
 
 | 参数 | 必填 | 说明 |
@@ -487,42 +509,126 @@ GET /api/a2ui/history?user_id=sales_001&session_id=sess_001&run_id=run_xxx&since
 **响应 200**
 ```json
 {
+  "ok": true,
+  "protocol": "openui-lang/1.0",
+  "run_id": "run_xxx",
   "events": [
-    { "type": "a2ui_envelope", "envelope": { "...": "..." }, "seq": 1 }
+    {
+      "type": "openui_envelope",
+      "protocol": "openui-lang/1.0",
+      "seq": 1,
+      "openui_event": { "protocol": "openui-lang/1.0", "type": "createSurface", "surfaceId": "agent_run_xxx_sources" },
+      "envelope": { "version": "v0.9", "createSurface": { "...": "..." } }
+    }
   ],
-  "next_since_seq": 12
+  "openui": {
+    "protocol": "openui-lang/1.0",
+    "version": "1.0",
+    "surfaces": []
+  },
+  "openui_compat": [
+    { "seq": 1, "ts": "2026-06-09T00:00:00.000Z", "envelope": { "version": "v0.9", "...": "..." } }
+  ]
 }
 ```
 
 ### `GET /api/a2ui/capabilities`
 
-返回当前 A2UI 支持的 Surface 类型 + version。
+Legacy alias：同 `GET /api/openui/capabilities`。
+
+### `GET /api/openui/capabilities`
+
+返回当前 OpenUI Lang 服务端支持的协议、OpenUI catalog、Basic 组件、OpenUI 组件和 action 清单。Legacy A2UI catalog 仅出现在 `compatibilityCatalogIds` 中。
 
 ```json
-{ "surfaces": ["card", "table", "timeline", "form", "chart", "markdown"], "version": "1.0" }
+{
+  "version": "openui-lang/1.0",
+  "protocol": "openui-lang/1.0",
+  "compatibility_version": "v0.9",
+  "compatibility_protocol": "v0.9",
+  "catalog_version": "openui-lang/1.0",
+  "server_capabilities": {
+    "supported_openui_lang_protocols": ["openui-lang/1.0"],
+    "supportedCatalogIds": ["openui.lang.catalog.basic/1.0"],
+    "compatibilityCatalogIds": ["https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json"],
+    "supportedViewProtocols": ["openui-bridge/0.1"],
+    "supported_components": ["Text", "Image", "Icon", "Video", "AudioPlayer", "Row", "Column", "List", "Card", "Tabs", "Button"],
+    "supported_openui_components": ["ApprovalFlow", "TaskResumeCard", "ExpenseEstimate", "CitationDisclosure", "RuntimeSummary", "DataTableSurface", "GroupedListSurface", "RiskListSurface", "MetricCardsSurface", "LeaveRequestForm", "DealerVehicleProgress"],
+    "acceptsClientDataModel": true,
+    "actions": ["runtime.pending_action.confirm", "runtime.pending_action.reject", "task.resume.select", "task.resume.ignore", "openui.form.submit"]
+  }
+}
 ```
 
-### `POST /api/a2ui/action`
+### `POST /api/openui/action`
 
-A2UI 卡片上的按钮 / 表单回调。
+OpenUI Lang 卡片上的按钮 / 表单回调。`POST /api/a2ui/action` 是兼容别名。
 
 **请求**
 ```json
 {
   "user_id": "sales_001",
   "session_id": "sess_001",
-  "run_id": "run_xxx",
-  "action_id": "approve_order",
-  "payload": { "order_id": "O001" }
+  "client_action_id": "client_uuid_001",
+  "action": {
+    "name": "runtime.pending_action.confirm",
+    "surface_id": "tenantA_agent_run_xxx_approval",
+    "context": { "pending_action_id": "pa_001" }
+  }
 }
 ```
 
 **响应 200**
 ```json
-{ "ok": true, "result": { "...": "..." }, "trace_id": "tr_xxx" }
+{
+  "ok": true,
+  "action": "runtime.pending_action.confirm",
+  "result": { "...": "..." },
+  "openui_pipe": [],
+  "a2ui_pipe": [],
+  "trace_id": "tr_xxx"
+}
 ```
 
 权限不足返回 `{"ok": false, "error": "forbidden", "...": ...}` + HTTP 400。
+
+### `POST /api/openui/chat`
+
+同步聊天入口。主字段 `openui` 是 OpenUI Lang document；`openui_compat` 是 legacy envelope 兼容数组，仅用于旧渲染器/历史兼容。
+
+**响应 200（节选）**
+```json
+{
+  "session_id": "sess_001",
+  "run_id": "run_xxx",
+  "answer": "",
+  "openui": {
+    "protocol": "openui-lang/1.0",
+    "version": "1.0",
+    "surfaces": [
+      {
+        "protocol": "openui-lang/1.0",
+        "id": "tenantA_agent_run_xxx_openui_table_sales_followups",
+        "root": "openui_table_root",
+        "catalog": "openui.lang.catalog.basic/1.0",
+        "data": { "title": "销售线索" },
+        "nodes": [
+          { "id": "openui_table_root", "componentName": "Card", "children": ["openui_table_title"] }
+        ],
+        "view": {
+          "protocol": "openui-lang/1.0",
+          "component": "DataTableSurface",
+          "props": { "title": "销售线索", "rows": [] }
+        }
+      }
+    ]
+  },
+  "openui_compat": [
+    { "version": "v0.9", "createSurface": { "...": "..." } }
+  ],
+  "trace_id": "tr_xxx"
+}
+```
 
 ---
 

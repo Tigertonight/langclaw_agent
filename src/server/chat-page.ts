@@ -1,3 +1,4 @@
+import { openUILangBrowserBasicRuntimeScript, openUILangBrowserOpenUIRuntimeScript, openUILangBrowserStateRuntimeScript } from "../openui-lang/browser-runtime.js";
 import { getRuntimeRegistry, getChatPageRenderers } from "../domains/runtime-registry.js";
 
 export function renderChatPage(): string {
@@ -538,37 +539,73 @@ export function renderChatPage(): string {
     .source-item-title { color: #262626; font-weight: 600; font-size: 12.5px; }
     .source-item-meta { color: #8a8a8a; font-size: 11.5px; }
     .source-item-quote { color: #555; font-size: 12px; }
-    .a2ui-surfaces { margin-top: 14px; display: grid; gap: 10px; }
-    .a2ui-card {
+    .openui-surfaces, .a2ui-surfaces { margin-top: 14px; display: grid; gap: 10px; }
+    .openui-card, .a2ui-card {
       border: 1px solid var(--border); border-radius: 8px; background: #fff; padding: 10px 11px;
       display: grid; gap: 9px; color: #27272a;
     }
-    .a2ui-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    .a2ui-list { display: grid; gap: 7px; }
-    .a2ui-text { font-size: 13px; line-height: 1.62; color: #303030; }
-    .a2ui-text h3 { margin: 0 0 3px; font-size: 13px; line-height: 1.35; font-weight: 700; }
-    .a2ui-button {
+    .openui-row, .a2ui-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .openui-list, .a2ui-list { display: grid; gap: 7px; }
+    .openui-text, .a2ui-text { font-size: 13px; line-height: 1.62; color: #303030; }
+    .openui-text h3, .a2ui-text h3 { margin: 0 0 3px; font-size: 13px; line-height: 1.35; font-weight: 700; }
+    .openui-button, .a2ui-button {
       height: 30px; border: 1px solid #d4d4d8; border-radius: 6px; background: #111; color: #fff;
       padding: 0 10px; font: inherit; font-size: 12.5px; cursor: pointer;
     }
-    .a2ui-button.secondary { background: #fff; color: #27272a; }
-    .a2ui-button:disabled { opacity: .55; cursor: not-allowed; }
-    .a2ui-progress {
+    .openui-button.secondary, .a2ui-button.secondary { background: #fff; color: #27272a; }
+    .openui-button:disabled, .a2ui-button:disabled { opacity: .55; cursor: not-allowed; }
+    .openui-form, .a2ui-form { display: grid; gap: 18px; padding-top: 2px; }
+    .openui-form-field, .a2ui-form-field { display: grid; gap: 8px; }
+    .openui-form-label, .a2ui-form-label { font-size: 14px; line-height: 1.35; color: #27272a; font-weight: 700; }
+    .openui-form-hint, .a2ui-form-hint { margin-top: -3px; font-size: 12.5px; line-height: 1.45; color: #777; }
+    .openui-form input, .openui-form textarea, .openui-form select,
+    .a2ui-form input, .a2ui-form textarea, .a2ui-form select {
+      width: 100%; min-height: 40px; border: 1px solid #e1e3e8; border-radius: 12px;
+      padding: 9px 12px; font: inherit; font-size: 13.5px; color: #27272a; background: #fff;
+      outline: none; transition: border-color .14s ease, box-shadow .14s ease;
+    }
+    .openui-form input:focus, .openui-form textarea:focus, .openui-form select:focus,
+    .a2ui-form input:focus, .a2ui-form textarea:focus, .a2ui-form select:focus {
+      border-color: #aeb4bf; box-shadow: 0 0 0 3px rgba(24, 24, 27, .06);
+    }
+    .openui-form textarea, .a2ui-form textarea { min-height: 82px; resize: vertical; line-height: 1.55; }
+    .openui-options, .a2ui-options { display: flex; flex-wrap: wrap; gap: 8px; }
+    .openui-option-pill, .a2ui-option-pill {
+      min-height: 40px; display: inline-flex; align-items: center; gap: 8px;
+      border: 1px solid #e1e3e8; border-radius: 999px; background: #fff;
+      padding: 0 16px; color: #27272a; font: inherit; font-size: 13.5px; font-weight: 650;
+      cursor: pointer; transition: border-color .14s ease, background .14s ease, box-shadow .14s ease;
+    }
+    .openui-option-pill:hover, .a2ui-option-pill:hover { border-color: #c9ced6; background: #fafafa; }
+    .openui-option-pill.selected, .a2ui-option-pill.selected {
+      border-color: #111; background: #f7f7f7; box-shadow: inset 0 0 0 1px #111;
+    }
+    .openui-option-dot, .a2ui-option-dot {
+      width: 14px; height: 14px; border: 2px solid #d7dbe1; border-radius: 999px; flex: 0 0 auto;
+      background: #fff; box-shadow: inset 0 0 0 3px #fff;
+    }
+    .openui-option-pill.selected .openui-option-dot,
+    .a2ui-option-pill.selected .a2ui-option-dot { border-color: #111; background: #111; }
+    .openui-form-actions, .a2ui-form-actions {
+      display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin-top: 4px;
+    }
+    .openui-form-actions .openui-button, .a2ui-form-actions .a2ui-button { width: 100%; height: 40px; font-size: 13.5px; border-radius: 8px; }
+    .openui-progress, .a2ui-progress {
       border: 1px solid var(--border); border-radius: 8px; background: #fafafa;
       padding: 9px 11px; display: grid; gap: 4px;
     }
-    .a2ui-progress-title { font-size: 13px; font-weight: 600; color: #202020; }
-    .a2ui-progress-detail { font-size: 12px; color: #6a6a6a; line-height: 1.55; }
-    .a2ui-progress-running { background: #f4f7ff; border-color: #d8e0ff; }
-    .a2ui-progress-done { background: #f4faf4; border-color: #d8e8d8; }
-    .a2ui-progress-warn { background: #fdf6ed; border-color: #f0d9a8; }
-    .a2ui-skeleton { position: relative; overflow: hidden; }
-    .a2ui-skeleton::after {
+    .openui-progress-title, .a2ui-progress-title { font-size: 13px; font-weight: 600; color: #202020; }
+    .openui-progress-detail, .a2ui-progress-detail { font-size: 12px; color: #6a6a6a; line-height: 1.55; }
+    .openui-progress-running, .a2ui-progress-running { background: #f4f7ff; border-color: #d8e0ff; }
+    .openui-progress-done, .a2ui-progress-done { background: #f4faf4; border-color: #d8e8d8; }
+    .openui-progress-warn, .a2ui-progress-warn { background: #fdf6ed; border-color: #f0d9a8; }
+    .openui-skeleton, .a2ui-skeleton { position: relative; overflow: hidden; }
+    .openui-skeleton::after, .a2ui-skeleton::after {
       content: ""; position: absolute; inset: 0;
       background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,.55) 50%, transparent 100%);
-      animation: a2uiShimmer 1.4s infinite;
+      animation: openuiShimmer 1.4s infinite;
     }
-    @keyframes a2uiShimmer { 0% { transform: translateX(-100%);} 100% { transform: translateX(100%);} }
+    @keyframes openuiShimmer { 0% { transform: translateX(-100%);} 100% { transform: translateX(100%);} }
     .material-card {
       border: 1px solid var(--border); border-radius: 8px; background: #fff; padding: 11px;
       display: grid; gap: 10px; color: #27272a;
@@ -579,6 +616,24 @@ export function renderChatPage(): string {
     .material-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
     .material-metric { border: 1px solid #eeeeef; border-radius: 7px; padding: 8px; background: #fafafa; min-width: 0; }
     .material-metric strong { display: block; font-size: 16px; line-height: 1.1; color: #111; margin-bottom: 4px; }
+    .material-bar-chart { display: grid; gap: 8px; }
+    .material-bar-row { display: grid; grid-template-columns: minmax(72px, 132px) minmax(80px, 1fr) minmax(44px, auto); gap: 8px; align-items: center; font-size: 12px; color: #555; }
+    .material-bar-row > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .material-bar-row > strong { text-align: right; font-size: 12px; color: #1f1f1f; font-weight: 700; }
+    .material-bar-track { height: 12px; border: 1px solid #e6e6e8; border-radius: 999px; background: #f6f6f6; overflow: hidden; }
+    .material-bar-track i { display: block; height: 100%; min-width: 2px; border-radius: inherit; background: #2563eb; }
+    .material-dashboard { display: grid; gap: 10px; }
+    .material-dashboard-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .material-dashboard-grid > .material-card { min-width: 0; }
+    .material-pie-layout { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 14px; align-items: center; }
+    .material-pie-chart { width: 150px; height: 150px; border-radius: 50%; background: conic-gradient(#2563eb 0deg, #2563eb 360deg); border: 1px solid #e6e6e8; }
+    .material-legend { display: grid; gap: 7px; font-size: 12px; color: #555; }
+    .material-legend-item { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 7px; align-items: center; }
+    .material-legend-dot { width: 10px; height: 10px; border-radius: 999px; }
+    .material-line-chart { width: 100%; height: 180px; display: block; overflow: visible; }
+    .material-line-axis { stroke: #e6e6e8; stroke-width: 1; }
+    .material-line-path { fill: none; stroke: #2563eb; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; }
+    .material-line-point { fill: #fff; stroke: #2563eb; stroke-width: 2; }
     .material-list { display: grid; gap: 8px; }
     .material-item { border: 1px solid #eeeeef; border-radius: 7px; padding: 9px; display: grid; gap: 6px; background: #fff; }
     .material-item-title { font-weight: 650; font-size: 13px; color: #202020; }
@@ -976,7 +1031,14 @@ export function renderChatPage(): string {
         const data = await res.json();
         const loaded = (data.users || []).map(normalizePerson).filter((user) => user.id && user.name);
         if (!loaded.length) return;
+        const activeBeforePeopleRefresh = getActiveSession();
         people = loaded;
+        if (activeBeforePeopleRefresh && !isEffectivelyEmpty(activeBeforePeopleRefresh.messages)) {
+          initUsers();
+          messages = activeBeforePeopleRefresh.messages;
+          render();
+          return;
+        }
         if (!people.some((user) => user.id === currentUserId)) currentUserId = people[0].id;
         initUsers();
         const active = latestSessionForUser(currentUserId) || createSession(currentUserId, false);
@@ -1067,10 +1129,14 @@ export function renderChatPage(): string {
     function touchActiveSession(firstUserText) {
       const session = getActiveSession();
       if (!session) return;
-      session.messages = messages;
+      session.messages = messages.map(serializeMessageForSession);
       session.updatedAt = Date.now();
       if (firstUserText && session.title === STR.untitled) session.title = firstUserText.slice(0, 24);
       saveSessions();
+    }
+    function serializeMessageForSession(message) {
+      const { a2uiState: _a2uiState, ...persisted } = message;
+      return persisted;
     }
     function openSession(sessionId) {
       const session = sessions.find((item) => item.id === sessionId);
@@ -1671,7 +1737,7 @@ export function renderChatPage(): string {
       clearInput();
       const assistantId = id();
       messages.push({ id: id(), role: "user", text });
-      messages.push({ id: assistantId, role: "assistant", text: "", steps: [], sources: [], streaming: true, thinking: true, startedAt: Date.now() });
+      messages.push({ id: assistantId, role: "assistant", text: "", userMessage: text, steps: [], sources: [], streaming: true, thinking: true, startedAt: Date.now() });
       touchActiveSession(text);
       // 发送后清空附件列表（attachment_id 在服务端 30min TTL 内仍可被后续重发引用，但这里默认本轮发完即清）
       attachState.items = [];
@@ -1688,7 +1754,7 @@ export function renderChatPage(): string {
       try {
         const userId = currentUserId;
         const userContext = await ensureUserContext(userId);
-        const response = await fetch("/api/chat/stream", {
+        const response = await fetch("/api/openui/chat/stream", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           signal: controller.signal,
@@ -1884,12 +1950,12 @@ export function renderChatPage(): string {
       } else if (event === "agentic_event") {
         // 后端 agentic-handler 的三流事件实时透传：tool_call -> 业务视角的 summary+narrative 配对
         applyAgenticEvent(assistantId, payload.event);
-      } else if (event === "a2ui_envelope") {
-        // 流式 a2UI：streaming-translator 把 lifecycle/tool_call 实时翻译成 envelope
+      } else if (event === "a2ui_envelope" || event === "openui_envelope") {
+        // 流式 OpenUI Lang：streaming-translator 把 lifecycle/tool_call 实时翻译成兼容 envelope
         const msg = getMsg(assistantId);
         if (msg && payload.envelope) {
-          const state = ensureA2UIState(msg);
-          applyA2UIEnvelopeToState(state, payload.envelope);
+          const state = ensureOpenUILangState(msg);
+          applyOpenUILangEnvelopeToState(state, payload.envelope);
           state.hasIncrement = true;
           if (typeof payload.seq === "number") {
             state.lastSeq = payload.seq;
@@ -1897,18 +1963,18 @@ export function renderChatPage(): string {
             if (payload.session_id) state.sessionId = payload.session_id;
           }
         }
-      } else if (event === "a2ui_run_started") {
+      } else if (event === "a2ui_run_started" || event === "openui_run_started") {
         const msg = getMsg(assistantId);
         if (msg) {
-          const state = ensureA2UIState(msg);
+          const state = ensureOpenUILangState(msg);
           state.runId = payload.run_id;
           state.sessionId = payload.session_id;
           state.traceId = payload.trace_id;
         }
-      } else if (event === "a2ui_replay_done" || event === "a2ui_replay_empty") {
+      } else if (event === "a2ui_replay_done" || event === "a2ui_replay_empty" || event === "openui_replay_done" || event === "openui_replay_empty") {
         // 续传完成的标记，前端无需特殊处理
       } else if (event === "delta") {
-        appendText(assistantId, payload.text || "");
+        appendOpenUILangAwareText(assistantId, payload.text || "");
       } else if (event === "route") {
         patch(assistantId, { route: payload.route });
       } else if (event === "done") {
@@ -1928,8 +1994,9 @@ export function renderChatPage(): string {
     function render() {
       renderPersonPicker();
       renderSessionList();
-      applyView();
       const active = getActiveSession();
+      if (shouldRecoverMessagesFromActiveSession(active)) messages = active.messages;
+      applyView();
       const user = getCurrentUser();
       els.chatTitle.textContent = active?.title || STR.untitled;
       els.chatSubtitle.textContent = user?.name || "";
@@ -1949,24 +2016,29 @@ export function renderChatPage(): string {
             // Debug 关 = 业务视角；开 = 完整 phase 列表
             body.appendChild(els.debug.checked ? createRunPanel(msg) : createBizPanel(msg));
           }
-          const text = document.createElement("div");
-          const textClasses = ["markdown"];
-          const answerAge = msg.answerStartedAt ? Date.now() - msg.answerStartedAt : Infinity;
-          if (answerAge < 460) {
-            textClasses.push("answer-enter");
-            text.style.animationDelay = "-" + Math.max(0, answerAge) + "ms";
+          const hasOpenUICompatSurface = Boolean(msg.a2ui?.length || msg.a2uiState);
+          const shouldPrioritizeOpenUI = hasOpenUICompatSurface && hasPrimaryOpenUILangSurface(msg);
+          if (shouldPrioritizeOpenUI) body.appendChild(renderOpenUILangSurfaces(msg));
+          if (shouldRenderAnswerMarkdown(msg, shouldPrioritizeOpenUI)) {
+            const text = document.createElement("div");
+            const textClasses = ["markdown"];
+            const answerAge = msg.answerStartedAt ? Date.now() - msg.answerStartedAt : Infinity;
+            if (answerAge < 460) {
+              textClasses.push("answer-enter");
+              text.style.animationDelay = "-" + Math.max(0, answerAge) + "ms";
+            }
+            if (msg.answerStreaming && msg.text) textClasses.push("answer-streaming");
+            if (msg.answerFinalizing) textClasses.push("answer-finalizing");
+            text.className = textClasses.join(" ");
+            if (msg.answerStreaming) {
+              text.innerHTML = renderStreamingMarkdown(msg.text || "");
+            } else {
+              text.innerHTML = renderMarkdown(msg.text || "");
+            }
+            body.appendChild(text);
           }
-          if (msg.answerStreaming && msg.text) textClasses.push("answer-streaming");
-          if (msg.answerFinalizing) textClasses.push("answer-finalizing");
-          text.className = textClasses.join(" ");
-          if (msg.answerStreaming) {
-            text.innerHTML = renderStreamingMarkdown(msg.text || "");
-          } else {
-            text.innerHTML = renderMarkdown(msg.text || "");
-          }
-          body.appendChild(text);
-          if (msg.sources?.length && !hasA2UISourceSurface(msg)) body.appendChild(renderSourceDisclosure(msg.sources));
-          if (msg.a2ui?.length) body.appendChild(renderA2UISurfaces(msg));
+          if (msg.sources?.length && !hasOpenUILangSourceSurface(msg)) body.appendChild(renderSourceDisclosure(msg.sources));
+          if (hasOpenUICompatSurface && !shouldPrioritizeOpenUI) body.appendChild(renderOpenUILangSurfaces(msg));
           row.appendChild(body);
         }
         els.messages.appendChild(row);
@@ -1974,6 +2046,13 @@ export function renderChatPage(): string {
       els.messages.scrollTop = els.messages.scrollHeight;
       setBusy(loading);
       if (window.lucide) lucide.createIcons();
+    }
+    function shouldRecoverMessagesFromActiveSession(active) {
+      if (!active || !Array.isArray(active.messages) || messages === active.messages) return false;
+      if (loading) return false;
+      const activeHasAssistant = active.messages.some((message) => message?.role === "assistant");
+      const currentHasAssistant = Array.isArray(messages) && messages.some((message) => message?.role === "assistant");
+      return activeHasAssistant && !currentHasAssistant;
     }
     // 全局 100ms tick：只刷新 .biz-time 文本（处理中… X.Xs），不重渲整个 DOM
     setInterval(() => {
@@ -2548,16 +2627,20 @@ export function renderChatPage(): string {
       pendingDoneEvents.delete(id);
       const msg = getMsg(id);
       if (!msg) return;
-      // 兜底：如果流式期间没有收到 a2ui_envelope，则把 done 全量数组喂入累积态。
-      const state = ensureA2UIState(msg);
-      if (!state.hasIncrement && Array.isArray(payload.a2ui) && payload.a2ui.length) {
-        applyA2UIEnvelopesToState(state, payload.a2ui);
+      // 兜底：如果流式期间没有收到 openui/a2ui envelope，则把 done 全量数组喂入累积态。
+      const state = ensureOpenUILangState(msg);
+      const openuiPayload = readOpenUICompatEnvelopes(payload);
+      if (!state.hasIncrement && Array.isArray(openuiPayload) && openuiPayload.length) {
+        applyOpenUILangEnvelopesToState(state, openuiPayload);
+      } else if (!state.hasIncrement && isOpenUILangDocument(payload.openui)) {
+        applyOpenUILangDocumentToState(state, payload.openui);
       }
       patch(id, {
-        text: payload.answer || msg.text,
+        text: resolveFinalAnswerText(msg, payload),
         steps: msg.steps.length ? msg.steps : (payload.debug?.steps || []),
         sources: payload.sources || [],
-        a2ui: payload.a2ui || [],
+        a2ui: openuiPayload || [],
+        openui: payload.openui || null,
         debug: payload.debug || {},
         backendLatency: payload.debug?.latency_ms,
         completedAt: Date.now(),
@@ -2581,131 +2664,132 @@ export function renderChatPage(): string {
       touchActiveSession();
       render();
     }
-    function renderA2UISurfaces(msg) {
+    function shouldRenderAnswerMarkdown(msg, hasPrimaryOpenUISurface) {
+      const text = String(msg.text || "").trim();
+      if (!text) return false;
+      if (!hasPrimaryOpenUISurface) return true;
+      if (isOpenUIPlaceholderText(text)) return false;
+      return !looksLikeStructuredMarkdown(text);
+    }
+    function appendOpenUILangAwareText(id, text) {
+      const msg = getMsg(id);
+      if (!msg) return;
+      const delta = normalize(text);
+      if (!delta) return;
+      if (shouldHoldForOpenUILang(msg, delta)) {
+        if (!msg.openuiHoldStartedAt) msg.openuiHoldStartedAt = Date.now();
+        msg.openuiPendingText = (msg.openuiPendingText || "") + delta;
+        msg.answerStartedAt = msg.answerStartedAt || Date.now();
+        msg.answerStreaming = true;
+        touchActiveSession();
+        return;
+      }
+      if (msg.openuiPendingText) {
+        msg.text = (msg.text || "") + msg.openuiPendingText;
+        msg.openuiPendingText = "";
+      }
+      appendText(id, delta);
+    }
+    function shouldHoldForOpenUILang(msg, delta) {
+      if (msg.openuiDoNotHold) return false;
+      if (hasPrimaryOpenUILangSurface(msg)) return true;
+      const combined = [msg.userMessage, msg.text, msg.openuiPendingText, delta].map((item) => String(item || "")).join("\\n");
+      if (looksLikeStructuredMarkdown(combined)) return true;
+      if (/(表格|列表|看板|面板|卡片|图标|进度|状态|分组|统计|指标|排行|风险|明细|汇总|日报|审批|表单|填写|提交)/.test(combined)) return true;
+      if (/\\b(table|list|dashboard|card|cards|chart|metric|metrics|risk|risks|form|approval|status|grouped|summary|report)\\b/i.test(combined)) return true;
+      return false;
+    }
+    function resolveFinalAnswerText(msg, payload) {
+      const openuiPayload = readOpenUICompatEnvelopes(payload);
+      const hasOpenUIPayload = (Array.isArray(openuiPayload) && openuiPayload.length > 0) || isOpenUILangDocument(payload.openui);
+      const payloadAnswer = payload.answer || "";
+      if (hasOpenUIPayload && isOpenUIPlaceholderText(payloadAnswer)) return msg.text && !isOpenUIPlaceholderText(msg.text) ? msg.text : "";
+      if (hasOpenUIPayload && (looksLikeStructuredMarkdown(payloadAnswer) || msg.openuiPendingText)) {
+        return payloadAnswer || msg.text || "";
+      }
+      if (msg.openuiPendingText) {
+        const pending = msg.openuiPendingText;
+        msg.openuiPendingText = "";
+        msg.openuiDoNotHold = true;
+        return (msg.text || "") + pending + (payloadAnswer && payloadAnswer !== pending ? payloadAnswer : "");
+      }
+      return payloadAnswer || msg.text;
+    }
+    function isOpenUIPlaceholderText(text) {
+      return /^(?:openui|a2ui)\\s+rendered\\.?$/i.test(String(text || "").trim());
+    }
+    function readOpenUICompatEnvelopes(payload) {
+      if (Array.isArray(payload?.openui_compat)) return payload.openui_compat;
+      if (Array.isArray(payload?.a2ui)) return payload.a2ui;
+      if (Array.isArray(payload?.openui)) return payload.openui;
+      return [];
+    }
+    function isOpenUILangDocument(value) {
+      return Boolean(value && value.protocol === "openui-lang/1.0" && Array.isArray(value.surfaces));
+    }
+    function looksLikeStructuredMarkdown(text) {
+      const value = String(text || "");
+      if (/^\\s*\\|.+\\|\\s*$/m.test(value) && /^\\s*\\|(?:\\s*:?-{3,}:?\\s*\\|)+\\s*$/m.test(value)) return true;
+      if (/^\\s*#{1,3}\\s+.+$/m.test(value) && /^\\s*[-*]\\s+/m.test(value)) return true;
+      if (/^\\s*#{1,3}\\s+.+$/m.test(value) && /(^|\\n)\\s*(?:---+|___+)\\s*(\\n|$)/.test(value)) return true;
+      return false;
+    }
+    function renderOpenUILangSurfaces(msg) {
       const wrap = document.createElement("div");
-      wrap.className = "a2ui-surfaces";
-      const surfaces = collectA2UISurfaces(msg);
+      wrap.className = "openui-surfaces a2ui-surfaces";
+      const surfaces = collectOpenUILangSurfaces(msg);
       for (const surface of surfaces) {
-        if (!els.debug.checked && isA2UIRuntimeSurface(surface)) continue;
-        const root = renderA2UIProgressSurface(surface)
+        if (!els.debug.checked && isOpenUILangRuntimeSurface(surface)) continue;
+        const root = renderOpenUILangProgressSurface(surface)
           || renderOpenUIView(surface)
-          || (isA2UISourceSurface(surface) ? renderA2UISourceDisclosure(surface) : renderA2UIComponent(surface, surface.root));
+          || (isOpenUILangSourceSurface(surface) ? renderOpenUILangSourceDisclosure(surface) : renderOpenUILangComponent(surface, surface.root));
         if (root) {
-          if (surface.data && surface.data._skeleton) root.classList.add("a2ui-skeleton");
+          if (surface.data && surface.data._skeleton) root.classList.add("openui-skeleton", "a2ui-skeleton");
           wrap.appendChild(root);
         }
       }
       return wrap;
     }
-    function ensureA2UIState(msg) {
-      if (!msg.a2uiState) msg.a2uiState = { surfaces: new Map(), order: [], hasIncrement: false };
-      return msg.a2uiState;
+    function hasPrimaryOpenUILangSurface(msg) {
+      return collectOpenUILangSurfaces(msg).some((surface) => !isOpenUILangRuntimeSurface(surface) && !isOpenUILangSourceSurface(surface));
     }
-    function collectA2UISurfaces(msg) {
-      const state = ensureA2UIState(msg);
-      // 优先使用增量累积态；done 兜底时再 merge 全量 envelopes（避免没接到 a2ui_envelope 的旧路径退化）。
-      if (!state.hasIncrement && (msg.a2ui || []).length) {
-        applyA2UIEnvelopesToState(state, msg.a2ui);
-      }
-      const out = [];
-      for (const id of state.order) {
-        const surface = state.surfaces.get(id);
-        if (!surface || surface.deleted) continue;
-        if (!surface.root || surface.components.size === 0) continue;
-        out.push(surface);
-      }
-      return out;
-    }
-    function applyA2UIEnvelopesToState(state, envelopes) {
-      for (const envelope of envelopes || []) applyA2UIEnvelopeToState(state, envelope);
-    }
-    function applyA2UIEnvelopeToState(state, envelope) {
-      if (envelope.createSurface) {
-        const s = envelope.createSurface;
-        let surface = state.surfaces.get(s.surfaceId);
-        if (!surface) {
-          surface = { id: s.surfaceId, root: s.root, data: {}, components: new Map(), deleted: false };
-          state.surfaces.set(s.surfaceId, surface);
-          state.order.push(s.surfaceId);
-        } else {
-          surface.root = s.root;
-          surface.deleted = false;
-        }
-      }
-      if (envelope.updateDataModel) {
-        const u = envelope.updateDataModel;
-        let surface = state.surfaces.get(u.surfaceId);
-        if (!surface) {
-          surface = { id: u.surfaceId, root: "", data: {}, components: new Map(), deleted: false };
-          state.surfaces.set(u.surfaceId, surface);
-          state.order.push(u.surfaceId);
-        }
-        if (!u.path) {
-          surface.data = u.value || {};
-        } else {
-          const segments = String(u.path).split(/[./]/).filter(Boolean);
-          let cursor = surface.data;
-          for (let i = 0; i < segments.length - 1; i++) {
-            const key = segments[i];
-            if (!cursor[key] || typeof cursor[key] !== "object") cursor[key] = {};
-            cursor = cursor[key];
-          }
-          cursor[segments[segments.length - 1]] = u.value;
-        }
-      }
-      if (envelope.updateComponents) {
-        const u = envelope.updateComponents;
-        let surface = state.surfaces.get(u.surfaceId);
-        if (!surface) {
-          surface = { id: u.surfaceId, root: "", data: {}, components: new Map(), deleted: false };
-          state.surfaces.set(u.surfaceId, surface);
-          state.order.push(u.surfaceId);
-        }
-        for (const item of u.components || []) surface.components.set(item.id, item.component || {});
-      }
-      if (envelope.deleteSurface) {
-        const surface = state.surfaces.get(envelope.deleteSurface.surfaceId);
-        if (surface) surface.deleted = true;
-      }
-    }
-    function renderA2UIProgressSurface(surface) {
+    ${openUILangBrowserStateRuntimeScript()}
+    ${openUILangBrowserBasicRuntimeScript()}
+    ${openUILangBrowserOpenUIRuntimeScript()}
+    function renderOpenUILangProgressSurface(surface) {
       if (surface.root !== "progress_root") return null;
       const data = surface.data || {};
       const tone = String(data.tone || "info");
       const card = document.createElement("div");
-      card.className = "a2ui-card a2ui-progress a2ui-progress-" + tone;
+      card.className = "openui-card openui-progress openui-progress-" + tone + " a2ui-card a2ui-progress a2ui-progress-" + tone;
       const title = document.createElement("div");
-      title.className = "a2ui-progress-title";
+      title.className = "openui-progress-title a2ui-progress-title";
       title.textContent = String(data.title || "处理中");
       const detail = document.createElement("div");
-      detail.className = "a2ui-progress-detail";
+      detail.className = "openui-progress-detail a2ui-progress-detail";
       detail.textContent = String(data.detail || "");
       card.append(title, detail);
       return card;
     }
-    function hasA2UISourceSurface(msg) {
+    function hasOpenUILangSourceSurface(msg) {
       return (msg.a2ui || []).some((envelope) => {
         const surfaceId = envelope.createSurface?.surfaceId || envelope.updateComponents?.surfaceId || envelope.updateDataModel?.surfaceId || "";
         return surfaceId.includes("_sources");
       });
     }
-    function isA2UISourceSurface(surface) {
+    function isOpenUILangSourceSurface(surface) {
       return String(surface.id || "").includes("_sources") || surface.root === "sources_root";
     }
-    function isA2UIRuntimeSurface(surface) {
+    function isOpenUILangRuntimeSurface(surface) {
       return String(surface.id || "").includes("_runtime")
         || surface.root === "runtime_root"
         || surface.data?.business_surface?.kind === "runtime_summary"
         || surface.data?.openui?.component === "RuntimeSummary";
     }
-    function renderA2UISourceDisclosure(surface) {
+    function renderOpenUILangSourceDisclosure(surface) {
       const sources = Array.isArray(surface.data?.sources) ? surface.data.sources : [];
       return renderSourceDisclosure(sources);
     }
-    /* ─── OpenUI 组件渲染器注册表 ─── */
-    const _componentRenderers = {};
-    function registerRenderer(name, fn) { _componentRenderers[name] = fn; }
-
     /* 核心组件渲染器注册 */
     registerRenderer("CitationDisclosure", (surface, props) => renderSourceDisclosure(props.sources || surface.data?.sources || []));
     registerRenderer("ExpenseEstimate", (surface, props) => renderMaterialExpenseEstimate(surface, props));
@@ -2713,26 +2797,134 @@ export function renderChatPage(): string {
     registerRenderer("ApprovalCard", (surface, props, view) => renderMaterialApproval(surface, props, view.actions || []));
     registerRenderer("TaskResumeCard", (surface, props) => renderMaterialTaskResume(surface, props));
     /* Phase 4 Workbench Surface */
+    registerRenderer("DataTableSurface", (surface, props) => renderDataTableSurface(surface, props));
+    registerRenderer("GroupedListSurface", (surface, props) => renderGroupedListSurface(surface, props));
     registerRenderer("ToolCatalogSurface", (surface, props) => renderToolCatalogSurface(surface, props));
     registerRenderer("RiskListSurface", (surface, props) => renderRiskListSurface(surface, props));
     registerRenderer("MetricCardsSurface", (surface, props) => renderMetricCardsSurface(surface, props));
+    registerRenderer("BarChartSurface", (surface, props) => renderBarChartSurface(surface, props));
+    registerRenderer("PieChartSurface", (surface, props) => renderPieChartSurface(surface, props));
+    registerRenderer("LineChartSurface", (surface, props) => renderLineChartSurface(surface, props));
+    registerRenderer("InsightSummarySurface", (surface, props) => renderInsightSummarySurface(surface, props));
+    registerRenderer("AnalyticsDashboardSurface", (surface, props) => renderAnalyticsDashboardSurface(surface, props));
     registerRenderer("EvidenceSurface", (surface, props) => renderEvidenceSurface(surface, props));
     registerRenderer("TaskTrackingSurface", (surface, props) => renderTaskTrackingSurface(surface, props));
     registerRenderer("PendingActionSurface", (surface, props) => renderPendingActionSurface(surface, props));
     /* 域特定组件渲染器（从 DomainPack.chatPageRenderers 动态注入） */
     ${domainRenderers.map((r) => `registerRenderer(${JSON.stringify(r.name)}, ${r.code});`).join("\n    ")}
 
-    function renderOpenUIView(surface) {
-      const view = surface.data?.openui;
-      if (!view?.component || view.protocol !== "openui-bridge/0.1") return null;
-      const props = view.props || {};
-      const renderer = _componentRenderers[view.component];
-      if (renderer) return renderer(surface, props, view);
-      return null;
-    }
     /* ──────────────────────────────────────────────────────────────
-     * Phase 4 Workbench：6 类 Surface 渲染函数
+     * Phase 4 Workbench：通用 OpenUI Surface 渲染函数
      * ────────────────────────────────────────────────────────────── */
+
+    function renderDataTableSurface(_surface, props) {
+      const rows = Array.isArray(props.rows) ? props.rows : [];
+      const columns = Array.isArray(props.columns) ? props.columns : [];
+      const card = materialCard(props.title || "数据明细", props.description || ((props.rowCount || rows.length) + " 条记录"));
+      if (!rows.length || !columns.length) {
+        const empty = document.createElement("div");
+        empty.className = "material-subtle";
+        empty.textContent = "暂无可展示记录";
+        card.appendChild(empty);
+        return card;
+      }
+      const wrap = document.createElement("div");
+      wrap.className = "md-table-wrap";
+      const table = document.createElement("table");
+      const thead = document.createElement("thead");
+      const headRow = document.createElement("tr");
+      const visibleColumns = columns.slice(0, 8);
+      visibleColumns.forEach((column) => {
+        const th = document.createElement("th");
+        th.textContent = clean(column.label || column.key || "");
+        headRow.appendChild(th);
+      });
+      thead.appendChild(headRow);
+      const tbody = document.createElement("tbody");
+      const sortedRows = sortOpenUIRows(rows, visibleColumns);
+      sortedRows.slice(0, 20).forEach((row) => {
+        const tr = document.createElement("tr");
+        visibleColumns.forEach((column) => {
+          const td = document.createElement("td");
+          const cell = renderOpenUITableCell(row?.[column.key], column);
+          td.appendChild(cell);
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      table.append(thead, tbody);
+      wrap.appendChild(table);
+      card.appendChild(wrap);
+      if (Number(props.rowCount || rows.length) > 20) {
+        const more = document.createElement("div");
+        more.className = "material-subtle";
+        more.textContent = "仅显示前 20 条，共 " + String(props.rowCount || rows.length) + " 条";
+        card.appendChild(more);
+      }
+      return card;
+    }
+
+    function sortOpenUIRows(rows, columns) {
+      const statusColumn = columns.find((column) => column.type === "status" || /risk|warning|level|status/i.test(column.key || ""));
+      if (!statusColumn) return rows;
+      const rank = { critical: 0, high: 1, 紧急: 1, 预警: 1, medium: 2, 关注: 2, low: 3, 正常: 4, done: 5, 完成: 5 };
+      return rows.slice().sort((a, b) => {
+        const av = String(a?.[statusColumn.key] ?? "");
+        const bv = String(b?.[statusColumn.key] ?? "");
+        return (rank[av] ?? 9) - (rank[bv] ?? 9);
+      });
+    }
+
+    function renderOpenUITableCell(value, column) {
+      if (column.type === "status" || /risk|warning|level|status/i.test(column.key || "")) {
+        const chip = materialChip(clean(formatTableCell(value)));
+        const color = openUIStatusColor(value);
+        if (color) { chip.style.color = color; chip.style.borderColor = color + "44"; }
+        return chip;
+      }
+      const span = document.createElement("span");
+      span.textContent = clean(formatOpenUIValue(value, column.type));
+      return span;
+    }
+
+    function formatOpenUIValue(value, type) {
+      if (type === "currency") return formatMoney(value);
+      if (type === "number" && typeof value === "number") return value.toLocaleString("zh-CN");
+      if (type === "date" && value) return String(value).slice(0, 19).replace("T", " ");
+      return formatTableCell(value);
+    }
+
+    function openUIStatusColor(value) {
+      const text = String(value || "").toLowerCase();
+      if (/critical|high|紧急|预警|异常|逾期|失败|拒绝/.test(text)) return "#c0392b";
+      if (/medium|关注|处理中|待|pending|current/.test(text)) return "#d68910";
+      if (/low|正常|完成|已|done|success/.test(text)) return "#27ae60";
+      return "";
+    }
+
+    function renderGroupedListSurface(_surface, props) {
+      const groups = Array.isArray(props.groups) ? props.groups : [];
+      if (!groups.length) return null;
+      const card = materialCard(props.title || "分组列表", props.groupKey ? ("按 " + clean(props.groupKey) + " 分组") : (groups.length + " 组"));
+      const list = document.createElement("div");
+      list.className = "material-list";
+      groups.slice(0, 8).forEach((group) => {
+        const item = document.createElement("div");
+        item.className = "material-item";
+        const row = document.createElement("div");
+        row.className = "material-row";
+        row.appendChild(materialChip(clean(group.label || "未分组")));
+        row.appendChild(materialChip(String(group.count ?? 0) + " 项"));
+        const detail = document.createElement("div");
+        detail.className = "material-subtle";
+        const items = Array.isArray(group.items) ? group.items : [];
+        detail.textContent = items.slice(0, 6).map((value) => clean(value)).filter(Boolean).join("；");
+        item.append(row, detail);
+        list.appendChild(item);
+      });
+      card.appendChild(list);
+      return card;
+    }
 
     /**
      * ToolCatalogSurface —— 工具目录卡片
@@ -2836,6 +3028,197 @@ export function renderChatPage(): string {
     }
 
     /**
+     * BarChartSurface —— 最小柱状图
+     * props: { title?, xKey, yKey, series: object[] }
+     */
+    function renderBarChartSurface(_surface, props) {
+      const series = Array.isArray(props.series) ? props.series : [];
+      if (!series.length) return null;
+      const xKey = String(props.xKey || "label");
+      const yKey = String(props.yKey || "value");
+      const values = series.map((item) => Number(item?.[yKey])).filter(Number.isFinite);
+      const max = Math.max(...values, 1);
+      const card = materialCard(props.title || "分布图", "");
+      const chart = document.createElement("div");
+      chart.className = "material-bar-chart";
+      chart.setAttribute("data-chart", "bar");
+      chart.setAttribute("data-x-key", xKey);
+      chart.setAttribute("data-y-key", yKey);
+      series.slice(0, 12).forEach((item) => {
+        const value = Number(item?.[yKey]);
+        const width = Number.isFinite(value) ? Math.max(2, Math.round(value / max * 100)) : 2;
+        const row = document.createElement("div");
+        row.className = "material-bar-row";
+        const label = document.createElement("span");
+        label.textContent = clean(item?.[xKey] ?? item?.key ?? "未分组");
+        const track = document.createElement("div");
+        track.className = "material-bar-track";
+        const bar = document.createElement("i");
+        bar.style.width = width + "%";
+        track.appendChild(bar);
+        const number = document.createElement("strong");
+        number.textContent = formatChartNumber(value);
+        row.append(label, track, number);
+        chart.appendChild(row);
+      });
+      card.appendChild(chart);
+      return card;
+    }
+
+    function renderPieChartSurface(_surface, props) {
+      const series = Array.isArray(props.series) ? props.series : [];
+      if (!series.length) return null;
+      const categoryKey = String(props.categoryKey || props.xKey || "label");
+      const valueKey = String(props.valueKey || props.yKey || "value");
+      const colors = ["#2563eb", "#16a34a", "#f59e0b", "#dc2626", "#7c3aed", "#0891b2", "#64748b"];
+      const values = series.map((item) => Math.max(0, Number(item?.[valueKey]) || 0));
+      const total = values.reduce((sum, value) => sum + value, 0) || 1;
+      let cursor = 0;
+      const segments = values.map((value, index) => {
+        const start = cursor;
+        const end = cursor + value / total * 360;
+        cursor = end;
+        return colors[index % colors.length] + " " + start.toFixed(2) + "deg " + end.toFixed(2) + "deg";
+      });
+      const card = materialCard(props.title || "构成分析", "");
+      const layout = document.createElement("div");
+      layout.className = "material-pie-layout";
+      const pie = document.createElement("div");
+      pie.className = "material-pie-chart";
+      pie.setAttribute("data-chart", "pie");
+      pie.style.background = "conic-gradient(" + segments.join(", ") + ")";
+      const legend = document.createElement("div");
+      legend.className = "material-legend";
+      series.slice(0, 12).forEach((item, index) => {
+        const row = document.createElement("div");
+        row.className = "material-legend-item";
+        const dot = document.createElement("span");
+        dot.className = "material-legend-dot";
+        dot.style.background = colors[index % colors.length];
+        const label = document.createElement("span");
+        label.textContent = clean(item?.[categoryKey] ?? item?.label ?? "未分组");
+        const number = document.createElement("strong");
+        number.textContent = formatChartNumber(values[index] || 0);
+        row.append(dot, label, number);
+        legend.appendChild(row);
+      });
+      layout.append(pie, legend);
+      card.appendChild(layout);
+      return card;
+    }
+
+    function renderLineChartSurface(_surface, props) {
+      const series = Array.isArray(props.series) ? props.series : [];
+      if (!series.length) return null;
+      const xKey = String(props.xKey || "date");
+      const yKey = String(props.yKey || "value");
+      const values = series.map((item) => Number(item?.[yKey])).filter(Number.isFinite);
+      const min = Math.min(...values, 0);
+      const max = Math.max(...values, 1);
+      const width = 640, height = 180, pad = 18;
+      const points = series.map((item, index) => {
+        const raw = Number(item?.[yKey]);
+        const value = Number.isFinite(raw) ? raw : min;
+        const x = pad + (series.length <= 1 ? 0 : index / (series.length - 1) * (width - pad * 2));
+        const y = height - pad - ((value - min) / Math.max(1, max - min)) * (height - pad * 2);
+        return { x, y, value, label: String(item?.[xKey] ?? index + 1) };
+      });
+      const card = materialCard(props.title || "趋势分析", series.length + " 个时间点");
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("class", "material-line-chart");
+      svg.setAttribute("data-chart", "line");
+      svg.setAttribute("viewBox", "0 0 " + width + " " + height);
+      const axis = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      axis.setAttribute("class", "material-line-axis");
+      axis.setAttribute("d", "M" + pad + " " + (height - pad) + "H" + (width - pad));
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("class", "material-line-path");
+      path.setAttribute("d", points.map((point, index) => (index ? "L" : "M") + point.x.toFixed(1) + " " + point.y.toFixed(1)).join(" "));
+      svg.append(axis, path);
+      points.forEach((point) => {
+        const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        circle.setAttribute("class", "material-line-point");
+        circle.setAttribute("cx", point.x.toFixed(1));
+        circle.setAttribute("cy", point.y.toFixed(1));
+        circle.setAttribute("r", "3.5");
+        svg.appendChild(circle);
+      });
+      card.appendChild(svg);
+      return card;
+    }
+
+    function renderInsightSummarySurface(_surface, props) {
+      const insights = Array.isArray(props.insights) ? props.insights : [];
+      if (!insights.length) return null;
+      const card = materialCard(props.title || "分析结论", insights.length + " 条发现");
+      const list = document.createElement("div");
+      list.className = "material-list";
+      insights.slice(0, 10).forEach((insight) => {
+        const item = document.createElement("div");
+        item.className = "material-item";
+        const title = document.createElement("div");
+        title.className = "material-item-title";
+        title.textContent = clean(insight.title || insight.summary || "分析发现");
+        if (insight.severity) title.appendChild(materialChip(clean(insight.severity)));
+        const detail = document.createElement("div");
+        detail.className = "material-subtle";
+        detail.textContent = clean(insight.summary || "");
+        item.appendChild(title);
+        if (detail.textContent) item.appendChild(detail);
+        if (insight.recommendation) {
+          const rec = document.createElement("div");
+          rec.className = "material-action";
+          rec.textContent = "建议：" + clean(insight.recommendation);
+          item.appendChild(rec);
+        }
+        list.appendChild(item);
+      });
+      card.appendChild(list);
+      return card;
+    }
+
+    function renderAnalyticsDashboardSurface(surface, props) {
+      const card = materialCard(props.title || "数据分析看板", "");
+      card.classList.add("material-dashboard");
+      const metrics = Array.isArray(props.metrics) ? props.metrics : [];
+      const charts = Array.isArray(props.charts) ? props.charts : [];
+      const rows = Array.isArray(props.rows) ? props.rows : [];
+      const insights = Array.isArray(props.insights) ? props.insights : [];
+      if (metrics.length) {
+        const metricsNode = renderMetricCardsSurface(surface, { title: "关键指标", metrics });
+        if (metricsNode) card.appendChild(metricsNode);
+      }
+      if (charts.length) {
+        const grid = document.createElement("div");
+        grid.className = "material-dashboard-grid";
+        charts.slice(0, 4).forEach((chart) => {
+          const kind = String(chart.kind || "").toLowerCase();
+          const node = /pie|donut|doughnut/.test(kind)
+            ? renderPieChartSurface(surface, chart)
+            : /line|trend|timeseries|time_series/.test(kind)
+              ? renderLineChartSurface(surface, chart)
+              : renderBarChartSurface(surface, chart);
+          if (node) grid.appendChild(node);
+        });
+        if (grid.childElementCount) card.appendChild(grid);
+      }
+      if (insights.length) {
+        const insightNode = renderInsightSummarySurface(surface, { title: "分析结论", insights });
+        if (insightNode) card.appendChild(insightNode);
+      }
+      if (rows.length) {
+        const tableNode = renderDataTableSurface(surface, {
+          title: "数据明细",
+          columns: Array.isArray(props.columns) ? props.columns : inferColumnsForRows(rows),
+          rows,
+          rowCount: rows.length
+        });
+        if (tableNode) card.appendChild(tableNode);
+      }
+      return card;
+    }
+
+    /**
      * EvidenceSurface —— 证据/引用片段列表
      * props: { title?, items: [{title, source, quote, score?}] }
      */
@@ -2928,7 +3311,7 @@ export function renderChatPage(): string {
      *
      * 对标 Claude Code 的 ask/deny 权限层：中高风险操作不直接执行，
      * 先展示在此面板，等待用户点击"确认执行"或"拒绝"。
-     * 点击后通过 dispatchA2UIAction 发到 /api/a2ui/action（runtime.pending_action.*）。
+     * 点击后通过 dispatchOpenUILangAction 发到 /api/openui/action（runtime.pending_action.*）。
      */
     function renderPendingActionSurface(surface, props) {
       const actions = Array.isArray(props.actions) ? props.actions : [];
@@ -3161,9 +3544,9 @@ export function renderChatPage(): string {
     function materialActionButton(label, name, context, surface, secondary = false) {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "a2ui-button" + (secondary ? " secondary" : "");
+      button.className = "openui-button a2ui-button" + (secondary ? " secondary" : "");
       button.textContent = label;
-      button.addEventListener("click", () => dispatchA2UIAction({ event: { name, context } }, surface, button));
+      button.addEventListener("click", () => dispatchOpenUILangAction({ event: { name, context } }, surface, button));
       return button;
     }
     function renderSourceDisclosure(sources) {
@@ -3206,69 +3589,14 @@ export function renderChatPage(): string {
       details.append(summary, panel);
       return details;
     }
-    function renderA2UIComponent(surface, id) {
-      const component = surface.components.get(id);
-      if (!component) return null;
-      const [type, props] = Object.entries(component)[0] || [];
-      if (!type) return null;
-      if (type === "Card") {
-        const node = document.createElement("div");
-        node.className = "a2ui-card";
-        for (const child of props.children || []) {
-          const childNode = renderA2UIComponent(surface, child);
-          if (childNode) node.appendChild(childNode);
-        }
-        return node;
-      }
-      if (type === "Row") {
-        const node = document.createElement("div");
-        node.className = "a2ui-row";
-        for (const child of props.children || []) {
-          const childNode = renderA2UIComponent(surface, child);
-          if (childNode) node.appendChild(childNode);
-        }
-        return node;
-      }
-      if (type === "List") {
-        const node = document.createElement("div");
-        node.className = "a2ui-list";
-        for (const child of props.children || []) {
-          const childNode = renderA2UIComponent(surface, child);
-          if (childNode) node.appendChild(childNode);
-        }
-        return node;
-      }
-      if (type === "Text") {
-        const node = document.createElement("div");
-        node.className = "a2ui-text";
-        node.innerHTML = renderMarkdown(resolveA2UIText(props.text));
-        return node;
-      }
-      if (type === "Button") {
-        const node = document.createElement("button");
-        node.type = "button";
-        node.className = "a2ui-button" + (/拒绝|取消/.test(resolveA2UIText(props.text)) ? " secondary" : "");
-        node.textContent = resolveA2UIText(props.text);
-        node.addEventListener("click", () => dispatchA2UIAction(props.action, surface, node));
-        return node;
-      }
-      return null;
-    }
-    function resolveA2UIText(value) {
-      if (!value) return "";
-      if (typeof value === "string") return value;
-      if (typeof value.literalString === "string") return value.literalString;
-      if (typeof value.path === "string") return "";
-      return String(value);
-    }
-    async function dispatchA2UIAction(action, surface, button) {
+    async function dispatchOpenUILangAction(action, surface, button) {
       const event = action?.event;
       if (!event?.name || loading) return;
       button.disabled = true;
       const original = button.textContent;
       button.textContent = "处理中";
       try {
-        const response = await fetch("/api/a2ui/action", {
+        const response = await fetch("/api/openui/action", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -3280,6 +3608,7 @@ export function renderChatPage(): string {
               context: event.context || {}
             },
             metadata: {
+              openuiClientDataModel: { surfaces: { [surface.id]: surface.data || {} } },
               a2uiClientDataModel: { surfaces: { [surface.id]: surface.data || {} } }
             }
           })
@@ -3292,6 +3621,7 @@ export function renderChatPage(): string {
         button.disabled = false;
       }
     }
+    var dispatchA2UIAction = dispatchOpenUILangAction;
     function finalizeProcessOnAnswerStart(id) {
       const msg = getMsg(id);
       if (!msg || msg.processFinalized) return;
@@ -3490,6 +3820,29 @@ export function renderChatPage(): string {
         .replace(/[<>]/g, "")
         .replace(/\\s+/g, " ")
         .trim();
+    }
+    function formatTableCell(value) {
+      if (value === null || value === undefined || value === "") return "-";
+      if (Array.isArray(value)) return value.map((item) => clean(formatTableCell(item))).join("、").slice(0, 120);
+      if (typeof value === "object") return JSON.stringify(value).slice(0, 120);
+      return String(value);
+    }
+    function formatChartNumber(value) {
+      if (!Number.isFinite(value)) return "-";
+      return Math.abs(value) >= 1000 ? Math.round(value).toLocaleString("zh-CN") : String(value);
+    }
+    function inferColumnsForRows(rows) {
+      const keys = [];
+      (Array.isArray(rows) ? rows : []).slice(0, 10).forEach((row) => {
+        Object.keys(row || {}).forEach((key) => {
+          if (!keys.includes(key) && !/^(id|uuid|raw|payload|metadata|debug)$/i.test(key)) keys.push(key);
+        });
+      });
+      return keys.slice(0, 8).map((key) => ({
+        key,
+        label: key.replace(/_/g, " ").replace(/\\b\\w/g, (ch) => ch.toUpperCase()),
+        type: /(count|amount|total|rate|score|num|price|revenue)/i.test(key) ? "number" : /(status|risk|level|warning)/i.test(key) ? "status" : "text"
+      }));
     }
     function cleanThinking(text) {
       return String(text || "")

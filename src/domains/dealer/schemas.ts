@@ -1,6 +1,6 @@
 /**
  * Dealer 域 zod schema 定义。
- * 从 src/a2ui/plugins/schemas.ts 迁移而来。
+ * OpenUI Lang domain surface schema.
  */
 
 import { z } from "zod";

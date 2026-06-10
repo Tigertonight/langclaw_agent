@@ -1,13 +1,10 @@
 /**
  * Dealer 域 vehicle-progress Surface 插件。
- * 从 src/a2ui/plugins/vehicle-progress.ts 迁移而来。
+ * OpenUI Lang vehicle-progress surface plugin.
  */
 
-import { businessSurface } from "../../../a2ui/openui-bridge.js";
-import { card, formatCurrency, list, readArray, readPath, row, text, toRecord } from "../../../a2ui/builders/components.js";
+import { businessSurface, card, formatCurrency, list, readArray, readPath, row, text, toRecord, type OpenUILangCompatComponentInstance, type SurfacePlugin } from "../../../openui-lang/compat.js";
 import { VehicleOrderSchema, type VehicleOrder } from "../schemas.js";
-import type { SurfacePlugin } from "../../../a2ui/plugins/types.js";
-import type { A2UIComponentInstance } from "../../../a2ui/types.js";
 import type { JsonObject } from "../../../types/agent-contracts.js";
 
 interface VehicleProgressData extends JsonObject {
@@ -33,7 +30,7 @@ export const vehicleProgressPlugin: SurfacePlugin<VehicleProgressData> = {
   })
 };
 
-function vehicleProgressComponents(data: VehicleProgressData): A2UIComponentInstance[] {
+function vehicleProgressComponents(data: VehicleProgressData): OpenUILangCompatComponentInstance[] {
   return [
     card("vehicle_progress_root", ["vehicle_progress_title", "vehicle_progress_summary", "vehicle_progress_list"]),
     text("vehicle_progress_title", `### ${data.title}`),

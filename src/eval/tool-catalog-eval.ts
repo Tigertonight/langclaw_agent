@@ -1,18 +1,20 @@
 /**
  * tool-catalog-eval
  *
- * 验证 Phase 4 Tool Catalog + Plan Mode + A2UI Workbench 的核心功能：
+ * 验证 Phase 4 Tool Catalog + Plan Mode + OpenUI Lang Workbench 的核心功能：
  * 1. ToolCatalog.build() 能按业务域分类所有工具
  * 2. ToolCatalog.build() 能按用户权限过滤
  * 3. ToolCatalog.filter() 能按域/权限级别/查询词过滤
  * 4. PlanModeGuard.evaluate() 正确返回 allow/ask/deny 决定
  * 5. PlanModeGuard plan_only 模式拦截 write 操作
- * 6. A2UI Workbench Surface builder 能生成有效的 A2UIEnvelope
+ * 6. OpenUI Lang Workbench Surface builder 能生成有效的 legacy compatibility envelope
  *
  * 运行方式：npm run eval:tool-catalog
  */
 import { ToolCatalog } from "../tools/tool-catalog.js";
 import { PlanModeGuard } from "../tools/plan-mode.js";
+import { AVAILABLE_PACKS, DomainRegistry } from "../domains/index.js";
+import { setRuntimeRegistryAccessor } from "../domains/runtime-registry.js";
 import {
   buildToolCatalogSurface,
   buildRiskListSurface,
@@ -20,9 +22,14 @@ import {
   buildEvidenceSurface,
   buildPendingActionSurface,
   buildTaskTrackingSurface
-} from "../a2ui/workbench.js";
+} from "../openui-lang/workbench.js";
 import type { ToolDescription } from "../tools/registry.js";
 import type { UserContext } from "../types/agent-contracts.js";
+
+const domainRegistry = new DomainRegistry();
+domainRegistry.registerMany(AVAILABLE_PACKS);
+await domainRegistry.initialize();
+setRuntimeRegistryAccessor(domainRegistry);
 
 // ── 测试数据 ──────────────────────────────────────────────────────────────
 
@@ -194,8 +201,8 @@ assert(allowResult === null, "allow decision 应返回 null");
 
 console.log("[eval] 测试 6 PASS");
 
-// ── 测试 7：A2UI Workbench Surface builders ─────────────────────────────
-console.log("[eval] 测试 7：A2UI Workbench Surface builders...");
+// ── 测试 7：OpenUI Lang Workbench Surface builders ─────────────────────
+console.log("[eval] 测试 7：OpenUI Lang Workbench Surface builders...");
 
 // ToolCatalogSurface
 const catalogSurface = buildToolCatalogSurface("catalog_001", {
@@ -258,7 +265,7 @@ console.log("\n✓ PASS tool-catalog eval");
 console.log(`  ToolCatalog: ${result.total} 个工具，${result.domains.length} 个业务域`);
 console.log(`  权限过滤: allow=${resultFullPerms.plan_mode_allowed.length}, ask=${resultFullPerms.ask_tools.length}, deny=${resultFullPerms.deny_tools.length}`);
 console.log(`  Plan Mode: allow=${resultPlanMode.plan_mode_allowed.length}, deny=${resultPlanMode.deny_tools.length}`);
-console.log(`  A2UI Workbench: 6 个 Surface builder 全部通过`);
+console.log(`  OpenUI Lang Workbench: 6 个 Surface builder 全部通过`);
 
 // ── 工具函数 ─────────────────────────────────────────────────────────────
 

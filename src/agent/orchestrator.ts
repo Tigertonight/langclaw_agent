@@ -42,6 +42,7 @@ import { isAutonomousPlanning, isControlledExecution } from "../router/execution
 import { checkToolPermission } from "../auth/permissions.js";
 import { INTENTS } from "./ports.js";
 import { createDefaultSessionId } from "./session-store.js";
+import { decideOpenUILangEligibility, isOpenUILangDelegateToolResult } from "../openui-lang/index.js";
 import type { AgentSession, SessionHistoryItem } from "./session-store.js";
 import type { AgentStep } from "../runtime/agent-events.js";
 import type { JsonObject, JsonValue, Route, ToolCall, ToolPlan, ToolResult, UserContext } from "../types/agent-contracts.js";
@@ -996,13 +997,24 @@ export class SimpleWorkflowOrchestrator {
 
   async finish({ user, workspace, sessionId, message, route, docs, toolPlan, toolResults, answer, artifacts = [], scenarioDebug, agentSteps = [], agentState, enterpriseContext, conversationContext, skills = [], selectedSkill, session, debug, startedAt, runId, agenticDebug }: FinishInput) {
     const effectiveSelectedSkill = selectedSkill ?? inferSelectedSkillFromRoute(route);
+    const openuiDelegated = hasOpenUILangDelegateResult(toolResults);
+    const finalAnswer = openuiDelegated ? "" : answer;
+    const openuiLangDecision = createOpenUILangDecision({ message, answer: finalAnswer, toolResults });
     const output: Record<string, unknown> = {
       session_id: sessionId,
       run_id: runId,
-      answer,
+      answer: finalAnswer,
       sources: createSources(docs as never),
       pending_actions: extractPendingActions(toolResults),
-      artifacts
+      artifacts,
+      _openui_lang_context: normalizeJsonValue({
+        route,
+        tool_calls: toolPlan.calls,
+        tool_results: toolResults,
+        openui_lang_decision: openuiLangDecision,
+        agent_steps: agentSteps,
+        agent_state: agentState
+      })
     };
 
     const scenarioRecord = scenarioDebug && typeof scenarioDebug === "object" ? scenarioDebug as Record<string, unknown> : {};
@@ -1011,6 +1023,8 @@ export class SimpleWorkflowOrchestrator {
       intent: route.intent,
       route,
       selected_skill: effectiveSelectedSkill?.id ?? null,
+      openui_lang_delegated: openuiDelegated,
+      openui_lang_decision: openuiLangDecision,
       selected_tools: toolPlan.calls.map((call) => call.name),
       available_tools: this.toolRegistry.list({
         user,
@@ -1046,7 +1060,7 @@ export class SimpleWorkflowOrchestrator {
       user_id: user.id,
       session_id: sessionId,
       message,
-      answer,
+      answer: finalAnswer,
       artifacts,
       debug: rawDebugInfo,
       sources: output.sources
@@ -1058,8 +1072,8 @@ export class SimpleWorkflowOrchestrator {
       session_id: sessionId,
       run_id: runId,
       message,
-      answer,
-      answer_preview: answer.slice(0, 600),
+      answer: finalAnswer,
+      answer_preview: finalAnswer.slice(0, 600),
       route: normalizeJsonValue(route),
       tool_calls: normalizeJsonValue(toolPlan.calls),
       tool_results: normalizeJsonValue(toolResults),
@@ -1073,8 +1087,8 @@ export class SimpleWorkflowOrchestrator {
       await this.appendSessionHistory(session, {
         workspace,
         message,
-        answer,
-        metadata: createTurnMetadata({ route, selectedSkill: effectiveSelectedSkill, toolPlan, toolResults, answer })
+        answer: finalAnswer,
+        metadata: createTurnMetadata({ route, selectedSkill: effectiveSelectedSkill, toolPlan, toolResults, answer: finalAnswer })
       });
     }
 
@@ -1111,8 +1125,9 @@ export class SimpleWorkflowOrchestrator {
     agenticDebug,
     answerAlreadyStreamed = false
   }: FinishStreamInput) {
+    const finalAnswer = hasOpenUILangDelegateResult(toolResults) ? "" : answer;
     if (!answerAlreadyStreamed) {
-      for (const token of splitForStreaming(answer)) {
+      for (const token of splitForStreaming(finalAnswer)) {
         await emit({ type: "delta", text: token });
         await new Promise((resolve) => setTimeout(resolve, 24));
       }
@@ -1127,7 +1142,7 @@ export class SimpleWorkflowOrchestrator {
       docs,
       toolPlan,
       toolResults,
-      answer,
+      answer: finalAnswer,
       artifacts,
       scenarioDebug,
       agentSteps,
@@ -1226,6 +1241,10 @@ function normalizeToolResult(value: unknown): ToolResult {
 
 function normalizeToolResults(value: unknown): ToolResult[] {
   return Array.isArray(value) ? value.map(normalizeToolResult) : [];
+}
+
+function hasOpenUILangDelegateResult(toolResults: ToolResult[]): boolean {
+  return toolResults.some((result) => isOpenUILangDelegateToolResult(result));
 }
 
 function normalizeToolPlan(value: unknown): ToolPlan {
@@ -1402,7 +1421,14 @@ function summarizeToolResults(results: ToolResult[] | unknown = []): Array<Recor
       total: data.total,
       row_count: data.rows?.length ?? 0,
       sample_rows: summarizeSampleRows(data.resource, data.rows),
-      metrics: data.metrics
+      rows: summarizeSampleRows(data.resource, data.rows),
+      groups: Array.isArray(data.groups) ? data.groups.slice(0, 50) : undefined,
+      aggregates: data.aggregates,
+      metrics: data.metrics,
+      charts: data.charts,
+      insights: data.insights,
+      sources: data.sources,
+      structured: data.structured
     };
   });
 }
@@ -1570,6 +1596,39 @@ function createTurnMetadata({ route, selectedSkill, toolPlan, toolResults, answe
     tool_results: normalizeJsonValue(summarizeToolResults(toolResults)),
     answer_summary: summarizeHistoryText(answer, 240)
   };
+}
+
+function createOpenUILangDecision({ message, answer, toolResults }: { message: string; answer: string; toolResults: ToolResult[] }): JsonObject {
+  const rows = firstStructuredRows(toolResults);
+  return normalizeJsonValue(decideOpenUILangEligibility({ message, answer, rows })) as JsonObject;
+}
+
+function firstStructuredRows(toolResults: ToolResult[]): JsonObject[] {
+  for (const result of toolResults) {
+    const rows = readRowsFromToolResult(result);
+    if (rows.length) return rows;
+  }
+  return [];
+}
+
+function readRowsFromToolResult(value: unknown): JsonObject[] {
+  const record = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+  for (const key of ["rows", "sample_rows"]) {
+    const rows = readJsonObjectArray(record[key]);
+    if (rows.length) return rows;
+  }
+  const data = record.data && typeof record.data === "object" && !Array.isArray(record.data) ? record.data as Record<string, unknown> : {};
+  for (const key of ["rows", "sample_rows", "items"]) {
+    const rows = readJsonObjectArray(data[key]);
+    if (rows.length) return rows;
+  }
+  return [];
+}
+
+function readJsonObjectArray(value: unknown): JsonObject[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is JsonObject => Boolean(item) && typeof item === "object" && !Array.isArray(item))
+    : [];
 }
 
 function summarizeHistoryText(text: unknown, maxLength = 500): string {
