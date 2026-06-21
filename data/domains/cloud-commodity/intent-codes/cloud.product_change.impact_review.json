@@ -1,0 +1,19 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.product_change.impact_review",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "评审已有云商品版本变更影响，覆盖存量客户、合同兼容性、渠道同步、审批和回滚。",
+  "params_schema": {
+    "product_code": { "type": "string", "required": false },
+    "change_id": { "type": "string", "required": false }
+  },
+  "examples": [
+    "Agent Plan Medium 要调整套餐额度，会影响哪些客户、合同、账单和官网/控制台展示？",
+    "Seedance Mini 要新增一个 Pro SKU，帮我生成变更影响分析和审批摘要。"
+  ],
+  "tool_binding": "tool.cloud_product_change_impact_review",
+  "required_permissions": ["cloud:read", "cloud:risk", "cloud:draft"]
+}

@@ -1,0 +1,36 @@
+[
+  {
+    "invoice_id": "inv_ai_202606_preview",
+    "bill_id": "bill_ai_202606",
+    "customer_id": "cust_ai_studio",
+    "invoice_title": "灵犀内容智能科技有限公司",
+    "status": "draft",
+    "amount_cny": 18750,
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium"
+  },
+  {
+    "invoice_id": "inv_media_202606_hold",
+    "bill_id": "bill_media_202606",
+    "customer_id": "cust_media_stream",
+    "invoice_title": "星河传媒集团",
+    "status": "on_hold_dispute",
+    "amount_cny": 64280,
+    "hold_reason": "账单争议未确认前不生成正式发票",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium"
+  },
+  {
+    "invoice_id": "inv_finance_202606_issued",
+    "bill_id": "bill_finance_202606",
+    "customer_id": "cust_finance_core",
+    "invoice_title": "远山金融科技",
+    "status": "issued",
+    "amount_cny": 318000,
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium"
+  }
+]

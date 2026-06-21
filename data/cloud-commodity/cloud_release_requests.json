@@ -1,0 +1,79 @@
+[
+  {
+    "release_request_id": "rel_seedance_mini_202606",
+    "product_id": "prod_seedance",
+    "title": "Seedance 企业套餐上架",
+    "change_type": "new_offer",
+    "status": "risk_review",
+    "requested_by": "cloud_pm_001",
+    "rollback_plan": "关闭新购入口，恢复旧价格快照，保留存量订阅权益。",
+    "source_ref_ids": [
+      "src_seedance_product"
+    ]
+  },
+  {
+    "release_request_id": "rel_agent_plan_202606",
+    "product_id": "prod_agent_plan",
+    "title": "Agent Plan Medium 套餐上线",
+    "change_type": "new_sku",
+    "status": "draft",
+    "requested_by": "cloud_pm_001",
+    "rollback_plan": "下架新 SKU，停止超额后付费入口。",
+    "source_ref_ids": [
+      "src_agent_plan_assumption"
+    ]
+  },
+  {
+    "release_request_id": "rel_ecs_gpu_train_202606",
+    "product_id": "prod_ecs",
+    "title": "ECS GPU 训练实例上架",
+    "change_type": "new_gpu_sku",
+    "status": "risk_review",
+    "requested_by": "cloud_pm_001",
+    "rollback_plan": "关闭 ECS GPU 新购入口，保留存量订单交付，恢复上一版购买页与价格快照；新加坡地域回退为容量预约模式。",
+    "source_ref_ids": [
+      "src_ecs_product",
+      "src_ecs_billing",
+      "src_ecs_ipd_demo",
+      "src_ecs_capacity_demo"
+    ]
+  },
+  {
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "product_id": "prod_seedance",
+    "title": "Seedance Mini 自助购买与内容安全上架",
+    "change_type": "new_offer",
+    "status": "approval_draft",
+    "requested_by": "cloud_pm_001",
+    "rollback_plan": "关闭自助购买入口，保留已购额度，回退到人工报价与白名单开通。",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.69,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "product_id": "prod_agent_plan",
+    "title": "Agent Plan 企业协作套餐上架",
+    "change_type": "new_offer",
+    "status": "risk_review",
+    "requested_by": "cloud_pm_001",
+    "rollback_plan": "隐藏企业套餐入口，保留 Medium 套餐，关闭超额付费自动开通。",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.7,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  }
+]

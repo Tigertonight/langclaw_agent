@@ -1,0 +1,37 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.solution.recommendation",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "销售解决方案推荐，按客户行业、预算和需求组合 Seedance、Agent Plan、TOS、CDN 等云商品，并说明假设和边界。",
+  "params_schema": {
+    "industry": {
+      "type": "string",
+      "required": false
+    },
+    "budget_cny": {
+      "type": "number",
+      "required": false
+    },
+    "needs": {
+      "type": "array",
+      "required": false
+    },
+    "customer_id": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "examples": [
+    "我是云销售，客户是内容行业，想做短视频批量生成和智能客服，预算 10 万元，请推荐组合方案",
+    "给内容行业客户推荐 Seedance、Agent Plan、TOS、CDN 的套餐组合",
+    "客户预算 10 万，短视频生成和智能客服怎么配云商品"
+  ],
+  "tool_binding": null,
+  "required_permissions": [
+    "cloud:read",
+    "cloud:estimate"
+  ]
+}

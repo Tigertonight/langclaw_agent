@@ -1,0 +1,57 @@
+[
+  {
+    "assumption_profile_id": "assump_agent_plan_default",
+    "name": "Agent Plan 默认对话估算假设",
+    "applies_to_products": [
+      "prod_agent_plan"
+    ],
+    "assumptions": {
+      "average_turn_input_tokens": 1200,
+      "average_turn_output_tokens": 800,
+      "average_turn_total_tokens": 2000,
+      "afp_per_1k_text_tokens": 1,
+      "tool_call_afp": {
+        "web_search_beta": 8,
+        "professional_dataset": 15,
+        "arkclaw": 12
+      },
+      "multimodal_multiplier": {
+        "text_only": 1,
+        "image_understanding": 2.5,
+        "video_generation": 35,
+        "agent_with_search": 1.8
+      },
+      "safety_buffer_ratio": 0.15
+    },
+    "caveat": "用于 Demo 估算，不代表火山引擎真实抵扣系数；真实系数应读取 Agent Plan AFP 抵扣规则。",
+    "source_type": "demo_assumption"
+  },
+  {
+    "assumption_profile_id": "assump_seedance_default",
+    "name": "Seedance 视频生成默认估算假设",
+    "applies_to_products": [
+      "prod_seedance"
+    ],
+    "assumptions": {
+      "token_per_second_by_quality": {
+        "720p_standard": 4200,
+        "720p_high": 6200,
+        "1080p_standard": 8500,
+        "1080p_high": 12000
+      },
+      "retry_rate": 0.08,
+      "moderation_overhead_ratio": 0.03,
+      "storage_gib_per_video_second": {
+        "720p": 0.012,
+        "1080p": 0.026
+      },
+      "cdn_gb_per_video_second_monthly_preview": {
+        "720p": 0.18,
+        "1080p": 0.4
+      },
+      "safety_buffer_ratio": 0.12
+    },
+    "caveat": "用于销售口径预估视频秒数，并联动 TOS/CDN 估算；真实 token 消耗依模型与参数为准。",
+    "source_type": "demo_assumption"
+  }
+]

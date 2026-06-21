@@ -1,0 +1,685 @@
+[
+  {
+    "metric_id": "op_202606_gmv_mtd",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "revenue",
+    "metric_name": "GMV MTD",
+    "metric_value": 1268450,
+    "unit": "CNY",
+    "compare_period": "2026-05",
+    "compare_value": 1089200,
+    "change_rate": 0.1646,
+    "product_id": "all",
+    "customer_id": null,
+    "owner_team": "cloud_business",
+    "status": "normal",
+    "insight": "月内 GMV 较上月同期增长 16.46%，主要由 Seedance 视频生成和 Agent Plan 扩容贡献。",
+    "recommended_actions": [
+      "复核 Seedance 促销毛利底线",
+      "把 Agent Plan 超额提醒纳入销售跟进"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.71,
+    "source_ref_ids": [
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "metric_id": "op_202606_net_revenue_mtd",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "revenue",
+    "metric_name": "Net Revenue MTD",
+    "metric_value": 984260,
+    "unit": "CNY",
+    "compare_period": "2026-05",
+    "compare_value": 901300,
+    "change_rate": 0.092,
+    "product_id": "all",
+    "customer_id": null,
+    "owner_team": "cloud_business",
+    "status": "normal",
+    "insight": "净收入增速低于 GMV，折扣和资源包抵扣拉低收入确认。",
+    "recommended_actions": [
+      "按产品拆解折扣影响",
+      "对高折扣合同做财务复核"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.69,
+    "source_ref_ids": [
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "metric_id": "op_202606_gross_margin",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "margin",
+    "metric_name": "Gross Margin Rate",
+    "metric_value": 0.318,
+    "unit": "ratio",
+    "compare_period": "2026-05",
+    "compare_value": 0.356,
+    "change_rate": -0.1067,
+    "product_id": "all",
+    "customer_id": null,
+    "owner_team": "finance",
+    "status": "watch",
+    "insight": "整体毛利率下降 3.8 个百分点，Agent Plan AFP 消耗和 Seedance 促销价是主要压力。",
+    "recommended_actions": [
+      "冻结低毛利促销自动生效",
+      "上线 AFP 超额二次确认",
+      "建立高成本模型提示"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.67,
+    "source_ref_ids": [
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "metric_id": "op_202606_active_customers",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "customer",
+    "metric_name": "Active Paying Customers",
+    "metric_value": 38,
+    "unit": "count",
+    "compare_period": "2026-05",
+    "compare_value": 31,
+    "change_rate": 0.2258,
+    "product_id": "all",
+    "customer_id": null,
+    "owner_team": "sales",
+    "status": "normal",
+    "insight": "付费客户数增长，内容行业客户对视频生成和智能客服组合方案兴趣最高。",
+    "recommended_actions": [
+      "把内容行业方案沉淀成标准报价包",
+      "补充客户成功 onboarding 清单"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.74,
+    "source_ref_ids": [
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "metric_id": "op_202606_arr_at_risk",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "renewal",
+    "metric_name": "ARR At Risk",
+    "metric_value": 246076,
+    "unit": "CNY",
+    "compare_period": "2026-05",
+    "compare_value": 172400,
+    "change_rate": 0.4274,
+    "product_id": "all",
+    "customer_id": null,
+    "owner_team": "sales",
+    "status": "risk",
+    "insight": "续约风险金额升高，重点来自星河传媒 CDN 账单争议和灵犀内容 Agent Plan 超额规则确认。",
+    "recommended_actions": [
+      "安排账单解释会",
+      "提供资源包升级测算",
+      "给 Agent Plan 客户开通超额提醒"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.7,
+    "source_ref_ids": [
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "metric_id": "op_202606_bill_dispute_amount",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "billing",
+    "metric_name": "Bill Dispute Amount",
+    "metric_value": 68420,
+    "unit": "CNY",
+    "compare_period": "2026-05",
+    "compare_value": 29600,
+    "change_rate": 1.3115,
+    "product_id": "prod_cdn",
+    "customer_id": "cust_media_stream",
+    "owner_team": "finance",
+    "status": "risk",
+    "insight": "CDN 超额流量解释不清导致账单争议增加。",
+    "recommended_actions": [
+      "补充 CDN 用量明细解释",
+      "在续约前给出大规格资源包对比"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.68,
+    "source_ref_ids": [
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "metric_id": "op_202606_release_blocked",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "workflow",
+    "metric_name": "Blocked Release Tasks",
+    "metric_value": 2,
+    "unit": "count",
+    "compare_period": "2026-05",
+    "compare_value": 1,
+    "change_rate": 1,
+    "product_id": "all",
+    "customer_id": null,
+    "owner_team": "cloud_product",
+    "status": "risk",
+    "insight": "Seedance 价格复核和 Agent Plan AFP 规则复核阻塞发布节奏。",
+    "recommended_actions": [
+      "把价格证据和毛利底线作为发布前置 checkpoint",
+      "对高风险发布强制人审"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.73,
+    "source_ref_ids": [
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "metric_id": "op_202606_seedance_revenue",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "product_mix",
+    "metric_name": "Seedance Revenue MTD",
+    "metric_value": 412800,
+    "unit": "CNY",
+    "compare_period": "2026-05",
+    "compare_value": 306500,
+    "change_rate": 0.3468,
+    "product_id": "prod_seedance",
+    "customer_id": null,
+    "owner_team": "ai_business",
+    "status": "normal",
+    "insight": "Seedance 收入增长明显，但受促销价和审核重试率影响，毛利需要单独监控。",
+    "recommended_actions": [
+      "按质量档位拆毛利",
+      "上线失败重试率监控"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.72,
+    "source_ref_ids": [
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "metric_id": "op_202606_agent_plan_revenue",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "product_mix",
+    "metric_name": "Agent Plan Revenue MTD",
+    "metric_value": 286600,
+    "unit": "CNY",
+    "compare_period": "2026-05",
+    "compare_value": 248000,
+    "change_rate": 0.1556,
+    "product_id": "prod_agent_plan",
+    "customer_id": null,
+    "owner_team": "ai_business",
+    "status": "watch",
+    "insight": "Agent Plan 收入增长稳定，但 Medium 套餐 AFP 成本消耗高于预期。",
+    "recommended_actions": [
+      "推动 Enterprise 套餐升级",
+      "对 Medium 套餐增加高成本模型提示"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.69,
+    "source_ref_ids": [
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "metric_id": "metric_ecs_gpu_gmv_target",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "ecs_gpu_goal",
+    "metric_name": "ECS GPU GMV Target",
+    "metric_value": 1500000,
+    "unit": "CNY",
+    "compare_period": "2026-05",
+    "compare_value": 0,
+    "change_rate": null,
+    "product_id": "prod_ecs",
+    "customer_id": null,
+    "owner_team": "cloud_business",
+    "status": "target",
+    "insight": "ECS GPU 本月目标为 150 万，目标依赖 AI 训练客户和金融客户首批成交。",
+    "recommended_actions": [
+      "按客户拆分 pipeline",
+      "把容量风险前置到销售承诺"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.72,
+    "source_ref_ids": [
+      "src_ecs_gmv_demo"
+    ]
+  },
+  {
+    "metric_id": "metric_ecs_gpu_gmv_booked",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "ecs_gpu_goal",
+    "metric_name": "ECS GPU GMV Booked",
+    "metric_value": 930000,
+    "unit": "CNY",
+    "compare_period": "2026-05",
+    "compare_value": 0,
+    "change_rate": null,
+    "product_id": "prod_ecs",
+    "customer_id": null,
+    "owner_team": "cloud_business",
+    "status": "watch",
+    "insight": "已成交金额接近目标的 62%，但部分订单仍受交付和收入确认影响。",
+    "recommended_actions": [
+      "优先保障已成交订单交付",
+      "跟进 30 万金融客户方案"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.72,
+    "source_ref_ids": [
+      "src_ecs_gmv_demo"
+    ]
+  },
+  {
+    "metric_id": "metric_ecs_gpu_pipeline",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "ecs_gpu_goal",
+    "metric_name": "ECS GPU Weighted Pipeline",
+    "metric_value": 720000,
+    "unit": "CNY",
+    "compare_period": "2026-05",
+    "compare_value": 0,
+    "change_rate": null,
+    "product_id": "prod_ecs",
+    "customer_id": null,
+    "owner_team": "sales",
+    "status": "normal",
+    "insight": "加权商机可覆盖目标缺口，但新加坡容量和财务折扣审批会影响月底达成。",
+    "recommended_actions": [
+      "优先推进远山智能制造方案",
+      "把容量预约作为合同前置条件"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.72,
+    "source_ref_ids": [
+      "src_ecs_gmv_demo"
+    ]
+  },
+  {
+    "metric_id": "metric_ecs_gpu_net_revenue",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "ecs_gpu_goal",
+    "metric_name": "ECS GPU Net Revenue",
+    "metric_value": 716000,
+    "unit": "CNY",
+    "compare_period": "2026-05",
+    "compare_value": 0,
+    "change_rate": null,
+    "product_id": "prod_ecs",
+    "customer_id": null,
+    "owner_team": "finance",
+    "status": "watch",
+    "insight": "净收入低于 GMV，主要由合同折扣、资源包抵扣和交付延期造成。",
+    "recommended_actions": [
+      "财务复核收入确认口径",
+      "拆分折扣影响和延期影响"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.72,
+    "source_ref_ids": [
+      "src_ecs_gmv_demo"
+    ]
+  },
+  {
+    "metric_id": "metric_ecs_gpu_margin_rate",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "ecs_gpu_goal",
+    "metric_name": "ECS GPU Gross Margin Rate",
+    "metric_value": 0.236,
+    "unit": "ratio",
+    "compare_period": "2026-05",
+    "compare_value": 0.31,
+    "change_rate": -0.2387,
+    "product_id": "prod_ecs",
+    "customer_id": null,
+    "owner_team": "finance",
+    "status": "risk",
+    "insight": "毛利率低于 28% 经营红线，原因是大客户折扣和 GPU 容量成本上升。",
+    "recommended_actions": [
+      "冻结低毛利折扣自动生效",
+      "包月套餐先走财务审批"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.72,
+    "source_ref_ids": [
+      "src_ecs_gmv_demo"
+    ]
+  },
+  {
+    "metric_id": "metric_ecs_gpu_delivery_delay",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "ecs_gpu_ops",
+    "metric_name": "ECS GPU Delayed Orders",
+    "metric_value": 2,
+    "unit": "count",
+    "compare_period": "2026-05",
+    "compare_value": 0,
+    "change_rate": null,
+    "product_id": "prod_ecs",
+    "customer_id": null,
+    "owner_team": "sre",
+    "status": "risk",
+    "insight": "新加坡容量不足导致 2 个订单预计延期，影响 GMV 计入和客户满意度。",
+    "recommended_actions": [
+      "SRE 提供扩容排期",
+      "销售同步客户交付窗口",
+      "老板视角跟踪 GMV 计入口径"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.72,
+    "source_ref_ids": [
+      "src_ecs_ops_demo"
+    ]
+  },
+  {
+    "metric_id": "metric_ecs_gpu_capacity_health",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "ecs_gpu_ops",
+    "metric_name": "ECS GPU Capacity Health",
+    "metric_value": 0.78,
+    "unit": "ratio",
+    "compare_period": "2026-05",
+    "compare_value": 0.86,
+    "change_rate": -0.093,
+    "product_id": "prod_ecs",
+    "customer_id": null,
+    "owner_team": "sre",
+    "status": "risk",
+    "insight": "综合容量健康度为 78%，新加坡 GPU 池是主要短板。",
+    "recommended_actions": [
+      "华东 1 正常上架",
+      "新加坡先限售并要求容量预约"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.72,
+    "source_ref_ids": [
+      "src_ecs_capacity_demo"
+    ]
+  },
+  {
+    "metric_id": "metric_seedance_mini_gmv_target",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "target",
+    "metric_name": "Seedance Mini GMV Target",
+    "metric_value": 800000,
+    "unit": "CNY",
+    "compare_period": null,
+    "compare_value": null,
+    "change_rate": null,
+    "product_id": "prod_seedance",
+    "customer_id": null,
+    "owner_team": "cloud_business",
+    "status": "watch",
+    "insight": "Seedance Mini 自助购买目标依赖电商和营销客户转化。",
+    "recommended_actions": [
+      "跟踪官网自助询价转正式报价",
+      "低毛利促销先走人工审批"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.68,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "metric_id": "metric_seedance_mini_pipeline",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "pipeline",
+    "metric_name": "Seedance Mini Weighted Pipeline",
+    "metric_value": 690000,
+    "unit": "CNY",
+    "compare_period": null,
+    "compare_value": null,
+    "change_rate": null,
+    "product_id": "prod_seedance",
+    "customer_id": null,
+    "owner_team": "sales",
+    "status": "watch",
+    "insight": "内容行业 pipeline 充足，但价格复核和内容安全门禁影响转化。",
+    "recommended_actions": [
+      "销售优先跟进高意向电商客户",
+      "补齐正式报价前检查清单"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.67,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "metric_id": "metric_seedance_mini_margin_rate",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "margin",
+    "metric_name": "Seedance Mini Gross Margin Rate",
+    "metric_value": 0.31,
+    "unit": "ratio",
+    "compare_period": "target",
+    "compare_value": 0.38,
+    "change_rate": -0.184,
+    "product_id": "prod_seedance",
+    "customer_id": null,
+    "owner_team": "finance",
+    "status": "risk",
+    "insight": "促销和合同折扣叠加后毛利低于目标。",
+    "recommended_actions": [
+      "冻结低毛利自动促销",
+      "设置合同折扣互斥规则"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "metric_id": "metric_seedance_mini_queue_health",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "operations",
+    "metric_name": "Seedance Mini Generation Queue Health",
+    "metric_value": 0.73,
+    "unit": "ratio",
+    "compare_period": "target",
+    "compare_value": 0.9,
+    "change_rate": -0.189,
+    "product_id": "prod_seedance",
+    "customer_id": null,
+    "owner_team": "sre",
+    "status": "risk",
+    "insight": "大促峰值下队列健康度不足，需要限流和灰度。",
+    "recommended_actions": [
+      "设置生成任务排队阈值",
+      "对高价值客户做容量预约"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "metric_id": "metric_agent_plan_gmv_target",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "target",
+    "metric_name": "Agent Plan GMV Target",
+    "metric_value": 720000,
+    "unit": "CNY",
+    "compare_period": null,
+    "compare_value": null,
+    "change_rate": null,
+    "product_id": "prod_agent_plan",
+    "customer_id": null,
+    "owner_team": "cloud_business",
+    "status": "watch",
+    "insight": "Agent Plan 目标依赖开发者升级和企业协作套餐转化。",
+    "recommended_actions": [
+      "提升 Medium 升级转化",
+      "企业套餐只走审批草稿"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.68,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  },
+  {
+    "metric_id": "metric_agent_plan_pipeline",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "pipeline",
+    "metric_name": "Agent Plan Weighted Pipeline",
+    "metric_value": 610000,
+    "unit": "CNY",
+    "compare_period": null,
+    "compare_value": null,
+    "change_rate": null,
+    "product_id": "prod_agent_plan",
+    "customer_id": null,
+    "owner_team": "sales",
+    "status": "watch",
+    "insight": "企业团队对用量看板和权限审计有强需求，但合同边界未完成。",
+    "recommended_actions": [
+      "销售优先推进企业协作试点",
+      "客户成功准备迁移清单"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.67,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  },
+  {
+    "metric_id": "metric_agent_plan_margin_rate",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "margin",
+    "metric_name": "Agent Plan Gross Margin Rate",
+    "metric_value": 0.29,
+    "unit": "ratio",
+    "compare_period": "target",
+    "compare_value": 0.36,
+    "change_rate": -0.194,
+    "product_id": "prod_agent_plan",
+    "customer_id": null,
+    "owner_team": "finance",
+    "status": "risk",
+    "insight": "多工具和高成本模型调用拉低毛利，需要超额付费确认。",
+    "recommended_actions": [
+      "高 AFP 调用提醒",
+      "开启超额付费二次确认"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  },
+  {
+    "metric_id": "metric_agent_plan_usage_alerts",
+    "period": "2026-06",
+    "as_of_date": "2026-06-19",
+    "metric_group": "operations",
+    "metric_name": "Agent Plan Usage Alerts",
+    "metric_value": 18,
+    "unit": "count",
+    "compare_period": "2026-05",
+    "compare_value": 9,
+    "change_rate": 1,
+    "product_id": "prod_agent_plan",
+    "customer_id": null,
+    "owner_team": "sre",
+    "status": "risk",
+    "insight": "用量告警翻倍，客服解释和超额确认压力上升。",
+    "recommended_actions": [
+      "把告警同步给销售和客服",
+      "生成客户用量解释卡片"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  }
+]

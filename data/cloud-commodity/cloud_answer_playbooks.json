@@ -1,0 +1,100 @@
+[
+  {
+    "playbook_id": "pb_sales_plan_rounds",
+    "audience": "sales",
+    "user_question": "我购买一个 Agent Plan 能对话多少轮？",
+    "route": [
+      "identify_plan",
+      "load_package_quota",
+      "load_assumption_profile",
+      "run_est_agent_plan_rounds",
+      "return_formula_and_sensitivity"
+    ],
+    "must_include": [
+      "结论数字",
+      "核心假设",
+      "公式",
+      "影响因素",
+      "升级套餐建议"
+    ],
+    "example_answer": "按 Medium 套餐 40000 AFP、15% 安全缓冲、平均每轮 2000 tokens 且混合少量联网搜索估算，约可支持 7420 轮。若主要是纯文本问答，轮数会更高；若大量调用视频生成或专业数据集，轮数会明显下降。"
+  },
+  {
+    "playbook_id": "pb_sales_video_seconds",
+    "audience": "sales",
+    "user_question": "我买 10000 元套餐最终能生成多少秒视频？",
+    "route": [
+      "identify_model",
+      "load_token_price",
+      "load_customer_discount",
+      "load_video_assumption",
+      "estimate_storage_cdn",
+      "run_est_seedance_video_seconds"
+    ],
+    "must_include": [
+      "可生成秒数",
+      "可生成条数",
+      "每秒成本",
+      "是否包含存储/CDN",
+      "价格证据和假设"
+    ],
+    "example_answer": "按 Seedance 2.0 mini 不含视频输入 0.023 元/千 tokens、720p 标准质量和客户 0.82 折扣估算，10000 元约可生成 82600 秒，即约 16520 条 5 秒视频；这个结果已预留重试、审核、TOS/CDN 和安全缓冲。"
+  },
+  {
+    "playbook_id": "pb_exec_current_risks",
+    "audience": "executive",
+    "user_question": "目前有什么风险？",
+    "route": [
+      "load_risk_signals",
+      "rank_by_severity_and_amount",
+      "group_by_risk_type",
+      "attach_owner_and_next_action"
+    ],
+    "must_include": [
+      "Top 风险",
+      "影响金额/客户/发布日期",
+      "责任团队",
+      "下一步动作"
+    ],
+    "example_answer": "当前前三个风险是：Agent Plan AFP 消耗过快，可能压低毛利；Seedance 上线被财务价格复核阻塞，影响约 32 万 pipeline；星河传媒 CDN 续约概率低于 50%，需要销售牵头账单解释。"
+  },
+  {
+    "playbook_id": "pb_exec_bottlenecks",
+    "audience": "executive",
+    "user_question": "哪些人在环节拖沓？",
+    "route": [
+      "load_workflow_tasks",
+      "filter_blocked_or_overdue",
+      "aggregate_by_owner_team_and_user",
+      "attach_business_impact"
+    ],
+    "must_include": [
+      "阻塞环节",
+      "负责人/团队",
+      "超时多久",
+      "影响金额或发布日期",
+      "升级建议"
+    ],
+    "example_answer": "当前主要阻塞在财务侧：Seedance 价格复核超时 14 小时，影响模型上线；Agent Plan AFP 规则复核超时 9 小时，原因是缺少毛利底线测算。建议先补齐价格证据和毛利模拟，再升级给财务负责人。"
+  },
+  {
+    "playbook_id": "pb_exec_renewal",
+    "audience": "executive",
+    "user_question": "重点客户合同续约怎么样？",
+    "route": [
+      "load_renewal_opportunities",
+      "filter_by_due_date_and_probability",
+      "rank_by_forecast_arr",
+      "attach_risk_reasons_and_actions"
+    ],
+    "must_include": [
+      "客户",
+      "续约日期",
+      "预测 ARR",
+      "续约概率",
+      "风险原因",
+      "行动建议"
+    ],
+    "example_answer": "星河传媒 Q3 续约风险最高，预测 ARR 12 万，续约概率 48%，主要因为 CDN 超额流量争议和资源包抵扣解释不清。建议本周安排账单解释，并提供大规格资源包报价。"
+  }
+]

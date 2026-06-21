@@ -1,0 +1,23 @@
+[
+  {
+    "risk_rule_id": "rr_price_meter_mismatch",
+    "rule_name": "价格单位与 Meter 不一致",
+    "severity": "high",
+    "target_table": "cloud_prices",
+    "suggested_action": "校验 price.meter_id 的单位与 pricing_rule 是否一致。"
+  },
+  {
+    "risk_rule_id": "rr_ai_content_terms_missing",
+    "rule_name": "AI 内容安全条款缺失",
+    "severity": "high",
+    "target_table": "cloud_release_requests",
+    "suggested_action": "补充内容安全、数据处理和日志留存说明。"
+  },
+  {
+    "risk_rule_id": "rr_contract_discount_overlap",
+    "rule_name": "合同折扣与资源包叠加",
+    "severity": "medium",
+    "target_table": "cloud_contracts",
+    "suggested_action": "确认折扣互斥优先级。"
+  }
+]

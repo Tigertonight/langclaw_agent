@@ -1,0 +1,28 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.productization.readiness_review",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "评审一个产品能力是否具备产品化条件，输出目标客户、产品定义交付物、能力边界、成本输入、SLA 初稿、负责人和后续动作。",
+  "params_schema": {
+    "product_code": {
+      "type": "string",
+      "required": false
+    },
+    "product_name": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "examples": [
+    "Seedance Mini 目前只是一个模型能力，是否具备产品化条件？还缺哪些产品定义交付物？",
+    "帮我生成 Seedance Mini 产品化定义草稿，包含目标客户、能力边界、不可承诺项、SLA 初稿和成本测算输入。"
+  ],
+  "tool_binding": "tool.cloud_productization_readiness_review",
+  "required_permissions": [
+    "cloud:read",
+    "cloud:risk"
+  ]
+}

@@ -1,0 +1,40 @@
+[
+  {
+    "incident_id": "inc_ecs_gpu_sg_delay_001",
+    "product_id": "prod_ecs",
+    "region_id": "ap-southeast-1",
+    "title": "新加坡 GPU 容量不足导致交付延期",
+    "severity": "high",
+    "status": "mitigating",
+    "started_at": "2026-06-19T08:10:00+08:00",
+    "expected_recovery_at": "2026-06-20T02:00:00+08:00",
+    "delay_hours": 18,
+    "affected_order_ids": [
+      "ord_finance_core_001",
+      "ord_ecs_gpu_sg_preview_001"
+    ],
+    "affected_customer_ids": [
+      "cust_finance_core"
+    ],
+    "impact_gmv_cny": 318000,
+    "revenue_recognition_risk_cny": 94000,
+    "customer_impact": "远山智能制造新加坡首批训练实例交付窗口需后移，销售需要同步容量预约与替代地域方案。",
+    "root_cause": "GPU 卡预留超过安全水位，临时扩容排期未完成。",
+    "mitigation_steps": [
+      "新加坡先关闭现货新购入口",
+      "将可交付资源优先给已签约订单",
+      "提供华东 1 替代地域和延迟补偿沟通稿",
+      "SRE 在 18 小时内回传扩容结果"
+    ],
+    "rollback_plan": "新加坡地域回退为容量预约模式，恢复上一版购买页；已成交订单保留权益并人工跟进交付。",
+    "owner_team": "sre",
+    "owner_user_id": "cloud_sre_001",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.73,
+    "source_ref_ids": [
+      "src_ecs_ops_demo",
+      "src_ecs_capacity_demo"
+    ]
+  }
+]

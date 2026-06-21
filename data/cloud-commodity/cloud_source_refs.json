@@ -1,0 +1,304 @@
+[
+  {
+    "source_ref_id": "src_ecs_product",
+    "title": "云服务器 ECS 产品页",
+    "url": "https://www.volcengine.com/product/ecs",
+    "provider": "volcengine",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "ECS 是弹性可扩展的云服务器产品。",
+      "用于承载计算实例、镜像、云盘和公网能力。"
+    ]
+  },
+  {
+    "source_ref_id": "src_ecs_billing",
+    "title": "计费概述--云服务器",
+    "url": "https://www.volcengine.com/docs/6396/69812",
+    "provider": "volcengine",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "ECS 计费涉及实例规格、镜像、云盘、公网 IP 等计费项。"
+    ]
+  },
+  {
+    "source_ref_id": "src_tos_product",
+    "title": "对象存储 TOS 产品页",
+    "url": "https://www.volcengine.com/product/TOS",
+    "provider": "volcengine",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "TOS 提供海量、安全、低成本、高可靠的对象存储能力。"
+    ]
+  },
+  {
+    "source_ref_id": "src_tos_billing",
+    "title": "计费概述--对象存储 TOS",
+    "url": "https://www.volcengine.com/docs/6349/78455",
+    "provider": "volcengine",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "TOS 计费口径包括存储容量、请求、流量和数据处理等维度。"
+    ]
+  },
+  {
+    "source_ref_id": "src_rds_product",
+    "title": "云数据库 RDS MySQL 产品页",
+    "url": "https://www.volcengine.com/product/rds-mysql",
+    "provider": "volcengine",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "RDS MySQL 提供托管 MySQL 数据库能力。"
+    ]
+  },
+  {
+    "source_ref_id": "src_rds_specs",
+    "title": "RDS MySQL 产品规格",
+    "url": "https://www.volcengine.com/docs/6313/74505",
+    "provider": "volcengine",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "RDS MySQL 规格与实例形态、CPU、内存、存储等能力相关。"
+    ]
+  },
+  {
+    "source_ref_id": "src_cdn_product",
+    "title": "内容分发网络 CDN 产品页",
+    "url": "https://www.volcengine.com/product/CDN",
+    "provider": "volcengine",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "CDN 用于内容分发、访问加速和流量调度。"
+    ]
+  },
+  {
+    "source_ref_id": "src_cdn_billing",
+    "title": "计费说明--CDN",
+    "url": "https://www.volcengine.com/docs/6454/71363",
+    "provider": "volcengine",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "CDN 计费通常与流量、带宽、请求和增值能力相关。"
+    ]
+  },
+  {
+    "source_ref_id": "src_lb_billing",
+    "title": "负载均衡计费项",
+    "url": "https://www.volcengine.com/docs/6406/79577",
+    "provider": "volcengine",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "负载均衡计费项覆盖实例费、LCU/性能容量、流量等维度。"
+    ]
+  },
+  {
+    "source_ref_id": "src_nlb_usage_billing",
+    "title": "NLB 按使用量计费",
+    "url": "https://www.volcengine.com/docs/6406/1264643",
+    "provider": "volcengine",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "NLB 可按使用量计费。"
+    ]
+  },
+  {
+    "source_ref_id": "src_seedance_product",
+    "title": "Seedance2.0 强势启售",
+    "url": "https://www.volcengine.com/activity/seedance2",
+    "provider": "volcengine",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "Seedance 作为视频生成模型商品样例，按模型调用、token、生成任务和视频秒数进行商品化建模。"
+    ]
+  },
+  {
+    "source_ref_id": "src_seedance_billing_article",
+    "title": "Seedance 2.0 价格与计费方式详解",
+    "url": "https://www.volcengine.com/article/40336",
+    "provider": "volcengine",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "Seedance 2.0 公开资料说明支持按量计费和包年包月等计费方式，适合按调用量或稳定生产需求建模。"
+    ]
+  },
+  {
+    "source_ref_id": "src_ark_product",
+    "title": "模型价格--火山方舟",
+    "url": "https://www.volcengine.com/docs/82379/1544106",
+    "provider": "volcengine",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "火山方舟模型服务价格页可作为模型调用、token 与价格估算的官方来源。"
+    ]
+  },
+  {
+    "source_ref_id": "src_ark_plugin_billing",
+    "title": "火山方舟联网系列产品计费",
+    "url": "https://www.volcengine.com/docs/82379/1262333",
+    "provider": "volcengine",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "联网系列插件支持按量计费后付费，费用与内容源调用次数、额外 tokens、扩容等组成相关。"
+    ]
+  },
+  {
+    "source_ref_id": "src_ark_kb_billing",
+    "title": "火山方舟知识库计费",
+    "url": "https://www.volcengine.com/docs/82379/1263336",
+    "provider": "volcengine",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "知识库资源会涉及计算资源分配、预留和持续按小时计费。"
+    ]
+  },
+  {
+    "source_ref_id": "src_agent_plan_assumption",
+    "title": "Agent Plan 套餐商品化假设",
+    "url": "https://www.volcengine.com/",
+    "provider": "internal_modeling",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "Agent Plan 是面向 demo 的企业 Agent 套餐商品，官网未直接提供同名标准商品时，以火山方舟/模型服务能力进行可追溯商品建模。"
+    ]
+  },
+  {
+    "source_ref_id": "src_openui_demo_assumption",
+    "title": "OpenUI 页面生成类商品 demo 假设",
+    "url": "https://www.volcengine.com/",
+    "provider": "internal_modeling",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "OpenUI 组件生成/页面生成作为 demo 商品，用于验证 Agent 生成购买页、审批页和老板 dashboard 的复现能力。"
+    ]
+  },
+  {
+    "source_ref_id": "src_demo_assumption_001",
+    "title": "云商品经营指标 demo 假设",
+    "url": "https://www.volcengine.com/",
+    "provider": "internal_modeling",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "cloud_operating_metrics 中的 GMV、净收入、毛利、活跃客户、账单争议和续约风险金额均为演示用 mock 经营指标，不应表达为云厂商官方数据或销售承诺。"
+    ]
+  },
+  {
+    "source_ref_id": "src_ecs_ipd_demo",
+    "title": "ECS GPU 训练实例 IPD 演示假设",
+    "url": "https://www.volcengine.com/product/ecs",
+    "provider": "internal_modeling",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "ECS GPU 训练实例从资源能力包装为可售卖商品时，需要经过 PRD、商业测算、容量评审、SLA/法务评审和 GTM ready。",
+      "该来源为演示假设，不代表任何云厂商正式发布流程或承诺。"
+    ]
+  },
+  {
+    "source_ref_id": "src_ecs_gtm_demo",
+    "title": "ECS GPU GTM 演示材料假设",
+    "url": "https://www.volcengine.com/product/ecs",
+    "provider": "internal_modeling",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "ECS GPU 训练实例适用于 AI 训练客户、金融风控建模和高性能计算试点。",
+      "GTM 话术、FAQ 和不可承诺项均为演示材料。"
+    ]
+  },
+  {
+    "source_ref_id": "src_ecs_capacity_demo",
+    "title": "ECS GPU 容量与灰度发布演示假设",
+    "url": "https://www.volcengine.com/product/ecs",
+    "provider": "internal_modeling",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "华东 1 GPU 池可支持首批客户灰度，新加坡 GPU 池容量不足，需要容量预约和限售策略。",
+      "容量数据为 demo/mock。"
+    ]
+  },
+  {
+    "source_ref_id": "src_ecs_gmv_demo",
+    "title": "ECS GPU GMV 目标与经营健康度演示假设",
+    "url": "https://www.volcengine.com/",
+    "provider": "internal_modeling",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "ECS GPU 本月目标、pipeline、净收入、毛利率、成本和折扣影响均为演示经营样本。",
+      "不得表达为云厂商官方披露或正式承诺。"
+    ]
+  },
+  {
+    "source_ref_id": "src_ecs_ops_demo",
+    "title": "ECS GPU 运维事件与经营影响演示假设",
+    "url": "https://www.volcengine.com/product/ecs",
+    "provider": "internal_modeling",
+    "captured_at": "2026-06-19",
+    "facts": [
+      "新加坡 GPU 容量不足会影响交付延期、GMV 计入、收入确认和客户沟通。",
+      "事件影响金额和订单为演示样本。"
+    ]
+  },
+  {
+    "source_ref_id": "src_seedance_mini_official_202606",
+    "title": "Seedance 2.0 mini 官网与体验中心公开信息",
+    "source_type": "public_reference",
+    "provider": "volcengine",
+    "url": "https://exp.volcengine.com/ark",
+    "retrieved_at": "2026-06-19T12:00:00+08:00",
+    "summary": "公开信息显示 Seedance 2.0 mini 面向高性价比视频生成与规模化内容生产；demo 中仅作为可替换云视频生成商品样本。",
+    "mocked": false,
+    "confidence": 0.68
+  },
+  {
+    "source_ref_id": "src_seedance_prompt_official_202606",
+    "title": "Seedance 2.0 提示词与多模态生成官方文档",
+    "source_type": "public_reference",
+    "provider": "volcengine",
+    "url": "https://www.volcengine.com/docs/82379/2222480",
+    "retrieved_at": "2026-06-19T12:00:00+08:00",
+    "summary": "用于抽象视频生成提示词、参考素材、质量档位和内容安全审核等商品化场景，不构成价格或产能承诺。",
+    "mocked": false,
+    "confidence": 0.7
+  },
+  {
+    "source_ref_id": "src_seedance_sdk_official_202606",
+    "title": "Seedance 2.0 API/SDK 示例官方文档",
+    "source_type": "public_reference",
+    "provider": "volcengine",
+    "url": "https://www.volcengine.com/docs/82379/2291680",
+    "retrieved_at": "2026-06-19T12:00:00+08:00",
+    "summary": "用于抽象 API 接入、调用参数、素材输入和开发者上架检查项；demo 不接真实生产 API。",
+    "mocked": false,
+    "confidence": 0.7
+  },
+  {
+    "source_ref_id": "src_agent_plan_faq_official_202606",
+    "title": "火山方舟 Agent Plan 常见问题",
+    "source_type": "public_reference",
+    "provider": "volcengine",
+    "url": "https://www.volcengine.com/docs/82379/2377895",
+    "retrieved_at": "2026-06-19T12:00:00+08:00",
+    "summary": "用于抽象超额付费、套餐用量、联网搜索等 Agent Plan 运营与销售问答场景。",
+    "mocked": false,
+    "confidence": 0.72
+  },
+  {
+    "source_ref_id": "src_agent_plan_afp_official_202606",
+    "title": "火山方舟套餐内 AFP 抵扣规则官方文档",
+    "source_type": "public_reference",
+    "provider": "volcengine",
+    "url": "https://www.volcengine.com/docs/82379/2516283?lang=zh",
+    "retrieved_at": "2026-06-19T12:00:00+08:00",
+    "summary": "用于抽象 AFP 抵扣、模型/工具调用消耗和套餐边界；demo 估算需标注假设。",
+    "mocked": false,
+    "confidence": 0.72
+  },
+  {
+    "source_ref_id": "src_cloud_sales_collab_demo_202606",
+    "title": "云产品销售协作链路 demo 假设",
+    "source_type": "demo_mock",
+    "provider": "generic_cloud_vendor",
+    "url": null,
+    "retrieved_at": "2026-06-19T12:00:00+08:00",
+    "summary": "用于演示官网线索、销售方案、折扣审批、交付、账单解释和续约协作，不代表任何云厂商真实流程。",
+    "mocked": true,
+    "confidence": 0.66
+  }
+]

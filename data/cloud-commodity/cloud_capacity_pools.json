@@ -1,0 +1,44 @@
+[
+  {
+    "capacity_pool_id": "cap_ecs_gpu_cn_east_001",
+    "product_id": "prod_ecs",
+    "region_id": "cn-east-1",
+    "region_name": "华东 1",
+    "sku_family": "GPU 训练实例",
+    "total_gpu_cards": 128,
+    "reserved_gpu_cards": 74,
+    "available_gpu_cards": 54,
+    "peak_commitment_ratio": 0.82,
+    "health_status": "watch",
+    "sales_policy": "可灰度开放，单客户需限制峰值并保留 15% 安全缓冲",
+    "owner_team": "sre",
+    "next_action": "SRE 每日更新剩余 GPU 卡数，销售大客户需提前预约",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.74,
+    "source_ref_ids": [
+      "src_ecs_capacity_demo"
+    ]
+  },
+  {
+    "capacity_pool_id": "cap_ecs_gpu_sg_001",
+    "product_id": "prod_ecs",
+    "region_id": "ap-southeast-1",
+    "region_name": "新加坡",
+    "sku_family": "GPU 训练实例",
+    "total_gpu_cards": 64,
+    "reserved_gpu_cards": 52,
+    "available_gpu_cards": 12,
+    "peak_commitment_ratio": 0.6,
+    "health_status": "risk",
+    "sales_policy": "仅支持容量预约；首批客户不得承诺超过 60% 峰值；正式合同需写交付窗口",
+    "owner_team": "sre",
+    "next_action": "扩容 32 张 GPU 卡并在上架前回传容量确认",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.73,
+    "source_ref_ids": [
+      "src_ecs_capacity_demo"
+    ]
+  }
+]

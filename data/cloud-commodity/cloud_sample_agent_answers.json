@@ -1,0 +1,81 @@
+{
+  "sales_agent_plan_rounds": {
+    "estimated_rounds": 7420,
+    "effective_afp": 34000,
+    "estimated_afp_per_round": 4.58,
+    "recommended_plan": "Agent Plan Medium",
+    "explanation": "按 40000 AFP 月额度、15% 安全缓冲、平均每轮 2000 tokens 并混合少量联网搜索估算。"
+  },
+  "sales_seedance_video_seconds": {
+    "estimated_video_seconds": 82600,
+    "estimated_video_count_5s": 16520,
+    "unit_cost_per_second_cny": 0.103,
+    "token_cost_cny": 8508,
+    "storage_cdn_cost_estimate_cny": 672,
+    "safety_buffer_cny": 820,
+    "explanation": "按公开报道 Seedance 2.0 mini 不含视频输入 0.023 元/千 tokens、720p 标准质量每秒 4200 tokens、客户 0.82 合同折扣和 TOS/CDN 附加成本估算。"
+  },
+  "executive_top_risks": [
+    {
+      "title": "Agent Plan Medium AFP 消耗速度高于预期",
+      "severity": "high",
+      "owner": "ai_business",
+      "actions": [
+        "开启超额后付费二次确认",
+        "增加套餐内高成本模型提示"
+      ]
+    },
+    {
+      "title": "Seedance 上线被财务价格复核阻塞",
+      "severity": "medium",
+      "owner": "finance",
+      "actions": [
+        "补齐公开价格证据",
+        "设置促销价与合同价互斥规则"
+      ]
+    },
+    {
+      "title": "星河传媒 CDN 续约概率低于 50%",
+      "severity": "high",
+      "owner": "sales",
+      "actions": [
+        "安排账单解释",
+        "提供大规格资源包报价"
+      ]
+    }
+  ],
+  "workflow_bottlenecks": [
+    {
+      "step": "model_pricing_review",
+      "owner": "finance",
+      "delay_hours": 14,
+      "reason": "等待 Seedance 2.0 mini 正式价格确认与合同折扣互斥规则。"
+    },
+    {
+      "step": "afp_rule_finance_review",
+      "owner": "finance",
+      "delay_hours": 9,
+      "reason": "缺少 Medium 套餐超额后付费的毛利底线测算。"
+    }
+  ],
+  "renewal_risks": [
+    {
+      "customer_id": "cust_media_stream",
+      "forecast_next_arr_cny": 120000,
+      "renewal_probability": 0.48,
+      "risk_level": "high"
+    },
+    {
+      "customer_id": "cust_ai_studio",
+      "forecast_next_arr_cny": 920000,
+      "renewal_probability": 0.62,
+      "risk_level": "medium"
+    },
+    {
+      "customer_id": "cust_byte_retail",
+      "forecast_next_arr_cny": 68000,
+      "renewal_probability": 0.74,
+      "risk_level": "low"
+    }
+  ]
+}

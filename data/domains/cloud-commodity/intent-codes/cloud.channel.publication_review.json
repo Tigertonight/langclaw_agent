@@ -1,0 +1,24 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.channel.publication_review",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "评审云商品发布到官网、控制台、销售报价、API/Marketplace 等渠道时展示哪些字段、隐藏哪些字段以及来源口径。",
+  "params_schema": {
+    "product_code": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "examples": [
+    "Seedance Mini 发布到官网、控制台、销售和 API/Marketplace，各渠道应该展示哪些字段？",
+    "官网、控制台、销售报价里哪些商品字段不能展示？"
+  ],
+  "tool_binding": "tool.cloud_channel_publication_review",
+  "required_permissions": [
+    "cloud:read",
+    "cloud:risk"
+  ]
+}

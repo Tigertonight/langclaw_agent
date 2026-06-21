@@ -1,0 +1,44 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.quote.self_service",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "客户自助询价，同时估算 Seedance 视频生成秒数和 Agent Plan 对话轮数，必须输出公式、假设、置信度和边界。",
+  "params_schema": {
+    "budget_cny": {
+      "type": "number",
+      "required": false
+    },
+    "quality": {
+      "type": "string",
+      "required": false
+    },
+    "target_duration_seconds": {
+      "type": "number",
+      "required": false
+    },
+    "package_id": {
+      "type": "string",
+      "required": false
+    },
+    "scenario_type": {
+      "type": "string",
+      "required": false
+    },
+    "customer_id": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "examples": [
+    "我是客户自助询价：10000 元 Seedance 套餐 720p 大概能生成多少秒视频，Agent Plan Medium 能支持多少轮带搜索对话",
+    "Seedance 1 万元能生成多少条 5 秒视频，Agent Plan Medium 大概多少轮",
+    "客户套餐询价，视频秒数和智能体对话轮数一起估算"
+  ],
+  "tool_binding": null,
+  "required_permissions": [
+    "cloud:estimate"
+  ]
+}

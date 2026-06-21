@@ -1,36 +1,518 @@
 {
   "_default": [
-    { "id": "today_leads", "label": "今日新线索", "command": "/今日新线索", "hint": "看今天新进的客户线索、来源与跟进优先级" },
-    { "id": "follow_up", "label": "待跟进客户", "command": "/待跟进客户", "hint": "罗列今天必须联系的客户与上次沟通要点" },
-    { "id": "store_kpi", "label": "门店业绩", "command": "/门店业绩", "hint": "今日成交、试驾、留资三项指标对比昨日" },
-    { "id": "report", "label": "写日报", "command": "/写日报", "hint": "按你今天的动作自动起草一份日报草稿" }
+    {
+      "id": "today_leads",
+      "label": "今日新线索",
+      "command": "/今日新线索",
+      "hint": "看今天新进的客户线索、来源与跟进优先级"
+    },
+    {
+      "id": "follow_up",
+      "label": "待跟进客户",
+      "command": "/待跟进客户",
+      "hint": "罗列今天必须联系的客户与上次沟通要点"
+    },
+    {
+      "id": "store_kpi",
+      "label": "门店业绩",
+      "command": "/门店业绩",
+      "hint": "今日成交、试驾、留资三项指标对比昨日"
+    },
+    {
+      "id": "report",
+      "label": "写日报",
+      "command": "/写日报",
+      "hint": "按你今天的动作自动起草一份日报草稿"
+    }
   ],
   "store_general_manager": [
-    { "id": "store_kpi", "label": "门店业绩", "command": "/门店业绩", "hint": "全店今日成交/留资/试驾，含同环比与异常预警" },
-    { "id": "today_leads", "label": "今日新线索", "command": "/今日新线索", "hint": "今天新进线索量、来源结构与未分配数量" },
-    { "id": "team_attendance", "label": "团队考勤", "command": "/团队考勤", "hint": "今日出勤、迟到与请假名单一目了然" },
-    { "id": "report", "label": "写日报", "command": "/写日报", "hint": "汇总门店当日关键数据生成管理日报" }
+    {
+      "id": "store_kpi",
+      "label": "门店业绩",
+      "command": "/门店业绩",
+      "hint": "全店今日成交/留资/试驾，含同环比与异常预警"
+    },
+    {
+      "id": "today_leads",
+      "label": "今日新线索",
+      "command": "/今日新线索",
+      "hint": "今天新进线索量、来源结构与未分配数量"
+    },
+    {
+      "id": "team_attendance",
+      "label": "团队考勤",
+      "command": "/团队考勤",
+      "hint": "今日出勤、迟到与请假名单一目了然"
+    },
+    {
+      "id": "report",
+      "label": "写日报",
+      "command": "/写日报",
+      "hint": "汇总门店当日关键数据生成管理日报"
+    }
   ],
   "sales_manager": [
-    { "id": "today_leads", "label": "今日新线索", "command": "/今日新线索", "hint": "今天进店与网电线索分布，待分配数量" },
-    { "id": "follow_up", "label": "待跟进客户", "command": "/待跟进客户", "hint": "团队成员今天必须跟进的客户清单" },
-    { "id": "team_kpi", "label": "团队业绩", "command": "/团队业绩", "hint": "组员当月达成率排行与缺口分析" },
-    { "id": "report", "label": "写日报", "command": "/写日报", "hint": "团队当日核心进展自动汇总成日报" }
+    {
+      "id": "today_leads",
+      "label": "今日新线索",
+      "command": "/今日新线索",
+      "hint": "今天进店与网电线索分布，待分配数量"
+    },
+    {
+      "id": "follow_up",
+      "label": "待跟进客户",
+      "command": "/待跟进客户",
+      "hint": "团队成员今天必须跟进的客户清单"
+    },
+    {
+      "id": "team_kpi",
+      "label": "团队业绩",
+      "command": "/团队业绩",
+      "hint": "组员当月达成率排行与缺口分析"
+    },
+    {
+      "id": "report",
+      "label": "写日报",
+      "command": "/写日报",
+      "hint": "团队当日核心进展自动汇总成日报"
+    }
   ],
   "sales_consultant": [
-    { "id": "follow_up", "label": "待跟进客户", "command": "/待跟进客户", "hint": "我今天该联系谁、上次聊了什么、下一步是什么" },
-    { "id": "today_leads", "label": "今日新线索", "command": "/今日新线索", "hint": "今天分到我手上的新客户与基础画像" },
-    { "id": "my_kpi", "label": "我的业绩", "command": "/我的业绩", "hint": "本月成交、留资、跟进达标率与排名" },
-    { "id": "report", "label": "写日报", "command": "/写日报", "hint": "把今天接待与跟进自动整理成日报草稿" }
+    {
+      "id": "follow_up",
+      "label": "待跟进客户",
+      "command": "/待跟进客户",
+      "hint": "我今天该联系谁、上次聊了什么、下一步是什么"
+    },
+    {
+      "id": "today_leads",
+      "label": "今日新线索",
+      "command": "/今日新线索",
+      "hint": "今天分到我手上的新客户与基础画像"
+    },
+    {
+      "id": "my_kpi",
+      "label": "我的业绩",
+      "command": "/我的业绩",
+      "hint": "本月成交、留资、跟进达标率与排名"
+    },
+    {
+      "id": "report",
+      "label": "写日报",
+      "command": "/写日报",
+      "hint": "把今天接待与跟进自动整理成日报草稿"
+    }
   ],
   "finance_specialist": [
-    { "id": "store_revenue", "label": "门店营收", "command": "/门店营收", "hint": "整车、保险、金融三类营收当月累计与缺口" },
-    { "id": "settlement", "label": "结算明细", "command": "/结算明细", "hint": "今日待结算订单、金额与缺单提醒" },
-    { "id": "expense", "label": "费用统计", "command": "/费用统计", "hint": "本月各类费用结构与同比变化" }
+    {
+      "id": "store_revenue",
+      "label": "门店营收",
+      "command": "/门店营收",
+      "hint": "整车、保险、金融三类营收当月累计与缺口"
+    },
+    {
+      "id": "settlement",
+      "label": "结算明细",
+      "command": "/结算明细",
+      "hint": "今日待结算订单、金额与缺单提醒"
+    },
+    {
+      "id": "expense",
+      "label": "费用统计",
+      "command": "/费用统计",
+      "hint": "本月各类费用结构与同比变化"
+    }
   ],
   "warehouse_specialist": [
-    { "id": "stock", "label": "库存盘点", "command": "/库存盘点", "hint": "在库车型/配件数量、滞销与紧缺标记" },
-    { "id": "inbound", "label": "今日入库", "command": "/今日入库", "hint": "今天入库车辆与配件清单及对应单据" },
-    { "id": "outbound", "label": "今日出库", "command": "/今日出库", "hint": "今天出库流向、提车人与待签收件" }
+    {
+      "id": "stock",
+      "label": "库存盘点",
+      "command": "/库存盘点",
+      "hint": "在库车型/配件数量、滞销与紧缺标记"
+    },
+    {
+      "id": "inbound",
+      "label": "今日入库",
+      "command": "/今日入库",
+      "hint": "今天入库车辆与配件清单及对应单据"
+    },
+    {
+      "id": "outbound",
+      "label": "今日出库",
+      "command": "/今日出库",
+      "hint": "今天出库流向、提车人与待签收件"
+    }
+  ],
+  "cloud_pm": [
+    {
+      "id": "cloud_product_model",
+      "label": "云商品建模",
+      "command": "我是云商品平台产品经理，要把 Seedance 接入商品平台，请帮我生成商品模型、SKU、计费项和购买页字段草稿。",
+      "hint": "生成 Product/Offer/SKU/Meter/Price 和接入清单"
+    },
+    {
+      "id": "cloud_release_risk",
+      "label": "上线风险审查",
+      "command": "帮我审查 rel_seedance_mini_202606 上线风险。",
+      "hint": "审查发布申请、阻塞任务、风险项和人审边界"
+    },
+    {
+      "id": "cloud_approval",
+      "label": "审批摘要",
+      "command": "生成 rel_seedance_mini_202606 的发布审批摘要和回滚检查点。",
+      "hint": "输出审批摘要、回滚检查点和人工确认事项"
+    },
+    {
+      "id": "cloud_closed_loop",
+      "label": "闭环模拟",
+      "command": "模拟 rel_seedance_mini_202606 从配置草稿到灰度发布的闭环步骤。",
+      "hint": "只生成草稿和模拟计划，不执行生产变更"
+    },
+    {
+      "id": "cloud_seedance_fields",
+      "label": "购买页字段",
+      "command": "Seedance 上架前购买页需要配置哪些字段？哪些字段是必填、哪些需要人工确认？",
+      "hint": "查看购买页字段、必填项和来源"
+    },
+    {
+      "id": "cloud_price_guardrail",
+      "label": "价格护栏",
+      "command": "Seedance Mini 上架前，价格、促销、合同折扣有什么冲突风险？",
+      "hint": "检查价格和促销风险，不执行变更"
+    },
+    {
+      "id": "cloud_agent_plan_model",
+      "label": "Agent 套餐",
+      "command": "Agent Plan Medium 应该如何映射成 Product、Offer、SKU、Meter、Price？",
+      "hint": "生成 Agent Plan 商品建模草稿"
+    },
+    {
+      "id": "cloud_gray_release",
+      "label": "灰度清单",
+      "command": "帮我生成 Seedance Mini 灰度发布检查清单，包含配置、计费、回滚、客服通知和销售话术。",
+      "hint": "输出灰度发布 checklist 和责任人"
+    },
+    {
+      "id": "ecs_gpu_ipd_model",
+      "label": "ECS GPU IPD 建模",
+      "command": "我要把 ECS GPU 训练实例接入云商品平台，支持华东 1 和新加坡，按量和包月售卖。请生成商品模型、SKU、计费项、购买页字段和 IPD 上架检查清单。"
+    },
+    {
+      "id": "ecs_gpu_release_approval",
+      "label": "ECS GPU 发布审批",
+      "command": "生成 rel_ecs_gpu_train_202606 的发布审批摘要，重点看价格、容量、SLA 和回滚检查点。"
+    },
+    {
+      "id": "ecs_gpu_retro_template",
+      "label": "ECS GPU 复盘模板",
+      "command": "把 ECS GPU 从立项到上架、销售、交付、经营达成的阻塞复盘成下一次商品上架模板。"
+    },
+    {
+      "id": "seedance_mini_ipd",
+      "label": "Seedance IPD",
+      "command": "Seedance Mini 准备从产品能力商品化为可自助购买的云商品，IPD 上架前有哪些检查点还没完成？",
+      "hint": "检查 Seedance Mini 产品化/商品化缺口"
+    },
+    {
+      "id": "seedance_mini_selfserve_release",
+      "label": "自助上架",
+      "command": "生成 Seedance Mini 自助购买发布审批摘要，包含风险、人审、回滚和客服通知。",
+      "hint": "生成发布审批摘要"
+    },
+    {
+      "id": "seedance_content_terms",
+      "label": "内容安全",
+      "command": "Seedance Mini 的内容安全、肖像版权、禁用行业边界怎么写到商品条款里？",
+      "hint": "检查合规条款"
+    },
+    {
+      "id": "agent_plan_enterprise_ipd",
+      "label": "Agent IPD",
+      "command": "Agent Plan 企业协作套餐从 AFP 权益到商品上架，IPD 检查点有哪些？",
+      "hint": "检查 Agent Plan 上架准备度"
+    },
+    {
+      "id": "agent_plan_enterprise_approval",
+      "label": "Agent 审批",
+      "command": "生成 Agent Plan 企业套餐发布审批摘要，重点看 AFP 毛利、超额付费、权限和回滚。",
+      "hint": "生成审批摘要和回滚检查点"
+    },
+    {
+      "id": "agent_plan_usage_ops",
+      "label": "用量门禁",
+      "command": "Agent Plan 用量看板、额度恢复和超额告警上架前还缺哪些研发/运维能力？",
+      "hint": "检查研发与运维门禁"
+    }
+  ],
+  "cloud_executive": [
+    {
+      "id": "cloud_exec_briefing",
+      "label": "经营简报",
+      "command": "我是老板，想了解云商品平台现在经营情况：目前有什么风险，谁卡住流程，哪些重点客户续约有问题？请按影响和优先级给我结论。",
+      "hint": "按风险、阻塞、续约和影响金额汇总"
+    },
+    {
+      "id": "cloud_risks",
+      "label": "高风险事项",
+      "command": "当前云商品平台有哪些高风险事项？给我负责人、影响客户和下一步动作。",
+      "hint": "查询风险信号并排序"
+    },
+    {
+      "id": "cloud_bottlenecks",
+      "label": "流程阻塞",
+      "command": "谁卡住了云商品上线流程？哪些任务延期了？",
+      "hint": "查询发布/审批阻塞任务"
+    },
+    {
+      "id": "cloud_renewals",
+      "label": "续约风险",
+      "command": "哪些重点云客户续约有风险，影响金额是多少？",
+      "hint": "查询重点客户续约机会和风险"
+    },
+    {
+      "id": "cloud_operating_metrics",
+      "label": "经营指标",
+      "command": "云商品平台本月 GMV、净收入、毛利率、活跃客户和账单争议金额分别是多少？哪些指标需要解释为 demo 假设？",
+      "hint": "查看经营指标和 mock 边界"
+    },
+    {
+      "id": "cloud_revenue_mix",
+      "label": "收入结构",
+      "command": "按商品线看，Seedance、Agent Plan、CDN、TOS、ECS/RDS 哪些贡献收入，哪些存在风险？",
+      "hint": "组合查看订单、账单、风险和续约"
+    },
+    {
+      "id": "cloud_owner_actions",
+      "label": "负责人动作",
+      "command": "把当前云商品平台最该推进的 5 个动作列出来，要求包含负责人、影响金额、截止时间和证据来源。",
+      "hint": "老板视角行动清单"
+    },
+    {
+      "id": "cloud_disputes",
+      "label": "账单争议",
+      "command": "有哪些客户账单或发票有争议？影响金额是多少，谁负责解决？",
+      "hint": "查看账单争议与发票状态"
+    },
+    {
+      "id": "ecs_gpu_gmv_cockpit",
+      "label": "ECS GPU GMV 驾驶舱",
+      "command": "ECS GPU 商品本月 GMV 目标完成得怎么样？毛利、交付、容量和客户风险分别谁负责？"
+    },
+    {
+      "id": "ecs_gpu_ops_impact",
+      "label": "ECS GPU 运维影响",
+      "command": "如果新加坡 GPU 容量不足导致交付延期，影响哪些订单、GMV 和客户？给我回滚和客户沟通方案。"
+    },
+    {
+      "id": "seedance_mini_gmv",
+      "label": "Seedance 经营",
+      "command": "Seedance Mini 本月 GMV、pipeline、毛利和容量风险怎么样？谁负责下一步？",
+      "hint": "查看 Seedance Mini 经营驾驶舱"
+    },
+    {
+      "id": "seedance_launch_delay",
+      "label": "Seedance 延期影响",
+      "command": "Seedance Mini 上线如果延期一天，会影响哪些客户、GMV 和销售动作？",
+      "hint": "查看延期经营影响"
+    },
+    {
+      "id": "agent_plan_gmv",
+      "label": "Agent 经营",
+      "command": "Agent Plan 本月 GMV、pipeline、毛利和用量告警健康吗？最大风险是谁负责？",
+      "hint": "查看 Agent Plan 经营驾驶舱"
+    },
+    {
+      "id": "agent_plan_delay_impact",
+      "label": "Agent 延期影响",
+      "command": "Agent Plan 企业套餐如果延期，会影响哪些客户、GMV 和升级路径？",
+      "hint": "查看套餐延期影响"
+    }
+  ],
+  "cloud_sales": [
+    {
+      "id": "cloud_solution",
+      "label": "方案推荐",
+      "command": "我是云销售，客户是内容行业，想做短视频批量生成和智能客服，预算 10 万元。请推荐 Seedance、Agent Plan、TOS、CDN 的组合方案，并说明为什么这样配。",
+      "hint": "按客户需求和预算组合推荐云商品"
+    },
+    {
+      "id": "seedance_quote",
+      "label": "视频预算估算",
+      "command": "客户 10000 元预算买 Seedance，720p 标准质量大概能生成多少秒视频？",
+      "hint": "输出公式、假设、置信度和边界"
+    },
+    {
+      "id": "agent_plan_rounds",
+      "label": "对话轮数估算",
+      "command": "Agent Plan Medium 大概能支持多少轮带联网搜索的对话？",
+      "hint": "估算智能体套餐对话轮数"
+    },
+    {
+      "id": "contract_scope",
+      "label": "客户续约",
+      "command": "查询我能看的云客户续约风险和下一步跟进动作。",
+      "hint": "按销售权限查看客户续约机会"
+    },
+    {
+      "id": "media_dispute",
+      "label": "媒体客户账单",
+      "command": "星河传媒集团这个月 CDN/TOS 账单有什么争议？我下一步该怎么跟客户解释？",
+      "hint": "查看媒体客户账单争议和跟进动作"
+    },
+    {
+      "id": "contract_discount",
+      "label": "合同折扣",
+      "command": "灵犀内容智能科技和星河传媒的合同折扣有什么差异？哪些不能直接承诺给客户？",
+      "hint": "比较合同折扣和报价边界"
+    },
+    {
+      "id": "solution_finance",
+      "label": "金融方案",
+      "command": "金融客户要上核心业务系统，预算 30 万，优先稳定性和可审计，ECS、RDS、TOS 应该怎么组合？",
+      "hint": "按行业需求推荐云资源组合"
+    },
+    {
+      "id": "sales_next_best_action",
+      "label": "销售动作",
+      "command": "我负责的云客户里，本周最该跟进哪三个机会？请按续约风险、金额和下一步动作排序。",
+      "hint": "销售视角优先级排序"
+    },
+    {
+      "id": "ecs_gpu_finance_solution",
+      "label": "金融客户 ECS GPU 方案",
+      "command": "金融客户预算 30 万，优先稳定性和可审计，ECS GPU、RDS、TOS、CLB 应该怎么组合？正式报价前要确认什么？"
+    },
+    {
+      "id": "ecs_gpu_gtm_pack",
+      "label": "ECS GPU GTM 包",
+      "command": "帮我生成 ECS GPU 训练实例的 GTM 包：目标客户、卖点、FAQ、销售话术、不能承诺的边界。"
+    },
+    {
+      "id": "seedance_ecommerce_solution",
+      "label": "电商视频方案",
+      "command": "客户预算 18 万，要做电商商品图转短视频，Seedance Mini、TOS、CDN 怎么配？",
+      "hint": "生成电商内容方案"
+    },
+    {
+      "id": "seedance_mcn_combo",
+      "label": "MCN 组合方案",
+      "command": "MCN 客户要批量生成 5 秒视频，还要脚本助手，Seedance Mini 和 Agent Plan 怎么组合？",
+      "hint": "组合 Seedance 与 Agent Plan"
+    },
+    {
+      "id": "seedance_fixed_cost_objection",
+      "label": "成本异议",
+      "command": "客户问 Seedance Mini 一秒成本是不是固定的，我应该怎么解释估算、折扣和审核重试？",
+      "hint": "处理价格异议"
+    },
+    {
+      "id": "agent_plan_enterprise_solution",
+      "label": "企业 Agent 方案",
+      "command": "企业研发客户预算 22 万，要企业协作、API Key 管理和用量看板，Agent Plan 怎么推荐？",
+      "hint": "生成企业协作方案"
+    },
+    {
+      "id": "agent_plan_afp_objection",
+      "label": "AFP 异议",
+      "command": "客户问 Agent Plan Medium 能保证多少轮对话，我应该怎么解释 AFP 假设和边界？",
+      "hint": "处理轮数/AFP 异议"
+    },
+    {
+      "id": "agent_plan_upgrade",
+      "label": "升级路径",
+      "command": "客户从 Small 升级 Medium，怎么证明价值并提醒超额付费风险？",
+      "hint": "生成升级销售动作"
+    }
+  ],
+  "cloud_customer": [
+    {
+      "id": "self_service_quote",
+      "label": "自助询价",
+      "command": "我是客户自助询价：如果买 10000 元 Seedance 套餐，720p 标准质量大概能生成多少秒视频、多少条 5 秒视频？另外 Agent Plan Medium 大概能支持多少轮带联网搜索的对话？",
+      "hint": "同时估算视频秒数和对话轮数"
+    },
+    {
+      "id": "seedance_self_quote",
+      "label": "Seedance 套餐",
+      "command": "10000 元 Seedance 套餐，720p 标准质量能生成多少条 5 秒视频？",
+      "hint": "客户自助视频预算测算"
+    },
+    {
+      "id": "agent_self_quote",
+      "label": "Agent Plan",
+      "command": "Agent Plan Medium 大概能支持多少轮带联网搜索的对话？",
+      "hint": "客户自助智能体套餐测算"
+    },
+    {
+      "id": "quote_boundary",
+      "label": "估算边界",
+      "command": "这些自助询价结果哪些是估算假设，哪些不能当正式报价？",
+      "hint": "说明 demo 假设、合同折扣和正式报价边界"
+    },
+    {
+      "id": "video_quality_compare",
+      "label": "清晰度对比",
+      "command": "同样 10000 元预算，Seedance 720p 标准质量和 1080p 高质量大概分别能生成多少秒？",
+      "hint": "比较不同质量档位估算"
+    },
+    {
+      "id": "my_bill",
+      "label": "我的账单",
+      "command": "查询我能看的 2026 年 6 月账单和发票状态。",
+      "hint": "只返回当前客户权限范围内数据"
+    },
+    {
+      "id": "package_combo",
+      "label": "套餐组合",
+      "command": "我想同时买 Seedance 和 Agent Plan，预算 2 万元，怎么分配更适合短视频批量生成和客服问答？",
+      "hint": "客户自助组合估算"
+    },
+    {
+      "id": "formal_quote",
+      "label": "正式报价",
+      "command": "如果我要正式下单，哪些信息会影响最终价格？合同折扣、地区、质量档位、超额用量分别怎么影响？",
+      "hint": "解释正式报价变量和边界"
+    },
+    {
+      "id": "ecs_gpu_self_quote",
+      "label": "ECS GPU 自助询价",
+      "command": "我想买 ECS GPU 训练实例，预算 10 万，华东 1 包月，大概能买什么规格？价格是不是正式报价？"
+    },
+    {
+      "id": "seedance_mini_self_quote",
+      "label": "Mini 询价",
+      "command": "我有 10000 元预算买 Seedance Mini，720P 生成 5 秒视频大概能做多少条？这是不是正式报价？",
+      "hint": "自助询价并说明边界"
+    },
+    {
+      "id": "seedance_reference_material",
+      "label": "参考素材",
+      "command": "我上传参考图和参考视频会不会影响 Seedance Mini 预算估算？",
+      "hint": "解释参考素材影响"
+    },
+    {
+      "id": "seedance_failure_billing",
+      "label": "失败计费",
+      "command": "如果生成失败或内容审核不通过，Seedance Mini 的费用和重试怎么算？",
+      "hint": "解释失败/审核边界"
+    },
+    {
+      "id": "agent_plan_multimodal_quote",
+      "label": "多模态 AFP",
+      "command": "如果我同时用文本、图片理解和联网搜索，Agent Plan AFP 会怎么消耗？",
+      "hint": "解释多模态用量估算"
+    },
+    {
+      "id": "agent_plan_overage_confirm",
+      "label": "超额确认",
+      "command": "Agent Plan 套餐额度用完后会自动扣费吗？我要怎么确认超额付费？",
+      "hint": "解释超额付费确认"
+    },
+    {
+      "id": "agent_plan_permission_faq",
+      "label": "企业权限",
+      "command": "Agent Plan 企业协作套餐能不能给多个成员用？权限和审计有什么边界？",
+      "hint": "解释企业协作权限"
+    }
   ]
 }

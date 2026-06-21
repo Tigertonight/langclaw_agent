@@ -1,0 +1,230 @@
+[
+  {
+    "sku_id": "sku_ecs_general_2c4g",
+    "product_id": "prod_ecs",
+    "offer_id": "off_ecs_postpaid",
+    "sku_code": "SKU_ECS_GENERAL_2C4G",
+    "sku_name": "通用型 2C4G",
+    "sku_family": "general",
+    "status": "available",
+    "source_ref_ids": [
+      "src_ecs_billing"
+    ]
+  },
+  {
+    "sku_id": "sku_tos_standard",
+    "product_id": "prod_tos",
+    "offer_id": "off_tos_postpaid",
+    "sku_code": "SKU_TOS_STANDARD",
+    "sku_name": "标准存储",
+    "sku_family": "standard",
+    "status": "available",
+    "source_ref_ids": [
+      "src_tos_billing"
+    ]
+  },
+  {
+    "sku_id": "sku_rds_mysql_2c4g",
+    "product_id": "prod_rds_mysql",
+    "offer_id": "off_rds_subscription",
+    "sku_code": "SKU_RDS_MYSQL_2C4G",
+    "sku_name": "MySQL 2C4G",
+    "sku_family": "mysql",
+    "status": "available",
+    "source_ref_ids": [
+      "src_rds_specs"
+    ]
+  },
+  {
+    "sku_id": "sku_cdn_traffic_china",
+    "product_id": "prod_cdn",
+    "offer_id": "off_cdn_traffic",
+    "sku_code": "SKU_CDN_TRAFFIC_CHINA",
+    "sku_name": "中国内地流量",
+    "sku_family": "traffic",
+    "status": "available",
+    "source_ref_ids": [
+      "src_cdn_billing"
+    ]
+  },
+  {
+    "sku_id": "sku_clb_standard",
+    "product_id": "prod_clb",
+    "offer_id": "off_clb_usage",
+    "sku_code": "SKU_CLB_STANDARD",
+    "sku_name": "CLB 标准型",
+    "sku_family": "load_balancer_family",
+    "status": "available",
+    "source_ref_ids": [
+      "src_lb_billing"
+    ]
+  },
+  {
+    "sku_id": "sku_nlb_standard",
+    "product_id": "prod_nlb",
+    "offer_id": "off_nlb_usage",
+    "sku_code": "SKU_NLB_STANDARD",
+    "sku_name": "NLB 标准型",
+    "sku_family": "load_balancer_family",
+    "status": "available",
+    "source_ref_ids": [
+      "src_nlb_usage_billing"
+    ]
+  },
+  {
+    "sku_id": "sku_alb_standard",
+    "product_id": "prod_alb",
+    "offer_id": "off_alb_usage",
+    "sku_code": "SKU_ALB_STANDARD",
+    "sku_name": "ALB 标准型",
+    "sku_family": "load_balancer_family",
+    "status": "available",
+    "source_ref_ids": [
+      "src_lb_billing"
+    ]
+  },
+  {
+    "sku_id": "sku_seedance_lite",
+    "product_id": "prod_seedance",
+    "offer_id": "off_seedance_postpaid",
+    "sku_code": "SKU_SEEDANCE_LITE",
+    "sku_name": "Seedance Lite 文生视频",
+    "sku_family": "video_generation",
+    "status": "available",
+    "source_ref_ids": [
+      "src_seedance_product"
+    ]
+  },
+  {
+    "sku_id": "sku_seedance_pro",
+    "product_id": "prod_seedance",
+    "offer_id": "off_seedance_postpaid",
+    "sku_code": "SKU_SEEDANCE_PRO",
+    "sku_name": "Seedance Pro 文生视频",
+    "sku_family": "video_generation",
+    "status": "available",
+    "source_ref_ids": [
+      "src_seedance_product"
+    ]
+  },
+  {
+    "sku_id": "sku_seedance_video_input",
+    "product_id": "prod_seedance",
+    "offer_id": "off_seedance_postpaid",
+    "sku_code": "SKU_SEEDANCE_VIDEO_INPUT",
+    "sku_name": "Seedance 视频输入增强",
+    "sku_family": "video_generation",
+    "status": "available",
+    "source_ref_ids": [
+      "src_seedance_product"
+    ]
+  },
+  {
+    "sku_id": "sku_ark_deepseek",
+    "product_id": "prod_ark_model",
+    "offer_id": "off_ark_postpaid",
+    "sku_code": "SKU_ARK_DEEPSEEK",
+    "sku_name": "火山方舟文本模型调用",
+    "sku_family": "llm_call",
+    "status": "available",
+    "source_ref_ids": [
+      "src_ark_product"
+    ]
+  },
+  {
+    "sku_id": "sku_agent_plan_small",
+    "product_id": "prod_agent_plan",
+    "offer_id": "off_agent_plan_monthly",
+    "sku_code": "SKU_AGENT_PLAN_SMALL",
+    "sku_name": "Agent Plan Small",
+    "sku_family": "agent_plan",
+    "status": "available",
+    "source_ref_ids": [
+      "src_agent_plan_assumption"
+    ]
+  },
+  {
+    "sku_id": "sku_agent_plan_medium",
+    "product_id": "prod_agent_plan",
+    "offer_id": "off_agent_plan_monthly",
+    "sku_code": "SKU_AGENT_PLAN_MEDIUM",
+    "sku_name": "Agent Plan Medium",
+    "sku_family": "agent_plan",
+    "status": "available",
+    "source_ref_ids": [
+      "src_agent_plan_assumption"
+    ]
+  },
+  {
+    "sku_id": "sku_agent_plan_enterprise",
+    "product_id": "prod_agent_plan",
+    "offer_id": "off_agent_plan_yearly",
+    "sku_code": "SKU_AGENT_PLAN_ENTERPRISE",
+    "sku_name": "Agent Plan Enterprise",
+    "sku_family": "agent_plan",
+    "status": "available",
+    "source_ref_ids": [
+      "src_agent_plan_assumption"
+    ]
+  },
+  {
+    "sku_id": "sku_ai_token_pack_100m",
+    "product_id": "prod_ai_resource_pack",
+    "offer_id": "off_ai_resource_pack",
+    "sku_code": "SKU_AI_TOKEN_PACK_100M",
+    "sku_name": "AI Token 1 亿资源包",
+    "sku_family": "resource_pack",
+    "status": "available",
+    "source_ref_ids": [
+      "src_ark_product"
+    ]
+  },
+  {
+    "sku_id": "sku_ai_savings_1y",
+    "product_id": "prod_ai_savings_plan",
+    "offer_id": "off_ai_savings_plan",
+    "sku_code": "SKU_AI_SAVINGS_1Y",
+    "sku_name": "AI 节省计划 1 年",
+    "sku_family": "savings_plan",
+    "status": "available",
+    "source_ref_ids": [
+      "src_ark_product"
+    ]
+  },
+  {
+    "sku_id": "sku_content_safety_text_video",
+    "product_id": "prod_ai_content_safety",
+    "offer_id": "off_content_safety_postpaid",
+    "sku_code": "SKU_CONTENT_SAFETY_TEXT_VIDEO",
+    "sku_name": "文本与视频审核",
+    "sku_family": "moderation",
+    "status": "available",
+    "source_ref_ids": [
+      "src_ark_product"
+    ]
+  },
+  {
+    "sku_id": "sku_prompt_workflow_team",
+    "product_id": "prod_prompt_workflow",
+    "offer_id": "off_prompt_workflow_run",
+    "sku_code": "SKU_PROMPT_WORKFLOW_TEAM",
+    "sku_name": "团队工作流运行",
+    "sku_family": "agent_workflow",
+    "status": "available",
+    "source_ref_ids": [
+      "src_agent_plan_assumption"
+    ]
+  },
+  {
+    "sku_id": "sku_openui_page_pack",
+    "product_id": "prod_openui_demo",
+    "offer_id": "off_openui_page_pack",
+    "sku_code": "SKU_OPENUI_PAGE_PACK",
+    "sku_name": "OpenUI 页面生成 100 页",
+    "sku_family": "openui_generation",
+    "status": "available",
+    "source_ref_ids": [
+      "src_openui_demo_assumption"
+    ]
+  }
+]

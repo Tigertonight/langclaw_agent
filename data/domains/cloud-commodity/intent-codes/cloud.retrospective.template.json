@@ -1,0 +1,25 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.retrospective.template",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "把云商品从上架、销售、交付、经营风险和客户成功的阻塞复盘为下一次商品上架模板。",
+  "params_schema": {
+    "product_code": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "examples": [
+    "把 Seedance Mini 从上架、销售、交付、经营风险复盘成下一次商品上架模板。",
+    "把这些续约风险沉淀成下一次商品上架和客户成功检查模板。"
+  ],
+  "tool_binding": "tool.cloud_retrospective_template",
+  "required_permissions": [
+    "cloud:read",
+    "cloud:draft",
+    "cloud:risk"
+  ]
+}

@@ -1,0 +1,406 @@
+[
+  {
+    "opportunity_id": "opp_finance_ysg_202606",
+    "customer_id": "cust_finance_core",
+    "customer_name": "远山智能制造",
+    "industry": "金融与智能制造",
+    "product_ids": [
+      "prod_ecs",
+      "prod_rds_mysql",
+      "prod_tos",
+      "prod_clb"
+    ],
+    "budget_cny": 300000,
+    "stage": "solution_design",
+    "probability": 0.62,
+    "expected_close_month": "2026-06",
+    "decision_maker": "CTO/采购负责人",
+    "region_preference": "ap-southeast-1",
+    "requirements": [
+      "模型训练",
+      "业务数据库",
+      "稳定性优先",
+      "可审计",
+      "合同折扣审批"
+    ],
+    "blockers": [
+      "新加坡 GPU 容量只能覆盖 60% 峰值",
+      "折扣审批未完成"
+    ],
+    "recommended_solution": [
+      "ECS GPU 包月训练实例",
+      "RDS MySQL 高可用实例",
+      "TOS 训练数据存储",
+      "CLB 训练任务入口"
+    ],
+    "next_action": "销售先发容量预约与正式报价前检查清单，不承诺未经审批的折扣和交付日期。",
+    "owner_user_id": "cloud_sales_002",
+    "owner_team": "sales",
+    "weighted_pipeline_cny": 186000,
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.72,
+    "source_ref_ids": [
+      "src_ecs_gtm_demo",
+      "src_ecs_capacity_demo"
+    ]
+  },
+  {
+    "opportunity_id": "opp_ai_train_lab_202606",
+    "customer_id": "cust_ai_studio",
+    "customer_name": "灵犀内容科技",
+    "industry": "AI 应用",
+    "product_ids": [
+      "prod_ecs",
+      "prod_tos"
+    ],
+    "budget_cny": 420000,
+    "stage": "contract_review",
+    "probability": 0.74,
+    "expected_close_month": "2026-06",
+    "decision_maker": "AI 平台负责人",
+    "region_preference": "cn-east-1",
+    "requirements": [
+      "GPU 训练",
+      "训练数据存储",
+      "成本可控"
+    ],
+    "blockers": [
+      "包月折扣需要财务审批"
+    ],
+    "recommended_solution": [
+      "ECS GPU 华东 1 灰度包月",
+      "TOS 标准存储资源包"
+    ],
+    "next_action": "财务复核折扣底线后进入合同审批。",
+    "owner_user_id": "cloud_sales_001",
+    "owner_team": "sales",
+    "weighted_pipeline_cny": 310800,
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.75,
+    "source_ref_ids": [
+      "src_ecs_gtm_demo",
+      "src_ecs_gmv_demo"
+    ]
+  },
+  {
+    "opportunity_id": "opp_hpc_research_202606",
+    "customer_id": "cust_media_stream",
+    "customer_name": "星河传媒",
+    "industry": "科研与传媒",
+    "product_ids": [
+      "prod_ecs",
+      "prod_cdn",
+      "prod_tos"
+    ],
+    "budget_cny": 280000,
+    "stage": "qualified",
+    "probability": 0.42,
+    "expected_close_month": "2026-07",
+    "decision_maker": "技术采购经理",
+    "region_preference": "cn-east-1",
+    "requirements": [
+      "GPU 渲染",
+      "素材存储",
+      "内容分发"
+    ],
+    "blockers": [
+      "现有 CDN 账单争议未解决"
+    ],
+    "recommended_solution": [
+      "ECS GPU 短期按量",
+      "TOS 素材存储",
+      "CDN 大规格资源包"
+    ],
+    "next_action": "先解决账单争议，再进入 GPU 试用。",
+    "owner_user_id": "sales_media_001",
+    "owner_team": "sales",
+    "weighted_pipeline_cny": 117600,
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.67,
+    "source_ref_ids": [
+      "src_ecs_gtm_demo"
+    ]
+  },
+  {
+    "opportunity_id": "opp_seedance_ecommerce_202606",
+    "customer_id": "cust_ai_studio",
+    "customer_name": "灵犀内容科技",
+    "industry": "电商内容",
+    "product_ids": [
+      "prod_seedance",
+      "prod_tos",
+      "prod_cdn"
+    ],
+    "budget_cny": 180000,
+    "stage": "proposal",
+    "probability": 0.66,
+    "expected_close_month": "2026-06",
+    "decision_maker": "增长负责人/采购",
+    "region_preference": "cn-east-1",
+    "requirements": [
+      "商品图转短视频",
+      "大促批量生成",
+      "内容安全审核",
+      "CDN 分发"
+    ],
+    "blockers": [
+      "促销价和合同折扣互斥未确认",
+      "高峰生成队列限流未确认"
+    ],
+    "recommended_solution": [
+      "Seedance Mini 资源包",
+      "TOS 素材存储",
+      "CDN 分发流量包"
+    ],
+    "next_action": "销售先生成正式报价前检查清单，等待财务和 SRE 人工确认。",
+    "owner_user_id": "sales_ai_001",
+    "owner_team": "sales",
+    "weighted_pipeline_cny": 118800,
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.69,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article",
+      "src_cloud_sales_collab_demo_202606"
+    ]
+  },
+  {
+    "opportunity_id": "opp_seedance_mcn_202606",
+    "customer_id": "cust_media_stream",
+    "customer_name": "星河传媒",
+    "industry": "MCN/短视频",
+    "product_ids": [
+      "prod_seedance",
+      "prod_agent_plan",
+      "prod_tos"
+    ],
+    "budget_cny": 260000,
+    "stage": "technical_validation",
+    "probability": 0.58,
+    "expected_close_month": "2026-07",
+    "decision_maker": "内容生产负责人",
+    "region_preference": "cn-east-1",
+    "requirements": [
+      "多素材参考生成",
+      "脚本自动改写",
+      "批量任务排队",
+      "账单解释"
+    ],
+    "blockers": [
+      "内容安全边界待确认",
+      "客服 FAQ 未完成"
+    ],
+    "recommended_solution": [
+      "Seedance Mini 批量生成",
+      "Agent Plan 脚本助手",
+      "TOS 素材库"
+    ],
+    "next_action": "产品与法务补齐内容安全边界，销售安排 POC。",
+    "owner_user_id": "sales_media_001",
+    "owner_team": "sales",
+    "weighted_pipeline_cny": 150800,
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.67,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article",
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing",
+      "src_cloud_sales_collab_demo_202606"
+    ]
+  },
+  {
+    "opportunity_id": "opp_agent_devteam_202606",
+    "customer_id": "cust_finance_core",
+    "customer_name": "远山智能制造",
+    "industry": "企业研发",
+    "product_ids": [
+      "prod_agent_plan",
+      "prod_rds_mysql",
+      "prod_tos"
+    ],
+    "budget_cny": 220000,
+    "stage": "security_review",
+    "probability": 0.61,
+    "expected_close_month": "2026-06",
+    "decision_maker": "研发效能负责人/安全负责人",
+    "region_preference": "cn-east-1",
+    "requirements": [
+      "企业协作",
+      "API Key 管理",
+      "用量看板",
+      "审计日志"
+    ],
+    "blockers": [
+      "组织权限条款未完成",
+      "超额付费确认流程未完成"
+    ],
+    "recommended_solution": [
+      "Agent Plan 企业协作套餐",
+      "TOS 知识库素材",
+      "RDS 业务配置库"
+    ],
+    "next_action": "法务确认权限边界后生成审批摘要。",
+    "owner_user_id": "cloud_sales_002",
+    "owner_team": "sales",
+    "weighted_pipeline_cny": 134200,
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.68,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing",
+      "src_cloud_sales_collab_demo_202606"
+    ]
+  },
+  {
+    "opportunity_id": "opp_agent_cs_202606",
+    "customer_id": "cust_ai_studio",
+    "customer_name": "灵犀内容科技",
+    "industry": "客户成功/客服",
+    "product_ids": [
+      "prod_agent_plan",
+      "prod_tos"
+    ],
+    "budget_cny": 120000,
+    "stage": "trial",
+    "probability": 0.55,
+    "expected_close_month": "2026-07",
+    "decision_maker": "客服负责人",
+    "region_preference": "cn-east-1",
+    "requirements": [
+      "客服知识库问答",
+      "联网搜索",
+      "工单摘要",
+      "用量可控"
+    ],
+    "blockers": [
+      "轮数估算容易被误解为保底",
+      "知识库计费口径未解释"
+    ],
+    "recommended_solution": [
+      "Agent Plan Medium",
+      "TOS 知识库素材存储"
+    ],
+    "next_action": "客户成功提供用量解释和升级路径。",
+    "owner_user_id": "sales_ai_001",
+    "owner_team": "sales",
+    "weighted_pipeline_cny": 66000,
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing",
+      "src_cloud_sales_collab_demo_202606"
+    ]
+  },
+  {
+    "opportunity_id": "opp_seedance_agency_202606",
+    "customer_id": "cust_retail_brand",
+    "customer_name": "青柚零售品牌",
+    "industry": "零售品牌",
+    "product_ids": [
+      "prod_seedance",
+      "prod_cdn"
+    ],
+    "budget_cny": 90000,
+    "stage": "self_service_quote",
+    "probability": 0.49,
+    "expected_close_month": "2026-07",
+    "decision_maker": "市场负责人",
+    "region_preference": "cn-east-1",
+    "requirements": [
+      "618 后活动素材",
+      "5秒视频批量生成",
+      "预算自助估算"
+    ],
+    "blockers": [
+      "客户误以为估算是正式报价",
+      "需要销售解释资源包边界"
+    ],
+    "recommended_solution": [
+      "Seedance Mini 自助资源包",
+      "CDN 标准流量包"
+    ],
+    "next_action": "销售发送正式报价边界说明和内容安全 FAQ。",
+    "owner_user_id": "sales_media_001",
+    "owner_team": "sales",
+    "weighted_pipeline_cny": 44100,
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.65,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article",
+      "src_cloud_sales_collab_demo_202606"
+    ]
+  },
+  {
+    "opportunity_id": "opp_agent_startup_202606",
+    "customer_id": "cust_startup_builder",
+    "customer_name": "原点开发者团队",
+    "industry": "AI 创业团队",
+    "product_ids": [
+      "prod_agent_plan"
+    ],
+    "budget_cny": 60000,
+    "stage": "upgrade_consideration",
+    "probability": 0.52,
+    "expected_close_month": "2026-07",
+    "decision_maker": "技术负责人",
+    "region_preference": "cn-east-1",
+    "requirements": [
+      "从 Small 升级 Medium",
+      "联网搜索",
+      "多模型切换",
+      "成本封顶"
+    ],
+    "blockers": [
+      "高成本模型消耗理解不足",
+      "超额付费开关需要管理员确认"
+    ],
+    "recommended_solution": [
+      "Agent Plan Medium",
+      "用量告警与超额确认"
+    ],
+    "next_action": "客户成功生成 Small 到 Medium 升级收益和风险说明。",
+    "owner_user_id": "sales_ai_001",
+    "owner_team": "sales",
+    "weighted_pipeline_cny": 31200,
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.64,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing",
+      "src_cloud_sales_collab_demo_202606"
+    ]
+  }
+]

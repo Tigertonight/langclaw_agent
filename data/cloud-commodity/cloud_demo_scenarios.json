@@ -1,0 +1,2141 @@
+[
+  {
+    "scenario_id": "cloud_seedance_config",
+    "persona": "商品 PM",
+    "user_question": "Seedance 上架前需要补哪些商品配置？",
+    "scenario_type": "config",
+    "product_id": "prod_seedance",
+    "expected_output": [
+      "business_answer",
+      "next_actions",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_product",
+      "src_seedance_billing_article",
+      "src_ark_product"
+    ]
+  },
+  {
+    "scenario_id": "cloud_agent_plan_modeling",
+    "persona": "商品 PM",
+    "user_question": "Agent Plan 应该如何建 Product/Offer/SKU/Meter/Price？",
+    "scenario_type": "config",
+    "product_id": "prod_agent_plan",
+    "expected_output": [
+      "business_answer",
+      "next_actions",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  },
+  {
+    "scenario_id": "cloud_agent_plan_rounds",
+    "persona": "云销售",
+    "user_question": "客户买一个 Agent Plan Medium 能对话多少轮？",
+    "scenario_type": "tool_calling",
+    "product_id": "prod_agent_plan",
+    "expected_output": [
+      "business_answer",
+      "next_actions",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  },
+  {
+    "scenario_id": "cloud_seedance_seconds",
+    "persona": "云销售",
+    "user_question": "客户买 1 万元 Seedance 套餐能生成多少秒视频？",
+    "scenario_type": "tool_calling",
+    "product_id": "prod_seedance",
+    "expected_output": [
+      "business_answer",
+      "next_actions",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_product",
+      "src_seedance_billing_article",
+      "src_ark_product"
+    ]
+  },
+  {
+    "scenario_id": "cloud_seedance_risk",
+    "persona": "审批人",
+    "user_question": "Seedance 发布申请能不能过，有哪些价格/合规/存量客户风险？",
+    "scenario_type": "risk_review",
+    "product_id": "prod_seedance",
+    "expected_output": [
+      "business_answer",
+      "next_actions",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_product",
+      "src_seedance_billing_article",
+      "src_ark_product"
+    ]
+  },
+  {
+    "scenario_id": "cloud_exec_risk",
+    "persona": "老板",
+    "user_question": "当前云商品平台有什么风险、谁卡住流程、哪些重点客户快续约？",
+    "scenario_type": "risk_review",
+    "product_id": "prod_seedance",
+    "expected_output": [
+      "business_answer",
+      "next_actions",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_product",
+      "src_seedance_billing_article",
+      "src_ark_product"
+    ]
+  },
+  {
+    "scenario_id": "cloud_ops_announcement",
+    "persona": "运营",
+    "user_question": "生成灰度公告、销售话术和客户通知。",
+    "scenario_type": "closed_loop",
+    "product_id": "prod_seedance",
+    "expected_output": [
+      "business_answer",
+      "next_actions",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_product",
+      "src_seedance_billing_article",
+      "src_ark_product"
+    ]
+  },
+  {
+    "scenario_id": "cloud_openui_replay",
+    "persona": "OpenUI 用户",
+    "user_question": "生成购买页/商品配置页，复现字段、布局和状态。",
+    "scenario_type": "openui",
+    "product_id": "prod_openui_demo",
+    "expected_output": [
+      "business_answer",
+      "next_actions",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_openui_demo_assumption",
+      "src_agent_plan_assumption"
+    ]
+  },
+  {
+    "scenario_id": "cloud_pm_seedance_purchase_fields",
+    "persona": "商品 PM",
+    "user_question": "Seedance 上架前购买页需要配置哪些字段？哪些字段是必填、哪些需要人工确认？",
+    "scenario_type": "product_modeling",
+    "product_id": "prod_seedance",
+    "expected_output": [
+      "purchase_fields",
+      "required_fields",
+      "human_review_boundary",
+      "source_refs"
+    ],
+    "source_ref_ids": [
+      "src_seedance_product",
+      "src_seedance_billing_article",
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "scenario_id": "cloud_pm_price_guardrail",
+    "persona": "商品 PM",
+    "user_question": "Seedance Mini 上架前，价格、促销、合同折扣有什么冲突风险？",
+    "scenario_type": "risk_review",
+    "product_id": "prod_seedance",
+    "expected_output": [
+      "risk_rank",
+      "affected_customer",
+      "requires_confirmation",
+      "next_actions"
+    ],
+    "source_ref_ids": [
+      "src_seedance_product",
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "scenario_id": "cloud_pm_gray_release_checklist",
+    "persona": "商品 PM",
+    "user_question": "帮我生成 Seedance Mini 灰度发布检查清单，包含配置、计费、回滚、客服通知和销售话术。",
+    "scenario_type": "workflow",
+    "product_id": "prod_seedance",
+    "expected_output": [
+      "checklist",
+      "owner",
+      "rollback_checkpoint",
+      "sales_enablement"
+    ],
+    "source_ref_ids": [
+      "src_seedance_product",
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "scenario_id": "cloud_pm_agent_plan_model",
+    "persona": "商品 PM",
+    "user_question": "Agent Plan Medium 应该如何映射成 Product、Offer、SKU、Meter、Price？",
+    "scenario_type": "product_modeling",
+    "product_id": "prod_agent_plan",
+    "expected_output": [
+      "product",
+      "offer",
+      "sku",
+      "meter",
+      "price",
+      "assumptions"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_assumption",
+      "src_ark_product"
+    ]
+  },
+  {
+    "scenario_id": "cloud_pm_release_owner_blocker",
+    "persona": "商品 PM",
+    "user_question": "rel_seedance_mini_202606 现在还卡在哪些任务？谁负责？延期会影响哪些客户？",
+    "scenario_type": "workflow_bottleneck",
+    "product_id": "prod_seedance",
+    "expected_output": [
+      "blocking_tasks",
+      "owner",
+      "affected_customer",
+      "due_date"
+    ],
+    "source_ref_ids": [
+      "src_seedance_product",
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "scenario_id": "cloud_exec_operating_metrics",
+    "persona": "老板",
+    "user_question": "云商品平台本月 GMV、净收入、毛利率、活跃客户和账单争议金额分别是多少？哪些指标需要解释为 demo 假设？",
+    "scenario_type": "executive_briefing",
+    "product_id": "portfolio",
+    "expected_output": [
+      "conclusion",
+      "metrics",
+      "mock_boundary",
+      "evidence"
+    ],
+    "source_ref_ids": [
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "scenario_id": "cloud_exec_revenue_mix",
+    "persona": "老板",
+    "user_question": "按商品线看，Seedance、Agent Plan、CDN、TOS、ECS/RDS 哪些贡献收入，哪些存在风险？",
+    "scenario_type": "executive_briefing",
+    "product_id": "portfolio",
+    "expected_output": [
+      "revenue_mix",
+      "risk_rank",
+      "owner",
+      "next_actions"
+    ],
+    "source_ref_ids": [
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "scenario_id": "cloud_exec_owner_actions",
+    "persona": "老板",
+    "user_question": "把当前云商品平台最该推进的 5 个动作列出来，要求包含负责人、影响金额、截止时间和证据来源。",
+    "scenario_type": "executive_action_list",
+    "product_id": "portfolio",
+    "expected_output": [
+      "top_actions",
+      "owner",
+      "amount",
+      "deadline",
+      "evidence"
+    ],
+    "source_ref_ids": [
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "scenario_id": "cloud_exec_bill_disputes",
+    "persona": "老板",
+    "user_question": "有哪些客户账单或发票有争议？影响金额是多少，谁负责解决？",
+    "scenario_type": "billing_risk",
+    "product_id": "portfolio",
+    "expected_output": [
+      "dispute_amount",
+      "customer",
+      "owner",
+      "next_actions"
+    ],
+    "source_ref_ids": [
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "scenario_id": "cloud_exec_renewal_priority",
+    "persona": "老板",
+    "user_question": "续约风险最高的是哪几个客户？如果本周只能处理两个，先处理谁？",
+    "scenario_type": "renewal_risk",
+    "product_id": "portfolio",
+    "expected_output": [
+      "priority_rank",
+      "arr",
+      "risk_reason",
+      "action"
+    ],
+    "source_ref_ids": [
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "scenario_id": "cloud_sales_media_bill_explain",
+    "persona": "云销售",
+    "user_question": "星河传媒集团这个月 CDN/TOS 账单有什么争议？我下一步该怎么跟客户解释？",
+    "scenario_type": "sales_account_plan",
+    "product_id": "prod_cdn",
+    "expected_output": [
+      "bill_status",
+      "dispute_reason",
+      "customer_message",
+      "next_actions"
+    ],
+    "source_ref_ids": [
+      "src_cdn_product",
+      "src_tos_product",
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "scenario_id": "cloud_sales_contract_discount_compare",
+    "persona": "云销售",
+    "user_question": "灵犀内容智能科技和星河传媒的合同折扣有什么差异？哪些不能直接承诺给客户？",
+    "scenario_type": "contract_boundary",
+    "product_id": "portfolio",
+    "expected_output": [
+      "discount_compare",
+      "scope_boundary",
+      "requires_approval",
+      "source_refs"
+    ],
+    "source_ref_ids": [
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "scenario_id": "cloud_sales_finance_solution",
+    "persona": "云销售",
+    "user_question": "金融客户要上核心业务系统，预算 30 万，优先稳定性和可审计，ECS、RDS、TOS 应该怎么组合？",
+    "scenario_type": "solution_recommendation",
+    "product_id": "prod_ecs",
+    "expected_output": [
+      "solution",
+      "budget_split",
+      "reliability",
+      "auditability",
+      "boundary"
+    ],
+    "source_ref_ids": [
+      "src_ecs_product",
+      "src_rds_product",
+      "src_tos_product",
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "scenario_id": "cloud_sales_next_best_action",
+    "persona": "云销售",
+    "user_question": "我负责的云客户里，本周最该跟进哪三个机会？请按续约风险、金额和下一步动作排序。",
+    "scenario_type": "sales_priority",
+    "product_id": "portfolio",
+    "expected_output": [
+      "priority_rank",
+      "customer",
+      "amount",
+      "next_actions"
+    ],
+    "source_ref_ids": [
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "scenario_id": "cloud_sales_solution_budget_100k",
+    "persona": "云销售",
+    "user_question": "客户是内容行业，预算 10 万元，想做短视频批量生成和智能客服，Seedance、Agent Plan、TOS、CDN 怎么配？",
+    "scenario_type": "solution_recommendation",
+    "product_id": "portfolio",
+    "expected_output": [
+      "budget_split",
+      "product_bundle",
+      "assumptions",
+      "boundary"
+    ],
+    "source_ref_ids": [
+      "src_seedance_product",
+      "src_agent_plan_assumption",
+      "src_tos_product",
+      "src_cdn_product"
+    ]
+  },
+  {
+    "scenario_id": "cloud_customer_quality_compare",
+    "persona": "客户自助",
+    "user_question": "同样 10000 元预算，Seedance 720p 标准质量和 1080p 高质量大概分别能生成多少秒？",
+    "scenario_type": "self_service_quote",
+    "product_id": "prod_seedance",
+    "expected_output": [
+      "formula",
+      "assumptions",
+      "quality_compare",
+      "confidence",
+      "boundary"
+    ],
+    "source_ref_ids": [
+      "src_seedance_product",
+      "src_seedance_billing_article",
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "scenario_id": "cloud_customer_my_bill",
+    "persona": "客户自助",
+    "user_question": "查询我能看的 2026 年 6 月账单和发票状态。",
+    "scenario_type": "permission_scoped_query",
+    "product_id": "portfolio",
+    "expected_output": [
+      "scoped_bill",
+      "invoice_status",
+      "customer_scope"
+    ],
+    "source_ref_ids": [
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "scenario_id": "cloud_customer_package_combo",
+    "persona": "客户自助",
+    "user_question": "我想同时买 Seedance 和 Agent Plan，预算 2 万元，怎么分配更适合短视频批量生成和客服问答？",
+    "scenario_type": "self_service_quote",
+    "product_id": "portfolio",
+    "expected_output": [
+      "budget_split",
+      "estimated_seconds",
+      "estimated_rounds",
+      "boundary"
+    ],
+    "source_ref_ids": [
+      "src_seedance_product",
+      "src_agent_plan_assumption",
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "scenario_id": "cloud_customer_formal_quote_boundary",
+    "persona": "客户自助",
+    "user_question": "如果我要正式下单，哪些信息会影响最终价格？合同折扣、地区、质量档位、超额用量分别怎么影响？",
+    "scenario_type": "quote_boundary",
+    "product_id": "portfolio",
+    "expected_output": [
+      "pricing_variables",
+      "contract_boundary",
+      "region_boundary",
+      "overage_boundary"
+    ],
+    "source_ref_ids": [
+      "src_demo_assumption_001"
+    ]
+  },
+  {
+    "scenario_id": "ecs_story_pm_ipd_model",
+    "persona": "商品 PM",
+    "user_question": "我要把 ECS GPU 训练实例接入云商品平台，支持华东 1 和新加坡，按量和包月售卖。请生成商品模型、SKU、计费项、购买页字段和 IPD 上架检查清单。",
+    "scenario_type": "ecs_full_chain_ipd",
+    "product_id": "prod_ecs",
+    "expected_output": "商品建模表、购买页字段、缺失项、IPD checkpoint",
+    "source_ref_ids": [
+      "src_ecs_ipd_demo",
+      "src_ecs_product"
+    ]
+  },
+  {
+    "scenario_id": "ecs_story_pm_release_approval",
+    "persona": "商品 PM",
+    "user_question": "生成 rel_ecs_gpu_train_202606 的发布审批摘要，重点看价格、容量、SLA 和回滚检查点。",
+    "scenario_type": "ecs_full_chain_release",
+    "product_id": "prod_ecs",
+    "expected_output": "风险看板、审批任务、回滚方案、人审要求",
+    "source_ref_ids": [
+      "src_ecs_ipd_demo",
+      "src_ecs_capacity_demo"
+    ]
+  },
+  {
+    "scenario_id": "ecs_story_finance_margin",
+    "persona": "财务 BP",
+    "user_question": "这个 ECS GPU 包月套餐的价格和折扣会不会影响毛利？哪些折扣不能直接给销售承诺？",
+    "scenario_type": "ecs_full_chain_finance",
+    "product_id": "prod_ecs",
+    "expected_output": "毛利卡片、折扣边界、财务审批动作",
+    "source_ref_ids": [
+      "src_ecs_gmv_demo"
+    ]
+  },
+  {
+    "scenario_id": "ecs_story_sre_capacity",
+    "persona": "SRE",
+    "user_question": "华东 1 和新加坡的 GPU 容量能支撑首批客户吗？如果容量不足，发布和销售应该怎么限制？",
+    "scenario_type": "ecs_full_chain_capacity",
+    "product_id": "prod_ecs",
+    "expected_output": "容量健康度、区域风险、限售/灰度建议、负责人",
+    "source_ref_ids": [
+      "src_ecs_capacity_demo"
+    ]
+  },
+  {
+    "scenario_id": "ecs_story_gtm_package",
+    "persona": "GTM/运营",
+    "user_question": "帮我生成 ECS GPU 训练实例的 GTM 包：目标客户、卖点、FAQ、销售话术、不能承诺的边界。",
+    "scenario_type": "ecs_full_chain_gtm",
+    "product_id": "prod_ecs",
+    "expected_output": "GTM checklist、销售话术、客户 FAQ",
+    "source_ref_ids": [
+      "src_ecs_gtm_demo"
+    ]
+  },
+  {
+    "scenario_id": "ecs_story_sales_solution",
+    "persona": "云销售",
+    "user_question": "金融客户预算 30 万，优先稳定性和可审计，ECS GPU、RDS、TOS、CLB 应该怎么组合？正式报价前要确认什么？",
+    "scenario_type": "ecs_full_chain_sales",
+    "product_id": "prod_ecs",
+    "expected_output": "方案推荐、预算拆分、假设、边界、下一步",
+    "source_ref_ids": [
+      "src_ecs_gtm_demo",
+      "src_ecs_capacity_demo"
+    ]
+  },
+  {
+    "scenario_id": "ecs_story_customer_quote",
+    "persona": "客户自助",
+    "user_question": "我想买 ECS GPU 训练实例，预算 10 万，华东 1 包月，大概能买什么规格？价格是不是正式报价？",
+    "scenario_type": "ecs_full_chain_customer_quote",
+    "product_id": "prod_ecs",
+    "expected_output": "自助询价卡片、配置建议、估算边界",
+    "source_ref_ids": [
+      "src_ecs_gtm_demo",
+      "src_ecs_gmv_demo"
+    ]
+  },
+  {
+    "scenario_id": "ecs_story_boss_gmv",
+    "persona": "老板",
+    "user_question": "ECS GPU 商品本月 GMV 目标完成得怎么样？毛利、交付、容量和客户风险分别谁负责？",
+    "scenario_type": "ecs_full_chain_executive",
+    "product_id": "prod_ecs",
+    "expected_output": "经营驾驶舱、GMV 目标达成、风险排序、负责人、行动清单",
+    "source_ref_ids": [
+      "src_ecs_gmv_demo",
+      "src_ecs_ops_demo"
+    ]
+  },
+  {
+    "scenario_id": "ecs_story_ops_incident",
+    "persona": "SRE",
+    "user_question": "如果新加坡 GPU 容量不足导致交付延期，影响哪些订单、GMV 和客户？给我回滚和客户沟通方案。",
+    "scenario_type": "ecs_full_chain_ops",
+    "product_id": "prod_ecs",
+    "expected_output": "运维阻塞、影响订单、客户沟通、回滚步骤",
+    "source_ref_ids": [
+      "src_ecs_ops_demo",
+      "src_ecs_capacity_demo"
+    ]
+  },
+  {
+    "scenario_id": "ecs_story_retro_template",
+    "persona": "商品 PM",
+    "user_question": "把 ECS GPU 从立项到上架、销售、交付、经营达成的阻塞复盘成下一次商品上架模板。",
+    "scenario_type": "ecs_full_chain_retro",
+    "product_id": "prod_ecs",
+    "expected_output": "复盘报告、可复用 checkpoint、数据缺口",
+    "source_ref_ids": [
+      "src_ecs_ipd_demo",
+      "src_ecs_gtm_demo",
+      "src_ecs_ops_demo"
+    ]
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_ipd_001",
+    "persona": "商品 PM",
+    "user_question": "Seedance Mini 准备从产品能力商品化为可自助购买的云商品，IPD 上架前有哪些检查点还没完成？",
+    "scenario_type": "ipd",
+    "stage": "ipd",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_ipd_002",
+    "persona": "商品 PM",
+    "user_question": "Seedance Mini 的分辨率、时长、参考素材和内容安全确认应该怎么变成购买页字段？",
+    "scenario_type": "modeling",
+    "stage": "modeling",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_ipd_003",
+    "persona": "商品 PM",
+    "user_question": "Seedance Mini 自助购买入口上线前，价格、资源包和合同折扣怎么做互斥？",
+    "scenario_type": "pricing_guardrail",
+    "stage": "pricing_guardrail",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_ipd_004",
+    "persona": "商品 PM",
+    "user_question": "Seedance Mini 大促前要不要灰度？灰度流量、队列和失败补偿怎么设计？",
+    "scenario_type": "release_flow",
+    "stage": "release_flow",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_ipd_005",
+    "persona": "商品 PM",
+    "user_question": "生成 Seedance Mini 自助购买发布审批摘要，包含风险、人审、回滚和客服通知。",
+    "scenario_type": "approval",
+    "stage": "approval",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_ipd_006",
+    "persona": "商品 PM",
+    "user_question": "Seedance Mini 的内容安全、肖像版权、禁用行业边界怎么写到商品条款里？",
+    "scenario_type": "compliance",
+    "stage": "compliance",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_ipd_007",
+    "persona": "商品 PM",
+    "user_question": "Seedance Mini 上线后如果生成失败率升高，商品页和销售话术应该怎么降级？",
+    "scenario_type": "ops_readiness",
+    "stage": "ops_readiness",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_ipd_008",
+    "persona": "商品 PM",
+    "user_question": "Seedance Mini 资源包和后付费两种售卖模式分别适合什么客户？",
+    "scenario_type": "offer_design",
+    "stage": "offer_design",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_ipd_009",
+    "persona": "商品 PM",
+    "user_question": "Seedance Mini 商品模型里 Product、Offer、SKU、Meter、Price 分别怎么建？",
+    "scenario_type": "modeling",
+    "stage": "modeling",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_ipd_010",
+    "persona": "商品 PM",
+    "user_question": "Seedance Mini 上架前哪些字段必须人工确认，哪些可以客户自助填写？",
+    "scenario_type": "purchase_fields",
+    "stage": "purchase_fields",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_gtm_011",
+    "persona": "GTM/运营",
+    "user_question": "帮我生成 Seedance Mini 面向电商、营销、UGC 的 GTM 包和销售话术。",
+    "scenario_type": "gtm",
+    "stage": "gtm",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_gtm_012",
+    "persona": "GTM/运营",
+    "user_question": "Seedance Mini 官网落地页应该放哪些 FAQ，避免客户把估算当正式报价？",
+    "scenario_type": "website_faq",
+    "stage": "website_faq",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_gtm_013",
+    "persona": "GTM/运营",
+    "user_question": "Seedance Mini 和标准 Seedance/高质量档位怎么做客户分层和升级路径？",
+    "scenario_type": "gtm",
+    "stage": "gtm",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_gtm_014",
+    "persona": "GTM/运营",
+    "user_question": "Seedance Mini 大促活动页需要哪些销售禁承诺项和数据边界提示？",
+    "scenario_type": "website_guardrail",
+    "stage": "website_guardrail",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_gtm_015",
+    "persona": "GTM/运营",
+    "user_question": "为 Seedance Mini 生成 3 个行业方案：电商商品视频、品牌营销素材、UGC 创意测试。",
+    "scenario_type": "solution_pack",
+    "stage": "solution_pack",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_sales_016",
+    "persona": "云销售",
+    "user_question": "客户预算 18 万，要做电商商品图转短视频，Seedance Mini、TOS、CDN 怎么配？",
+    "scenario_type": "sales_solution",
+    "stage": "sales_solution",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_sales_017",
+    "persona": "云销售",
+    "user_question": "客户问 Seedance Mini 一秒成本是不是固定的，我应该怎么解释估算、折扣和审核重试？",
+    "scenario_type": "sales_objection",
+    "stage": "sales_objection",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_sales_018",
+    "persona": "云销售",
+    "user_question": "MCN 客户要批量生成 5 秒视频，还要脚本助手，Seedance Mini 和 Agent Plan 怎么组合？",
+    "scenario_type": "sales_solution",
+    "stage": "sales_solution",
+    "product_id": "portfolio",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_cloud_sales_collab_demo_202606"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_sales_019",
+    "persona": "云销售",
+    "user_question": "客户要大促期间保证生成速度，我能承诺什么，哪些要先走容量预约？",
+    "scenario_type": "sales_boundary",
+    "stage": "sales_boundary",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_sales_020",
+    "persona": "云销售",
+    "user_question": "客户有合同折扣又想用促销价，帮我判断能不能直接承诺。",
+    "scenario_type": "discount_review",
+    "stage": "discount_review",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_customer_021",
+    "persona": "客户自助",
+    "user_question": "我有 10000 元预算买 Seedance Mini，720P 生成 5 秒视频大概能做多少条？这是不是正式报价？",
+    "scenario_type": "self_quote",
+    "stage": "self_quote",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_customer_022",
+    "persona": "客户自助",
+    "user_question": "同样预算下，Seedance Mini 480P 和 720P 的视频秒数、质量边界怎么理解？",
+    "scenario_type": "self_quote",
+    "stage": "self_quote",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_customer_023",
+    "persona": "客户自助",
+    "user_question": "我上传参考图和参考视频会不会影响 Seedance Mini 预算估算？",
+    "scenario_type": "self_quote",
+    "stage": "self_quote",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_customer_024",
+    "persona": "客户自助",
+    "user_question": "如果生成失败或内容审核不通过，Seedance Mini 的费用和重试怎么算？",
+    "scenario_type": "billing_faq",
+    "stage": "billing_faq",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_customer_025",
+    "persona": "客户自助",
+    "user_question": "我想买 Seedance Mini 资源包，怎么确认是否需要销售给正式报价？",
+    "scenario_type": "quote_boundary",
+    "stage": "quote_boundary",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_finance_026",
+    "persona": "财务 BP",
+    "user_question": "Seedance Mini 促销价、资源包和合同折扣叠加后，毛利风险在哪里？",
+    "scenario_type": "finance_margin",
+    "stage": "finance_margin",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_finance_027",
+    "persona": "财务 BP",
+    "user_question": "Seedance Mini 哪些订单要冻结自动促销，转为人工报价审批？",
+    "scenario_type": "finance_guardrail",
+    "stage": "finance_guardrail",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_sre_028",
+    "persona": "SRE",
+    "user_question": "Seedance Mini 大促生成队列健康度不够，应该怎么限流、告警和通知销售？",
+    "scenario_type": "ops_capacity",
+    "stage": "ops_capacity",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_exec_029",
+    "persona": "老板",
+    "user_question": "Seedance Mini 本月 GMV、pipeline、毛利和容量风险怎么样？谁负责下一步？",
+    "scenario_type": "executive",
+    "stage": "executive",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_seedance_mini_exec_030",
+    "persona": "老板",
+    "user_question": "Seedance Mini 上线如果延期一天，会影响哪些客户、GMV 和销售动作？",
+    "scenario_type": "executive_impact",
+    "stage": "executive_impact",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_ipd_031",
+    "persona": "商品 PM",
+    "user_question": "Agent Plan 企业协作套餐从 AFP 权益到商品上架，IPD 检查点有哪些？",
+    "scenario_type": "ipd",
+    "stage": "ipd",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_ipd_032",
+    "persona": "商品 PM",
+    "user_question": "Agent Plan 的 AFP、联网搜索、视觉额度和超额付费应该怎么建 Product/Offer/SKU/Meter/Price？",
+    "scenario_type": "modeling",
+    "stage": "modeling",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_ipd_033",
+    "persona": "商品 PM",
+    "user_question": "Agent Plan 企业协作套餐上架前，API Key、组织成员和审计日志怎么做购买页字段？",
+    "scenario_type": "purchase_fields",
+    "stage": "purchase_fields",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_ipd_034",
+    "persona": "商品 PM",
+    "user_question": "Agent Plan Medium 到企业协作套餐的升级路径和权益边界怎么设计？",
+    "scenario_type": "offer_design",
+    "stage": "offer_design",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_ipd_035",
+    "persona": "商品 PM",
+    "user_question": "生成 Agent Plan 企业套餐发布审批摘要，重点看 AFP 毛利、超额付费、权限和回滚。",
+    "scenario_type": "approval",
+    "stage": "approval",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_ipd_036",
+    "persona": "商品 PM",
+    "user_question": "Agent Plan 用量看板、额度恢复和超额告警上架前还缺哪些研发/运维能力？",
+    "scenario_type": "ops_readiness",
+    "stage": "ops_readiness",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_ipd_037",
+    "persona": "商品 PM",
+    "user_question": "Agent Plan 套餐内 AFP 抵扣规则变化后，怎么通知客户并避免账单争议？",
+    "scenario_type": "billing_change",
+    "stage": "billing_change",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_ipd_038",
+    "persona": "商品 PM",
+    "user_question": "Agent Plan 是否允许自动开启超额付费？需要哪些确认和审批？",
+    "scenario_type": "risk_review",
+    "stage": "risk_review",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_ipd_039",
+    "persona": "商品 PM",
+    "user_question": "Agent Plan 企业协作套餐如果回滚，应该保留哪些存量权益？",
+    "scenario_type": "rollback",
+    "stage": "rollback",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_ipd_040",
+    "persona": "商品 PM",
+    "user_question": "Agent Plan 上架前的 FAQ 应该如何解释 AFP、轮数估算和多工具调用？",
+    "scenario_type": "website_faq",
+    "stage": "website_faq",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_gtm_041",
+    "persona": "GTM/运营",
+    "user_question": "帮我生成 Agent Plan 面向个人开发者、企业研发、客户成功团队的 GTM 包。",
+    "scenario_type": "gtm",
+    "stage": "gtm",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_gtm_042",
+    "persona": "GTM/运营",
+    "user_question": "Agent Plan 官网套餐页需要哪些用量解释、升级路径和不可承诺项？",
+    "scenario_type": "website_guardrail",
+    "stage": "website_guardrail",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_gtm_043",
+    "persona": "GTM/运营",
+    "user_question": "Agent Plan Small、Medium、企业协作套餐怎么做客户分层和升级话术？",
+    "scenario_type": "gtm",
+    "stage": "gtm",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_gtm_044",
+    "persona": "GTM/运营",
+    "user_question": "为 Agent Plan 生成销售 FAQ：联网搜索、视频生成、知识库和超额付费怎么解释？",
+    "scenario_type": "faq",
+    "stage": "faq",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_gtm_045",
+    "persona": "GTM/运营",
+    "user_question": "Agent Plan 与 Seedance、TOS 组合成内容生产工作台，销售包怎么写？",
+    "scenario_type": "solution_pack",
+    "stage": "solution_pack",
+    "product_id": "portfolio",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_cloud_sales_collab_demo_202606"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_sales_046",
+    "persona": "云销售",
+    "user_question": "企业研发客户预算 22 万，要企业协作、API Key 管理和用量看板，Agent Plan 怎么推荐？",
+    "scenario_type": "sales_solution",
+    "stage": "sales_solution",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_sales_047",
+    "persona": "云销售",
+    "user_question": "客户问 Agent Plan Medium 能保证多少轮对话，我应该怎么解释 AFP 假设和边界？",
+    "scenario_type": "sales_objection",
+    "stage": "sales_objection",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_sales_048",
+    "persona": "云销售",
+    "user_question": "客户要开启联网搜索和视频生成，Agent Plan 套餐内 AFP 会不会超？怎么估算？",
+    "scenario_type": "sales_quote",
+    "stage": "sales_quote",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_sales_049",
+    "persona": "云销售",
+    "user_question": "客户要让团队共用 API Key 和账单，正式报价前要确认什么？",
+    "scenario_type": "sales_boundary",
+    "stage": "sales_boundary",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_sales_050",
+    "persona": "云销售",
+    "user_question": "客户从 Small 升级 Medium，怎么证明价值并提醒超额付费风险？",
+    "scenario_type": "upgrade",
+    "stage": "upgrade",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_customer_051",
+    "persona": "客户自助",
+    "user_question": "Agent Plan Medium 大概能支持多少轮带联网搜索的对话？为什么不是保底？",
+    "scenario_type": "self_quote",
+    "stage": "self_quote",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_customer_052",
+    "persona": "客户自助",
+    "user_question": "如果我同时用文本、图片理解和联网搜索，Agent Plan AFP 会怎么消耗？",
+    "scenario_type": "self_quote",
+    "stage": "self_quote",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_customer_053",
+    "persona": "客户自助",
+    "user_question": "Agent Plan 套餐额度用完后会自动扣费吗？我要怎么确认超额付费？",
+    "scenario_type": "billing_faq",
+    "stage": "billing_faq",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_customer_054",
+    "persona": "客户自助",
+    "user_question": "我想从 Small 升级到 Medium，已有额度、账单和权限会怎么处理？",
+    "scenario_type": "upgrade_faq",
+    "stage": "upgrade_faq",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_customer_055",
+    "persona": "客户自助",
+    "user_question": "Agent Plan 企业协作套餐能不能给多个成员用？权限和审计有什么边界？",
+    "scenario_type": "permission_faq",
+    "stage": "permission_faq",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_finance_056",
+    "persona": "财务 BP",
+    "user_question": "Agent Plan 高成本模型、联网搜索和视频生成会不会把毛利打穿？",
+    "scenario_type": "finance_margin",
+    "stage": "finance_margin",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_finance_057",
+    "persona": "财务 BP",
+    "user_question": "Agent Plan 哪些客户应该强制开启超额付费二次确认？",
+    "scenario_type": "finance_guardrail",
+    "stage": "finance_guardrail",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_sre_058",
+    "persona": "SRE",
+    "user_question": "Agent Plan 用量告警翻倍，如何联动客服、销售和客户确认？",
+    "scenario_type": "ops_alert",
+    "stage": "ops_alert",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_exec_059",
+    "persona": "老板",
+    "user_question": "Agent Plan 本月 GMV、pipeline、毛利和用量告警健康吗？最大风险是谁负责？",
+    "scenario_type": "executive",
+    "stage": "executive",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  },
+  {
+    "scenario_id": "cloud_agent_plan_exec_060",
+    "persona": "老板",
+    "user_question": "Agent Plan 企业套餐如果延期，会影响哪些客户、GMV 和升级路径？",
+    "scenario_type": "executive_impact",
+    "stage": "executive_impact",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "expected_output": [
+      "business_answer",
+      "openui_or_structured_view",
+      "next_actions",
+      "risk_or_boundary",
+      "tool_evidence"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.66
+  }
+]

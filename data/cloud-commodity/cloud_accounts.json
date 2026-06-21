@@ -1,0 +1,17 @@
+[
+  {
+    "account_id": "acct_ai_main",
+    "customer_id": "cust_ai_studio",
+    "account_type": "main",
+    "display_name": "灵犀主账号",
+    "budget_cny": 300000
+  },
+  {
+    "account_id": "acct_ai_video_sub",
+    "customer_id": "cust_ai_studio",
+    "parent_account_id": "acct_ai_main",
+    "account_type": "sub",
+    "display_name": "视频生成子账号",
+    "budget_cny": 120000
+  }
+]

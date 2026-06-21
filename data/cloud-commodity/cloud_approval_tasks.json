@@ -1,0 +1,50 @@
+[
+  {
+    "approval_task_id": "ap_seedance_finance",
+    "release_request_id": "rel_seedance_mini_202606",
+    "approver_role": "finance",
+    "assignee": "cloud_finance_001",
+    "status": "blocked",
+    "reason": "需确认合同折扣与资源包抵扣互斥。"
+  },
+  {
+    "approval_task_id": "ap_seedance_legal",
+    "release_request_id": "rel_seedance_mini_202606",
+    "approver_role": "legal",
+    "assignee": "legal_001",
+    "status": "pending",
+    "reason": "需确认 AI 生成内容条款。"
+  },
+  {
+    "approval_task_id": "ap_ecs_gpu_finance",
+    "release_request_id": "rel_ecs_gpu_train_202606",
+    "approver_role": "finance",
+    "assignee": "cloud_finance_001",
+    "status": "blocked",
+    "reason": "包月折扣会压低毛利，需要补齐 GPU 成本、折扣底线和收入确认口径。"
+  },
+  {
+    "approval_task_id": "ap_ecs_gpu_sre",
+    "release_request_id": "rel_ecs_gpu_train_202606",
+    "approver_role": "sre",
+    "assignee": "cloud_sre_001",
+    "status": "blocked",
+    "reason": "新加坡 GPU 池只能覆盖 60% 峰值，需容量预约和限售策略。"
+  },
+  {
+    "approval_task_id": "ap_ecs_gpu_legal",
+    "release_request_id": "rel_ecs_gpu_train_202606",
+    "approver_role": "legal",
+    "assignee": "legal_001",
+    "status": "pending",
+    "reason": "SLA 文案不得承诺固定算力可用性，需要改成服务可用性与补偿边界。"
+  },
+  {
+    "approval_task_id": "ap_ecs_gpu_gtm",
+    "release_request_id": "rel_ecs_gpu_train_202606",
+    "approver_role": "gtm",
+    "assignee": "cloud_gtm_001",
+    "status": "in_progress",
+    "reason": "等待销售话术、FAQ、竞品边界和不可承诺项确认。"
+  }
+]

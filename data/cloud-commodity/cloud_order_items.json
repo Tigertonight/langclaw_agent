@@ -1,0 +1,62 @@
+[
+  {
+    "order_item_id": "oi_seedance_001",
+    "order_id": "ord_seedance_pack_001",
+    "offer_id": "off_seedance_pack",
+    "sku_id": "sku_seedance_lite",
+    "quantity": 1,
+    "amount_cny": 10000
+  },
+  {
+    "order_item_id": "oi_agent_plan_001",
+    "order_id": "ord_agent_plan_001",
+    "offer_id": "off_agent_plan_monthly",
+    "sku_id": "sku_agent_plan_medium",
+    "quantity": 1,
+    "amount_cny": 6999
+  },
+  {
+    "order_item_id": "oi_media_cdn_pack_001",
+    "order_id": "ord_media_cdn_001",
+    "offer_id": "off_cdn_traffic_pack",
+    "sku_id": "sku_cdn_standard_traffic_100tb",
+    "quantity": 1,
+    "amount_cny": 38000,
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium"
+  },
+  {
+    "order_item_id": "oi_media_tos_pack_001",
+    "order_id": "ord_media_cdn_001",
+    "offer_id": "off_tos_storage_pack",
+    "sku_id": "sku_tos_standard_50tb",
+    "quantity": 1,
+    "amount_cny": 14000,
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium"
+  },
+  {
+    "order_item_id": "oi_finance_ecs_reserved_001",
+    "order_id": "ord_finance_core_001",
+    "offer_id": "off_ecs_reserved",
+    "sku_id": "sku_ecs_compute_annual_64c",
+    "quantity": 6,
+    "amount_cny": 228000,
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium"
+  },
+  {
+    "order_item_id": "oi_finance_rds_ha_001",
+    "order_id": "ord_finance_core_001",
+    "offer_id": "off_rds_ha",
+    "sku_id": "sku_rds_mysql_ha_8c32g",
+    "quantity": 3,
+    "amount_cny": 90000,
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium"
+  }
+]

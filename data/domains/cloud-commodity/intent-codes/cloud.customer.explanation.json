@@ -1,0 +1,19 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.customer.explanation",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "生成客户买前/买后友好解释，覆盖超额付费、账单高于估算、非正式报价和客户可见字段。",
+  "params_schema": {
+    "product_code": { "type": "string", "required": false },
+    "scenario": { "type": "string", "required": false }
+  },
+  "examples": [
+    "我是客户，我想买 Agent Plan Medium，额度用完后会发生什么？会不会自动扣费？",
+    "我是客户，为什么我的 Seedance 账单高于预算估算？"
+  ],
+  "tool_binding": "tool.cloud_customer_explanation",
+  "required_permissions": ["cloud:read"]
+}

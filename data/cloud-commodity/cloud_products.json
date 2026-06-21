@@ -1,0 +1,224 @@
+[
+  {
+    "product_id": "prod_ecs",
+    "product_code": "ECS",
+    "product_name": "云服务器 ECS",
+    "provider": "volcengine",
+    "product_family_id": "fam_compute",
+    "product_category": "基础云",
+    "lifecycle_status": "available",
+    "console_url": "https://console.volcengine.com/",
+    "docs_url": "https://www.volcengine.com/product/ecs",
+    "source_ref_ids": [
+      "src_ecs_product",
+      "src_ecs_billing"
+    ]
+  },
+  {
+    "product_id": "prod_tos",
+    "product_code": "TOS",
+    "product_name": "TOS/OSS 对象存储",
+    "provider": "volcengine",
+    "product_family_id": "fam_storage",
+    "product_category": "基础云",
+    "lifecycle_status": "available",
+    "console_url": "https://console.volcengine.com/",
+    "docs_url": "https://www.volcengine.com/product/TOS",
+    "source_ref_ids": [
+      "src_tos_product",
+      "src_tos_billing"
+    ]
+  },
+  {
+    "product_id": "prod_rds_mysql",
+    "product_code": "RDS_MYSQL",
+    "product_name": "云数据库 RDS MySQL",
+    "provider": "volcengine",
+    "product_family_id": "fam_database",
+    "product_category": "基础云",
+    "lifecycle_status": "available",
+    "console_url": "https://console.volcengine.com/",
+    "docs_url": "https://www.volcengine.com/product/rds-mysql",
+    "source_ref_ids": [
+      "src_rds_product",
+      "src_rds_specs"
+    ]
+  },
+  {
+    "product_id": "prod_cdn",
+    "product_code": "CDN",
+    "product_name": "内容分发网络 CDN",
+    "provider": "volcengine",
+    "product_family_id": "fam_network",
+    "product_category": "基础云",
+    "lifecycle_status": "available",
+    "console_url": "https://console.volcengine.com/",
+    "docs_url": "https://www.volcengine.com/product/CDN",
+    "source_ref_ids": [
+      "src_cdn_product",
+      "src_cdn_billing"
+    ]
+  },
+  {
+    "product_id": "prod_clb",
+    "product_code": "CLB",
+    "product_name": "传统型负载均衡 CLB",
+    "provider": "volcengine",
+    "product_family_id": "fam_network",
+    "product_category": "基础云",
+    "lifecycle_status": "available",
+    "console_url": "https://console.volcengine.com/",
+    "docs_url": "https://www.volcengine.com/docs/6406/79577",
+    "source_ref_ids": [
+      "src_lb_billing"
+    ]
+  },
+  {
+    "product_id": "prod_nlb",
+    "product_code": "NLB",
+    "product_name": "网络型负载均衡 NLB",
+    "provider": "volcengine",
+    "product_family_id": "fam_network",
+    "product_category": "基础云",
+    "lifecycle_status": "available",
+    "console_url": "https://console.volcengine.com/",
+    "docs_url": "https://www.volcengine.com/docs/6406/79577",
+    "source_ref_ids": [
+      "src_lb_billing",
+      "src_nlb_usage_billing"
+    ]
+  },
+  {
+    "product_id": "prod_alb",
+    "product_code": "ALB",
+    "product_name": "应用型负载均衡 ALB",
+    "provider": "volcengine",
+    "product_family_id": "fam_network",
+    "product_category": "基础云",
+    "lifecycle_status": "available",
+    "console_url": "https://console.volcengine.com/",
+    "docs_url": "https://www.volcengine.com/docs/6406/79577",
+    "source_ref_ids": [
+      "src_lb_billing"
+    ]
+  },
+  {
+    "product_id": "prod_seedance",
+    "product_code": "SEEDANCE",
+    "product_name": "Seedance 视频生成模型",
+    "provider": "volcengine",
+    "product_family_id": "fam_ai_model",
+    "product_category": "AI 商品",
+    "lifecycle_status": "available",
+    "console_url": "https://console.volcengine.com/",
+    "docs_url": "https://www.volcengine.com/activity/seedance2",
+    "source_ref_ids": [
+      "src_seedance_product",
+      "src_seedance_billing_article",
+      "src_ark_product"
+    ]
+  },
+  {
+    "product_id": "prod_ark_model",
+    "product_code": "ARK_MODEL",
+    "product_name": "火山方舟模型调用",
+    "provider": "volcengine",
+    "product_family_id": "fam_ai_model",
+    "product_category": "AI 商品",
+    "lifecycle_status": "available",
+    "console_url": "https://console.volcengine.com/",
+    "docs_url": "https://www.volcengine.com/docs/82379/1544106",
+    "source_ref_ids": [
+      "src_ark_product"
+    ]
+  },
+  {
+    "product_id": "prod_agent_plan",
+    "product_code": "AGENT_PLAN",
+    "product_name": "Agent Plan 套餐",
+    "provider": "volcengine",
+    "product_family_id": "fam_ai_model",
+    "product_category": "AI 商品",
+    "lifecycle_status": "available",
+    "console_url": "https://console.volcengine.com/",
+    "docs_url": "https://www.volcengine.com/docs/82379/1544106",
+    "source_ref_ids": [
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  },
+  {
+    "product_id": "prod_ai_resource_pack",
+    "product_code": "AI_RESOURCE_PACK",
+    "product_name": "AI 资源包",
+    "provider": "volcengine",
+    "product_family_id": "fam_ai_model",
+    "product_category": "AI 商品",
+    "lifecycle_status": "available",
+    "console_url": "https://console.volcengine.com/",
+    "docs_url": "https://www.volcengine.com/docs/82379/1544106",
+    "source_ref_ids": [
+      "src_ark_product"
+    ]
+  },
+  {
+    "product_id": "prod_ai_savings_plan",
+    "product_code": "AI_SAVINGS_PLAN",
+    "product_name": "AI 节省计划",
+    "provider": "volcengine",
+    "product_family_id": "fam_ai_model",
+    "product_category": "AI 商品",
+    "lifecycle_status": "available",
+    "console_url": "https://console.volcengine.com/",
+    "docs_url": "https://www.volcengine.com/docs/82379/1544106",
+    "source_ref_ids": [
+      "src_ark_product"
+    ]
+  },
+  {
+    "product_id": "prod_ai_content_safety",
+    "product_code": "AI_CONTENT_SAFETY",
+    "product_name": "AI 内容安全审核",
+    "provider": "volcengine",
+    "product_family_id": "fam_ai_model",
+    "product_category": "AI 商品",
+    "lifecycle_status": "available",
+    "console_url": "https://console.volcengine.com/",
+    "docs_url": "https://www.volcengine.com/docs/82379/1544106",
+    "source_ref_ids": [
+      "src_ark_product"
+    ]
+  },
+  {
+    "product_id": "prod_prompt_workflow",
+    "product_code": "PROMPT_WORKFLOW",
+    "product_name": "Prompt/Agent 工作流运行",
+    "provider": "volcengine",
+    "product_family_id": "fam_ai_model",
+    "product_category": "AI 商品",
+    "lifecycle_status": "available",
+    "console_url": "https://console.volcengine.com/",
+    "docs_url": "https://www.volcengine.com/docs/82379/1262333",
+    "source_ref_ids": [
+      "src_agent_plan_assumption",
+      "src_ark_plugin_billing",
+      "src_ark_kb_billing"
+    ]
+  },
+  {
+    "product_id": "prod_openui_demo",
+    "product_code": "OPENUI_DEMO",
+    "product_name": "OpenUI 组件生成/页面生成",
+    "provider": "volcengine",
+    "product_family_id": "fam_ai_model",
+    "product_category": "AI 商品",
+    "lifecycle_status": "available",
+    "console_url": "https://console.volcengine.com/",
+    "docs_url": "https://www.volcengine.com/",
+    "source_ref_ids": [
+      "src_openui_demo_assumption",
+      "src_agent_plan_assumption"
+    ]
+  }
+]

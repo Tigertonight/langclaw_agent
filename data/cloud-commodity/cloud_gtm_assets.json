@@ -1,0 +1,320 @@
+[
+  {
+    "asset_id": "gtm_ecs_gpu_001",
+    "product_id": "prod_ecs",
+    "asset_type": "target_customer",
+    "title": "目标客户分层",
+    "audience": "销售/GTM",
+    "content": [
+      "AI 训练客户：关注 GPU 训练吞吐、成本和交付窗口",
+      "金融核心系统客户：关注稳定性、可审计、SLA 和合同边界"
+    ],
+    "owner_team": "sales",
+    "status": "ready",
+    "not_to_commit": [
+      "不承诺固定 GPU 库存",
+      "不承诺未经审批的大客户折扣"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.72,
+    "source_ref_ids": [
+      "src_ecs_gtm_demo"
+    ]
+  },
+  {
+    "asset_id": "gtm_ecs_gpu_002",
+    "product_id": "prod_ecs",
+    "asset_type": "sales_talk_track",
+    "title": "销售话术",
+    "audience": "销售",
+    "content": [
+      "先确认地域、GPU 规格、训练窗口和数据合规要求",
+      "ECS GPU 可与 RDS、TOS、CLB 组合成训练与业务系统方案",
+      "正式报价前必须复核容量、折扣、SLA 和合同边界"
+    ],
+    "owner_team": "sales",
+    "status": "ready",
+    "not_to_commit": [
+      "估算不是正式报价",
+      "容量预约前不承诺交付日期"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.73,
+    "source_ref_ids": [
+      "src_ecs_gtm_demo"
+    ]
+  },
+  {
+    "asset_id": "gtm_ecs_gpu_003",
+    "product_id": "prod_ecs",
+    "asset_type": "faq",
+    "title": "客户 FAQ",
+    "audience": "客户/采购",
+    "content": [
+      "Q: 价格是不是正式报价？A: 不是，需按合同、地域、容量和折扣审批复核。",
+      "Q: 新加坡能否立即交付？A: 当前需容量预约，交付窗口由 SRE 确认。",
+      "Q: SLA 是否承诺固定算力？A: 不能承诺固定算力库存，只能按服务可用性和合同边界说明。"
+    ],
+    "owner_team": "sales",
+    "status": "in_review",
+    "not_to_commit": [
+      "固定算力可用性",
+      "无审批折扣"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.7,
+    "source_ref_ids": [
+      "src_ecs_gtm_demo"
+    ]
+  },
+  {
+    "asset_id": "gtm_ecs_gpu_004",
+    "product_id": "prod_ecs",
+    "asset_type": "solution_bundle",
+    "title": "行业方案包",
+    "audience": "解决方案/销售",
+    "content": [
+      "AI 训练：ECS GPU + TOS + CLB，强调训练数据存储、弹性调度和访问入口",
+      "金融核心：ECS GPU + RDS + TOS + CLB，强调稳定性、可审计、备份和访问控制"
+    ],
+    "owner_team": "sales",
+    "status": "ready",
+    "not_to_commit": [
+      "未经审批的折扣",
+      "超过容量池的峰值承诺"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.74,
+    "source_ref_ids": [
+      "src_ecs_gtm_demo"
+    ]
+  },
+  {
+    "asset_id": "gtm_seedance_001",
+    "product_id": "prod_seedance",
+    "asset_type": "target_customer",
+    "title": "Seedance Mini 目标客户分层",
+    "audience": "销售/GTM",
+    "content": [
+      "电商商家：商品图转短视频、批量营销素材",
+      "品牌市场：节点活动和社媒素材快速生产",
+      "MCN/UGC 平台：低成本批量创意测试"
+    ],
+    "owner_team": "sales",
+    "status": "ready",
+    "not_to_commit": [
+      "不承诺固定生成成本",
+      "不承诺所有素材可通过内容审核"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.7,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "asset_id": "gtm_seedance_002",
+    "product_id": "prod_seedance",
+    "asset_type": "sales_talk_track",
+    "title": "Seedance Mini 销售话术",
+    "audience": "云销售",
+    "content": [
+      "先确认内容类型、日生成量、分辨率、时长和审核要求",
+      "自助报价只能用于预算沟通，正式报价要复核合同折扣和资源包",
+      "客户大促前必须确认并发、重试和人工审核预案"
+    ],
+    "owner_team": "sales",
+    "status": "ready",
+    "not_to_commit": [
+      "不承诺未经审批的促销价",
+      "不承诺审核必过"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.7,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "asset_id": "gtm_seedance_003",
+    "product_id": "prod_seedance",
+    "asset_type": "faq",
+    "title": "Seedance Mini 客户 FAQ",
+    "audience": "客户自助/客服",
+    "content": [
+      "价格是否正式报价：不是，仅为估算",
+      "视频秒数为什么会波动：质量、素材输入、审核、重试都会影响",
+      "是否能退费：需要按合同和资源包规则走人工处理"
+    ],
+    "owner_team": "sales",
+    "status": "draft",
+    "not_to_commit": [
+      "客服不得承诺退款结果",
+      "客服不得解释为官方固定产能"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.68,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "asset_id": "gtm_seedance_004",
+    "product_id": "prod_seedance",
+    "asset_type": "industry_solution",
+    "title": "Seedance Mini 行业方案包",
+    "audience": "销售/解决方案",
+    "content": [
+      "电商：Seedance + TOS + CDN + 内容审核",
+      "营销：Seedance + Agent Plan + 数据看板",
+      "UGC：Seedance + TOS + 审核队列 + 工单"
+    ],
+    "owner_team": "sales",
+    "status": "draft",
+    "not_to_commit": [
+      "行业方案不是交付承诺",
+      "正式报价前必须复核容量和合同边界"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.69,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "asset_id": "gtm_agent_plan_001",
+    "product_id": "prod_agent_plan",
+    "asset_type": "target_customer",
+    "title": "Agent Plan 目标客户分层",
+    "audience": "销售/GTM",
+    "content": [
+      "个人开发者：低成本体验多模型和工具调用",
+      "企业研发团队：标准化 Agent 开发与用量管理",
+      "客户成功团队：用 Agent 承接知识库问答和售后协同"
+    ],
+    "owner_team": "sales",
+    "status": "ready",
+    "not_to_commit": [
+      "不承诺固定对话轮数",
+      "不承诺所有工具调用免费"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.7,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  },
+  {
+    "asset_id": "gtm_agent_plan_002",
+    "product_id": "prod_agent_plan",
+    "asset_type": "sales_talk_track",
+    "title": "Agent Plan 销售话术",
+    "audience": "云销售",
+    "content": [
+      "先确认客户使用的模型、工具、联网搜索和多模态比例",
+      "用 AFP 解释预算和用量，而不是承诺固定轮数",
+      "Medium 适合日常 Agent 开发，企业协作需额外确认权限与审计"
+    ],
+    "owner_team": "sales",
+    "status": "ready",
+    "not_to_commit": [
+      "不得承诺无限制使用",
+      "不得隐藏超额付费风险"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.7,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  },
+  {
+    "asset_id": "gtm_agent_plan_003",
+    "product_id": "prod_agent_plan",
+    "asset_type": "faq",
+    "title": "Agent Plan 客户 FAQ",
+    "audience": "客户自助/客服",
+    "content": [
+      "AFP 是什么：统一用量单位",
+      "轮数为什么波动：上下文、工具调用、模型档位都会影响",
+      "什么时候需要开启超额付费：套餐额度不足且客户明确确认"
+    ],
+    "owner_team": "sales",
+    "status": "draft",
+    "not_to_commit": [
+      "客服不得代客户开启超额付费",
+      "不得把估算轮数说成保底"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.68,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  },
+  {
+    "asset_id": "gtm_agent_plan_004",
+    "product_id": "prod_agent_plan",
+    "asset_type": "migration_guide",
+    "title": "Agent Plan 升级与迁移指南",
+    "audience": "客户成功/销售",
+    "content": [
+      "免费试用到 Small：低频文本 Agent",
+      "Small 到 Medium：联网搜索/多工具开发",
+      "Medium 到企业协作：组织权限、用量看板和审计"
+    ],
+    "owner_team": "sales",
+    "status": "draft",
+    "not_to_commit": [
+      "迁移指南不替代合同条款",
+      "企业权限需管理员确认"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.68,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  }
+]

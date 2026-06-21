@@ -1,0 +1,420 @@
+[
+  {
+    "task_id": "wf_seedance_launch_001",
+    "workflow_id": "wf_seedance_launch",
+    "linked_release_request_id": "rel_seedance_mini_202606",
+    "step": "model_pricing_review",
+    "owner_user_id": "finance_reviewer_001",
+    "owner_team": "finance",
+    "status": "blocked",
+    "submitted_at": "2026-06-17T20:30:00+08:00",
+    "due_at": "2026-06-18T20:30:00+08:00",
+    "completed_at": null,
+    "sla_hours": 24,
+    "delay_hours": 14,
+    "blocker_reason": "等待 Seedance 2.0 mini 正式价格确认与合同折扣互斥规则。",
+    "impact": {
+      "launch_delay_days": 1,
+      "affected_pipeline_cny": 320000
+    },
+    "mocked": true
+  },
+  {
+    "task_id": "wf_seedance_launch_002",
+    "workflow_id": "wf_seedance_launch",
+    "linked_release_request_id": "rel_seedance_mini_202606",
+    "step": "content_safety_terms",
+    "owner_user_id": "legal_001",
+    "owner_team": "legal",
+    "status": "in_progress",
+    "submitted_at": "2026-06-17T20:35:00+08:00",
+    "due_at": "2026-06-19T20:35:00+08:00",
+    "completed_at": null,
+    "sla_hours": 48,
+    "delay_hours": 0,
+    "blocker_reason": null,
+    "impact": {
+      "launch_delay_days": 0,
+      "affected_pipeline_cny": 0
+    },
+    "mocked": true
+  },
+  {
+    "task_id": "wf_agent_plan_001",
+    "workflow_id": "wf_agent_plan_billing_change",
+    "linked_release_request_id": "rel_agent_plan_afp_202606",
+    "step": "afp_rule_finance_review",
+    "owner_user_id": "finance_reviewer_001",
+    "owner_team": "finance",
+    "status": "blocked",
+    "submitted_at": "2026-06-18T19:20:00+08:00",
+    "due_at": "2026-06-19T07:20:00+08:00",
+    "completed_at": null,
+    "sla_hours": 12,
+    "delay_hours": 9,
+    "blocker_reason": "缺少 Medium 套餐超额后付费的毛利底线测算。",
+    "impact": {
+      "launch_delay_days": 0.5,
+      "affected_subscriptions": 20
+    },
+    "mocked": true
+  },
+  {
+    "task_id": "wf_cdn_promo_001",
+    "workflow_id": "wf_cdn_pack_discount",
+    "linked_release_request_id": "rel_cdn_pack_discount_202606",
+    "step": "legal_terms_review",
+    "owner_user_id": "legal_001",
+    "owner_team": "legal",
+    "status": "completed",
+    "submitted_at": "2026-06-18T16:20:00+08:00",
+    "due_at": "2026-06-19T16:20:00+08:00",
+    "completed_at": "2026-06-19T09:40:00+08:00",
+    "sla_hours": 24,
+    "delay_hours": 0,
+    "blocker_reason": null,
+    "impact": {
+      "launch_delay_days": 0,
+      "affected_pipeline_cny": 85000
+    },
+    "mocked": true
+  },
+  {
+    "task_id": "wf_ecs_ipd_001",
+    "workflow_id": "wf_ecs_gpu_ipd_release",
+    "linked_release_request_id": "rel_ecs_gpu_train_202606",
+    "step": "PRD 与商品范围确认",
+    "owner_user_id": "cloud_pm_001",
+    "owner_team": "cloud_product",
+    "status": "completed",
+    "submitted_at": "2026-06-12T09:00:00+08:00",
+    "due_at": "2026-06-13T18:00:00+08:00",
+    "completed_at": "2026-06-13T16:30:00+08:00",
+    "sla_hours": 33,
+    "delay_hours": 0,
+    "blocker_reason": null,
+    "impact": {
+      "affected_pipeline_cny": 0
+    },
+    "mocked": true,
+    "source_ref_ids": [
+      "src_ecs_ipd_demo"
+    ]
+  },
+  {
+    "task_id": "wf_ecs_ipd_002",
+    "workflow_id": "wf_ecs_gpu_ipd_release",
+    "linked_release_request_id": "rel_ecs_gpu_train_202606",
+    "step": "商业测算与毛利复核",
+    "owner_user_id": "finance_reviewer_001",
+    "owner_team": "finance",
+    "status": "blocked",
+    "submitted_at": "2026-06-14T10:20:00+08:00",
+    "due_at": "2026-06-17T18:00:00+08:00",
+    "completed_at": null,
+    "sla_hours": 80,
+    "delay_hours": 18,
+    "blocker_reason": "包月折扣、GPU 成本和大客户合同价未形成毛利底线。",
+    "impact": {
+      "affected_pipeline_cny": 780000,
+      "launch_delay_days": 1
+    },
+    "mocked": true,
+    "source_ref_ids": [
+      "src_ecs_gmv_demo"
+    ]
+  },
+  {
+    "task_id": "wf_ecs_ipd_003",
+    "workflow_id": "wf_ecs_gpu_ipd_release",
+    "linked_release_request_id": "rel_ecs_gpu_train_202606",
+    "step": "SRE 容量与灰度评审",
+    "owner_user_id": "cloud_sre_001",
+    "owner_team": "sre",
+    "status": "blocked",
+    "submitted_at": "2026-06-14T11:00:00+08:00",
+    "due_at": "2026-06-17T18:00:00+08:00",
+    "completed_at": null,
+    "sla_hours": 79,
+    "delay_hours": 20,
+    "blocker_reason": "新加坡 GPU 池峰值覆盖率不足，需要限售、容量预约和扩容排期。",
+    "impact": {
+      "affected_orders": 2,
+      "affected_pipeline_cny": 460000,
+      "launch_delay_days": 1.5
+    },
+    "mocked": true,
+    "source_ref_ids": [
+      "src_ecs_capacity_demo"
+    ]
+  },
+  {
+    "task_id": "wf_ecs_ipd_004",
+    "workflow_id": "wf_ecs_gpu_ipd_release",
+    "linked_release_request_id": "rel_ecs_gpu_train_202606",
+    "step": "SLA 与合同文案法务评审",
+    "owner_user_id": "legal_001",
+    "owner_team": "legal",
+    "status": "in_progress",
+    "submitted_at": "2026-06-15T14:00:00+08:00",
+    "due_at": "2026-06-20T18:00:00+08:00",
+    "completed_at": null,
+    "sla_hours": 124,
+    "delay_hours": 0,
+    "blocker_reason": null,
+    "impact": {
+      "affected_pipeline_cny": 300000
+    },
+    "mocked": true,
+    "source_ref_ids": [
+      "src_ecs_ipd_demo"
+    ]
+  },
+  {
+    "task_id": "wf_ecs_gtm_001",
+    "workflow_id": "wf_ecs_gpu_gtm_ready",
+    "linked_release_request_id": "rel_ecs_gpu_train_202606",
+    "step": "GTM 材料与销售 enablement",
+    "owner_user_id": "cloud_gtm_001",
+    "owner_team": "sales",
+    "status": "in_progress",
+    "submitted_at": "2026-06-16T10:00:00+08:00",
+    "due_at": "2026-06-20T12:00:00+08:00",
+    "completed_at": null,
+    "sla_hours": 98,
+    "delay_hours": 0,
+    "blocker_reason": "等待财务折扣边界和 SRE 容量限售口径后定稿。",
+    "impact": {
+      "affected_sales_reps": 8,
+      "affected_pipeline_cny": 1120000
+    },
+    "mocked": true,
+    "source_ref_ids": [
+      "src_ecs_gtm_demo"
+    ]
+  },
+  {
+    "task_id": "wf_seedance_selfserve_001",
+    "workflow_id": "wf_seedance_selfserve",
+    "linked_release_request_id": "rel_seedance_mini_selfserve_202606",
+    "step": "price_discount_guardrail",
+    "owner_user_id": "finance_reviewer_001",
+    "owner_team": "finance",
+    "status": "blocked",
+    "submitted_at": "2026-06-18T10:00:00+08:00",
+    "due_at": "2026-06-19T10:00:00+08:00",
+    "completed_at": null,
+    "sla_hours": 24,
+    "delay_hours": 3,
+    "blocker_reason": "促销价、资源包和合同折扣互斥规则还没有完成毛利测算。",
+    "impact": {
+      "launch_delay_days": 1,
+      "affected_pipeline_cny": 410000
+    },
+    "source_type": "demo_mock",
+    "mocked": true,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "task_id": "wf_seedance_selfserve_002",
+    "workflow_id": "wf_seedance_selfserve",
+    "linked_release_request_id": "rel_seedance_mini_selfserve_202606",
+    "step": "content_safety_review",
+    "owner_user_id": "legal_001",
+    "owner_team": "legal",
+    "status": "in_progress",
+    "submitted_at": "2026-06-18T10:10:00+08:00",
+    "due_at": "2026-06-20T10:10:00+08:00",
+    "completed_at": null,
+    "sla_hours": 48,
+    "delay_hours": 0,
+    "blocker_reason": "高风险行业和肖像版权确认文案待补齐。",
+    "impact": {
+      "launch_delay_days": 0,
+      "affected_pipeline_cny": 0
+    },
+    "source_type": "demo_mock",
+    "mocked": true,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "task_id": "wf_seedance_selfserve_003",
+    "workflow_id": "wf_seedance_selfserve",
+    "linked_release_request_id": "rel_seedance_mini_selfserve_202606",
+    "step": "traffic_ramp_limit",
+    "owner_user_id": "sre_seedance_001",
+    "owner_team": "sre",
+    "status": "blocked",
+    "submitted_at": "2026-06-18T11:00:00+08:00",
+    "due_at": "2026-06-19T11:00:00+08:00",
+    "completed_at": null,
+    "sla_hours": 24,
+    "delay_hours": 2,
+    "blocker_reason": "大促高峰并发阈值和失败补偿策略未确认。",
+    "impact": {
+      "launch_delay_days": 1,
+      "affected_pipeline_cny": 260000
+    },
+    "source_type": "demo_mock",
+    "mocked": true,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "task_id": "wf_seedance_selfserve_004",
+    "workflow_id": "wf_seedance_selfserve",
+    "linked_release_request_id": "rel_seedance_mini_selfserve_202606",
+    "step": "sales_enablement_pack",
+    "owner_user_id": "sales_ai_001",
+    "owner_team": "sales",
+    "status": "in_progress",
+    "submitted_at": "2026-06-18T12:00:00+08:00",
+    "due_at": "2026-06-20T12:00:00+08:00",
+    "completed_at": null,
+    "sla_hours": 48,
+    "delay_hours": 0,
+    "blocker_reason": "缺少内容行业客户 FAQ 和正式报价前检查清单。",
+    "impact": {
+      "launch_delay_days": 0,
+      "affected_pipeline_cny": 0
+    },
+    "source_type": "demo_mock",
+    "mocked": true,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "task_id": "wf_agent_enterprise_001",
+    "workflow_id": "wf_agent_enterprise",
+    "linked_release_request_id": "rel_agent_plan_enterprise_202606",
+    "step": "afp_margin_guardrail",
+    "owner_user_id": "finance_reviewer_001",
+    "owner_team": "finance",
+    "status": "blocked",
+    "submitted_at": "2026-06-18T09:30:00+08:00",
+    "due_at": "2026-06-19T09:30:00+08:00",
+    "completed_at": null,
+    "sla_hours": 24,
+    "delay_hours": 4,
+    "blocker_reason": "高成本模型、联网搜索和视频生成场景的 AFP 毛利阈值未完成。",
+    "impact": {
+      "launch_delay_days": 1,
+      "affected_pipeline_cny": 520000
+    },
+    "source_type": "demo_mock",
+    "mocked": true,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  },
+  {
+    "task_id": "wf_agent_enterprise_002",
+    "workflow_id": "wf_agent_enterprise",
+    "linked_release_request_id": "rel_agent_plan_enterprise_202606",
+    "step": "org_permission_terms",
+    "owner_user_id": "legal_001",
+    "owner_team": "legal",
+    "status": "in_progress",
+    "submitted_at": "2026-06-18T09:40:00+08:00",
+    "due_at": "2026-06-20T09:40:00+08:00",
+    "completed_at": null,
+    "sla_hours": 48,
+    "delay_hours": 0,
+    "blocker_reason": "组织成员权限、API Key 管理和日志留存条款待确认。",
+    "impact": {
+      "launch_delay_days": 0,
+      "affected_pipeline_cny": 0
+    },
+    "source_type": "demo_mock",
+    "mocked": true,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  },
+  {
+    "task_id": "wf_agent_enterprise_003",
+    "workflow_id": "wf_agent_enterprise",
+    "linked_release_request_id": "rel_agent_plan_enterprise_202606",
+    "step": "usage_metering_alert",
+    "owner_user_id": "sre_agent_001",
+    "owner_team": "sre",
+    "status": "blocked",
+    "submitted_at": "2026-06-18T10:20:00+08:00",
+    "due_at": "2026-06-19T10:20:00+08:00",
+    "completed_at": null,
+    "sla_hours": 24,
+    "delay_hours": 3,
+    "blocker_reason": "5 小时、周、月额度恢复和超额开通告警没有联动客服通知。",
+    "impact": {
+      "launch_delay_days": 1,
+      "affected_pipeline_cny": 300000
+    },
+    "source_type": "demo_mock",
+    "mocked": true,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  },
+  {
+    "task_id": "wf_agent_enterprise_004",
+    "workflow_id": "wf_agent_enterprise",
+    "linked_release_request_id": "rel_agent_plan_enterprise_202606",
+    "step": "developer_faq_ready",
+    "owner_user_id": "sales_ai_001",
+    "owner_team": "sales",
+    "status": "in_progress",
+    "submitted_at": "2026-06-18T13:30:00+08:00",
+    "due_at": "2026-06-20T13:30:00+08:00",
+    "completed_at": null,
+    "sla_hours": 48,
+    "delay_hours": 0,
+    "blocker_reason": "缺少从免费试用到 Medium/企业协作的升级话术。",
+    "impact": {
+      "launch_delay_days": 0,
+      "affected_pipeline_cny": 0
+    },
+    "source_type": "demo_mock",
+    "mocked": true,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  }
+]

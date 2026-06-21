@@ -1,0 +1,28 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.ipd.readiness_review",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "评审云产品从 IPD 产品化到商品上架的准备度，覆盖商品模型、购买页字段、检查点、缺口、负责人和下一步。",
+  "params_schema": {
+    "product_code": {
+      "type": "string",
+      "required": false
+    },
+    "release_request_id": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "examples": [
+    "我要把 ECS GPU 训练实例接入云商品平台，请生成商品模型和 IPD 上架检查清单。",
+    "ECS GPU 从产品化到商品化还有哪些检查点没过？"
+  ],
+  "tool_binding": "tool.cloud_ipd_readiness_review",
+  "required_permissions": [
+    "cloud:read",
+    "cloud:risk"
+  ]
+}

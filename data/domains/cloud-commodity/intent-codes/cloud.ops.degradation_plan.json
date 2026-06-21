@@ -1,0 +1,24 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.ops.degradation_plan",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "生成云商品上线后队列、容量或失败率异常时的商品页降级、销售话术、客服通知、SRE 告警和回滚检查点。",
+  "params_schema": {
+    "product_code": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "examples": [
+    "Seedance Mini 大促生成队列健康度不够，应该怎么限流、告警和通知销售？",
+    "Seedance Mini 上线后如果生成失败率升高，商品页和销售话术应该怎么降级？"
+  ],
+  "tool_binding": "tool.cloud_ops_degradation_plan",
+  "required_permissions": [
+    "cloud:read",
+    "cloud:risk"
+  ]
+}

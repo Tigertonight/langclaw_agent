@@ -1,0 +1,32 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.capacity.risk_review",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "评审云商品地域容量、容量健康度、限售策略、灰度范围和 SRE 下一步。",
+  "params_schema": {
+    "product_code": {
+      "type": "string",
+      "required": false
+    },
+    "region_id": {
+      "type": "string",
+      "required": false
+    },
+    "release_request_id": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "examples": [
+    "华东 1 和新加坡的 GPU 容量能支撑首批客户吗？如果容量不足，发布和销售应该怎么限制？",
+    "ECS GPU 新加坡容量风险和灰度建议是什么？"
+  ],
+  "tool_binding": "tool.cloud_capacity_risk_review",
+  "required_permissions": [
+    "cloud:read",
+    "cloud:risk"
+  ]
+}

@@ -1,0 +1,137 @@
+[
+  {
+    "meter_id": "m_ecs_instance_hour",
+    "product_id": "prod_ecs",
+    "meter_code": "instance_hour",
+    "meter_name": "实例小时",
+    "meter_unit": "hour",
+    "metering_granularity": "hourly",
+    "billing_dimension": "compute"
+  },
+  {
+    "meter_id": "m_tos_storage_gb_month",
+    "product_id": "prod_tos",
+    "meter_code": "storage_gb_month",
+    "meter_name": "存储容量",
+    "meter_unit": "GB-month",
+    "metering_granularity": "daily",
+    "billing_dimension": "storage"
+  },
+  {
+    "meter_id": "m_tos_request",
+    "product_id": "prod_tos",
+    "meter_code": "request_count",
+    "meter_name": "请求次数",
+    "meter_unit": "count",
+    "metering_granularity": "realtime",
+    "billing_dimension": "request"
+  },
+  {
+    "meter_id": "m_rds_instance_hour",
+    "product_id": "prod_rds_mysql",
+    "meter_code": "db_instance_hour",
+    "meter_name": "数据库实例小时",
+    "meter_unit": "hour",
+    "metering_granularity": "hourly",
+    "billing_dimension": "database"
+  },
+  {
+    "meter_id": "m_cdn_traffic_gb",
+    "product_id": "prod_cdn",
+    "meter_code": "traffic_gb",
+    "meter_name": "流量",
+    "meter_unit": "GB",
+    "metering_granularity": "hourly",
+    "billing_dimension": "network"
+  },
+  {
+    "meter_id": "m_lb_lcu_hour",
+    "product_id": "prod_nlb",
+    "meter_code": "lcu_hour",
+    "meter_name": "LCU 小时",
+    "meter_unit": "LCU-hour",
+    "metering_granularity": "hourly",
+    "billing_dimension": "load_balancer"
+  },
+  {
+    "meter_id": "m_seedance_token_1k",
+    "product_id": "prod_seedance",
+    "meter_code": "token_1k",
+    "meter_name": "千 token",
+    "meter_unit": "1K tokens",
+    "metering_granularity": "realtime",
+    "billing_dimension": "ai_generation"
+  },
+  {
+    "meter_id": "m_seedance_video_second",
+    "product_id": "prod_seedance",
+    "meter_code": "video_second",
+    "meter_name": "视频秒数",
+    "meter_unit": "second",
+    "metering_granularity": "task",
+    "billing_dimension": "ai_generation"
+  },
+  {
+    "meter_id": "m_seedance_generation_task",
+    "product_id": "prod_seedance",
+    "meter_code": "generation_task",
+    "meter_name": "生成任务",
+    "meter_unit": "task",
+    "metering_granularity": "task",
+    "billing_dimension": "ai_generation"
+  },
+  {
+    "meter_id": "m_ark_model_token_1k",
+    "product_id": "prod_ark_model",
+    "meter_code": "model_token_1k",
+    "meter_name": "模型千 token",
+    "meter_unit": "1K tokens",
+    "metering_granularity": "realtime",
+    "billing_dimension": "ai_inference"
+  },
+  {
+    "meter_id": "m_agent_round",
+    "product_id": "prod_agent_plan",
+    "meter_code": "agent_round",
+    "meter_name": "Agent 对话轮",
+    "meter_unit": "round",
+    "metering_granularity": "session",
+    "billing_dimension": "agent"
+  },
+  {
+    "meter_id": "m_agent_afp",
+    "product_id": "prod_agent_plan",
+    "meter_code": "afp",
+    "meter_name": "Agent 费用点",
+    "meter_unit": "AFP",
+    "metering_granularity": "realtime",
+    "billing_dimension": "agent"
+  },
+  {
+    "meter_id": "m_tool_call",
+    "product_id": "prod_agent_plan",
+    "meter_code": "tool_call",
+    "meter_name": "工具调用",
+    "meter_unit": "call",
+    "metering_granularity": "realtime",
+    "billing_dimension": "agent"
+  },
+  {
+    "meter_id": "m_openui_page",
+    "product_id": "prod_openui_demo",
+    "meter_code": "openui_page",
+    "meter_name": "OpenUI 页面",
+    "meter_unit": "page",
+    "metering_granularity": "task",
+    "billing_dimension": "ui_generation"
+  },
+  {
+    "meter_id": "m_content_moderation",
+    "product_id": "prod_ai_content_safety",
+    "meter_code": "moderation_unit",
+    "meter_name": "审核单元",
+    "meter_unit": "unit",
+    "metering_granularity": "realtime",
+    "billing_dimension": "moderation"
+  }
+]

@@ -1,0 +1,29 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.executive.briefing",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "老板视角云商品经营简报，必须汇总风险、流程阻塞、续约风险、影响金额/客户、负责人、下一步动作和证据来源。",
+  "params_schema": {
+    "focus": {
+      "type": "string",
+      "required": false
+    },
+    "max_items": {
+      "type": "number",
+      "required": false
+    }
+  },
+  "examples": [
+    "我是老板，想了解云商品平台现在经营情况：有什么风险，谁卡住流程，哪些重点客户续约有问题",
+    "当前云商品平台风险、流程阻塞和续约风险按优先级给我结论",
+    "老板看云商品平台经营情况，告诉我影响金额、客户和负责人"
+  ],
+  "tool_binding": null,
+  "required_permissions": [
+    "cloud:read",
+    "cloud:risk"
+  ]
+}

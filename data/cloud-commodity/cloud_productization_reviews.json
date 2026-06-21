@@ -1,0 +1,75 @@
+[
+  {
+    "review_id": "prod_review_seedance_mini_202606",
+    "product_id": "prod_seedance",
+    "product_name": "Seedance Mini",
+    "capability_name": "视频生成模型能力",
+    "capability_stage": "模型能力已验证，产品定义待补齐",
+    "overall_status": "needs_product_definition",
+    "readiness_score": 62,
+    "target_customers": ["电商商品视频团队", "品牌营销素材团队", "UGC 创意测试团队"],
+    "value_proposition": "把视频生成模型包装为可自助购买、可估算、可计费、可交付的云商品。",
+    "deliverables": [
+      { "name": "目标客户与场景定义", "status": "completed", "owner": "商品 PM", "gap": "暂无", "next_action": "复用为 GTM 目标客户分层" },
+      { "name": "能力边界与不可承诺项", "status": "in_progress", "owner": "商品 PM / 法务", "gap": "固定生成成功率、固定交付时间和内容合规边界需要明确", "next_action": "补齐商品页和销售话术禁承诺口径" },
+      { "name": "成本测算输入", "status": "blocked", "owner": "财务 BP", "gap": "缺少峰值并发、失败重试和内容安全审核成本输入", "next_action": "财务今天内给出毛利底线和资源包折扣边界" },
+      { "name": "SLA 初稿", "status": "in_progress", "owner": "SRE / 法务", "gap": "不能承诺固定算力可用性和固定产出时间", "next_action": "把可用性表述改为排队保护、限流和补偿流程" },
+      { "name": "购买页字段", "status": "in_progress", "owner": "商品 PM", "gap": "时长、分辨率、并发、内容安全策略和资源包互斥规则待补", "next_action": "进入云商品上架字段清单" }
+    ],
+    "boundary_items": ["不能承诺固定生成成功率", "不能承诺固定视频产出时长", "不能把演示估算表达为正式报价", "不能自动叠加促销价、资源包和合同折扣"],
+    "cost_inputs": ["模型推理成本", "失败重试成本", "内容安全审核成本", "存储与分发成本", "高峰排队和限流成本"],
+    "sla_draft": "自助购买只承诺服务处理流程、排队保护和故障通知，不承诺固定算力可用性或固定产出时间。",
+    "source_type": "demo_assumption",
+    "mocked": true,
+    "confidence": 0.71,
+    "source_ref_ids": ["src_demo_assumption_001"]
+  },
+  {
+    "review_id": "prod_review_agent_plan_202606",
+    "product_id": "prod_agent_plan",
+    "product_name": "Agent Plan",
+    "capability_name": "智能体套餐能力",
+    "capability_stage": "套餐能力可售，权益治理待强化",
+    "overall_status": "needs_entitlement_governance",
+    "readiness_score": 70,
+    "target_customers": ["企业研发团队", "客户成功团队", "AI 应用开发者"],
+    "value_proposition": "把多模型、多工具、多轮对话能力包装为可购买、可解释、可控超额的订阅套餐。",
+    "deliverables": [
+      { "name": "套餐分层", "status": "completed", "owner": "商品 PM", "gap": "暂无", "next_action": "保持 Small / Medium / Enterprise 分层" },
+      { "name": "权益发放与消耗规则", "status": "blocked", "owner": "财务 BP", "gap": "每日赠送、超额付费、过期和退款口径未统一", "next_action": "进入 Plan 权益治理评审" },
+      { "name": "客户账单解释", "status": "in_progress", "owner": "客户成功", "gap": "AFP 消耗和高成本模型解释不够友好", "next_action": "补充用量页和账单页说明" },
+      { "name": "SRE 用量告警", "status": "in_progress", "owner": "SRE", "gap": "联网搜索、视频生成和高成本模型的告警阈值待确认", "next_action": "建立用量异常联动客服和销售机制" }
+    ],
+    "boundary_items": ["不能承诺固定对话轮数", "不能默认开启超额扣费", "不能把套餐额度解释为无限量使用"],
+    "cost_inputs": ["高成本模型调用", "联网搜索工具", "视频生成工具", "上下文长度", "企业协作席位"],
+    "sla_draft": "套餐服务承诺为可用性、告警和客服响应机制，不承诺固定轮数或固定模型成本。",
+    "source_type": "demo_assumption",
+    "mocked": true,
+    "confidence": 0.69,
+    "source_ref_ids": ["src_demo_assumption_001"]
+  },
+  {
+    "review_id": "prod_review_ecs_gpu_train_202606",
+    "product_id": "prod_ecs",
+    "product_name": "ECS GPU 训练实例",
+    "capability_name": "GPU 计算资源能力",
+    "capability_stage": "产品定义基本完成，容量和财务门禁阻塞",
+    "overall_status": "blocked_by_capacity_and_margin",
+    "readiness_score": 58,
+    "target_customers": ["AI 训练客户", "金融核心系统客户", "高性能计算团队"],
+    "value_proposition": "把 GPU 资源包装为可预约、可报价、可交付、可运维保障的云服务器商品。",
+    "deliverables": [
+      { "name": "规格定义", "status": "completed", "owner": "商品 PM", "gap": "暂无", "next_action": "同步到 SKU 和购买页字段" },
+      { "name": "容量预约规则", "status": "blocked", "owner": "SRE", "gap": "新加坡 GPU 池容量不足", "next_action": "输出扩容排期、灰度范围和限售上限" },
+      { "name": "毛利底线", "status": "blocked", "owner": "财务 BP", "gap": "包月折扣压低毛利", "next_action": "给出最低毛利率和折扣审批阈值" },
+      { "name": "SLA 与不可承诺项", "status": "in_progress", "owner": "法务 / SRE", "gap": "固定算力可用性表述需调整", "next_action": "改写为容量预约和交付窗口确认" }
+    ],
+    "boundary_items": ["不能承诺所有地域现货充足", "不能绕过容量预约", "不能直接承诺大客户折扣"],
+    "cost_inputs": ["GPU 卡成本", "地域供给成本", "包月折扣", "运维扩容成本"],
+    "sla_draft": "ECS GPU 首批上架以容量预约、灰度交付和 SRE 确认为准，不承诺未确认地域的固定交付日期。",
+    "source_type": "demo_assumption",
+    "mocked": true,
+    "confidence": 0.73,
+    "source_ref_ids": ["src_demo_assumption_001"]
+  }
+]

@@ -1,0 +1,414 @@
+[
+  {
+    "risk_signal_id": "risk_sig_001",
+    "risk_type": "margin",
+    "title": "Agent Plan Medium AFP 消耗速度高于预期",
+    "severity": "high",
+    "linked_entities": {
+      "product_id": "prod_agent_plan",
+      "customer_id": "cust_ai_studio",
+      "subscription_id": "sub_agent_plan_001"
+    },
+    "evidence": [
+      "mr_agent_plan_202606_001",
+      "sim_margin_agent_plan_ai_studio"
+    ],
+    "detected_at": "2026-06-19T09:30:00+08:00",
+    "owner_team": "ai_business",
+    "recommended_actions": [
+      "开启超额后付费二次确认",
+      "增加套餐内高成本模型提示",
+      "跟客户确认 AFP 预算"
+    ],
+    "mocked": true
+  },
+  {
+    "risk_signal_id": "risk_sig_002",
+    "risk_type": "process_bottleneck",
+    "title": "Seedance 上线被财务价格复核阻塞",
+    "severity": "medium",
+    "linked_entities": {
+      "release_request_id": "rel_seedance_mini_202606",
+      "workflow_task_id": "wf_seedance_launch_001"
+    },
+    "evidence": [
+      "wf_seedance_launch_001"
+    ],
+    "detected_at": "2026-06-19T10:00:00+08:00",
+    "owner_team": "finance",
+    "recommended_actions": [
+      "补齐公开价格证据",
+      "设置促销价与合同价互斥规则",
+      "升级给财务负责人"
+    ],
+    "mocked": true
+  },
+  {
+    "risk_signal_id": "risk_sig_003",
+    "risk_type": "renewal",
+    "title": "星河传媒 CDN 续约概率低于 50%",
+    "severity": "high",
+    "linked_entities": {
+      "customer_id": "cust_media_stream",
+      "renewal_id": "ren_media_stream_2026_q3"
+    },
+    "evidence": [
+      "bill_202605_media",
+      "ren_media_stream_2026_q3"
+    ],
+    "detected_at": "2026-06-19T10:10:00+08:00",
+    "owner_team": "sales",
+    "recommended_actions": [
+      "安排账单解释",
+      "提供大规格资源包报价",
+      "建立续约专项跟进"
+    ],
+    "mocked": true
+  },
+  {
+    "risk_signal_id": "risk_ecs_gpu_margin_202606",
+    "risk_type": "margin",
+    "title": "ECS GPU 包月折扣压低毛利",
+    "severity": "high",
+    "linked_entities": {
+      "product_id": "prod_ecs",
+      "release_request_id": "rel_ecs_gpu_train_202606"
+    },
+    "evidence": [
+      "metric_ecs_gpu_margin_rate",
+      "opp_finance_ysg_202606"
+    ],
+    "detected_at": "2026-06-19T10:20:00+08:00",
+    "owner_team": "finance",
+    "recommended_actions": [
+      "冻结低于毛利底线的包月折扣",
+      "要求大客户折扣走财务审批",
+      "把 GPU 成本波动纳入月度经营复盘"
+    ],
+    "mocked": true,
+    "source_type": "demo_mock",
+    "confidence": 0.7,
+    "source_ref_ids": [
+      "src_ecs_gmv_demo"
+    ]
+  },
+  {
+    "risk_signal_id": "risk_ecs_gpu_capacity_sg_202606",
+    "risk_type": "capacity",
+    "title": "新加坡 GPU 池容量不足",
+    "severity": "high",
+    "linked_entities": {
+      "product_id": "prod_ecs",
+      "release_request_id": "rel_ecs_gpu_train_202606",
+      "region_id": "ap-southeast-1"
+    },
+    "evidence": [
+      "cap_ecs_gpu_sg_001",
+      "inc_ecs_gpu_sg_delay_001"
+    ],
+    "detected_at": "2026-06-19T10:30:00+08:00",
+    "owner_team": "sre",
+    "recommended_actions": [
+      "新加坡地域先开启容量预约",
+      "首批客户限制为 60% 峰值承诺",
+      "扩容完成前销售不得承诺固定交付日期"
+    ],
+    "mocked": true,
+    "source_type": "demo_mock",
+    "confidence": 0.74,
+    "source_ref_ids": [
+      "src_ecs_capacity_demo"
+    ]
+  },
+  {
+    "risk_signal_id": "risk_ecs_gpu_sla_wording_202606",
+    "risk_type": "legal_sla",
+    "title": "SLA 文案存在固定算力可用性承诺风险",
+    "severity": "medium",
+    "linked_entities": {
+      "product_id": "prod_ecs",
+      "release_request_id": "rel_ecs_gpu_train_202606"
+    },
+    "evidence": [
+      "wf_ecs_ipd_004"
+    ],
+    "detected_at": "2026-06-19T11:00:00+08:00",
+    "owner_team": "legal",
+    "recommended_actions": [
+      "将固定算力承诺改为服务可用性边界",
+      "补充容量预约和不可抗力条款",
+      "正式上架前完成法务复核"
+    ],
+    "mocked": true,
+    "source_type": "demo_mock",
+    "confidence": 0.69,
+    "source_ref_ids": [
+      "src_ecs_ipd_demo"
+    ]
+  },
+  {
+    "risk_signal_id": "risk_ecs_gpu_discount_overpromise_202606",
+    "risk_type": "sales_commitment",
+    "title": "销售可能越权承诺大客户折扣",
+    "severity": "medium",
+    "linked_entities": {
+      "product_id": "prod_ecs",
+      "opportunity_id": "opp_finance_ysg_202606",
+      "customer_id": "cust_finance_core"
+    },
+    "evidence": [
+      "opp_finance_ysg_202606"
+    ],
+    "detected_at": "2026-06-19T11:10:00+08:00",
+    "owner_team": "sales",
+    "recommended_actions": [
+      "正式报价前补充折扣审批",
+      "销售话术明确估算不是正式报价",
+      "客户方案中加入容量预约条件"
+    ],
+    "mocked": true,
+    "source_type": "demo_mock",
+    "confidence": 0.66,
+    "source_ref_ids": [
+      "src_ecs_gtm_demo"
+    ]
+  },
+  {
+    "risk_signal_id": "risk_seedance_promo_margin_202606",
+    "risk_type": "margin",
+    "title": "Seedance Mini 促销和合同折扣叠加压低毛利",
+    "severity": "high",
+    "linked_entities": {
+      "product_id": "prod_seedance",
+      "release_request_id": "rel_seedance_mini_selfserve_202606",
+      "workflow_task_id": "wf_seedance_selfserve_001"
+    },
+    "evidence": [
+      "wf_seedance_selfserve_001"
+    ],
+    "detected_at": "2026-06-19T11:00:00+08:00",
+    "owner_team": "finance",
+    "recommended_actions": [
+      "设置促销价与合同价互斥规则",
+      "低于毛利阈值的订单转人工报价",
+      "销售话术中标注估算边界"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "risk_signal_id": "risk_seedance_content_safety_202606",
+    "risk_type": "compliance",
+    "title": "Seedance Mini 自助购买缺少内容安全确认",
+    "severity": "medium",
+    "linked_entities": {
+      "product_id": "prod_seedance",
+      "release_request_id": "rel_seedance_mini_selfserve_202606",
+      "workflow_task_id": "wf_seedance_selfserve_002"
+    },
+    "evidence": [
+      "wf_seedance_selfserve_002"
+    ],
+    "detected_at": "2026-06-19T11:10:00+08:00",
+    "owner_team": "legal",
+    "recommended_actions": [
+      "购买页增加内容安全确认",
+      "高风险行业转人工审核",
+      "客服 FAQ 增加版权和肖像边界"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "risk_signal_id": "risk_seedance_traffic_spike_202606",
+    "risk_type": "capacity",
+    "title": "Seedance Mini 大促高峰生成队列可能拥塞",
+    "severity": "high",
+    "linked_entities": {
+      "product_id": "prod_seedance",
+      "release_request_id": "rel_seedance_mini_selfserve_202606",
+      "workflow_task_id": "wf_seedance_selfserve_003"
+    },
+    "evidence": [
+      "wf_seedance_selfserve_003"
+    ],
+    "detected_at": "2026-06-19T11:20:00+08:00",
+    "owner_team": "sre",
+    "recommended_actions": [
+      "设置灰度流量阈值",
+      "开启失败补偿工单",
+      "对大客户进行容量预约"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "risk_signal_id": "risk_seedance_quote_misread_202606",
+    "risk_type": "sales_enablement",
+    "title": "客户可能把 Seedance 自助估算误解为正式报价",
+    "severity": "medium",
+    "linked_entities": {
+      "product_id": "prod_seedance",
+      "asset_id": "gtm_seedance_003"
+    },
+    "evidence": [
+      "gtm_seedance_003"
+    ],
+    "detected_at": "2026-06-19T11:30:00+08:00",
+    "owner_team": "sales",
+    "recommended_actions": [
+      "报价卡片增加非正式报价提示",
+      "销售转正式报价前必须拉起审批摘要",
+      "客服不得承诺固定产能"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "risk_signal_id": "risk_agent_afp_overrun_202606",
+    "risk_type": "margin",
+    "title": "Agent Plan 多工具调用导致 AFP 消耗超预期",
+    "severity": "high",
+    "linked_entities": {
+      "product_id": "prod_agent_plan",
+      "release_request_id": "rel_agent_plan_enterprise_202606",
+      "workflow_task_id": "wf_agent_enterprise_001"
+    },
+    "evidence": [
+      "wf_agent_enterprise_001"
+    ],
+    "detected_at": "2026-06-19T11:40:00+08:00",
+    "owner_team": "finance",
+    "recommended_actions": [
+      "高成本模型和联网搜索触发二次确认",
+      "企业套餐加入用量预警",
+      "销售说明轮数不是保底"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  },
+  {
+    "risk_signal_id": "risk_agent_overage_consent_202606",
+    "risk_type": "billing",
+    "title": "Agent Plan 超额付费开通需要客户明确确认",
+    "severity": "medium",
+    "linked_entities": {
+      "product_id": "prod_agent_plan",
+      "release_request_id": "rel_agent_plan_enterprise_202606"
+    },
+    "evidence": [
+      "src_agent_plan_faq_official_202606"
+    ],
+    "detected_at": "2026-06-19T11:45:00+08:00",
+    "owner_team": "sales",
+    "recommended_actions": [
+      "超额付费只生成开通草稿",
+      "客户确认前不得自动开启",
+      "账单页显示额度消耗和超额边界"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  },
+  {
+    "risk_signal_id": "risk_agent_org_permission_202606",
+    "risk_type": "compliance",
+    "title": "Agent Plan 企业协作权限和 API Key 管理边界未清",
+    "severity": "medium",
+    "linked_entities": {
+      "product_id": "prod_agent_plan",
+      "release_request_id": "rel_agent_plan_enterprise_202606",
+      "workflow_task_id": "wf_agent_enterprise_002"
+    },
+    "evidence": [
+      "wf_agent_enterprise_002"
+    ],
+    "detected_at": "2026-06-19T11:50:00+08:00",
+    "owner_team": "legal",
+    "recommended_actions": [
+      "企业管理员确认成员权限",
+      "API Key 操作加入审计",
+      "客户成功提供权限迁移清单"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  },
+  {
+    "risk_signal_id": "risk_agent_usage_alert_202606",
+    "risk_type": "operations",
+    "title": "Agent Plan 用量恢复和超额告警未联动客服通知",
+    "severity": "high",
+    "linked_entities": {
+      "product_id": "prod_agent_plan",
+      "release_request_id": "rel_agent_plan_enterprise_202606",
+      "workflow_task_id": "wf_agent_enterprise_003"
+    },
+    "evidence": [
+      "wf_agent_enterprise_003"
+    ],
+    "detected_at": "2026-06-19T11:55:00+08:00",
+    "owner_team": "sre",
+    "recommended_actions": [
+      "接入 5 小时/周/月额度恢复提醒",
+      "超额前推送客户确认",
+      "老板看板标注高 AFP 客户"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  }
+]

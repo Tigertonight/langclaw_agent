@@ -1,0 +1,56 @@
+[
+  {
+    "contract_id": "ctr_ai_2026",
+    "customer_id": "cust_ai_studio",
+    "contract_name": "AI 生成年度框架合同",
+    "effective_date": "2026-01-01",
+    "expire_date": "2026-12-31",
+    "discount_policy": {
+      "prod_seedance": 0.88,
+      "prod_agent_plan": 0.9
+    },
+    "invoice_title": "灵犀内容智能科技有限公司"
+  },
+  {
+    "contract_id": "ct_2026_media_001",
+    "customer_id": "cust_media_stream",
+    "contract_name": "媒体直播加速与对象存储年度框架合同",
+    "effective_date": "2026-03-01",
+    "expire_date": "2026-09-01",
+    "discount_policy": {
+      "prod_cdn": 0.82,
+      "prod_tos": 0.86
+    },
+    "invoice_title": "星河传媒集团",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium",
+    "source_ref_ids": [
+      "src_demo_assumption_001",
+      "src_cdn_product",
+      "src_tos_product"
+    ]
+  },
+  {
+    "contract_id": "ct_2026_finance_001",
+    "customer_id": "cust_finance_core",
+    "contract_name": "金融核心系统算力与数据库年度框架合同",
+    "effective_date": "2026-02-15",
+    "expire_date": "2027-02-14",
+    "discount_policy": {
+      "prod_ecs": 0.78,
+      "prod_rds_mysql": 0.8,
+      "prod_tos": 0.85
+    },
+    "invoice_title": "远山金融科技",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium",
+    "source_ref_ids": [
+      "src_demo_assumption_001",
+      "src_ecs_product",
+      "src_rds_product",
+      "src_tos_product"
+    ]
+  }
+]

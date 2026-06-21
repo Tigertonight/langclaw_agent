@@ -64,5 +64,37 @@
     "department": "零售运营",
     "accessible_customer_ids": [],
     "permissions": ["retail:read", "policy:read", "org:read"]
+  },
+  {
+    "id": "cloud_pm_001",
+    "name": "程一川",
+    "role": "cloud_pm",
+    "department": "云商品平台",
+    "accessible_customer_ids": ["cust_ai_studio", "cust_media_stream", "cust_finance_core"],
+    "permissions": ["cloud:read", "cloud:estimate", "cloud:draft", "cloud:risk", "policy:read", "org:read"]
+  },
+  {
+    "id": "cloud_exec_001",
+    "name": "沈澜",
+    "role": "cloud_executive",
+    "department": "云业务管理层",
+    "accessible_customer_ids": ["cust_ai_studio", "cust_media_stream", "cust_finance_core"],
+    "permissions": ["cloud:read", "cloud:estimate", "cloud:risk", "policy:read", "org:read"]
+  },
+  {
+    "id": "cloud_sales_001",
+    "name": "陆衡",
+    "role": "cloud_sales",
+    "department": "云解决方案销售",
+    "accessible_customer_ids": ["cust_ai_studio", "cust_media_stream"],
+    "permissions": ["cloud:read", "cloud:estimate", "cloud:draft", "policy:read", "org:read"]
+  },
+  {
+    "id": "cloud_customer_001",
+    "name": "自助客户",
+    "role": "cloud_customer",
+    "department": "客户自助服务",
+    "accessible_customer_ids": ["cust_ai_studio"],
+    "permissions": ["cloud:read", "cloud:estimate", "policy:read"]
   }
 ]

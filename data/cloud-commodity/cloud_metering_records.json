@@ -1,0 +1,68 @@
+[
+  {
+    "metering_record_id": "mr_seedance_001",
+    "subscription_id": "sub_seedance_001",
+    "meter_id": "m_seedance_token_1k",
+    "measured_at": "2026-06-10T10:00:00+08:00",
+    "quantity": 120000,
+    "unit": "1K tokens",
+    "source": "model_gateway"
+  },
+  {
+    "metering_record_id": "mr_agent_plan_001",
+    "subscription_id": "sub_agent_plan_001",
+    "meter_id": "m_agent_afp",
+    "measured_at": "2026-06-10T10:00:00+08:00",
+    "quantity": 86000,
+    "unit": "AFP",
+    "source": "agent_runtime"
+  },
+  {
+    "metering_record_id": "mr_media_cdn_001",
+    "subscription_id": "sub_media_cdn_001",
+    "meter_id": "m_cdn_traffic_gb",
+    "measured_at": "2026-06-10T10:00:00+08:00",
+    "quantity": 126400,
+    "unit": "GB",
+    "source": "cdn_billing_demo",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium"
+  },
+  {
+    "metering_record_id": "mr_media_tos_001",
+    "subscription_id": "sub_media_tos_001",
+    "meter_id": "m_tos_storage_gb_month",
+    "measured_at": "2026-06-10T10:00:00+08:00",
+    "quantity": 51200,
+    "unit": "GB-month",
+    "source": "tos_billing_demo",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium"
+  },
+  {
+    "metering_record_id": "mr_finance_ecs_001",
+    "subscription_id": "sub_finance_ecs_001",
+    "meter_id": "m_ecs_instance_hour",
+    "measured_at": "2026-06-10T10:00:00+08:00",
+    "quantity": 25920,
+    "unit": "instance-hour",
+    "source": "ecs_billing_demo",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium"
+  },
+  {
+    "metering_record_id": "mr_finance_rds_001",
+    "subscription_id": "sub_finance_rds_001",
+    "meter_id": "m_rds_instance_hour",
+    "measured_at": "2026-06-10T10:00:00+08:00",
+    "quantity": 12960,
+    "unit": "instance-hour",
+    "source": "rds_billing_demo",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium"
+  }
+]

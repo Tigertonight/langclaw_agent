@@ -1,0 +1,28 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.ops.incident_impact",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "把云商品运维/SLA 事件翻译为订单、GMV、收入确认、客户沟通、回滚和下一步动作。",
+  "params_schema": {
+    "incident_id": {
+      "type": "string",
+      "required": false
+    },
+    "product_code": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "examples": [
+    "如果新加坡 GPU 容量不足导致交付延期，影响哪些订单、GMV 和客户？给我回滚和客户沟通方案。",
+    "ECS GPU 运维事件会影响哪些经营目标？"
+  ],
+  "tool_binding": "tool.cloud_ops_incident_business_impact",
+  "required_permissions": [
+    "cloud:read",
+    "cloud:risk"
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.estimate.seedance_video_seconds",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "估算 Seedance 指定预算可生成多少秒视频，必须调用 estimate_seedance_video_seconds 并说明不是固定承诺。",
+  "params_schema": {
+    "budget_cny": {
+      "type": "number",
+      "required": false
+    },
+    "quality": {
+      "type": "string",
+      "required": false
+    },
+    "customer_id": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "examples": [
+    "客户 10000 元预算能生成多少秒视频",
+    "Seedance 1 万元能出多少条 5 秒视频"
+  ],
+  "tool_binding": null,
+  "required_permissions": [
+    "cloud:estimate"
+  ]
+}

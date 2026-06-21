@@ -1,0 +1,56 @@
+[
+  {
+    "region_id": "cn-beijing",
+    "region_code": "cn-beijing",
+    "region_name": "华北2（北京）",
+    "country": "CN",
+    "availability_zone_count": 3,
+    "supported_product_codes": [
+      "ECS",
+      "TOS",
+      "RDS_MYSQL",
+      "CDN",
+      "CLB",
+      "NLB",
+      "ALB",
+      "SEEDANCE",
+      "ARK_MODEL",
+      "AGENT_PLAN",
+      "AI_RESOURCE_PACK",
+      "AI_SAVINGS_PLAN",
+      "AI_CONTENT_SAFETY",
+      "PROMPT_WORKFLOW",
+      "OPENUI_DEMO"
+    ]
+  },
+  {
+    "region_id": "cn-shanghai",
+    "region_code": "cn-shanghai",
+    "region_name": "华东2（上海）",
+    "country": "CN",
+    "availability_zone_count": 3,
+    "supported_product_codes": [
+      "ECS",
+      "TOS",
+      "RDS_MYSQL",
+      "CDN",
+      "CLB",
+      "NLB",
+      "ALB"
+    ]
+  },
+  {
+    "region_id": "global",
+    "region_code": "global",
+    "region_name": "全球",
+    "country": "GLOBAL",
+    "availability_zone_count": 0,
+    "supported_product_codes": [
+      "CDN",
+      "ARK_MODEL",
+      "SEEDANCE",
+      "AGENT_PLAN",
+      "OPENUI_DEMO"
+    ]
+  }
+]

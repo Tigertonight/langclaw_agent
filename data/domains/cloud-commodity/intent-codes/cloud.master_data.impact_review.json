@@ -1,0 +1,19 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.master_data.impact_review",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "评审云商品主数据字段归属、下游消费系统和字段变更影响。",
+  "params_schema": {
+    "product_code": { "type": "string", "required": false },
+    "field_name": { "type": "string", "required": false }
+  },
+  "examples": [
+    "这个商品的主数据应该由商品中台维护哪些字段？官网、控制台、销售和账单分别消费哪些字段？",
+    "如果我修改 Offer 的计费模式，会影响哪些 SKU、价格、订购关系、账单和合同？"
+  ],
+  "tool_binding": "tool.cloud_master_data_impact_review",
+  "required_permissions": ["cloud:read", "cloud:risk"]
+}

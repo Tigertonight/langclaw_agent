@@ -1,0 +1,38 @@
+[
+  {
+    "contract_id": "contract_estimation_answer",
+    "name": "估算类回答契约",
+    "required_fields": [
+      "answer",
+      "estimated_value",
+      "unit",
+      "formula",
+      "assumptions",
+      "evidence_refs",
+      "confidence",
+      "caveat"
+    ],
+    "forbidden_behavior": [
+      "只给结论不说假设",
+      "把 demo mock 当成官方真实价格",
+      "不区分套餐内和超额后付费"
+    ]
+  },
+  {
+    "contract_id": "contract_executive_risk_answer",
+    "name": "老板风险类回答契约",
+    "required_fields": [
+      "summary",
+      "top_risks",
+      "business_impact",
+      "owners",
+      "recommended_actions",
+      "evidence_refs"
+    ],
+    "forbidden_behavior": [
+      "罗列所有风险不排序",
+      "不说明责任人",
+      "不给下一步动作"
+    ]
+  }
+]

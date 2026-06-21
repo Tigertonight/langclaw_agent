@@ -80,9 +80,11 @@ import { corePack } from "./core/domain-pack.js";
 import { dealerPack } from "./dealer/domain-pack.js";
 import { attendancePack } from "./attendance/domain-pack.js";
 import { retailDemoPack } from "./retail-demo/domain-pack.js";
+import { cloudCommodityPack } from "./cloud-commodity/domain-pack.js";
 
 export const AVAILABLE_PACKS: DomainPack[] = [
   corePack,
+  cloudCommodityPack,
   dealerPack,
   attendancePack,
   retailDemoPack,

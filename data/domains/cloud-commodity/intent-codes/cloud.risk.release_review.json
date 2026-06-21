@@ -1,0 +1,26 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.risk.release_review",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "审查云商品发布申请的配置、价格、合同、内容安全和流程风险。",
+  "params_schema": {
+    "release_request_id": {
+      "type": "string",
+      "required": true,
+      "examples": [
+        "rel_seedance_mini_202606"
+      ]
+    }
+  },
+  "examples": [
+    "帮我审查 rel_seedance_mini_202606 上线风险",
+    "Seedance 企业套餐上架有没有风险"
+  ],
+  "tool_binding": null,
+  "required_permissions": [
+    "cloud:risk"
+  ]
+}

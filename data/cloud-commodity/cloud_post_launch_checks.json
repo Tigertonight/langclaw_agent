@@ -1,0 +1,53 @@
+[
+  {
+    "check_id": "plc_seedance_24h_website_console_price",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "check_window": "发布后 24 小时",
+    "check_area": "渠道一致性",
+    "check_item": "官网、控制台、销售报价价格和权益边界一致",
+    "status": "warning",
+    "finding": "官网活动页展示促销资源包，但控制台超额付费二次确认提示不够明显。",
+    "impact": "客户可能把活动估算理解为正式报价。",
+    "owner": "商品 PM / GTM",
+    "next_action": "补充控制台确认文案，并同步销售报价单边界说明。",
+    "source_type": "demo_assumption",
+    "mocked": true,
+    "confidence": 0.74,
+    "source_ref_ids": ["src_demo_assumption_001"]
+  },
+  {
+    "check_id": "plc_seedance_24h_order_meter_bill",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "check_window": "发布后 24 小时",
+    "check_area": "订单计量账单闭环",
+    "check_item": "订单、计量、账单金额能闭环核对",
+    "status": "blocked",
+    "finding": "部分资源包订单的内容安全审核损耗未在账单解释中展示。",
+    "impact": "账单争议和客服解释压力上升。",
+    "owner": "计费团队 / 客服负责人",
+    "next_action": "补齐账单解释字段并生成客户沟通模板。",
+    "source_type": "demo_assumption",
+    "mocked": true,
+    "confidence": 0.72,
+    "source_ref_ids": ["src_demo_assumption_001"]
+  },
+  {
+    "check_id": "plc_ecs_gpu_24h_capacity_order",
+    "product_id": "prod_ecs",
+    "release_request_id": "rel_ecs_gpu_train_202606",
+    "check_window": "发布后 24 小时",
+    "check_area": "交付与容量",
+    "check_item": "新加坡 GPU 订单和容量预约状态一致",
+    "status": "warning",
+    "finding": "销售报价单已提示容量预约，但控制台地域选择页缺少限售提示。",
+    "impact": "客户可能误以为新加坡可立即交付。",
+    "owner": "SRE / 销售负责人",
+    "next_action": "控制台地域选择增加容量预约提示，并同步销售沟通口径。",
+    "source_type": "demo_assumption",
+    "mocked": true,
+    "confidence": 0.73,
+    "source_ref_ids": ["src_demo_assumption_001"]
+  }
+]

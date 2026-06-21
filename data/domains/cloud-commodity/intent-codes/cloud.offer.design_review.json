@@ -1,0 +1,24 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.offer.design_review",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "评审云商品 Offer/SKU/Meter/Price 设计，说明售卖方式关系、冲突点、折扣、促销、资源包和超额付费互斥风险。",
+  "params_schema": {
+    "product_code": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "examples": [
+    "Agent Plan 应该设计几个 Offer？按量、包月、会员权益和超额付费能否同时存在？",
+    "Seedance Mini 的资源包、促销价和合同折扣能否叠加？"
+  ],
+  "tool_binding": "tool.cloud_offer_design_review",
+  "required_permissions": [
+    "cloud:read",
+    "cloud:risk"
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.plan.entitlement_review",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "评审 Plan 型商品权益，覆盖额度发放、消耗顺序、过期、退订、退款、超额付费、二次确认和账单解释。",
+  "params_schema": {
+    "product_code": {
+      "type": "string",
+      "required": false
+    },
+    "entitlement_name": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "examples": [
+    "会员每天送 50 元等值 Token，这个权益如何定义？过期、退订、超额和账单解释怎么处理？",
+    "Agent Plan 套餐额度用完后会自动扣费吗？我要怎么确认超额付费？"
+  ],
+  "tool_binding": "tool.cloud_plan_entitlement_review",
+  "required_permissions": [
+    "cloud:read",
+    "cloud:risk"
+  ]
+}

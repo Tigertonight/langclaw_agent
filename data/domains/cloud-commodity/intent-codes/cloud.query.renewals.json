@@ -1,0 +1,41 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.query.renewals",
+  "handler_type": "intent_query",
+  "execution_class": "controlled_execution",
+  "description": "查询重点客户云商品续约机会和续约风险。",
+  "params_schema": {
+    "customer_id": {
+      "type": "string",
+      "required": false
+    },
+    "risk_level": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "examples": [
+    "重点客户合同续约怎么样",
+    "哪些云客户续约风险高",
+    "查询星河传媒续约机会"
+  ],
+  "tool_binding": {
+    "tool_name": "query_business_data",
+    "resource": "cloud_renewal_opportunities"
+  },
+  "required_permissions": [
+    "cloud:read"
+  ],
+  "filter_mapping": {
+    "customer_id": {
+      "field": "customer_id",
+      "op": "eq"
+    },
+    "risk_level": {
+      "field": "risk_level",
+      "op": "eq"
+    }
+  }
+}

@@ -1,0 +1,470 @@
+[
+  {
+    "checkpoint_id": "ipd_ecs_001",
+    "product_id": "prod_ecs",
+    "release_request_id": "rel_ecs_gpu_train_202606",
+    "stage": "立项",
+    "checkpoint_name": "客户需求与目标行业确认",
+    "status": "completed",
+    "owner_team": "cloud_product",
+    "owner_user_id": "cloud_pm_001",
+    "evidence": [
+      "AI 训练客户",
+      "金融风控建模客户"
+    ],
+    "gap": null,
+    "next_action": "复用为 GTM 目标客户分层",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.74,
+    "source_ref_ids": [
+      "src_ecs_ipd_demo"
+    ]
+  },
+  {
+    "checkpoint_id": "ipd_ecs_002",
+    "product_id": "prod_ecs",
+    "release_request_id": "rel_ecs_gpu_train_202606",
+    "stage": "PRD",
+    "checkpoint_name": "商品范围与购买页字段",
+    "status": "completed",
+    "owner_team": "cloud_product",
+    "owner_user_id": "cloud_pm_001",
+    "evidence": [
+      "地域",
+      "GPU 规格",
+      "镜像",
+      "云盘",
+      "VPC",
+      "公网带宽",
+      "计费模式"
+    ],
+    "gap": null,
+    "next_action": "同步到商品模型草稿",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.75,
+    "source_ref_ids": [
+      "src_ecs_ipd_demo"
+    ]
+  },
+  {
+    "checkpoint_id": "ipd_ecs_003",
+    "product_id": "prod_ecs",
+    "release_request_id": "rel_ecs_gpu_train_202606",
+    "stage": "商业测算",
+    "checkpoint_name": "GPU 成本与毛利底线",
+    "status": "blocked",
+    "owner_team": "finance",
+    "owner_user_id": "finance_reviewer_001",
+    "evidence": [
+      "包月折扣",
+      "GPU 池成本",
+      "大客户合同价"
+    ],
+    "gap": "缺少新加坡 GPU 池成本上浮后的毛利底线",
+    "next_action": "财务今天内给出最低毛利率和折扣审批阈值",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.7,
+    "source_ref_ids": [
+      "src_ecs_gmv_demo"
+    ]
+  },
+  {
+    "checkpoint_id": "ipd_ecs_004",
+    "product_id": "prod_ecs",
+    "release_request_id": "rel_ecs_gpu_train_202606",
+    "stage": "容量评审",
+    "checkpoint_name": "地域 GPU 容量与灰度范围",
+    "status": "blocked",
+    "owner_team": "sre",
+    "owner_user_id": "cloud_sre_001",
+    "evidence": [
+      "华东 1 可支撑首批灰度",
+      "新加坡只能覆盖 60% 峰值"
+    ],
+    "gap": "新加坡地域需要容量预约和限售策略",
+    "next_action": "SRE 输出扩容排期与售卖上限",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.74,
+    "source_ref_ids": [
+      "src_ecs_capacity_demo"
+    ]
+  },
+  {
+    "checkpoint_id": "ipd_ecs_005",
+    "product_id": "prod_ecs",
+    "release_request_id": "rel_ecs_gpu_train_202606",
+    "stage": "法务/SLA",
+    "checkpoint_name": "SLA 与不可承诺项",
+    "status": "in_progress",
+    "owner_team": "legal",
+    "owner_user_id": "legal_001",
+    "evidence": [
+      "服务可用性",
+      "补偿边界",
+      "容量预约条款"
+    ],
+    "gap": "SLA 文案需避免固定算力可用性承诺",
+    "next_action": "法务改写 SLA 边界并回传审批摘要",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.69,
+    "source_ref_ids": [
+      "src_ecs_ipd_demo"
+    ]
+  },
+  {
+    "checkpoint_id": "ipd_ecs_006",
+    "product_id": "prod_ecs",
+    "release_request_id": "rel_ecs_gpu_train_202606",
+    "stage": "GTM Ready",
+    "checkpoint_name": "销售话术、FAQ 与报价边界",
+    "status": "in_progress",
+    "owner_team": "sales",
+    "owner_user_id": "cloud_gtm_001",
+    "evidence": [
+      "AI 训练方案",
+      "金融核心系统方案",
+      "不可承诺清单"
+    ],
+    "gap": "等待财务折扣边界和 SRE 容量口径",
+    "next_action": "GTM 完成销售包并纳入正式报价前检查清单",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.71,
+    "source_ref_ids": [
+      "src_ecs_gtm_demo"
+    ]
+  },
+  {
+    "checkpoint_id": "ipd_seedance_mini_001",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "stage": "立项",
+    "checkpoint_name": "规模化视频生成目标客户与使用频次确认",
+    "status": "completed",
+    "owner_team": "cloud_product",
+    "owner_user_id": "cloud_pm_001",
+    "evidence": [
+      "电商素材",
+      "营销短视频",
+      "UGC 批量创作"
+    ],
+    "gap": null,
+    "next_action": "复用为官网自助购买与销售分层",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.68,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "checkpoint_id": "ipd_seedance_mini_002",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "stage": "PRD",
+    "checkpoint_name": "生成参数、素材输入和购买页字段定义",
+    "status": "completed",
+    "owner_team": "cloud_product",
+    "owner_user_id": "cloud_pm_001",
+    "evidence": [
+      "分辨率",
+      "时长",
+      "参考图/音/视频",
+      "内容安全确认"
+    ],
+    "gap": null,
+    "next_action": "同步到商品模型草稿和自助询价表单",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.68,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "checkpoint_id": "ipd_seedance_mini_003",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "stage": "商业测算",
+    "checkpoint_name": "mini 价格、资源包、促销和合同折扣互斥",
+    "status": "blocked",
+    "owner_team": "finance",
+    "owner_user_id": "finance_reviewer_001",
+    "evidence": [
+      "促销价",
+      "合同折扣",
+      "资源包抵扣"
+    ],
+    "gap": "缺少促销价与合同价同时生效时的毛利底线",
+    "next_action": "财务输出最低毛利率和促销互斥阈值",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.68,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "checkpoint_id": "ipd_seedance_mini_004",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "stage": "风控/合规",
+    "checkpoint_name": "内容安全、肖像版权和行业禁用场景",
+    "status": "in_progress",
+    "owner_team": "legal",
+    "owner_user_id": "legal_001",
+    "evidence": [
+      "内容审核",
+      "肖像版权",
+      "行业禁用"
+    ],
+    "gap": "高风险行业文案需要法务确认",
+    "next_action": "法务补齐购买页确认文案和审核口径",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.68,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "checkpoint_id": "ipd_seedance_mini_005",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "stage": "研发/运维",
+    "checkpoint_name": "API 调用、重试、限流和高峰容量保护",
+    "status": "in_progress",
+    "owner_team": "sre",
+    "owner_user_id": "sre_seedance_001",
+    "evidence": [
+      "限流",
+      "重试",
+      "队列",
+      "失败补偿"
+    ],
+    "gap": "大促期间并发限额未固化",
+    "next_action": "SRE 给出灰度流量阈值和告警策略",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.68,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "checkpoint_id": "ipd_seedance_mini_006",
+    "product_id": "prod_seedance",
+    "release_request_id": "rel_seedance_mini_selfserve_202606",
+    "stage": "GTM Ready",
+    "checkpoint_name": "官网 FAQ、销售话术和正式报价边界",
+    "status": "in_progress",
+    "owner_team": "sales",
+    "owner_user_id": "sales_ai_001",
+    "evidence": [
+      "FAQ",
+      "报价边界",
+      "行业方案"
+    ],
+    "gap": "缺少内容行业标准方案包",
+    "next_action": "GTM 完成电商/营销/UGC 三类方案包",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.68,
+    "source_ref_ids": [
+      "src_seedance_mini_official_202606",
+      "src_seedance_prompt_official_202606",
+      "src_seedance_sdk_official_202606",
+      "src_seedance_product",
+      "src_seedance_billing_article"
+    ]
+  },
+  {
+    "checkpoint_id": "ipd_agent_plan_001",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "stage": "立项",
+    "checkpoint_name": "Agent 开发者与企业协作目标客户确认",
+    "status": "completed",
+    "owner_team": "cloud_product",
+    "owner_user_id": "cloud_pm_001",
+    "evidence": [
+      "个人开发者",
+      "企业研发团队",
+      "AI 应用团队"
+    ],
+    "gap": null,
+    "next_action": "沉淀为 Small/Medium/Enterprise 分层",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.69,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  },
+  {
+    "checkpoint_id": "ipd_agent_plan_002",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "stage": "PRD",
+    "checkpoint_name": "AFP 额度、模型权益、工具调用和超额付费规则",
+    "status": "completed",
+    "owner_team": "cloud_product",
+    "owner_user_id": "cloud_pm_001",
+    "evidence": [
+      "AFP",
+      "联网搜索",
+      "视觉额度",
+      "超额付费"
+    ],
+    "gap": null,
+    "next_action": "同步到套餐权益页和用量解释",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.69,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  },
+  {
+    "checkpoint_id": "ipd_agent_plan_003",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "stage": "商业测算",
+    "checkpoint_name": "套餐内 AFP 抵扣、超额价和毛利保护",
+    "status": "blocked",
+    "owner_team": "finance",
+    "owner_user_id": "finance_reviewer_001",
+    "evidence": [
+      "模型消耗",
+      "联网搜索",
+      "多模态调用"
+    ],
+    "gap": "高成本模型与多工具链路会压低毛利",
+    "next_action": "财务给出高成本调用提醒和超额付费阈值",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.69,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  },
+  {
+    "checkpoint_id": "ipd_agent_plan_004",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "stage": "风控/合规",
+    "checkpoint_name": "API Key、数据权限和企业成员协作边界",
+    "status": "in_progress",
+    "owner_team": "legal",
+    "owner_user_id": "legal_001",
+    "evidence": [
+      "API Key",
+      "组织成员",
+      "日志留存"
+    ],
+    "gap": "企业协作套餐权限说明未完成",
+    "next_action": "法务补齐组织成员与数据边界条款",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.69,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  },
+  {
+    "checkpoint_id": "ipd_agent_plan_005",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "stage": "研发/运维",
+    "checkpoint_name": "用量看板、限额恢复和超额开通监控",
+    "status": "blocked",
+    "owner_team": "sre",
+    "owner_user_id": "sre_agent_001",
+    "evidence": [
+      "5小时额度",
+      "周额度",
+      "月额度",
+      "超额开通"
+    ],
+    "gap": "套餐用量恢复与超额开通告警还未联动",
+    "next_action": "SRE 接入用量异常告警和客户通知",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.69,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  },
+  {
+    "checkpoint_id": "ipd_agent_plan_006",
+    "product_id": "prod_agent_plan",
+    "release_request_id": "rel_agent_plan_enterprise_202606",
+    "stage": "GTM Ready",
+    "checkpoint_name": "开发者官网 FAQ、销售问答和迁移指南",
+    "status": "in_progress",
+    "owner_team": "sales",
+    "owner_user_id": "sales_ai_001",
+    "evidence": [
+      "FAQ",
+      "迁移指南",
+      "竞品边界"
+    ],
+    "gap": "缺少从免费试用到 Medium 的转化话术",
+    "next_action": "GTM 完成升级路径和客户成功动作",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": 0.69,
+    "source_ref_ids": [
+      "src_agent_plan_faq_official_202606",
+      "src_agent_plan_afp_official_202606",
+      "src_agent_plan_assumption",
+      "src_ark_product",
+      "src_ark_plugin_billing"
+    ]
+  }
+]

@@ -1,0 +1,134 @@
+[
+  {
+    "metric_id": "gmv",
+    "name": "GMV",
+    "owner": "business_ops",
+    "grain": [
+      "month",
+      "product_id"
+    ],
+    "formula": "sum(order.discount_amount)",
+    "source_entities": [
+      "Order"
+    ],
+    "boss_relevance": "收入规模"
+  },
+  {
+    "metric_id": "arr",
+    "name": "ARR",
+    "owner": "finance",
+    "grain": [
+      "customer_id",
+      "product_id"
+    ],
+    "formula": "monthly_recurring_revenue * 12",
+    "source_entities": [
+      "Subscription",
+      "Bill"
+    ],
+    "boss_relevance": "订阅增长"
+  },
+  {
+    "metric_id": "gross_margin_rate",
+    "name": "毛利率",
+    "owner": "finance",
+    "grain": [
+      "month",
+      "product_id"
+    ],
+    "formula": "(revenue - model_cost - infra_cost - support_cost) / revenue",
+    "source_entities": [
+      "Bill",
+      "MeteringRecord",
+      "CostSimulation"
+    ],
+    "boss_relevance": "AI 商品是否成本穿透"
+  },
+  {
+    "metric_id": "launch_cycle_days",
+    "name": "商品上线周期",
+    "owner": "product_ops",
+    "grain": [
+      "release_request_id"
+    ],
+    "formula": "released_at - submitted_at",
+    "source_entities": [
+      "ReleaseRequest",
+      "WorkflowTask"
+    ],
+    "boss_relevance": "效率阻塞"
+  },
+  {
+    "metric_id": "approval_sla_breach_rate",
+    "name": "审批 SLA 超时率",
+    "owner": "product_ops",
+    "grain": [
+      "team",
+      "month"
+    ],
+    "formula": "count(timeout_tasks) / count(all_tasks)",
+    "source_entities": [
+      "WorkflowTask"
+    ],
+    "boss_relevance": "哪些人在拖慢流程"
+  },
+  {
+    "metric_id": "config_defect_rate",
+    "name": "配置缺陷率",
+    "owner": "quality",
+    "grain": [
+      "product_id",
+      "month"
+    ],
+    "formula": "count(config_defects) / count(release_requests)",
+    "source_entities": [
+      "RiskSignal",
+      "ReleaseRequest"
+    ],
+    "boss_relevance": "配置事故风险"
+  },
+  {
+    "metric_id": "renewal_at_risk_amount",
+    "name": "风险续约金额",
+    "owner": "sales",
+    "grain": [
+      "quarter",
+      "owner"
+    ],
+    "formula": "sum(contract_amount where renewal_probability < threshold)",
+    "source_entities": [
+      "RenewalOpportunity"
+    ],
+    "boss_relevance": "重点客户续约风险"
+  },
+  {
+    "metric_id": "afp_burn_rate",
+    "name": "AFP 消耗速度",
+    "owner": "ai_business",
+    "grain": [
+      "subscription_id",
+      "day"
+    ],
+    "formula": "used_afp / elapsed_days",
+    "source_entities": [
+      "MeteringRecord",
+      "Subscription"
+    ],
+    "boss_relevance": "Agent Plan 套餐是否健康"
+  },
+  {
+    "metric_id": "seedance_unit_cost_second",
+    "name": "Seedance 每秒生成成本",
+    "owner": "ai_business",
+    "grain": [
+      "model_id",
+      "quality"
+    ],
+    "formula": "token_price_per_1k * token_per_second / 1000",
+    "source_entities": [
+      "Price",
+      "AssumptionProfile"
+    ],
+    "boss_relevance": "视频生成成本口径"
+  }
+]

@@ -1,0 +1,85 @@
+[
+  {
+    "ai_model_id": "ai_seedance_lite",
+    "product_id": "prod_seedance",
+    "model_name": "Seedance Lite",
+    "modality": "video",
+    "input_unit": "prompt_token",
+    "output_unit": "video_second",
+    "max_context": 32000,
+    "supported_scenarios": [
+      "text_to_video",
+      "marketing_video"
+    ],
+    "source_ref_ids": [
+      "src_seedance_product"
+    ]
+  },
+  {
+    "ai_model_id": "ai_seedance_pro",
+    "product_id": "prod_seedance",
+    "model_name": "Seedance Pro",
+    "modality": "video",
+    "input_unit": "prompt_token,video_input",
+    "output_unit": "video_second",
+    "max_context": 64000,
+    "supported_scenarios": [
+      "text_to_video",
+      "image_to_video",
+      "video_to_video"
+    ],
+    "source_ref_ids": [
+      "src_seedance_product"
+    ]
+  },
+  {
+    "ai_model_id": "ai_ark_text",
+    "product_id": "prod_ark_model",
+    "model_name": "火山方舟文本模型",
+    "modality": "text",
+    "input_unit": "input_token",
+    "output_unit": "output_token",
+    "max_context": 128000,
+    "supported_scenarios": [
+      "chat",
+      "agent",
+      "rag"
+    ],
+    "source_ref_ids": [
+      "src_ark_product"
+    ]
+  },
+  {
+    "ai_model_id": "ai_agent_plan_runtime",
+    "product_id": "prod_agent_plan",
+    "model_name": "Agent Plan Runtime",
+    "modality": "agent",
+    "input_unit": "user_turn,tool_call",
+    "output_unit": "agent_round,afp",
+    "max_context": 128000,
+    "supported_scenarios": [
+      "enterprise_agent",
+      "workflow_agent"
+    ],
+    "source_ref_ids": [
+      "src_agent_plan_assumption"
+    ]
+  },
+  {
+    "ai_model_id": "ai_openui_runtime",
+    "product_id": "prod_openui_demo",
+    "model_name": "OpenUI Page Runtime",
+    "modality": "agent",
+    "input_unit": "prd,fields,states",
+    "output_unit": "openui_page",
+    "max_context": 64000,
+    "supported_scenarios": [
+      "purchase_page",
+      "approval_page",
+      "dashboard"
+    ],
+    "source_ref_ids": [
+      "src_openui_demo_assumption"
+    ]
+  }
+]

@@ -1,0 +1,32 @@
+[
+  {
+    "family_id": "fam_compute",
+    "family_name": "计算",
+    "category": "基础云",
+    "description": "云服务器与弹性计算资源"
+  },
+  {
+    "family_id": "fam_storage",
+    "family_name": "存储",
+    "category": "基础云",
+    "description": "对象存储与容量资源"
+  },
+  {
+    "family_id": "fam_database",
+    "family_name": "数据库",
+    "category": "基础云",
+    "description": "托管数据库实例"
+  },
+  {
+    "family_id": "fam_network",
+    "family_name": "网络与分发",
+    "category": "基础云",
+    "description": "CDN 与负载均衡"
+  },
+  {
+    "family_id": "fam_ai_model",
+    "family_name": "AI 模型与 Agent",
+    "category": "AI 云商品",
+    "description": "模型调用、视频生成、Agent 套餐与 UI 生成"
+  }
+]

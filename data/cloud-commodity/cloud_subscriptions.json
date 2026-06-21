@@ -1,0 +1,80 @@
+[
+  {
+    "subscription_id": "sub_seedance_001",
+    "customer_id": "cust_ai_studio",
+    "order_id": "ord_seedance_pack_001",
+    "offer_id": "off_seedance_pack",
+    "sku_id": "sku_seedance_lite",
+    "status": "active",
+    "start_at": "2026-06-01",
+    "end_at": "2026-12-31",
+    "renewal_status": "manual_review"
+  },
+  {
+    "subscription_id": "sub_agent_plan_001",
+    "customer_id": "cust_ai_studio",
+    "order_id": "ord_agent_plan_001",
+    "offer_id": "off_agent_plan_monthly",
+    "sku_id": "sku_agent_plan_medium",
+    "status": "active",
+    "start_at": "2026-06-03",
+    "end_at": "2026-07-02",
+    "renewal_status": "auto_renew_enabled"
+  },
+  {
+    "subscription_id": "sub_media_cdn_001",
+    "customer_id": "cust_media_stream",
+    "order_id": "ord_media_cdn_001",
+    "offer_id": "off_cdn_traffic_pack",
+    "sku_id": "sku_cdn_standard_traffic_100tb",
+    "status": "active",
+    "start_at": "2026-05-18",
+    "end_at": "2026-09-01",
+    "renewal_status": "at_risk_manual_followup",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium"
+  },
+  {
+    "subscription_id": "sub_media_tos_001",
+    "customer_id": "cust_media_stream",
+    "order_id": "ord_media_cdn_001",
+    "offer_id": "off_tos_storage_pack",
+    "sku_id": "sku_tos_standard_50tb",
+    "status": "active",
+    "start_at": "2026-05-18",
+    "end_at": "2026-09-01",
+    "renewal_status": "manual_review",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium"
+  },
+  {
+    "subscription_id": "sub_finance_ecs_001",
+    "customer_id": "cust_finance_core",
+    "order_id": "ord_finance_core_001",
+    "offer_id": "off_ecs_reserved",
+    "sku_id": "sku_ecs_compute_annual_64c",
+    "status": "active",
+    "start_at": "2026-04-10",
+    "end_at": "2027-02-14",
+    "renewal_status": "healthy",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium"
+  },
+  {
+    "subscription_id": "sub_finance_rds_001",
+    "customer_id": "cust_finance_core",
+    "order_id": "ord_finance_core_001",
+    "offer_id": "off_rds_ha",
+    "sku_id": "sku_rds_mysql_ha_8c32g",
+    "status": "active",
+    "start_at": "2026-04-10",
+    "end_at": "2027-02-14",
+    "renewal_status": "healthy",
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium"
+  }
+]

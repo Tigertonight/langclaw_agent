@@ -71,6 +71,11 @@ export interface ResourceConfig {
    */
   label?: string;
   /**
+   * 资源中文业务说明。
+   * 用于把表/实体含义传给 LLM 与 OpenUI，避免前台直接暴露资源 key。
+   */
+  description?: string;
+  /**
    * 行模板函数：将单行数据格式化为人类可读的摘要字符串。
    * 用于 formatRowByResource 等场景，替代硬编码 if/else。
    */

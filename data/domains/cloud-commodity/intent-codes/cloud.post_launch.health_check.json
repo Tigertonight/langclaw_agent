@@ -1,0 +1,19 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.post_launch.health_check",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "生成云商品发布后巡检，覆盖渠道一致性、订单/计量/账单闭环、客户反馈和发布健康日报。",
+  "params_schema": {
+    "product_code": { "type": "string", "required": false },
+    "release_request_id": { "type": "string", "required": false }
+  },
+  "examples": [
+    "Seedance Mini 上架后 24 小时，帮我巡检官网、控制台、订单、计量、账单和客户反馈是否正常。",
+    "官网价格、控制台价格、销售报价单是否一致？"
+  ],
+  "tool_binding": "tool.cloud_post_launch_health_check",
+  "required_permissions": ["cloud:read", "cloud:risk"]
+}

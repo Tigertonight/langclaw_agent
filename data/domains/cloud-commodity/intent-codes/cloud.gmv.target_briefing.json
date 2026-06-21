@@ -1,0 +1,28 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.gmv.target_briefing",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "生成单个云商品的 GMV 目标、达成差距、pipeline、毛利、交付、容量和客户风险经营驾驶舱。",
+  "params_schema": {
+    "product_code": {
+      "type": "string",
+      "required": false
+    },
+    "period": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "examples": [
+    "ECS GPU 商品本月 GMV 目标完成得怎么样？毛利、交付、容量和客户风险分别谁负责？",
+    "ECS GPU 目标达成和经营健康度如何？"
+  ],
+  "tool_binding": "tool.cloud_gmv_target_briefing",
+  "required_permissions": [
+    "cloud:read",
+    "cloud:risk"
+  ]
+}

@@ -1,0 +1,89 @@
+[
+  {
+    "estimator_id": "est_agent_rounds_default",
+    "product_id": "prod_agent_plan",
+    "offer_id": "off_agent_plan_monthly",
+    "estimator_type": "agent_rounds",
+    "input_params_schema": {
+      "package_id": "string",
+      "extra_budget_cny": "number",
+      "scenario_type": "string",
+      "average_turn_total_tokens": "number"
+    },
+    "formula": "floor((afp_quota + floor(extra_budget / overage_price)) * (1 - safety_buffer) / turn_afp)",
+    "assumptions": {
+      "afp_per_1k_text_tokens": 1,
+      "average_turn_total_tokens": 2000,
+      "multimodal_multiplier": {
+        "text_only": 1,
+        "agent_with_search": 1.8,
+        "image_understanding": 2.4,
+        "video_generation": 4.8
+      },
+      "tool_call_afp": {
+        "web_search_beta": 8,
+        "professional_dataset": 15,
+        "arkclaw": 12
+      },
+      "safety_buffer_ratio": 0.15
+    },
+    "caveat": "估算不是承诺，真实轮数受上下文长度、工具调用、模型选择和缓存命中影响。",
+    "source_ref_ids": [
+      "src_agent_plan_assumption",
+      "src_ark_product"
+    ]
+  },
+  {
+    "estimator_id": "est_seedance_video_seconds",
+    "product_id": "prod_seedance",
+    "offer_id": "off_seedance_postpaid",
+    "estimator_type": "video_seconds",
+    "input_params_schema": {
+      "budget_cny": "number",
+      "quality": "string",
+      "target_duration_seconds": "number",
+      "video_input": "boolean"
+    },
+    "formula": "floor(((budget - storage_cdn_cost) * discount / price_per_1k_tokens) * 1000 / token_per_second * (1 - retry - moderation - safety))",
+    "assumptions": {
+      "token_per_second_by_quality": {
+        "720p_standard": 4200,
+        "720p_high": 5600,
+        "1080p_standard": 7600,
+        "1080p_high": 9800
+      },
+      "retry_rate": 0.08,
+      "moderation_overhead_ratio": 0.03,
+      "safety_buffer_ratio": 0.12
+    },
+    "caveat": "估算不是视频生成承诺，真实秒数受质量、重试、审核和内容复杂度影响。",
+    "source_ref_ids": [
+      "src_seedance_product"
+    ]
+  },
+  {
+    "estimator_id": "est_openui_pages",
+    "product_id": "prod_openui_demo",
+    "offer_id": "off_openui_page_pack",
+    "estimator_type": "openui_pages",
+    "input_params_schema": {
+      "page_pack": "string",
+      "complexity": "string",
+      "states_required": "number"
+    },
+    "formula": "floor(page_quota * complexity_multiplier / max(states_required, 1))",
+    "assumptions": {
+      "page_quota": 100,
+      "complexity_multiplier": {
+        "simple": 1.2,
+        "workflow": 0.8,
+        "dashboard": 0.55
+      },
+      "default_states_required": 4
+    },
+    "caveat": "OpenUI 复现页数按 demo 复杂度估算，最终以人工验收为准。",
+    "source_ref_ids": [
+      "src_openui_demo_assumption"
+    ]
+  }
+]

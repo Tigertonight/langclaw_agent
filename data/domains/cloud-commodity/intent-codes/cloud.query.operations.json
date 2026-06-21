@@ -1,0 +1,49 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.query.operations",
+  "handler_type": "intent_query",
+  "execution_class": "controlled_execution",
+  "description": "查询云商品经营指标，包括 GMV、净收入、毛利率、活跃客户、续约风险金额、账单争议、发布阻塞和产品收入结构。",
+  "params_schema": {
+    "metric_group": {
+      "type": "string",
+      "required": false
+    },
+    "status": {
+      "type": "string",
+      "required": false
+    },
+    "product_id": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "examples": [
+    "云商品平台本月经营指标怎么样",
+    "查询云商品 GMV、净收入和毛利率",
+    "老板想看云商品经营情况和风险指标"
+  ],
+  "tool_binding": {
+    "tool_name": "query_business_data",
+    "resource": "cloud_operating_metrics"
+  },
+  "required_permissions": [
+    "cloud:read"
+  ],
+  "filter_mapping": {
+    "metric_group": {
+      "field": "metric_group",
+      "op": "eq"
+    },
+    "status": {
+      "field": "status",
+      "op": "eq"
+    },
+    "product_id": {
+      "field": "product_id",
+      "op": "eq"
+    }
+  }
+}

@@ -1,0 +1,47 @@
+[
+  {
+    "playbook_id": "cx_agent_plan_overage_explain",
+    "product_id": "prod_agent_plan",
+    "scenario": "套餐额度用完与超额付费",
+    "customer_question": "Agent Plan Medium 额度用完后会发生什么？会不会自动扣费？",
+    "plain_answer": "额度用完后不会自动扣费。系统会先提醒剩余额度和预计用尽时间，客户管理员确认预算上限、单价和通知人后，才会生成超额付费开通草稿。",
+    "must_disclose": ["不会自动扣费", "需要客户二次确认", "对话轮数不是固定保底", "高成本模型和工具调用会影响消耗"],
+    "visible_fields": ["套餐名称", "剩余额度", "已用额度", "预计用尽时间", "超额开关状态", "确认人"],
+    "hidden_fields": ["内部成本", "毛利底线", "模型路由策略"],
+    "next_action": "引导客户管理员查看用量页并确认是否开启超额付费草稿。",
+    "source_type": "demo_assumption",
+    "mocked": true,
+    "confidence": 0.76,
+    "source_ref_ids": ["src_demo_assumption_001"]
+  },
+  {
+    "playbook_id": "cx_seedance_bill_over_budget",
+    "product_id": "prod_seedance",
+    "scenario": "账单高于预算估算",
+    "customer_question": "为什么我的 Seedance 账单高于预算估算？",
+    "plain_answer": "预算估算不是正式报价，实际账单会受分辨率、视频时长、重试、内容安全审核、存储分发和合同折扣影响。可以把资源包消耗、按量用量和异常重试拆开核对。",
+    "must_disclose": ["估算不是正式报价", "实际用量会波动", "可提供用量明细", "争议金额进入人工复核"],
+    "visible_fields": ["账期", "资源包消耗", "按量用量", "内容安全审核损耗", "重试消耗", "争议金额"],
+    "hidden_fields": ["内部成本", "模型供应链成本", "风控阈值"],
+    "next_action": "生成账单解释清单，并由销售/客服确认是否进入争议复核。",
+    "source_type": "demo_assumption",
+    "mocked": true,
+    "confidence": 0.73,
+    "source_ref_ids": ["src_demo_assumption_001"]
+  },
+  {
+    "playbook_id": "cx_quote_not_formal_price",
+    "product_id": "prod_ecs",
+    "scenario": "估算价与正式报价差异",
+    "customer_question": "这个 ECS GPU 价格是不是正式报价？",
+    "plain_answer": "当前结果只是预算估算，不是正式报价。正式报价需要确认地域、容量预约、合同折扣、SLA 边界、开票和服务期。",
+    "must_disclose": ["非正式报价", "容量预约后才能确认交付窗口", "合同折扣需审批", "SLA 不承诺未确认地域固定交付"],
+    "visible_fields": ["地域", "规格", "购买周期", "预算估算", "容量预约状态", "报价前检查项"],
+    "hidden_fields": ["GPU 内部采购成本", "未审批底价", "内部扩容排期"],
+    "next_action": "进入销售正式报价前检查清单。",
+    "source_type": "demo_assumption",
+    "mocked": true,
+    "confidence": 0.72,
+    "source_ref_ids": ["src_demo_assumption_001"]
+  }
+]

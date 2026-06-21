@@ -1,0 +1,28 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.modeling.product_to_commodity",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "根据云产品生成商品模型、SKU、计费项、价格和购买页字段草稿。",
+  "params_schema": {
+    "product_code": {
+      "type": "string",
+      "required": false
+    },
+    "product_description": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "examples": [
+    "Seedance 上架前我需要配置哪些字段",
+    "帮我生成 Agent Plan 商品配置草稿",
+    "GPU 训练实例接入商品平台需要什么"
+  ],
+  "tool_binding": null,
+  "required_permissions": [
+    "cloud:draft"
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.gtm.package_draft",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "生成云商品 GTM 包草稿，包含目标客户、卖点、FAQ、销售话术、不可承诺项和正式报价前检查。",
+  "params_schema": {
+    "product_code": {
+      "type": "string",
+      "required": false
+    },
+    "industry": {
+      "type": "string",
+      "required": false
+    },
+    "customer_segment": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "examples": [
+    "帮我生成 ECS GPU 训练实例的 GTM 包：目标客户、卖点、FAQ、销售话术、不能承诺的边界。",
+    "ECS GPU 面向金融客户销售时有哪些不可承诺项？"
+  ],
+  "tool_binding": "tool.cloud_gtm_package_draft",
+  "required_permissions": [
+    "cloud:read",
+    "cloud:draft"
+  ]
+}

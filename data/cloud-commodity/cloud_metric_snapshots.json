@@ -1,0 +1,87 @@
+[
+  {
+    "snapshot_id": "metric_gmv_202606_ai",
+    "metric_id": "gmv",
+    "period": "2026-06",
+    "dimensions": {
+      "product_group": "ai"
+    },
+    "value": 48578.8,
+    "unit": "CNY",
+    "trend": "up",
+    "mocked": true
+  },
+  {
+    "snapshot_id": "metric_arr_agent_plan_202606",
+    "metric_id": "arr",
+    "period": "2026-06",
+    "dimensions": {
+      "product_id": "prod_agent_plan"
+    },
+    "value": 25920,
+    "unit": "CNY",
+    "trend": "new",
+    "mocked": true
+  },
+  {
+    "snapshot_id": "metric_margin_ai_studio_202606",
+    "metric_id": "gross_margin_rate",
+    "period": "2026-06",
+    "dimensions": {
+      "customer_id": "cust_ai_studio"
+    },
+    "value": 0.204,
+    "unit": "ratio",
+    "trend": "warning",
+    "mocked": true
+  },
+  {
+    "snapshot_id": "metric_launch_cycle_seedance",
+    "metric_id": "launch_cycle_days",
+    "period": "2026-06",
+    "dimensions": {
+      "release_request_id": "rel_seedance_mini_202606"
+    },
+    "value": 3.5,
+    "unit": "days",
+    "trend": "risk",
+    "mocked": true
+  },
+  {
+    "snapshot_id": "metric_sla_finance_202606",
+    "metric_id": "approval_sla_breach_rate",
+    "period": "2026-06",
+    "dimensions": {
+      "team": "finance"
+    },
+    "value": 0.4,
+    "unit": "ratio",
+    "trend": "up",
+    "mocked": true
+  },
+  {
+    "snapshot_id": "metric_renewal_at_risk_2026q3",
+    "metric_id": "renewal_at_risk_amount",
+    "period": "2026-Q3",
+    "dimensions": {
+      "owner": "sales_media_001"
+    },
+    "value": 120000,
+    "unit": "CNY",
+    "trend": "risk",
+    "mocked": true
+  },
+  {
+    "snapshot_id": "metric_seedance_unit_cost_720p",
+    "metric_id": "seedance_unit_cost_second",
+    "period": "2026-06",
+    "dimensions": {
+      "model_id": "doubao-seedance-2-0-mini",
+      "quality": "720p_standard"
+    },
+    "value": 0.0966,
+    "unit": "CNY/second",
+    "trend": "baseline",
+    "mocked": true
+  }
+]

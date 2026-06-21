@@ -1,0 +1,28 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.sre.launch_gate_review",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "评审云商品上架前 SRE 稳定性门禁，覆盖容量、限流、告警、灰度、回滚、SLA、客服通知和销售同步。",
+  "params_schema": {
+    "product_code": {
+      "type": "string",
+      "required": false
+    },
+    "release_request_id": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "examples": [
+    "Seedance Mini 上架前，SRE 需要确认哪些容量、限流、告警、灰度和回滚门禁？",
+    "Seedance Mini 自助购买上线前有哪些稳定性门禁没过？"
+  ],
+  "tool_binding": "tool.cloud_sre_launch_gate_review",
+  "required_permissions": [
+    "cloud:read",
+    "cloud:risk"
+  ]
+}

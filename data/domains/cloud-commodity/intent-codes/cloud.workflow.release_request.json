@@ -1,0 +1,28 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.workflow.release_request",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "生成云商品发布申请草稿、审批摘要、闭环模拟和回滚检查点。",
+  "params_schema": {
+    "release_request_id": {
+      "type": "string",
+      "required": false
+    },
+    "product_id": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "examples": [
+    "生成发布审批摘要和回滚检查点",
+    "模拟 Seedance 上架闭环",
+    "创建云商品发布草稿"
+  ],
+  "tool_binding": null,
+  "required_permissions": [
+    "cloud:draft"
+  ]
+}

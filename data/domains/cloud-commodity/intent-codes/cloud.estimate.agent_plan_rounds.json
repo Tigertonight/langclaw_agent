@@ -1,0 +1,31 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.estimate.agent_plan_rounds",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "估算 Agent Plan 套餐能支持多少轮对话，必须调用 estimate_agent_plan_rounds 并说明假设和边界。",
+  "params_schema": {
+    "package_id": {
+      "type": "string",
+      "required": false
+    },
+    "extra_budget_cny": {
+      "type": "number",
+      "required": false
+    },
+    "scenario_type": {
+      "type": "string",
+      "required": false
+    }
+  },
+  "examples": [
+    "Agent Plan Medium 大概能对话多少轮",
+    "一个 Agent Plan 能支持多少轮带搜索的对话"
+  ],
+  "tool_binding": null,
+  "required_permissions": [
+    "cloud:estimate"
+  ]
+}

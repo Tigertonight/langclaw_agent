@@ -1,0 +1,45 @@
+[
+  {
+    "customer_id": "cust_ai_studio",
+    "customer_name": "灵犀内容智能科技有限公司",
+    "industry": "AI 内容生成",
+    "tier": "KA",
+    "account_owner": "cloud_sales_001",
+    "budget_cny": 300000,
+    "cost_center_ids": [
+      "cc_marketing_ai"
+    ],
+    "source_ref_ids": [
+      "src_seedance_product"
+    ]
+  },
+  {
+    "customer_id": "cust_media_stream",
+    "customer_name": "星河传媒集团",
+    "industry": "媒体",
+    "tier": "KA",
+    "account_owner": "cloud_sales_001",
+    "budget_cny": 500000,
+    "cost_center_ids": [
+      "cc_streaming"
+    ],
+    "source_ref_ids": [
+      "src_cdn_product"
+    ]
+  },
+  {
+    "customer_id": "cust_finance_core",
+    "customer_name": "远山金融科技",
+    "industry": "金融",
+    "tier": "Strategic",
+    "account_owner": "cloud_sales_002",
+    "budget_cny": 1000000,
+    "cost_center_ids": [
+      "cc_core_it"
+    ],
+    "source_ref_ids": [
+      "src_ecs_product",
+      "src_rds_product"
+    ]
+  }
+]

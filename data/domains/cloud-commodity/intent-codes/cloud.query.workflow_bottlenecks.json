@@ -1,0 +1,37 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.query.workflow_bottlenecks",
+  "handler_type": "intent_query",
+  "execution_class": "controlled_execution",
+  "description": "查询云商品发布、审批和配置流程中的阻塞任务。",
+  "params_schema": {
+    "status": {
+      "type": "string",
+      "required": false,
+      "examples": [
+        "blocked",
+        "in_progress"
+      ]
+    }
+  },
+  "examples": [
+    "谁卡住了 Seedance 上线流程",
+    "哪些人在环节拖沓",
+    "查询云商品审批阻塞"
+  ],
+  "tool_binding": {
+    "tool_name": "query_business_data",
+    "resource": "cloud_workflow_tasks"
+  },
+  "required_permissions": [
+    "cloud:read"
+  ],
+  "filter_mapping": {
+    "status": {
+      "field": "status",
+      "op": "eq"
+    }
+  }
+}

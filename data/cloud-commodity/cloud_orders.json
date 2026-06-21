@@ -1,0 +1,60 @@
+[
+  {
+    "order_id": "ord_seedance_pack_001",
+    "customer_id": "cust_ai_studio",
+    "account_id": "acct_ai_video_sub",
+    "order_status": "paid",
+    "payment_status": "paid",
+    "created_at": "2026-06-01T10:00:00+08:00",
+    "total_amount_cny": 10000,
+    "source_ref_ids": [
+      "src_seedance_product"
+    ]
+  },
+  {
+    "order_id": "ord_agent_plan_001",
+    "customer_id": "cust_ai_studio",
+    "account_id": "acct_ai_main",
+    "order_status": "active",
+    "payment_status": "paid",
+    "created_at": "2026-06-03T15:00:00+08:00",
+    "total_amount_cny": 6999,
+    "source_ref_ids": [
+      "src_agent_plan_assumption"
+    ]
+  },
+  {
+    "order_id": "ord_media_cdn_001",
+    "customer_id": "cust_media_stream",
+    "account_id": "acct_media_streaming",
+    "order_status": "active",
+    "payment_status": "paid",
+    "created_at": "2026-05-18T11:20:00+08:00",
+    "total_amount_cny": 52000,
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium",
+    "source_ref_ids": [
+      "src_demo_assumption_001",
+      "src_cdn_product",
+      "src_tos_product"
+    ]
+  },
+  {
+    "order_id": "ord_finance_core_001",
+    "customer_id": "cust_finance_core",
+    "account_id": "acct_finance_prod",
+    "order_status": "active",
+    "payment_status": "paid",
+    "created_at": "2026-04-10T09:30:00+08:00",
+    "total_amount_cny": 318000,
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium",
+    "source_ref_ids": [
+      "src_demo_assumption_001",
+      "src_ecs_product",
+      "src_rds_product"
+    ]
+  }
+]

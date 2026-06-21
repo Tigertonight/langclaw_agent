@@ -1,0 +1,18 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.financial.commercialization_review",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "评审云商品财务商业化口径，覆盖收入确认、成本归集、递延收入、折扣叠加和毛利底线。",
+  "params_schema": {
+    "product_code": { "type": "string", "required": false }
+  },
+  "examples": [
+    "Agent Plan 赠送额度和高成本模型调用会不会导致套餐毛利被打穿？",
+    "这个商品的按量、包月、资源包和会员权益分别应该怎么做收入确认？"
+  ],
+  "tool_binding": "tool.cloud_financial_commercialization_review",
+  "required_permissions": ["cloud:read", "cloud:risk"]
+}

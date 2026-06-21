@@ -1,0 +1,272 @@
+[
+  {
+    "spec_id": "sku_ecs_general_2c4g_spec_1",
+    "sku_id": "sku_ecs_general_2c4g",
+    "spec_key": "vCPU",
+    "spec_name": "vCPU",
+    "spec_value": "2",
+    "spec_unit": "core",
+    "value_type": "number",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_ecs_general_2c4g_spec_2",
+    "sku_id": "sku_ecs_general_2c4g",
+    "spec_key": "memory_gb",
+    "spec_name": "memory_gb",
+    "spec_value": "4",
+    "spec_unit": "GB",
+    "value_type": "number",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_tos_standard_spec_1",
+    "sku_id": "sku_tos_standard",
+    "spec_key": "storage_class",
+    "spec_name": "storage_class",
+    "spec_value": "standard",
+    "spec_unit": "",
+    "value_type": "string",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_rds_mysql_2c4g_spec_1",
+    "sku_id": "sku_rds_mysql_2c4g",
+    "spec_key": "vCPU",
+    "spec_name": "vCPU",
+    "spec_value": "2",
+    "spec_unit": "core",
+    "value_type": "number",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_rds_mysql_2c4g_spec_2",
+    "sku_id": "sku_rds_mysql_2c4g",
+    "spec_key": "memory_gb",
+    "spec_name": "memory_gb",
+    "spec_value": "4",
+    "spec_unit": "GB",
+    "value_type": "number",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_cdn_traffic_china_spec_1",
+    "sku_id": "sku_cdn_traffic_china",
+    "spec_key": "area",
+    "spec_name": "area",
+    "spec_value": "mainland_china",
+    "spec_unit": "",
+    "value_type": "string",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_clb_standard_spec_1",
+    "sku_id": "sku_clb_standard",
+    "spec_key": "family",
+    "spec_name": "family",
+    "spec_value": "clb",
+    "spec_unit": "",
+    "value_type": "string",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_nlb_standard_spec_1",
+    "sku_id": "sku_nlb_standard",
+    "spec_key": "family",
+    "spec_name": "family",
+    "spec_value": "nlb",
+    "spec_unit": "",
+    "value_type": "string",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_alb_standard_spec_1",
+    "sku_id": "sku_alb_standard",
+    "spec_key": "family",
+    "spec_name": "family",
+    "spec_value": "alb",
+    "spec_unit": "",
+    "value_type": "string",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_seedance_lite_spec_1",
+    "sku_id": "sku_seedance_lite",
+    "spec_key": "model",
+    "spec_name": "model",
+    "spec_value": "seedance-lite",
+    "spec_unit": "",
+    "value_type": "string",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_seedance_lite_spec_2",
+    "sku_id": "sku_seedance_lite",
+    "spec_key": "video_input",
+    "spec_name": "video_input",
+    "spec_value": "false",
+    "spec_unit": "",
+    "value_type": "string",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_seedance_pro_spec_1",
+    "sku_id": "sku_seedance_pro",
+    "spec_key": "model",
+    "spec_name": "model",
+    "spec_value": "seedance-pro",
+    "spec_unit": "",
+    "value_type": "string",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_seedance_pro_spec_2",
+    "sku_id": "sku_seedance_pro",
+    "spec_key": "video_input",
+    "spec_name": "video_input",
+    "spec_value": "false",
+    "spec_unit": "",
+    "value_type": "string",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_seedance_video_input_spec_1",
+    "sku_id": "sku_seedance_video_input",
+    "spec_key": "model",
+    "spec_name": "model",
+    "spec_value": "seedance-pro",
+    "spec_unit": "",
+    "value_type": "string",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_seedance_video_input_spec_2",
+    "sku_id": "sku_seedance_video_input",
+    "spec_key": "video_input",
+    "spec_name": "video_input",
+    "spec_value": "true",
+    "spec_unit": "",
+    "value_type": "string",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_ark_deepseek_spec_1",
+    "sku_id": "sku_ark_deepseek",
+    "spec_key": "modality",
+    "spec_name": "modality",
+    "spec_value": "text",
+    "spec_unit": "",
+    "value_type": "string",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_agent_plan_small_spec_1",
+    "sku_id": "sku_agent_plan_small",
+    "spec_key": "afp_quota",
+    "spec_name": "afp_quota",
+    "spec_value": "120000",
+    "spec_unit": "count",
+    "value_type": "number",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_agent_plan_small_spec_2",
+    "sku_id": "sku_agent_plan_small",
+    "spec_key": "included_pages",
+    "spec_name": "included_pages",
+    "spec_value": "20",
+    "spec_unit": "",
+    "value_type": "number",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_agent_plan_medium_spec_1",
+    "sku_id": "sku_agent_plan_medium",
+    "spec_key": "afp_quota",
+    "spec_name": "afp_quota",
+    "spec_value": "500000",
+    "spec_unit": "count",
+    "value_type": "number",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_agent_plan_medium_spec_2",
+    "sku_id": "sku_agent_plan_medium",
+    "spec_key": "included_pages",
+    "spec_name": "included_pages",
+    "spec_value": "100",
+    "spec_unit": "",
+    "value_type": "number",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_agent_plan_enterprise_spec_1",
+    "sku_id": "sku_agent_plan_enterprise",
+    "spec_key": "afp_quota",
+    "spec_name": "afp_quota",
+    "spec_value": "5000000",
+    "spec_unit": "count",
+    "value_type": "number",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_agent_plan_enterprise_spec_2",
+    "sku_id": "sku_agent_plan_enterprise",
+    "spec_key": "included_pages",
+    "spec_name": "included_pages",
+    "spec_value": "1000",
+    "spec_unit": "",
+    "value_type": "number",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_ai_token_pack_100m_spec_1",
+    "sku_id": "sku_ai_token_pack_100m",
+    "spec_key": "quota_tokens",
+    "spec_name": "quota_tokens",
+    "spec_value": "100000000",
+    "spec_unit": "count",
+    "value_type": "number",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_ai_savings_1y_spec_1",
+    "sku_id": "sku_ai_savings_1y",
+    "spec_key": "commitment_term",
+    "spec_name": "commitment_term",
+    "spec_value": "1y",
+    "spec_unit": "",
+    "value_type": "string",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_content_safety_text_video_spec_1",
+    "sku_id": "sku_content_safety_text_video",
+    "spec_key": "modalities",
+    "spec_name": "modalities",
+    "spec_value": "text,video",
+    "spec_unit": "",
+    "value_type": "string",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_prompt_workflow_team_spec_1",
+    "sku_id": "sku_prompt_workflow_team",
+    "spec_key": "workflow_runs",
+    "spec_name": "workflow_runs",
+    "spec_value": "50000",
+    "spec_unit": "",
+    "value_type": "number",
+    "required_for_purchase": true
+  },
+  {
+    "spec_id": "sku_openui_page_pack_spec_1",
+    "sku_id": "sku_openui_page_pack",
+    "spec_key": "page_quota",
+    "spec_name": "page_quota",
+    "spec_value": "100",
+    "spec_unit": "count",
+    "value_type": "number",
+    "required_for_purchase": true
+  }
+]

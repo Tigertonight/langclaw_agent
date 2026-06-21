@@ -1,0 +1,65 @@
+[
+  {
+    "renewal_id": "ren_ai_studio_2026_q4",
+    "customer_id": "cust_ai_studio",
+    "contract_id": "ctr_ai_2026",
+    "owner_user_id": "sales_ai_001",
+    "renewal_due_date": "2026-12-31",
+    "current_arr_cny": 554145.6,
+    "forecast_next_arr_cny": 920000,
+    "renewal_probability": 0.62,
+    "risk_level": "medium",
+    "risk_reasons": [
+      "Seedance 账单波动大",
+      "Agent Plan AFP 超额规则需客户确认",
+      "竞品给出固定视频分钟包"
+    ],
+    "recommended_actions": [
+      "给出 Seedance 企业套餐封顶价",
+      "提供 Agent Plan 超额提醒开关",
+      "安排 7 月业务复盘"
+    ],
+    "mocked": true
+  },
+  {
+    "renewal_id": "ren_media_stream_2026_q3",
+    "customer_id": "cust_media_stream",
+    "contract_id": "ct_2026_media_001",
+    "owner_user_id": "sales_media_001",
+    "renewal_due_date": "2026-09-01",
+    "current_arr_cny": 68271.36,
+    "forecast_next_arr_cny": 120000,
+    "renewal_probability": 0.48,
+    "risk_level": "high",
+    "risk_reasons": [
+      "CDN 超额流量争议",
+      "资源包抵扣解释不清",
+      "客户要求更低单 GB 成本"
+    ],
+    "recommended_actions": [
+      "账单解释会",
+      "转大规格 CDN 资源包",
+      "销售申请续约折扣底线"
+    ],
+    "mocked": true
+  },
+  {
+    "renewal_id": "ren_finance_core_2027_q1",
+    "customer_id": "cust_finance_core",
+    "contract_id": "ct_2026_finance_001",
+    "owner_user_id": "cloud_sales_002",
+    "renewal_due_date": "2027-02-14",
+    "current_arr_cny": 318000,
+    "forecast_next_arr_cny": 520000,
+    "renewal_probability": 0.74,
+    "risk_level": "low",
+    "risk_reasons": [
+      "核心系统资源使用稳定，但客户要求年度审计材料更完整"
+    ],
+    "recommended_actions": [
+      "补齐 ECS/RDS 可用性和审计材料",
+      "提前评估 TOS 归档存储资源包"
+    ],
+    "mocked": true
+  }
+]

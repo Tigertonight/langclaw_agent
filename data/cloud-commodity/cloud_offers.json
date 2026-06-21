@@ -1,0 +1,310 @@
+[
+  {
+    "offer_id": "off_ecs_postpaid",
+    "product_id": "prod_ecs",
+    "offer_code": "OFF_ECS_POSTPAID",
+    "offer_name": "按量后付费",
+    "billing_mode": "postpaid",
+    "purchase_mode": "on_demand",
+    "renewal_supported": true,
+    "refund_supported": true,
+    "resize_supported": true,
+    "source_ref_ids": [
+      "src_ecs_billing"
+    ]
+  },
+  {
+    "offer_id": "off_ecs_subscription",
+    "product_id": "prod_ecs",
+    "offer_code": "OFF_ECS_SUBSCRIPTION",
+    "offer_name": "包年包月",
+    "billing_mode": "subscription",
+    "purchase_mode": "prepaid",
+    "renewal_supported": true,
+    "refund_supported": true,
+    "resize_supported": true,
+    "source_ref_ids": [
+      "src_ecs_billing"
+    ]
+  },
+  {
+    "offer_id": "off_tos_postpaid",
+    "product_id": "prod_tos",
+    "offer_code": "OFF_TOS_POSTPAID",
+    "offer_name": "按量后付费",
+    "billing_mode": "postpaid",
+    "purchase_mode": "usage_based",
+    "renewal_supported": true,
+    "refund_supported": false,
+    "resize_supported": false,
+    "source_ref_ids": [
+      "src_tos_billing"
+    ]
+  },
+  {
+    "offer_id": "off_tos_resource_pack",
+    "product_id": "prod_tos",
+    "offer_code": "OFF_TOS_RESOURCE_PACK",
+    "offer_name": "资源包",
+    "billing_mode": "resource_pack",
+    "purchase_mode": "prepaid",
+    "renewal_supported": true,
+    "refund_supported": true,
+    "resize_supported": false,
+    "source_ref_ids": [
+      "src_tos_billing"
+    ]
+  },
+  {
+    "offer_id": "off_rds_subscription",
+    "product_id": "prod_rds_mysql",
+    "offer_code": "OFF_RDS_SUBSCRIPTION",
+    "offer_name": "包年包月",
+    "billing_mode": "subscription",
+    "purchase_mode": "prepaid",
+    "renewal_supported": true,
+    "refund_supported": true,
+    "resize_supported": true,
+    "source_ref_ids": [
+      "src_rds_specs"
+    ]
+  },
+  {
+    "offer_id": "off_cdn_traffic",
+    "product_id": "prod_cdn",
+    "offer_code": "OFF_CDN_TRAFFIC",
+    "offer_name": "流量计费",
+    "billing_mode": "postpaid",
+    "purchase_mode": "usage_based",
+    "renewal_supported": true,
+    "refund_supported": false,
+    "resize_supported": false,
+    "source_ref_ids": [
+      "src_cdn_billing"
+    ]
+  },
+  {
+    "offer_id": "off_cdn_bandwidth",
+    "product_id": "prod_cdn",
+    "offer_code": "OFF_CDN_BANDWIDTH",
+    "offer_name": "带宽计费",
+    "billing_mode": "postpaid",
+    "purchase_mode": "usage_based",
+    "renewal_supported": true,
+    "refund_supported": false,
+    "resize_supported": false,
+    "source_ref_ids": [
+      "src_cdn_billing"
+    ]
+  },
+  {
+    "offer_id": "off_clb_usage",
+    "product_id": "prod_clb",
+    "offer_code": "OFF_CLB_USAGE",
+    "offer_name": "按使用量计费",
+    "billing_mode": "postpaid",
+    "purchase_mode": "usage_based",
+    "renewal_supported": true,
+    "refund_supported": false,
+    "resize_supported": true,
+    "source_ref_ids": [
+      "src_lb_billing"
+    ]
+  },
+  {
+    "offer_id": "off_nlb_usage",
+    "product_id": "prod_nlb",
+    "offer_code": "OFF_NLB_USAGE",
+    "offer_name": "按使用量计费",
+    "billing_mode": "postpaid",
+    "purchase_mode": "usage_based",
+    "renewal_supported": true,
+    "refund_supported": false,
+    "resize_supported": true,
+    "source_ref_ids": [
+      "src_nlb_usage_billing"
+    ]
+  },
+  {
+    "offer_id": "off_alb_usage",
+    "product_id": "prod_alb",
+    "offer_code": "OFF_ALB_USAGE",
+    "offer_name": "按使用量计费",
+    "billing_mode": "postpaid",
+    "purchase_mode": "usage_based",
+    "renewal_supported": true,
+    "refund_supported": false,
+    "resize_supported": true,
+    "source_ref_ids": [
+      "src_lb_billing"
+    ]
+  },
+  {
+    "offer_id": "off_seedance_postpaid",
+    "product_id": "prod_seedance",
+    "offer_code": "OFF_SEEDANCE_POSTPAID",
+    "offer_name": "按量后付费",
+    "billing_mode": "postpaid",
+    "purchase_mode": "usage_based",
+    "renewal_supported": true,
+    "refund_supported": false,
+    "resize_supported": false,
+    "source_ref_ids": [
+      "src_seedance_product"
+    ]
+  },
+  {
+    "offer_id": "off_seedance_pack",
+    "product_id": "prod_seedance",
+    "offer_code": "OFF_SEEDANCE_PACK",
+    "offer_name": "视频生成资源包",
+    "billing_mode": "resource_pack",
+    "purchase_mode": "prepaid",
+    "renewal_supported": true,
+    "refund_supported": true,
+    "resize_supported": false,
+    "source_ref_ids": [
+      "src_seedance_product"
+    ]
+  },
+  {
+    "offer_id": "off_seedance_enterprise",
+    "product_id": "prod_seedance",
+    "offer_code": "OFF_SEEDANCE_ENTERPRISE",
+    "offer_name": "企业套餐",
+    "billing_mode": "subscription",
+    "purchase_mode": "contract",
+    "renewal_supported": true,
+    "refund_supported": true,
+    "resize_supported": true,
+    "source_ref_ids": [
+      "src_seedance_product"
+    ]
+  },
+  {
+    "offer_id": "off_ark_postpaid",
+    "product_id": "prod_ark_model",
+    "offer_code": "OFF_ARK_POSTPAID",
+    "offer_name": "模型调用后付费",
+    "billing_mode": "postpaid",
+    "purchase_mode": "usage_based",
+    "renewal_supported": true,
+    "refund_supported": false,
+    "resize_supported": false,
+    "source_ref_ids": [
+      "src_ark_product"
+    ]
+  },
+  {
+    "offer_id": "off_agent_plan_monthly",
+    "product_id": "prod_agent_plan",
+    "offer_code": "OFF_AGENT_PLAN_MONTHLY",
+    "offer_name": "月度套餐",
+    "billing_mode": "subscription",
+    "purchase_mode": "prepaid",
+    "renewal_supported": true,
+    "refund_supported": true,
+    "resize_supported": true,
+    "source_ref_ids": [
+      "src_agent_plan_assumption"
+    ]
+  },
+  {
+    "offer_id": "off_agent_plan_yearly",
+    "product_id": "prod_agent_plan",
+    "offer_code": "OFF_AGENT_PLAN_YEARLY",
+    "offer_name": "年度套餐",
+    "billing_mode": "subscription",
+    "purchase_mode": "prepaid",
+    "renewal_supported": true,
+    "refund_supported": true,
+    "resize_supported": true,
+    "source_ref_ids": [
+      "src_agent_plan_assumption"
+    ]
+  },
+  {
+    "offer_id": "off_agent_plan_overage",
+    "product_id": "prod_agent_plan",
+    "offer_code": "OFF_AGENT_PLAN_OVERAGE",
+    "offer_name": "超额后付费",
+    "billing_mode": "postpaid",
+    "purchase_mode": "usage_based",
+    "renewal_supported": true,
+    "refund_supported": false,
+    "resize_supported": false,
+    "source_ref_ids": [
+      "src_agent_plan_assumption"
+    ]
+  },
+  {
+    "offer_id": "off_ai_resource_pack",
+    "product_id": "prod_ai_resource_pack",
+    "offer_code": "OFF_AI_RESOURCE_PACK",
+    "offer_name": "AI Token 资源包",
+    "billing_mode": "resource_pack",
+    "purchase_mode": "prepaid",
+    "renewal_supported": true,
+    "refund_supported": true,
+    "resize_supported": false,
+    "source_ref_ids": [
+      "src_ark_product"
+    ]
+  },
+  {
+    "offer_id": "off_ai_savings_plan",
+    "product_id": "prod_ai_savings_plan",
+    "offer_code": "OFF_AI_SAVINGS_PLAN",
+    "offer_name": "AI 节省计划",
+    "billing_mode": "savings_plan",
+    "purchase_mode": "commitment",
+    "renewal_supported": true,
+    "refund_supported": false,
+    "resize_supported": true,
+    "source_ref_ids": [
+      "src_ark_product"
+    ]
+  },
+  {
+    "offer_id": "off_content_safety_postpaid",
+    "product_id": "prod_ai_content_safety",
+    "offer_code": "OFF_CONTENT_SAFETY_POSTPAID",
+    "offer_name": "内容审核后付费",
+    "billing_mode": "postpaid",
+    "purchase_mode": "usage_based",
+    "renewal_supported": true,
+    "refund_supported": false,
+    "resize_supported": false,
+    "source_ref_ids": [
+      "src_ark_product"
+    ]
+  },
+  {
+    "offer_id": "off_prompt_workflow_run",
+    "product_id": "prod_prompt_workflow",
+    "offer_code": "OFF_PROMPT_WORKFLOW_RUN",
+    "offer_name": "工作流运行套餐",
+    "billing_mode": "subscription",
+    "purchase_mode": "prepaid",
+    "renewal_supported": true,
+    "refund_supported": true,
+    "resize_supported": true,
+    "source_ref_ids": [
+      "src_agent_plan_assumption"
+    ]
+  },
+  {
+    "offer_id": "off_openui_page_pack",
+    "product_id": "prod_openui_demo",
+    "offer_code": "OFF_OPENUI_PAGE_PACK",
+    "offer_name": "OpenUI 页面生成包",
+    "billing_mode": "resource_pack",
+    "purchase_mode": "prepaid",
+    "renewal_supported": true,
+    "refund_supported": true,
+    "resize_supported": false,
+    "source_ref_ids": [
+      "src_openui_demo_assumption"
+    ]
+  }
+]

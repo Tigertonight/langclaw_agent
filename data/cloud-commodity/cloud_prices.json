@@ -1,0 +1,212 @@
+[
+  {
+    "price_id": "pr_ecs_instance_hour",
+    "offer_id": "off_ecs_postpaid",
+    "sku_id": "sku_ecs_general_2c4g",
+    "meter_id": "m_ecs_instance_hour",
+    "region_id": "cn-beijing",
+    "currency": "CNY",
+    "price_type": "sample_unit",
+    "unit_price": 0.21,
+    "pricing_rule": "公开计费口径样例，非全量价格",
+    "source_ref_ids": [
+      "src_ecs_billing"
+    ]
+  },
+  {
+    "price_id": "pr_tos_storage",
+    "offer_id": "off_tos_postpaid",
+    "sku_id": "sku_tos_standard",
+    "meter_id": "m_tos_storage_gb_month",
+    "region_id": "cn-beijing",
+    "currency": "CNY",
+    "price_type": "sample_unit",
+    "unit_price": 0.12,
+    "pricing_rule": "公开计费口径样例，非全量价格",
+    "source_ref_ids": [
+      "src_tos_billing"
+    ]
+  },
+  {
+    "price_id": "pr_rds_monthly",
+    "offer_id": "off_rds_subscription",
+    "sku_id": "sku_rds_mysql_2c4g",
+    "meter_id": "m_rds_instance_hour",
+    "region_id": "cn-beijing",
+    "currency": "CNY",
+    "price_type": "sample_unit",
+    "unit_price": 0.8,
+    "pricing_rule": "按包年包月折算小时样例",
+    "source_ref_ids": [
+      "src_rds_specs"
+    ]
+  },
+  {
+    "price_id": "pr_cdn_traffic",
+    "offer_id": "off_cdn_traffic",
+    "sku_id": "sku_cdn_traffic_china",
+    "meter_id": "m_cdn_traffic_gb",
+    "region_id": "global",
+    "currency": "CNY",
+    "price_type": "sample_unit",
+    "unit_price": 0.24,
+    "pricing_rule": "公开计费口径样例，非全量价格",
+    "source_ref_ids": [
+      "src_cdn_billing"
+    ]
+  },
+  {
+    "price_id": "pr_nlb_lcu",
+    "offer_id": "off_nlb_usage",
+    "sku_id": "sku_nlb_standard",
+    "meter_id": "m_lb_lcu_hour",
+    "region_id": "cn-beijing",
+    "currency": "CNY",
+    "price_type": "sample_unit",
+    "unit_price": 0.06,
+    "pricing_rule": "公开计费口径样例，非全量价格",
+    "source_ref_ids": [
+      "src_nlb_usage_billing"
+    ]
+  },
+  {
+    "price_id": "pr_seedance_token_lite",
+    "offer_id": "off_seedance_postpaid",
+    "sku_id": "sku_seedance_lite",
+    "meter_id": "m_seedance_token_1k",
+    "region_id": "global",
+    "currency": "CNY",
+    "price_type": "sample_unit",
+    "unit_price": 0.023,
+    "pricing_rule": "demo 估算样例，需以官网实际价格为准",
+    "source_ref_ids": [
+      "src_seedance_product"
+    ]
+  },
+  {
+    "price_id": "pr_seedance_token_pro",
+    "offer_id": "off_seedance_postpaid",
+    "sku_id": "sku_seedance_pro",
+    "meter_id": "m_seedance_token_1k",
+    "region_id": "global",
+    "currency": "CNY",
+    "price_type": "sample_unit",
+    "unit_price": 0.046,
+    "pricing_rule": "demo 估算样例，需以官网实际价格为准",
+    "source_ref_ids": [
+      "src_seedance_product"
+    ]
+  },
+  {
+    "price_id": "pr_seedance_video_input",
+    "offer_id": "off_seedance_postpaid",
+    "sku_id": "sku_seedance_video_input",
+    "meter_id": "m_seedance_token_1k",
+    "region_id": "global",
+    "currency": "CNY",
+    "price_type": "sample_unit",
+    "unit_price": 0.069,
+    "pricing_rule": "demo 估算样例，需以官网实际价格为准",
+    "source_ref_ids": [
+      "src_seedance_product"
+    ]
+  },
+  {
+    "price_id": "pr_ark_text_token",
+    "offer_id": "off_ark_postpaid",
+    "sku_id": "sku_ark_deepseek",
+    "meter_id": "m_ark_model_token_1k",
+    "region_id": "global",
+    "currency": "CNY",
+    "price_type": "sample_unit",
+    "unit_price": 0.002,
+    "pricing_rule": "demo 估算样例，需以官网实际价格为准",
+    "source_ref_ids": [
+      "src_ark_product"
+    ]
+  },
+  {
+    "price_id": "pr_agent_plan_small",
+    "offer_id": "off_agent_plan_monthly",
+    "sku_id": "sku_agent_plan_small",
+    "meter_id": "m_agent_afp",
+    "region_id": "global",
+    "currency": "CNY",
+    "price_type": "package",
+    "unit_price": 1999,
+    "pricing_rule": "月度套餐样例",
+    "source_ref_ids": [
+      "src_agent_plan_assumption"
+    ]
+  },
+  {
+    "price_id": "pr_agent_plan_medium",
+    "offer_id": "off_agent_plan_monthly",
+    "sku_id": "sku_agent_plan_medium",
+    "meter_id": "m_agent_afp",
+    "region_id": "global",
+    "currency": "CNY",
+    "price_type": "package",
+    "unit_price": 6999,
+    "pricing_rule": "月度套餐样例",
+    "source_ref_ids": [
+      "src_agent_plan_assumption"
+    ]
+  },
+  {
+    "price_id": "pr_agent_plan_enterprise",
+    "offer_id": "off_agent_plan_yearly",
+    "sku_id": "sku_agent_plan_enterprise",
+    "meter_id": "m_agent_afp",
+    "region_id": "global",
+    "currency": "CNY",
+    "price_type": "package",
+    "unit_price": 99999,
+    "pricing_rule": "年度套餐样例",
+    "source_ref_ids": [
+      "src_agent_plan_assumption"
+    ]
+  },
+  {
+    "price_id": "pr_agent_afp_overage",
+    "offer_id": "off_agent_plan_overage",
+    "sku_id": "sku_agent_plan_medium",
+    "meter_id": "m_agent_afp",
+    "region_id": "global",
+    "currency": "CNY",
+    "price_type": "overage",
+    "unit_price": 0.012,
+    "pricing_rule": "超额 AFP 样例",
+    "source_ref_ids": [
+      "src_agent_plan_assumption"
+    ]
+  },
+  {
+    "price_id": "pr_openui_page_pack",
+    "offer_id": "off_openui_page_pack",
+    "sku_id": "sku_openui_page_pack",
+    "meter_id": "m_openui_page",
+    "region_id": "global",
+    "currency": "CNY",
+    "price_type": "package",
+    "unit_price": 2999,
+    "pricing_rule": "OpenUI demo 页面包样例",
+    "source_ref_ids": [
+      "src_openui_demo_assumption"
+    ]
+  },
+  {
+    "price_id": "pr_content_moderation",
+    "offer_id": "off_content_safety_postpaid",
+    "sku_id": "sku_content_safety_text_video",
+    "meter_id": "m_content_moderation",
+    "region_id": "global",
+    "currency": "CNY",
+    "price_type": "sample_unit",
+    "unit_price": 0.001,
+    "pricing_rule": "内容审核样例",
+    "source_ref_ids": [
+      "src_ark_product"
+    ]
+  }
+]

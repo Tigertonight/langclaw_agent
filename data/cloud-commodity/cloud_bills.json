@@ -1,0 +1,64 @@
+[
+  {
+    "bill_id": "bill_ai_202606",
+    "customer_id": "cust_ai_studio",
+    "billing_month": "2026-06",
+    "status": "unbilled_estimate",
+    "amount_cny": 18750,
+    "source_metering_record_ids": [
+      "mr_seedance_001",
+      "mr_agent_plan_001"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium",
+    "source_ref_ids": [
+      "src_demo_assumption_001",
+      "src_seedance_product",
+      "src_agent_plan_assumption"
+    ]
+  },
+  {
+    "bill_id": "bill_media_202606",
+    "customer_id": "cust_media_stream",
+    "billing_month": "2026-06",
+    "status": "disputed",
+    "amount_cny": 64280,
+    "dispute_amount_cny": 12800,
+    "dispute_reason": "CDN 峰值带宽与资源包抵扣口径需要客户确认",
+    "owner_user_id": "cloud_sales_001",
+    "source_metering_record_ids": [
+      "mr_media_cdn_001",
+      "mr_media_tos_001"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium",
+    "source_ref_ids": [
+      "src_demo_assumption_001",
+      "src_cdn_product",
+      "src_tos_product"
+    ]
+  },
+  {
+    "bill_id": "bill_finance_202606",
+    "customer_id": "cust_finance_core",
+    "billing_month": "2026-06",
+    "status": "confirmed",
+    "amount_cny": 318000,
+    "dispute_amount_cny": 0,
+    "owner_user_id": "cloud_sales_002",
+    "source_metering_record_ids": [
+      "mr_finance_ecs_001",
+      "mr_finance_rds_001"
+    ],
+    "source_type": "demo_mock",
+    "mocked": true,
+    "confidence": "medium",
+    "source_ref_ids": [
+      "src_demo_assumption_001",
+      "src_ecs_product",
+      "src_rds_product"
+    ]
+  }
+]

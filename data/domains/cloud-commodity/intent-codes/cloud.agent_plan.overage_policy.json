@@ -1,0 +1,19 @@
+{
+  "version": "1",
+  "confidence_threshold": "medium",
+  "sub_tools_available": false,
+  "intent_code": "cloud.agent_plan.overage_policy",
+  "handler_type": "agentic",
+  "execution_class": "autonomous_planning",
+  "description": "回答 Agent Plan 套餐额度用完后的超额付费、是否自动扣费、二次确认和账单提示规则。",
+  "params_schema": {},
+  "examples": [
+    "Agent Plan 套餐额度用完后会自动扣费吗？我要怎么确认超额付费？",
+    "客户问 Agent Plan 超额付费要不要二次确认，怎么解释？"
+  ],
+  "tool_binding": "tool.cloud_agent_plan_overage_policy",
+  "required_permissions": [
+    "cloud:read",
+    "cloud:estimate"
+  ]
+}
