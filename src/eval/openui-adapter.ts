@@ -919,6 +919,7 @@ assert(Array.isArray(serverCapabilities.supported_openui_components), "chat serv
 assert(Array.isArray(serverCapabilities.supported_openui_lang_protocols), "chat service should expose OpenUI Lang protocols");
 assert(capabilities.protocol === "openui-lang/1.0", "capabilities should declare OpenUI Lang as internal protocol");
 assert((serverCapabilities.supported_openui_components as unknown[]).includes("GroupedListSurface"), "capabilities should expose GroupedListSurface");
+assert((serverCapabilities.supported_openui_components as unknown[]).includes("TagListSurface"), "capabilities should expose TagListSurface");
 assert(Array.isArray(readPath(serverCapabilities.component_contracts, ["basic"])), "capabilities should expose Basic component contract docs");
 assert(JSON.stringify(serverCapabilities.component_contracts).includes("DataTableSurface"), "capabilities should expose OpenUI business component contract docs");
 assert(readPath(serverCapabilities.presentation_policy, ["version"]) === "openui.presentation-policy/1.0", "capabilities should expose Presentation Policy");

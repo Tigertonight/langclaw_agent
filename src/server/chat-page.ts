@@ -101,6 +101,17 @@ export function renderChatPage(): string {
     }
     .top-left { min-width: 0; display: flex; align-items: center; gap: 12px; flex: 1 1 auto; }
     .top-controls { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; }
+    .domain-switch {
+      height: 36px; display: inline-flex; align-items: center; gap: 2px; padding: 2px;
+      border: 1px solid var(--border); border-radius: 8px; background: #f7f7f7;
+    }
+    .domain-tab {
+      height: 30px; border: 0; border-radius: 6px; padding: 0 10px; background: transparent;
+      color: var(--muted); font: inherit; font-size: 13px; cursor: pointer;
+    }
+    .domain-tab:hover { color: #111; background: #eee; }
+    .domain-tab.active { background: #111; color: #fff; }
+    .domain-tab:disabled { opacity: .55; cursor: not-allowed; }
     .person-picker { position: relative; }
     .person-trigger {
       height: 36px; min-width: 156px; display: flex; align-items: center; gap: 8px; padding: 0 10px 0 6px;
@@ -456,7 +467,7 @@ export function renderChatPage(): string {
     }
     @keyframes bizTextSweep { from { background-position: 120% 0; } to { background-position: -120% 0; } }
     @keyframes bizGlyphPulse { 0%,100% { opacity: .55; } 50% { opacity: 1; } }
-    .run-panel { margin: 0 0 12px; border: 0; background: transparent; }
+    .run-panel { margin: 0 0 12px; border: 0; background: transparent; overflow-anchor: none; }
     .run-panel summary {
       min-height: 28px; padding: 0 0 10px; display: flex; align-items: center; gap: 8px;
       border-bottom: 1px solid #eeeeee; list-style: none; cursor: pointer; color: #8a8a8a;
@@ -610,6 +621,97 @@ export function renderChatPage(): string {
       border: 1px solid var(--border); border-radius: 8px; background: #fff; padding: 11px;
       display: grid; gap: 10px; color: #27272a;
     }
+    .business-brief {
+      position: relative; overflow: hidden; padding: 16px; gap: 14px;
+      border-color: #dedee3; box-shadow: 0 12px 36px rgba(17,17,17,.06);
+    }
+    .business-brief::before {
+      content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 5px; background: #3b82f6;
+    }
+    .business-brief.tone-good::before { background: #16a34a; }
+    .business-brief.tone-warn::before { background: #f59e0b; }
+    .business-brief.tone-danger::before, .business-brief.tone-blocked::before { background: #dc2626; }
+    .brief-top { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(260px, .8fr); gap: 16px; align-items: start; }
+    .brief-verdict { display: grid; gap: 8px; min-width: 0; }
+    .brief-eyebrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; color: #71717a; font-size: 12px; }
+    .brief-tone {
+      display: inline-flex; align-items: center; gap: 6px; min-height: 24px; width: max-content;
+      border: 1px solid #dbeafe; border-radius: 999px; padding: 2px 9px;
+      background: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 700;
+    }
+    .tone-good .brief-tone { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
+    .tone-warn .brief-tone { border-color: #fde68a; background: #fffbeb; color: #92400e; }
+    .tone-danger .brief-tone, .tone-blocked .brief-tone { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
+    .brief-title { font-size: 13px; line-height: 1.35; color: #52525b; font-weight: 700; }
+    .brief-statement { font-size: 20px; line-height: 1.45; color: #111; font-weight: 760; letter-spacing: 0; }
+    .brief-subtitle { color: #52525b; font-size: 13.5px; line-height: 1.65; }
+    .brief-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .brief-kpis .material-metric { padding: 10px; background: #fbfbfc; }
+    .brief-kpis .material-metric strong { font-size: 18px; }
+    .brief-section-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .brief-section { border: 1px solid #eeeeef; border-radius: 8px; padding: 11px; background: #fff; display: grid; gap: 8px; }
+    .brief-section-title { font-size: 13px; font-weight: 760; color: #18181b; }
+    .brief-list { display: grid; gap: 7px; }
+    .brief-item { display: grid; gap: 4px; padding: 8px; border-radius: 7px; background: #fafafa; border: 1px solid #eeeeef; }
+    .brief-item-head { display: flex; align-items: center; gap: 7px; min-width: 0; }
+    .brief-index { width: 20px; height: 20px; border-radius: 999px; display: inline-grid; place-items: center; background: #111; color: #fff; font-size: 11px; font-weight: 750; flex: 0 0 auto; }
+    .brief-item-title { color: #202020; font-size: 13px; line-height: 1.4; font-weight: 700; min-width: 0; }
+    .brief-item-meta { color: #62626a; font-size: 12.2px; line-height: 1.45; }
+    .brief-footer { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 2px; }
+    .brief-details { display: grid; gap: 10px; padding-top: 2px; }
+    .launch-form {
+      display: grid; gap: 12px; padding: 14px; border-color: #e7e7ea; background: #fff;
+    }
+    .launch-form-head {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start;
+      padding-bottom: 2px;
+    }
+    .launch-form-title { display: grid; gap: 5px; min-width: 0; }
+    .launch-form-title strong { font-size: 15px; line-height: 1.35; color: #18181b; }
+    .launch-form-title span { color: #62626a; font-size: 12.5px; line-height: 1.55; }
+    .launch-form-status {
+      display: inline-flex; align-items: center; border: 1px solid #fde68a; background: #fffbeb; color: #92400e;
+      border-radius: 999px; padding: 4px 9px; font-size: 12px; font-weight: 750; white-space: nowrap;
+    }
+    .launch-next-strip {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px;
+      border: 1px solid #eeeeef; border-radius: 8px; background: #fafafa; padding: 8px;
+    }
+    .launch-next-step {
+      display: grid; gap: 3px; min-width: 0; padding: 8px; border-radius: 7px; background: #fff; border: 1px solid #eeeeef;
+    }
+    .launch-next-step strong { color: #18181b; font-size: 12.6px; line-height: 1.35; }
+    .launch-next-step span { color: #696970; font-size: 11.7px; line-height: 1.45; }
+    .launch-form-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(260px, .75fr); gap: 12px; align-items: start; }
+    .launch-form-main, .launch-form-aside { display: grid; gap: 10px; min-width: 0; }
+    .launch-form-section { border: 1px solid #eeeeef; border-radius: 8px; padding: 11px; display: grid; gap: 9px; background: #fcfcfd; }
+    .launch-form-section-head { display: grid; gap: 3px; }
+    .launch-form-section-head strong { font-size: 13px; color: #18181b; }
+    .launch-form-section-head span { font-size: 12px; color: #74747b; line-height: 1.45; }
+    .launch-field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+    .launch-field { display: grid; gap: 5px; min-width: 0; }
+    .launch-field-label { display: flex; gap: 6px; align-items: center; min-width: 0; color: #303036; font-size: 12.3px; font-weight: 700; }
+    .launch-required { color: #991b1b; font-weight: 800; }
+    .launch-field-control {
+      min-height: 38px; border: 1px solid #e4e4e7; border-radius: 7px; background: #fff;
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      padding: 8px 9px; color: #27272a; font-size: 12.8px; line-height: 1.35; min-width: 0;
+    }
+    .launch-field-control span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .launch-field-hint { color: #777; font-size: 11.5px; line-height: 1.4; }
+    .launch-panel { border: 1px solid #eeeeef; border-radius: 8px; padding: 10px; background: #fff; display: grid; gap: 8px; }
+    .launch-panel-title { font-weight: 750; font-size: 13px; color: #18181b; }
+    .launch-check-list { display: grid; gap: 7px; }
+    .launch-check-item { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 7px; align-items: start; color: #52525b; font-size: 12.2px; line-height: 1.45; }
+    .launch-check-dot { width: 18px; height: 18px; border-radius: 999px; display: grid; place-items: center; background: #111; color: #fff; font-size: 11px; font-weight: 800; }
+    .launch-actions { display: grid; gap: 8px; }
+    .launch-action-btn {
+      min-height: 38px; border-radius: 8px; border: 1px solid #111; background: #111; color: #fff;
+      font: inherit; font-size: 12.5px; font-weight: 760; padding: 8px 10px; text-align: center;
+    }
+    .launch-action-btn.secondary { background: #fff; color: #18181b; border-color: #dedee3; }
+    .launch-action-btn:disabled { opacity: .72; cursor: not-allowed; }
+    .launch-note { color: #696970; font-size: 12px; line-height: 1.5; }
     .material-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .material-title { font-size: 13px; line-height: 1.35; font-weight: 700; color: #202020; }
     .material-subtle { color: #7a7a7a; font-size: 12px; line-height: 1.45; }
@@ -638,7 +740,27 @@ export function renderChatPage(): string {
     .material-item { border: 1px solid #eeeeef; border-radius: 7px; padding: 9px; display: grid; gap: 6px; background: #fff; }
     .material-item-title { font-weight: 650; font-size: 13px; color: #202020; }
     .material-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-    .material-chip { border: 1px solid #e3e3e6; border-radius: 999px; padding: 2px 7px; color: #555; font-size: 11.5px; background: #fafafa; }
+    .material-chip {
+      display: inline-flex; align-items: center; width: max-content; max-width: 100%;
+      border: 1px solid #e3e3e6; border-radius: 999px; padding: 2px 7px; color: #555;
+      font-size: 11.5px; line-height: 1.35; background: #fafafa; white-space: nowrap;
+    }
+    .material-tag-cloud { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+    .material-tag {
+      display: inline-grid; grid-auto-flow: column; align-items: center; gap: 5px;
+      border: 1px solid #e4e4e7; border-radius: 999px; background: #fff; color: #3f3f46;
+      padding: 5px 9px; font-size: 12px; line-height: 1.2; max-width: 100%;
+    }
+    .material-tag strong { font-size: 12px; color: #18181b; font-weight: 700; }
+    .material-tag::before { content: ""; width: 7px; height: 7px; border-radius: 99px; background: #a1a1aa; }
+    .material-tag.good { border-color: #bbf7d0; background: #f0fdf4; color: #166534; }
+    .material-tag.good::before { background: #22c55e; }
+    .material-tag.warn { border-color: #fde68a; background: #fffbeb; color: #92400e; }
+    .material-tag.warn::before { background: #f59e0b; }
+    .material-tag.danger { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
+    .material-tag.danger::before { background: #ef4444; }
+    .material-tag.info { border-color: #bfdbfe; background: #eff6ff; color: #1d4ed8; }
+    .material-tag.info::before { background: #3b82f6; }
     .material-action { color: #444; font-size: 12.5px; line-height: 1.45; }
     .material-actions { display: flex; flex-wrap: wrap; gap: 8px; }
     .material-timeline { display: grid; gap: 6px; }
@@ -647,8 +769,73 @@ export function renderChatPage(): string {
     .material-step.done .material-step-dot { background: #111; }
     .material-step.current .material-step-dot { background: #111; box-shadow: 0 0 0 4px rgba(17,17,17,.08); }
     .material-step.done, .material-step.current { color: #303030; }
+    .material-flow {
+      display: grid; gap: 10px; padding: 2px 0;
+    }
+    .material-flow-track {
+      display: flex; align-items: stretch; gap: 0; overflow-x: auto; overflow-y: hidden;
+      padding: 2px 0 6px; scrollbar-width: thin;
+    }
+    .material-flow-node {
+      position: relative; flex: 1 1 138px; min-width: 132px; max-width: 210px;
+      border: 1px solid #e8e8ea; border-radius: 8px; background: #fff;
+      padding: 10px 11px 10px 34px; display: grid; gap: 5px;
+    }
+    .material-flow-node::before {
+      content: ""; position: absolute; left: 14px; top: 15px; width: 10px; height: 10px;
+      border-radius: 99px; background: #d4d4d8; box-shadow: 0 0 0 4px #f4f4f5;
+    }
+    .material-flow-arrow {
+      flex: 0 0 22px; display: grid; place-items: center; color: #9a9aa0; font-size: 17px;
+      font-weight: 500; line-height: 1;
+    }
+    .material-flow-node.current::before { background: #d68910; box-shadow: 0 0 0 4px #fff4dc; }
+    .material-flow-node.done::before { background: #27ae60; box-shadow: 0 0 0 4px #eaf8ef; }
+    .material-flow-node.blocked::before { background: #c0392b; box-shadow: 0 0 0 4px #fdeceb; }
+    .material-flow-title { font-weight: 700; font-size: 12.8px; color: #202020; line-height: 1.35; }
+    .material-flow-detail { font-size: 12.2px; color: #64646b; line-height: 1.45; overflow-wrap: anywhere; }
+    .material-flow-status {
+      display: inline-flex; width: max-content; max-width: 100%; border: 1px solid #e3e3e6;
+      border-radius: 999px; padding: 2px 7px; font-size: 11.5px; line-height: 1.35;
+      background: #fafafa; color: #555; white-space: nowrap;
+    }
+    @media (max-width: 760px) {
+      .brief-top, .brief-section-grid { grid-template-columns: 1fr; }
+      .brief-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .launch-form-head, .launch-form-grid, .launch-field-grid, .launch-next-strip { grid-template-columns: 1fr; }
+      .material-flow-track { display: flex; overflow-x: auto; overflow-y: hidden; }
+      .material-flow-node { flex: 0 0 164px; min-width: 164px; max-width: 164px; }
+      .material-flow-arrow { flex-basis: 22px; transform: none; }
+    }
     .material-progress { height: 6px; border-radius: 999px; background: #eee; overflow: hidden; }
     .material-progress span { display: block; height: 100%; background: #111; border-radius: inherit; }
+    .material-table-wrap {
+      width: 100%; overflow-x: auto; overflow-y: hidden; margin: 4px 0 2px;
+      border: 1px solid #eeeeef; border-radius: 8px; background: #fff;
+    }
+    .material-table {
+      width: 100%; min-width: 760px; table-layout: fixed; border-collapse: separate;
+      border-spacing: 0; font-size: 13px; line-height: 1.5;
+    }
+    .material-table th, .material-table td {
+      border: 0; border-right: 1px solid #eeeeef; border-bottom: 1px solid #eeeeef;
+      padding: 9px 10px; text-align: left; vertical-align: top; background: #fff;
+      overflow-wrap: break-word; word-break: normal; white-space: normal;
+    }
+    .material-table th {
+      position: sticky; top: 0; z-index: 1; background: #fafafa; color: #27272a;
+      font-weight: 700; white-space: nowrap;
+    }
+    .material-table tr:last-child td { border-bottom: 0; }
+    .material-table th:last-child, .material-table td:last-child { border-right: 0; }
+    .material-table tr:nth-child(even) td { background: #fcfcfc; }
+    .material-table .col-status, .material-table .col-number, .material-table .col-currency,
+    .material-table .col-date { white-space: nowrap; overflow-wrap: normal; }
+    .material-table .col-status { text-align: center; }
+    .material-table .cell-text {
+      display: block; min-width: 0; color: #303030;
+    }
+    .material-table .cell-muted { color: #6f6f76; }
     .error { color: #dc2626; }
     .markdown { color: #1f1f1f; line-height: 1.78; overflow-wrap: anywhere; }
     .markdown.answer-enter { animation: answerEnter .42s cubic-bezier(.2, .8, .2, 1) both; }
@@ -676,12 +863,14 @@ export function renderChatPage(): string {
     .markdown > :first-child { margin-top: 0; }
     .markdown > :last-child { margin-bottom: 0; }
     .markdown p { margin: 0 0 12px; }
-    .markdown h1, .markdown h2, .markdown h3 {
+    .markdown h1, .markdown h2, .markdown h3, .markdown h4, .markdown h5, .markdown h6 {
       margin: 18px 0 8px; line-height: 1.35; letter-spacing: 0; font-weight: 680;
     }
     .markdown h1 { font-size: 22px; }
     .markdown h2 { font-size: 18px; }
     .markdown h3 { font-size: 16px; }
+    .markdown h4 { font-size: 15px; }
+    .markdown h5, .markdown h6 { font-size: 14px; }
     .markdown ul, .markdown ol { margin: 8px 0 14px; padding-left: 22px; }
     .markdown li { margin: 4px 0; padding-left: 2px; }
     .markdown li p { margin: 4px 0; }
@@ -805,6 +994,7 @@ export function renderChatPage(): string {
       .sidebar-toggle { display: inline-grid; place-items: center; width: 34px; height: 34px; border: 1px solid var(--border); background: #fff; border-radius: 6px; }
       .chat-shell { grid-template-rows: 52px 1fr auto; }
       .topbar { padding: 0 14px; }
+      .domain-switch { flex: 0 0 auto; }
       .person-trigger { min-width: 132px; max-width: 154px; padding: 0 8px 0 6px; }
       .person-trigger .person-role { display: none; }
       .person-trigger .person-caret { display: inline; }
@@ -849,6 +1039,10 @@ export function renderChatPage(): string {
           </div>
         </div>
         <div class="top-controls">
+          <div id="domainSwitch" class="domain-switch" role="tablist" aria-label="&#x4E1A;&#x52A1;&#x57DF;">
+            <button class="domain-tab" type="button" role="tab" data-domain-id="dealer">&#x7ECF;&#x9500;&#x5546;</button>
+            <button class="domain-tab" type="button" role="tab" data-domain-id="cloud_commodity">&#x4E91;&#x5546;&#x54C1;</button>
+          </div>
           <div id="personPicker" class="person-picker">
             <button id="personTrigger" class="person-trigger" type="button" aria-haspopup="dialog" aria-expanded="false">
               <span id="personAvatar" class="person-avatar" aria-hidden="true"></span>
@@ -935,7 +1129,12 @@ export function renderChatPage(): string {
       { id: "sales_001", name: "\\u6797\\u60a6", role: "\\u9500\\u552e\\u987e\\u95ee" },
       { id: "store_gm_001", name: "\\u987e\\u660e\\u8fdc", role: "\\u95e8\\u5e97\\u603b\\u7ecf\\u7406" },
       { id: "sales_manager_001", name: "\\u5468\\u666f\\u884c", role: "\\u9500\\u552e\\u7ecf\\u7406" },
-      { id: "finance_001", name: "\\u5510\\u82e5\\u6eaa", role: "\\u8d22\\u52a1\\u4e13\\u5458" }
+      { id: "finance_001", name: "\\u5510\\u82e5\\u6eaa", role: "\\u8d22\\u52a1\\u4e13\\u5458" },
+      { id: "cloud_pm_001", name: "\\u7a0b\\u4e00\\u5ddd", role: "\\u4e91\\u5546\\u54c1\\u4ea7\\u54c1\\u7ecf\\u7406", department: "\\u4e91\\u5546\\u54c1\\u5e73\\u53f0" }
+    ];
+    const DOMAIN_PRESETS = [
+      { id: "dealer", label: "\\u7ecf\\u9500\\u5546", defaultUserId: "sales_001" },
+      { id: "cloud_commodity", label: "\\u4e91\\u5546\\u54c1", defaultUserId: "cloud_pm_001" }
     ];
     let people = [...FALLBACK_USERS];
     const LEGACY_STORAGE_KEYS = ["langclaw.web.sessions.v5"];
@@ -952,6 +1151,7 @@ export function renderChatPage(): string {
       personAvatar: document.querySelector("#personAvatar"),
       personName: document.querySelector("#personName"),
       personRole: document.querySelector("#personRole"),
+      domainSwitch: document.querySelector("#domainSwitch"),
       personModalBackdrop: document.querySelector("#personModalBackdrop"),
       personClose: document.querySelector("#personClose"),
       personSearch: document.querySelector("#personSearch"),
@@ -978,6 +1178,7 @@ export function renderChatPage(): string {
       composer: document.querySelector("#form")
     };
     clearLegacySessions();
+    let currentDomainId = normalizeDomainId(localStorage.getItem("langclaw.web.activeDomain") || "dealer");
     let sessions = loadSessions();
     let activeSessionId = "";
     let messages = [];
@@ -999,9 +1200,10 @@ export function renderChatPage(): string {
     }
     function renderPeopleList() {
       const query = (els.personSearch?.value || "").trim().toLowerCase();
+      const domainPeople = people.filter((user) => domainIdForUser(user) === currentDomainId);
       const shown = query
-        ? people.filter((user) => personSearchText(user).includes(query))
-        : people;
+        ? domainPeople.filter((user) => personSearchText(user).includes(query))
+        : domainPeople;
       els.personMenu.innerHTML = "";
       if (!shown.length) {
         const empty = document.createElement("div");
@@ -1039,7 +1241,9 @@ export function renderChatPage(): string {
           render();
           return;
         }
-        if (!people.some((user) => user.id === currentUserId)) currentUserId = people[0].id;
+        if (!people.some((user) => user.id === currentUserId && domainIdForUser(user) === currentDomainId)) {
+          currentUserId = defaultUserForDomain(currentDomainId);
+        }
         initUsers();
         const active = latestSessionForUser(currentUserId) || createSession(currentUserId, false);
         activeSessionId = active.id;
@@ -1063,7 +1267,12 @@ export function renderChatPage(): string {
     }
     function openInitialSession() {
       const preferred = localStorage.getItem("langclaw.web.activeUser") || people[0].id;
-      currentUserId = people.some((user) => user.id === preferred) ? preferred : people[0].id;
+      const preferredUser = people.find((user) => user.id === preferred);
+      if (preferredUser && domainIdForUser(preferredUser) === currentDomainId) {
+        currentUserId = preferred;
+      } else {
+        currentUserId = defaultUserForDomain(currentDomainId);
+      }
       const active = latestSessionForUser(currentUserId) || createSession(currentUserId, false);
       activeSessionId = active.id;
       messages = active.messages;
@@ -1075,6 +1284,7 @@ export function renderChatPage(): string {
       const session = {
         id: userId + ":web-" + now + "-" + Math.random().toString(36).slice(2),
         userId,
+        domainId: currentDomainId,
         title: STR.untitled,
         createdAt: now,
         updatedAt: now,
@@ -1100,7 +1310,10 @@ export function renderChatPage(): string {
       try {
         const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
         if (!Array.isArray(parsed)) return [];
-        return parsed.filter((session) => session && session.id && session.userId && Array.isArray(session.messages)).slice(0, 80);
+        return parsed
+          .filter((session) => session && session.id && session.userId && Array.isArray(session.messages))
+          .map((session) => ({ ...session, domainId: inferDomainIdForSession(session) }))
+          .slice(0, 80);
       } catch {
         return [];
       }
@@ -1113,9 +1326,12 @@ export function renderChatPage(): string {
     function saveSessions() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions.slice(0, 80)));
       localStorage.setItem("langclaw.web.activeUser", currentUserId);
+      localStorage.setItem("langclaw.web.activeDomain", currentDomainId);
     }
     function sessionsForUser(userId) {
-      return sessions.filter((session) => session.userId === userId).sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
+      return sessions
+        .filter((session) => session.userId === userId && sessionDomainId(session) === currentDomainId)
+        .sort((a, b) => Number(b.updatedAt || 0) - Number(a.updatedAt || 0));
     }
     function latestSessionForUser(userId) {
       return sessionsForUser(userId)[0];
@@ -1125,6 +1341,62 @@ export function renderChatPage(): string {
     }
     function getCurrentUser() {
       return people.find((user) => user.id === currentUserId) || FALLBACK_USERS.find((user) => user.id === currentUserId);
+    }
+    function normalizeDomainId(domainId) {
+      return DOMAIN_PRESETS.some((item) => item.id === domainId) ? domainId : "dealer";
+    }
+    function domainIdForUser(user) {
+      const text = [user?.id, user?.role, user?.department, user?.name].filter(Boolean).join(" ");
+      return /cloud|\\u4e91\\u5546\\u54c1|\\u4e91\\u4e1a\\u52a1|\\u5ba2\\u6237\\u81ea\\u52a9/.test(text) ? "cloud_commodity" : "dealer";
+    }
+    function domainIdForUserId(userId) {
+      return domainIdForUser(people.find((user) => user.id === userId) || FALLBACK_USERS.find((user) => user.id === userId) || { id: userId });
+    }
+    function sessionDomainId(session) {
+      return inferDomainIdForSession(session);
+    }
+    function inferDomainIdForSession(session) {
+      const messageText = Array.isArray(session?.messages)
+        ? session.messages.slice(0, 8).map((message) => [message?.text, message?.userMessage].filter(Boolean).join(" ")).join(" ")
+        : "";
+      const text = [session?.title, messageText].filter(Boolean).join(" ");
+      if (/(云商品|云产品|云厂商|云平台|Seedance|Agent\\s*Plan|AFP|SKU|Offer|计费项|上线风险|发布申请|合同价|云账单)/i.test(text)) {
+        return "cloud_commodity";
+      }
+      return normalizeDomainId(session?.domainId || domainIdForUserId(session?.userId));
+    }
+    function defaultUserForDomain(domainId) {
+      const normalized = normalizeDomainId(domainId);
+      const preset = DOMAIN_PRESETS.find((item) => item.id === normalized);
+      const preferred = preset?.defaultUserId || "sales_001";
+      return people.find((user) => user.id === preferred)?.id || people.find((user) => domainIdForUser(user) === normalized)?.id || currentUserId;
+    }
+    function currentDomainLabel() {
+      return DOMAIN_PRESETS.find((item) => item.id === currentDomainId)?.label || "";
+    }
+    function selectDomain(domainId) {
+      if (loading) return;
+      currentDomainId = normalizeDomainId(domainId);
+      currentUserId = defaultUserForDomain(currentDomainId);
+      const next = latestSessionForUser(currentUserId) || createSession(currentUserId, false);
+      activeSessionId = next.id;
+      messages = next.messages;
+      recommendedFetchedFor = "";
+      closePersonModal();
+      saveSessions();
+      render();
+      ensureUserContext(currentUserId).catch(() => {});
+      loadRecommendedCommands(currentUserId);
+    }
+    function renderDomainSwitch() {
+      if (!els.domainSwitch) return;
+      const activeDomain = currentDomainId;
+      for (const button of els.domainSwitch.querySelectorAll("[data-domain-id]")) {
+        const active = button.dataset.domainId === activeDomain;
+        button.classList.toggle("active", active);
+        button.setAttribute("aria-selected", String(active));
+        button.disabled = loading;
+      }
     }
     function touchActiveSession(firstUserText) {
       const session = getActiveSession();
@@ -1143,6 +1415,7 @@ export function renderChatPage(): string {
       if (!session) return;
       renamingSessionId = "";
       activeSessionId = session.id;
+      currentDomainId = sessionDomainId(session);
       currentUserId = session.userId;
       messages = session.messages;
       saveSessions();
@@ -1153,6 +1426,8 @@ export function renderChatPage(): string {
         closePersonModal();
         return;
       }
+      const nextUser = people.find((user) => user.id === userId) || FALLBACK_USERS.find((user) => user.id === userId);
+      currentDomainId = domainIdForUser(nextUser || { id: userId });
       currentUserId = userId;
       const next = latestSessionForUser(currentUserId) || createSession(currentUserId, false);
       activeSessionId = next.id;
@@ -1182,6 +1457,7 @@ export function renderChatPage(): string {
       sessions = sessions.filter((item) => item.id !== sessionId);
       if (!sessionsForUser(userId).length) createSession(userId, false);
       if (activeSessionId === sessionId) {
+        currentDomainId = sessionDomainId(session);
         const next = latestSessionForUser(userId);
         activeSessionId = next.id;
         currentUserId = next.userId;
@@ -1420,7 +1696,7 @@ export function renderChatPage(): string {
       if (!els.cmdChips || !userId || userId === recommendedFetchedFor) return;
       recommendedFetchedFor = userId;
       try {
-        const res = await fetch("/api/recommended-commands?user_id=" + encodeURIComponent(userId));
+        const res = await fetch("/api/recommended-commands?user_id=" + encodeURIComponent(userId) + "&domain_id=" + encodeURIComponent(currentDomainId));
         if (!res.ok) throw new Error("HTTP " + res.status);
         const json = await res.json();
         renderRecommendedChips(Array.isArray(json.commands) ? json.commands : []);
@@ -1480,6 +1756,13 @@ export function renderChatPage(): string {
         els.recToggle.classList.toggle("expanded", expanded);
         els.recToggle.setAttribute("aria-expanded", expanded ? "true" : "false");
         refreshRecOverflow();
+      });
+    }
+    if (els.domainSwitch) {
+      els.domainSwitch.addEventListener("click", (event) => {
+        const button = event.target?.closest?.("[data-domain-id]");
+        if (!button) return;
+        selectDomain(button.dataset.domainId || "dealer");
       });
     }
     window.addEventListener("resize", () => requestAnimationFrame(refreshRecOverflow));
@@ -1750,7 +2033,7 @@ export function renderChatPage(): string {
       loading = true;
       setBusy(true);
       const controller = new AbortController();
-      const timeout = window.setTimeout(() => controller.abort(), 70000);
+      const timeout = window.setTimeout(() => controller.abort(), 180000);
       try {
         const userId = currentUserId;
         const userContext = await ensureUserContext(userId);
@@ -1761,6 +2044,7 @@ export function renderChatPage(): string {
           body: JSON.stringify({
             user_id: userId,
             user_context: userContext,
+            domain_id: currentDomainId,
             message: text,
             session_id: activeSessionId,
             debug: els.debug.checked,
@@ -1807,7 +2091,7 @@ export function renderChatPage(): string {
       if (commandSuggest.inflight && commandSuggest.inflight.userId === userId) return commandSuggest.inflight.promise;
       const promise = (async () => {
         try {
-          const res = await fetch("/api/commands?user_id=" + encodeURIComponent(userId));
+          const res = await fetch("/api/commands?user_id=" + encodeURIComponent(userId) + "&domain_id=" + encodeURIComponent(currentDomainId));
           if (!res.ok) return [];
           const data = await res.json();
           const list = Array.isArray(data.commands) ? data.commands : [];
@@ -1992,6 +2276,7 @@ export function renderChatPage(): string {
       if (els.landingTitle && !els.landingTitle.textContent) els.landingTitle.textContent = STR.landingTitle;
     }
     function render() {
+      renderDomainSwitch();
       renderPersonPicker();
       renderSessionList();
       const active = getActiveSession();
@@ -1999,7 +2284,7 @@ export function renderChatPage(): string {
       applyView();
       const user = getCurrentUser();
       els.chatTitle.textContent = active?.title || STR.untitled;
-      els.chatSubtitle.textContent = user?.name || "";
+      els.chatSubtitle.textContent = [currentDomainLabel(), user?.name || ""].filter(Boolean).join(" · ");
       els.messages.innerHTML = "";
       for (const msg of messages) {
         const row = document.createElement("div");
@@ -2095,7 +2380,7 @@ export function renderChatPage(): string {
       const all = sessionsForUser(currentUserId);
       const query = (els.sessionSearch.value || "").trim().toLowerCase();
       const shown = query ? all.filter((session) => (session.title || STR.untitled).toLowerCase().includes(query)) : all;
-      els.sideUser.textContent = getCurrentUser()?.name || "";
+      els.sideUser.textContent = [currentDomainLabel(), getCurrentUser()?.name || ""].filter(Boolean).join(" · ");
       els.sessionList.innerHTML = "";
       const label = document.createElement("div");
       label.className = "session-section-label";
@@ -2192,6 +2477,33 @@ export function renderChatPage(): string {
     function shouldShowRun(msg) {
       return msg.streaming || msg.thinking || msg.steps?.length || msg.debug?.steps?.length || msg.bizPairs?.length;
     }
+    function cssEscape(value) {
+      return window.CSS?.escape ? window.CSS.escape(String(value)) : String(value).replace(/["\\\\]/g, "\\\\$&");
+    }
+    function bizHeadSelector(id) {
+      return '.biz[data-msg-id="' + cssEscape(id) + '"] .biz-head';
+    }
+    function preserveMessagesAnchor(anchor, afterRenderSelector, action) {
+      const beforeTop = anchor?.getBoundingClientRect?.().top;
+      const beforeScrollTop = els.messages.scrollTop;
+      action();
+      if (typeof beforeTop !== "number") return;
+      const nextAnchor = afterRenderSelector ? els.messages.querySelector(afterRenderSelector) : anchor;
+      if (!nextAnchor?.getBoundingClientRect) {
+        els.messages.scrollTop = beforeScrollTop;
+        return;
+      }
+      const afterTop = nextAnchor.getBoundingClientRect().top;
+      els.messages.scrollTop += afterTop - beforeTop;
+    }
+    function preserveNativeToggleAnchor(anchor) {
+      const beforeTop = anchor?.getBoundingClientRect?.().top;
+      if (typeof beforeTop !== "number") return;
+      requestAnimationFrame(() => {
+        const afterTop = anchor.getBoundingClientRect().top;
+        els.messages.scrollTop += afterTop - beforeTop;
+      });
+    }
     // 业务视角面板：顶部"处理中… X.Xs" 100ms tick + summary→narrative 配对
     function createBizPanel(msg) {
       const wrap = document.createElement("div");
@@ -2202,11 +2514,11 @@ export function renderChatPage(): string {
       head.setAttribute("role", "button");
       head.setAttribute("tabindex", "0");
       head.setAttribute("aria-expanded", String(!msg.bizCollapsed));
-      head.addEventListener("click", () => toggleBizCollapsed(msg.id));
+      head.addEventListener("click", () => toggleBizCollapsed(msg.id, head));
       head.addEventListener("keydown", (event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          toggleBizCollapsed(msg.id);
+          toggleBizCollapsed(msg.id, head);
         }
       });
       const dot = document.createElement("span");
@@ -2260,17 +2572,19 @@ export function renderChatPage(): string {
       wrap.appendChild(body);
       return wrap;
     }
-    function toggleBizCollapsed(id) {
+    function toggleBizCollapsed(id, anchor) {
       const msg = getMsg(id);
       if (!msg) return;
-      msg.bizCollapsed = !msg.bizCollapsed;
-      touchActiveSession();
-      render();
+      preserveMessagesAnchor(anchor, bizHeadSelector(id), () => {
+        msg.bizCollapsed = !msg.bizCollapsed;
+        touchActiveSession();
+        render();
+      });
     }
     function createRunPanel(msg) {
       const details = document.createElement("details");
       details.className = "run-panel";
-      details.open = Boolean(msg.streaming || msg.thinking);
+      details.open = typeof msg.runPanelOpen === "boolean" ? msg.runPanelOpen : Boolean(msg.streaming || msg.thinking);
       const summary = document.createElement("summary");
       const title = document.createElement("div");
       title.className = "run-title";
@@ -2290,6 +2604,10 @@ export function renderChatPage(): string {
       chevron.className = "run-chevron";
       chevron.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l4 4-4 4"/></svg>';
       summary.appendChild(chevron);
+      summary.addEventListener("click", () => preserveNativeToggleAnchor(summary));
+      summary.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" || event.key === " ") preserveNativeToggleAnchor(summary);
+      });
       const body = document.createElement("div");
       body.className = "run-body";
       body.appendChild(createDebugOverview(msg));
@@ -2308,6 +2626,10 @@ export function renderChatPage(): string {
         body.appendChild(toolLine);
       }
       details.append(summary, body);
+      details.addEventListener("toggle", () => {
+        msg.runPanelOpen = details.open;
+        touchActiveSession();
+      });
       return details;
     }
     function createDebugOverview(msg) {
@@ -2646,6 +2968,8 @@ export function renderChatPage(): string {
         completedAt: Date.now(),
         streaming: false,
         thinking: false,
+        failed: false,
+        failedReason: null,
         streamed: true,
         bizCollapsed: true,
         processFinalized: true,
@@ -2797,11 +3121,14 @@ export function renderChatPage(): string {
     registerRenderer("ApprovalCard", (surface, props, view) => renderMaterialApproval(surface, props, view.actions || []));
     registerRenderer("TaskResumeCard", (surface, props) => renderMaterialTaskResume(surface, props));
     /* Phase 4 Workbench Surface */
+    registerRenderer("BusinessBriefSurface", (surface, props) => renderBusinessBriefSurface(surface, props));
+    registerRenderer("ProductLaunchFormSurface", (surface, props) => renderProductLaunchFormSurface(surface, props));
     registerRenderer("DataTableSurface", (surface, props) => renderDataTableSurface(surface, props));
     registerRenderer("GroupedListSurface", (surface, props) => renderGroupedListSurface(surface, props));
     registerRenderer("ToolCatalogSurface", (surface, props) => renderToolCatalogSurface(surface, props));
     registerRenderer("RiskListSurface", (surface, props) => renderRiskListSurface(surface, props));
     registerRenderer("MetricCardsSurface", (surface, props) => renderMetricCardsSurface(surface, props));
+    registerRenderer("TagListSurface", (surface, props) => renderTagListSurface(surface, props));
     registerRenderer("BarChartSurface", (surface, props) => renderBarChartSurface(surface, props));
     registerRenderer("PieChartSurface", (surface, props) => renderPieChartSurface(surface, props));
     registerRenderer("LineChartSurface", (surface, props) => renderLineChartSurface(surface, props));
@@ -2810,12 +3137,319 @@ export function renderChatPage(): string {
     registerRenderer("EvidenceSurface", (surface, props) => renderEvidenceSurface(surface, props));
     registerRenderer("TaskTrackingSurface", (surface, props) => renderTaskTrackingSurface(surface, props));
     registerRenderer("PendingActionSurface", (surface, props) => renderPendingActionSurface(surface, props));
+    registerRenderer("RuntimeSummary", (surface, props) => renderRuntimeSummarySurface(surface, props));
     /* 域特定组件渲染器（从 DomainPack.chatPageRenderers 动态注入） */
     ${domainRenderers.map((r) => `registerRenderer(${JSON.stringify(r.name)}, ${r.code});`).join("\n    ")}
 
     /* ──────────────────────────────────────────────────────────────
      * Phase 4 Workbench：通用 OpenUI Surface 渲染函数
      * ────────────────────────────────────────────────────────────── */
+
+    function renderBusinessBriefSurface(surface, props) {
+      const card = document.createElement("div");
+      const tone = briefToneClass(props.tone || props.verdict || props.subtitle);
+      card.className = "material-card business-brief " + tone;
+      const top = document.createElement("div");
+      top.className = "brief-top";
+      const verdict = document.createElement("div");
+      verdict.className = "brief-verdict";
+      const eyebrow = document.createElement("div");
+      eyebrow.className = "brief-eyebrow";
+      const toneChip = document.createElement("span");
+      toneChip.className = "brief-tone";
+      toneChip.textContent = briefToneLabel(props.tone || props.verdict || props.subtitle);
+      const title = document.createElement("span");
+      title.className = "brief-title";
+      title.textContent = clean(props.title || "业务结论");
+      eyebrow.append(toneChip, title);
+      const statement = document.createElement("div");
+      statement.className = "brief-statement";
+      statement.textContent = clean(props.verdict || "请先查看关键指标和后续动作。");
+      verdict.append(eyebrow, statement);
+      if (props.subtitle) {
+        const subtitle = document.createElement("div");
+        subtitle.className = "brief-subtitle";
+        subtitle.textContent = clean(props.subtitle);
+        verdict.appendChild(subtitle);
+      }
+      const kpis = Array.isArray(props.kpis) ? props.kpis : [];
+      const kpiGrid = document.createElement("div");
+      kpiGrid.className = "brief-kpis";
+      kpis.slice(0, 4).forEach((item) => {
+        kpiGrid.appendChild(materialMetric(
+          (item.value !== undefined && item.value !== null ? String(item.value) : "-") + (item.unit ? item.unit : ""),
+          clean(item.label || item.key || "-")
+        ));
+      });
+      top.append(verdict, kpiGrid);
+      card.appendChild(top);
+      const priorities = Array.isArray(props.priority_items) ? props.priority_items : [];
+      const actions = Array.isArray(props.next_actions) ? props.next_actions : [];
+      if (priorities.length || actions.length) {
+        const grid = document.createElement("div");
+        grid.className = "brief-section-grid";
+        if (priorities.length) grid.appendChild(renderBriefList("优先处理事项", priorities, true));
+        if (actions.length) grid.appendChild(renderBriefList("后续动作", actions, false));
+        card.appendChild(grid);
+      }
+      const footer = document.createElement("div");
+      footer.className = "brief-footer";
+      if (props.evidence_label) footer.appendChild(materialChip("证据：" + clean(props.evidence_label)));
+      if (props.boundary_label) footer.appendChild(materialChip(clean(props.boundary_label)));
+      if (footer.childElementCount) card.appendChild(footer);
+      const details = props.details && typeof props.details === "object" ? props.details : null;
+      if (details?.component) {
+        const detailNode = renderOpenUIView({
+          id: surface.id + "_details",
+          root: "business_brief_details",
+          data: { openui: { protocol: "openui-bridge/0.1", component: details.component, props: details.props || {} } },
+          components: []
+        });
+        if (detailNode) {
+          const wrap = document.createElement("div");
+          wrap.className = "brief-details";
+          wrap.appendChild(detailNode);
+          card.appendChild(wrap);
+        }
+      }
+      return card;
+    }
+
+    function renderProductLaunchFormSurface(_surface, props) {
+      const card = document.createElement("div");
+      card.className = "material-card launch-form";
+      const head = document.createElement("div");
+      head.className = "launch-form-head";
+      const titleWrap = document.createElement("div");
+      titleWrap.className = "launch-form-title";
+      const title = document.createElement("strong");
+      title.textContent = clean(props.title || "云商品上架工作台");
+      const guide = document.createElement("span");
+      guide.textContent = clean(props.guide || "先补齐必填字段和审核口径，再生成草稿并进入人工审批。");
+      titleWrap.append(title, guide);
+      const status = document.createElement("div");
+      status.className = "launch-form-status";
+      status.textContent = clean(props.status_label || "草稿待确认");
+      head.append(titleWrap, status);
+      card.appendChild(head);
+
+      const missing = Array.isArray(props.missing_items) ? props.missing_items : [];
+      card.appendChild(renderLaunchNextStrip(missing.length));
+
+      const grid = document.createElement("div");
+      grid.className = "launch-form-grid";
+      const main = document.createElement("div");
+      main.className = "launch-form-main";
+      const sections = Array.isArray(props.sections) ? props.sections : [];
+      sections.slice(0, 6).forEach((section) => main.appendChild(renderLaunchFormSection(section)));
+      grid.appendChild(main);
+
+      const aside = document.createElement("div");
+      aside.className = "launch-form-aside";
+      if (missing.length) aside.appendChild(renderLaunchPanel("提交前必须补齐", missing.slice(0, 8)));
+      const notes = Array.isArray(props.review_notes) ? props.review_notes : [];
+      if (notes.length) aside.appendChild(renderLaunchPanel("审核提示", notes.slice(0, 5)));
+      const actions = Array.isArray(props.actions) ? props.actions : [];
+      if (actions.length) aside.appendChild(renderLaunchActions(actions));
+      const footNotes = [props.evidence_label ? "证据：" + props.evidence_label : "", props.boundary_label || ""].filter(Boolean);
+      if (footNotes.length) {
+        const note = document.createElement("div");
+        note.className = "launch-note";
+        note.textContent = clean(footNotes.join("；"));
+        aside.appendChild(note);
+      }
+      grid.appendChild(aside);
+      card.appendChild(grid);
+      return card;
+    }
+
+    function renderLaunchNextStrip(missingCount) {
+      const strip = document.createElement("div");
+      strip.className = "launch-next-strip";
+      [
+        ["动作 1", missingCount ? "先补齐 " + missingCount + " 项关键口径" : "确认字段无明显缺口"],
+        ["动作 2", "生成发布草稿和审批摘要"],
+        ["动作 3", "财务、法务/SRE、商品负责人审批"]
+      ].forEach(([titleText, detail]) => {
+        const node = document.createElement("div");
+        node.className = "launch-next-step";
+        const title = document.createElement("strong");
+        title.textContent = titleText;
+        const desc = document.createElement("span");
+        desc.textContent = detail;
+        node.append(title, desc);
+        strip.appendChild(node);
+      });
+      return strip;
+    }
+
+    function renderLaunchFormSection(section) {
+      const wrap = document.createElement("section");
+      wrap.className = "launch-form-section";
+      const head = document.createElement("div");
+      head.className = "launch-form-section-head";
+      const title = document.createElement("strong");
+      title.textContent = clean(section.title || "配置字段");
+      head.appendChild(title);
+      if (section.description) {
+        const desc = document.createElement("span");
+        desc.textContent = clean(section.description);
+        head.appendChild(desc);
+      }
+      wrap.appendChild(head);
+      const grid = document.createElement("div");
+      grid.className = "launch-field-grid";
+      const fields = Array.isArray(section.fields) ? section.fields : [];
+      fields.slice(0, 12).forEach((field) => grid.appendChild(renderLaunchField(field)));
+      wrap.appendChild(grid);
+      return wrap;
+    }
+
+    function renderLaunchField(field) {
+      const wrap = document.createElement("label");
+      wrap.className = "launch-field";
+      const label = document.createElement("div");
+      label.className = "launch-field-label";
+      label.appendChild(document.createTextNode(clean(field.label || field.key || "字段")));
+      if (field.required) {
+        const req = document.createElement("span");
+        req.className = "launch-required";
+        req.textContent = "必填";
+        label.appendChild(req);
+      }
+      const control = document.createElement("div");
+      control.className = "launch-field-control";
+      const value = document.createElement("span");
+      value.textContent = clean(field.value ?? field.hint ?? "待确认");
+      control.appendChild(value);
+      control.appendChild(materialChip(clean(field.status || (field.required ? "待确认" : "可选"))));
+      wrap.append(label, control);
+      if (field.source || field.hint) {
+        const hint = document.createElement("div");
+        hint.className = "launch-field-hint";
+        hint.textContent = clean([field.source ? "来源：" + field.source : "", field.hint ? "说明：" + field.hint : ""].filter(Boolean).join("；"));
+        wrap.appendChild(hint);
+      }
+      return wrap;
+    }
+
+    function renderLaunchPanel(titleText, items) {
+      const panel = document.createElement("div");
+      panel.className = "launch-panel";
+      const title = document.createElement("div");
+      title.className = "launch-panel-title";
+      title.textContent = titleText;
+      const list = document.createElement("div");
+      list.className = "launch-check-list";
+      items.forEach((item, index) => {
+        const row = document.createElement("div");
+        row.className = "launch-check-item";
+        const dot = document.createElement("span");
+        dot.className = "launch-check-dot";
+        dot.textContent = String(index + 1);
+        const text = document.createElement("span");
+        text.textContent = clean(item);
+        row.append(dot, text);
+        list.appendChild(row);
+      });
+      panel.append(title, list);
+      return panel;
+    }
+
+    function renderLaunchActions(actions) {
+      const panel = document.createElement("div");
+      panel.className = "launch-panel";
+      const title = document.createElement("div");
+      title.className = "launch-panel-title";
+      title.textContent = "下一步怎么做";
+      const list = document.createElement("div");
+      list.className = "launch-actions";
+      actions.slice(0, 4).forEach((action, index) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.disabled = true;
+        btn.className = "launch-action-btn" + (index > 0 ? " secondary" : "");
+        btn.textContent = clean(action.label || action.detail || ("动作 " + (index + 1)));
+        list.appendChild(btn);
+        if (action.detail) {
+          const note = document.createElement("div");
+          note.className = "launch-note";
+          note.textContent = clean(action.detail);
+          list.appendChild(note);
+        }
+      });
+      panel.append(title, list);
+      return panel;
+    }
+
+    function renderBriefList(titleText, items, numbered) {
+      const section = document.createElement("div");
+      section.className = "brief-section";
+      const title = document.createElement("div");
+      title.className = "brief-section-title";
+      title.textContent = titleText;
+      const list = document.createElement("div");
+      list.className = "brief-list";
+      items.slice(0, 4).forEach((item, index) => {
+        const node = document.createElement("div");
+        node.className = "brief-item";
+        const head = document.createElement("div");
+        head.className = "brief-item-head";
+        if (numbered) {
+          const idx = document.createElement("span");
+          idx.className = "brief-index";
+          idx.textContent = String(index + 1);
+          head.appendChild(idx);
+        }
+        const itemTitle = document.createElement("div");
+        itemTitle.className = "brief-item-title";
+        itemTitle.textContent = cleanBriefItemTitle(item.title || item.label || item.value || "-", titleText, index);
+        head.appendChild(itemTitle);
+        const meta = document.createElement("div");
+        meta.className = "brief-item-meta";
+        const owner = meaningfulBriefValue(item.owner);
+        const impact = meaningfulBriefValue(item.impact);
+        meta.textContent = clean([
+          meaningfulBriefValue(item.detail),
+          owner ? "负责人：" + owner : "",
+          impact ? "影响：" + impact : ""
+        ].filter(Boolean).join("；"));
+        node.appendChild(head);
+        if (meta.textContent) node.appendChild(meta);
+        list.appendChild(node);
+      });
+      section.append(title, list);
+      return section;
+    }
+
+    function meaningfulBriefValue(value) {
+      const text = clean(value);
+      if (!text || text === "-" || text === "暂无" || text === "无" || text === "undefined" || text === "null") return "";
+      return text;
+    }
+
+    function cleanBriefItemTitle(value, sectionTitle, index) {
+      const text = clean(value);
+      if (sectionTitle === "后续动作" && /^(下一步|行动)\s*\d*/i.test(text)) return "动作 " + String(index + 1);
+      return text;
+    }
+
+    function briefToneClass(value) {
+      const text = String(value || "").toLowerCase();
+      if (/blocked|阻塞|延期|逾期/.test(text)) return "tone-blocked";
+      if (/danger|high|critical|高风险|风险|不足|不可承诺|不建议|暂不/.test(text)) return "tone-danger";
+      if (/warn|medium|关注|待|需|审批|复核|草稿/.test(text)) return "tone-warn";
+      if (/good|success|健康|正常|完成|可推进/.test(text)) return "tone-good";
+      return "tone-warn";
+    }
+
+    function briefToneLabel(value) {
+      const cls = briefToneClass(value);
+      if (cls === "tone-good") return "正常";
+      if (cls === "tone-danger") return "高风险";
+      if (cls === "tone-blocked") return "已阻塞";
+      return "需关注";
+    }
 
     function renderDataTableSurface(_surface, props) {
       const rows = Array.isArray(props.rows) ? props.rows : [];
@@ -2829,13 +3463,25 @@ export function renderChatPage(): string {
         return card;
       }
       const wrap = document.createElement("div");
-      wrap.className = "md-table-wrap";
+      wrap.className = "material-table-wrap";
       const table = document.createElement("table");
+      table.className = "material-table";
       const thead = document.createElement("thead");
       const headRow = document.createElement("tr");
       const visibleColumns = columns.slice(0, 8);
+      const colgroup = document.createElement("colgroup");
+      let minTableWidth = 0;
+      visibleColumns.forEach((column) => {
+        const col = document.createElement("col");
+        const width = openUITableColumnWidth(column);
+        col.style.width = width;
+        minTableWidth += parseInt(width, 10) || 120;
+        colgroup.appendChild(col);
+      });
+      table.style.minWidth = Math.max(760, minTableWidth) + "px";
       visibleColumns.forEach((column) => {
         const th = document.createElement("th");
+        th.className = openUITableColumnClass(column);
         th.textContent = clean(column.label || column.key || "");
         headRow.appendChild(th);
       });
@@ -2846,13 +3492,14 @@ export function renderChatPage(): string {
         const tr = document.createElement("tr");
         visibleColumns.forEach((column) => {
           const td = document.createElement("td");
+          td.className = openUITableColumnClass(column);
           const cell = renderOpenUITableCell(row?.[column.key], column);
           td.appendChild(cell);
           tr.appendChild(td);
         });
         tbody.appendChild(tr);
       });
-      table.append(thead, tbody);
+      table.append(colgroup, thead, tbody);
       wrap.appendChild(table);
       card.appendChild(wrap);
       if (Number(props.rowCount || rows.length) > 20) {
@@ -2860,6 +3507,62 @@ export function renderChatPage(): string {
         more.className = "material-subtle";
         more.textContent = "仅显示前 20 条，共 " + String(props.rowCount || rows.length) + " 条";
         card.appendChild(more);
+      }
+      return card;
+    }
+
+    function openUITableColumnClass(column) {
+      const key = String(column.key || column.label || "");
+      if (column.type === "status" || /状态|风险|等级|是否|status|risk|warning|level/i.test(key)) return "col-status";
+      if (column.type === "currency") return "col-currency";
+      if (column.type === "number") return "col-number";
+      if (column.type === "date") return "col-date";
+      return "";
+    }
+
+    function openUITableColumnWidth(column) {
+      const key = String(column.key || column.label || "");
+      if (/阶段|stage/i.test(key)) return "92px";
+      if (/状态|status|risk|warning|level|风险|等级/i.test(key)) return "76px";
+      if (/负责人|owner|assignee/i.test(key)) return "104px";
+      if (/金额|预算|GMV|收入|价格|currency|amount|budget|revenue/i.test(key)) return "112px";
+      if (/日期|时间|账期|date|time/i.test(key)) return "122px";
+      if (/缺口|阻塞|原因|影响|内容|说明|策略|边界|gap|reason|impact|content|policy|boundary/i.test(key)) return "184px";
+      if (/下一步|动作|建议|检查|next|action|recommend/i.test(key)) return "190px";
+      if (/检查点|商品|客户|标题|名称|name|title|customer|product/i.test(key)) return "154px";
+      return "128px";
+    }
+    function renderRuntimeSummarySurface(surface, props) {
+      const route = props.route || surface.data?.route || {};
+      const taskRetrieval = props.task_retrieval || surface.data?.task_retrieval || {};
+      const card = materialCard("本轮执行摘要", "Debug 信息，仅用于确认路由和执行链路。");
+      const grid = document.createElement("div");
+      grid.className = "material-metrics";
+      grid.append(
+        materialMetric(route.intent_code || "unknown", "Intent"),
+        materialMetric(route.execution_class || "-", "执行类型"),
+        materialMetric(route.handler_type || "-", "Handler"),
+        materialMetric(route.confidence || "-", "置信度")
+      );
+      card.appendChild(grid);
+      const reason = route.reason || route.source || route.router_source;
+      if (reason) {
+        const note = document.createElement("div");
+        note.className = "material-subtle";
+        note.textContent = "路由依据：" + String(reason);
+        card.appendChild(note);
+      }
+      const top = Array.isArray(taskRetrieval.top) ? taskRetrieval.top : [];
+      if (top.length) {
+        const list = document.createElement("div");
+        list.className = "material-list";
+        top.slice(0, 3).forEach((task) => {
+          const item = document.createElement("div");
+          item.className = "material-list-item";
+          item.textContent = [task.id, task.status, task.relevance != null ? "relevance=" + task.relevance : ""].filter(Boolean).join(" · ");
+          list.appendChild(item);
+        });
+        card.appendChild(list);
       }
       return card;
     }
@@ -2883,7 +3586,9 @@ export function renderChatPage(): string {
         return chip;
       }
       const span = document.createElement("span");
+      span.className = "cell-text";
       span.textContent = clean(formatOpenUIValue(value, column.type));
+      if (span.textContent === "-") span.classList.add("cell-muted");
       return span;
     }
 
@@ -3027,6 +3732,42 @@ export function renderChatPage(): string {
       return card;
     }
 
+    function renderTagListSurface(_surface, props) {
+      const tags = Array.isArray(props.tags) ? props.tags : [];
+      if (!tags.length) return null;
+      const card = materialCard(props.title || "业务标签", tags.length + " 个标签");
+      card.appendChild(materialTagCloud(tags));
+      return card;
+    }
+
+    function materialTagCloud(tags) {
+      const cloud = document.createElement("div");
+      cloud.className = "material-tag-cloud";
+      tags.slice(0, 32).forEach((tag) => {
+        const node = document.createElement("span");
+        node.className = "material-tag " + tagToneClass(tag.tone || tag.value || tag.label);
+        const label = document.createElement("span");
+        label.textContent = clean(tag.label || "-");
+        node.appendChild(label);
+        if (tag.value !== undefined && tag.value !== null && String(tag.value) !== "") {
+          const value = document.createElement("strong");
+          value.textContent = clean(tag.value);
+          node.appendChild(value);
+        }
+        cloud.appendChild(node);
+      });
+      return cloud;
+    }
+
+    function tagToneClass(value) {
+      const text = String(value || "").toLowerCase();
+      if (/danger|error|high|critical|blocked|风险|阻塞|高|失败|逾期|不足/.test(text)) return "danger";
+      if (/warn|medium|pending|review|处理中|待|关注|中|复核|审批/.test(text)) return "warn";
+      if (/good|success|done|ready|healthy|完成|已|正常|就绪|健康/.test(text)) return "good";
+      if (/info|demo|mock|估算|样本|草稿|参考/.test(text)) return "info";
+      return "";
+    }
+
     /**
      * BarChartSurface —— 最小柱状图
      * props: { title?, xKey, yKey, series: object[] }
@@ -3150,6 +3891,8 @@ export function renderChatPage(): string {
     function renderInsightSummarySurface(_surface, props) {
       const insights = Array.isArray(props.insights) ? props.insights : [];
       if (!insights.length) return null;
+      const flow = buildInsightFlow(insights);
+      if (flow) return flow;
       const card = materialCard(props.title || "分析结论", insights.length + " 条发现");
       const list = document.createElement("div");
       list.className = "material-list";
@@ -3177,6 +3920,86 @@ export function renderChatPage(): string {
       return card;
     }
 
+    function buildInsightFlow(insights) {
+      const steps = insights
+        .map((insight, index) => ({ insight, index }))
+        .filter(({ insight }) => String(insight?.title || "").trim().startsWith("下一步"));
+      if (steps.length < 2) return null;
+      const status = insights.find((insight) => /总体状态|状态|结论/i.test(String(insight?.title || "")));
+      const boundary = insights.find((insight) => /数据边界|边界/i.test(String(insight?.title || "")));
+      const card = materialCard("流程推进图", steps.length + " 个后续动作");
+      const flow = document.createElement("div");
+      flow.className = "material-flow";
+      const track = document.createElement("div");
+      track.className = "material-flow-track";
+      const addFlowNode = (node) => {
+        if (track.childElementCount) {
+          const arrow = document.createElement("div");
+          arrow.className = "material-flow-arrow";
+          arrow.textContent = "→";
+          track.appendChild(arrow);
+        }
+        track.appendChild(node);
+      };
+      if (status) {
+        addFlowNode(materialFlowNode({
+          title: clean(status.title || "当前状态"),
+          detail: clean(status.summary || ""),
+          status: clean(status.summary || status.title || "当前"),
+          tone: /阻塞|风险|失败|异常/i.test(String(status.summary || "")) ? "blocked" : "current"
+        }));
+      }
+      steps.slice(0, 6).forEach(({ insight }, index) => {
+        addFlowNode(materialFlowNode({
+          title: cleanFlowActionTitle(insight.title || ("动作 " + (index + 1)), index),
+          detail: clean(insight.summary || insight.recommendation || ""),
+          status: index === 0 ? "优先" : "待推进",
+          tone: index === 0 ? "current" : ""
+        }));
+      });
+      flow.appendChild(track);
+      if (boundary?.summary) {
+        const note = document.createElement("div");
+        note.className = "material-subtle";
+        note.textContent = "数据边界：" + clean(boundary.summary);
+        flow.appendChild(note);
+      }
+      card.appendChild(flow);
+      return card;
+    }
+
+    function cleanFlowActionTitle(value, index) {
+      const text = clean(value);
+      if (/^(下一步|行动)\s*\d*/i.test(text)) return "动作 " + String(index + 1);
+      return text || ("动作 " + String(index + 1));
+    }
+
+    function materialFlowNode({ title, detail, status, tone }) {
+      const node = document.createElement("div");
+      node.className = "material-flow-node" + (tone ? " " + tone : "");
+      const head = document.createElement("div");
+      head.className = "material-flow-title";
+      head.textContent = title || "步骤";
+      const chip = document.createElement("span");
+      chip.className = "material-flow-status";
+      chip.textContent = status || "待推进";
+      if (/阻塞|风险|失败|异常/.test(chip.textContent)) {
+        chip.style.color = "#c0392b";
+        chip.style.borderColor = "#c0392b44";
+      } else if (/优先|当前|处理中/.test(chip.textContent)) {
+        chip.style.color = "#d68910";
+        chip.style.borderColor = "#d6891044";
+      } else if (/完成|已/.test(chip.textContent)) {
+        chip.style.color = "#27ae60";
+        chip.style.borderColor = "#27ae6044";
+      }
+      const body = document.createElement("div");
+      body.className = "material-flow-detail";
+      body.textContent = detail || "-";
+      node.append(head, chip, body);
+      return node;
+    }
+
     function renderAnalyticsDashboardSurface(surface, props) {
       const card = materialCard(props.title || "数据分析看板", "");
       card.classList.add("material-dashboard");
@@ -3187,6 +4010,10 @@ export function renderChatPage(): string {
       if (metrics.length) {
         const metricsNode = renderMetricCardsSurface(surface, { title: "关键指标", metrics });
         if (metricsNode) card.appendChild(metricsNode);
+      }
+      if (Array.isArray(props.tags) && props.tags.length) {
+        const tagNode = renderTagListSurface(surface, { title: "业务标签", tags: props.tags });
+        if (tagNode) card.appendChild(tagNode);
       }
       if (charts.length) {
         const grid = document.createElement("div");
@@ -3831,6 +4658,32 @@ export function renderChatPage(): string {
       if (!Number.isFinite(value)) return "-";
       return Math.abs(value) >= 1000 ? Math.round(value).toLocaleString("zh-CN") : String(value);
     }
+    const CLIENT_FIELD_LABELS = {
+      owner_user_id: "负责人",
+      owner_team: "负责团队",
+      metric_id: "指标ID",
+      metric_group: "指标分组",
+      metric_name: "指标名称",
+      metric_value: "指标值",
+      period: "周期",
+      as_of_date: "统计日期",
+      unit: "单位",
+      compare_period: "对比周期",
+      compare_value: "对比值",
+      change_rate: "变化率",
+      source_type: "来源类型",
+      mocked: "Demo假设",
+      confidence: "置信度",
+      billing_month: "账期",
+      amount_cny: "金额",
+      dispute_amount_cny: "争议金额",
+      dispute_reason: "争议原因",
+      step: "流程环节",
+      delay_hours: "延迟小时",
+      blocker_reason: "阻塞原因",
+      renewal_probability: "续约概率",
+      risk_level: "风险等级"
+    };
     function inferColumnsForRows(rows) {
       const keys = [];
       (Array.isArray(rows) ? rows : []).slice(0, 10).forEach((row) => {
@@ -3840,7 +4693,7 @@ export function renderChatPage(): string {
       });
       return keys.slice(0, 8).map((key) => ({
         key,
-        label: key.replace(/_/g, " ").replace(/\\b\\w/g, (ch) => ch.toUpperCase()),
+        label: CLIENT_FIELD_LABELS[key] || key.replace(/_/g, " ").replace(/\\b\\w/g, (ch) => ch.toUpperCase()),
         type: /(count|amount|total|rate|score|num|price|revenue)/i.test(key) ? "number" : /(status|risk|level|warning)/i.test(key) ? "status" : "text"
       }));
     }
@@ -3867,9 +4720,6 @@ export function renderChatPage(): string {
         seen.add(key);
         return true;
       });
-    }
-    function escapeHtml(text) {
-      return String(text || "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
     }
     function prettyJson(value) {
       if (typeof value === "string") return value;
@@ -3927,7 +4777,7 @@ export function renderChatPage(): string {
     function renderActiveMarkdownBlock(block) {
       const text = String(block || "");
       const fence = String.fromCharCode(96).repeat(3);
-      if (/^#{1,3}\\s+/.test(text.trim())) return renderMarkdown(text);
+      if (/^#{1,6}\\s+/.test(text.trim())) return renderMarkdown(text);
       if (/^([-*]\\s+|\\d+[.)]\\s+)/m.test(text)) return renderMarkdown(text);
       if (/^>\\s?/m.test(text)) return renderMarkdown(text);
       if (text.trim().startsWith(fence)) return "<pre><code>" + escapeHtml(text.replace(new RegExp("^" + fence + "\\\\w*\\\\n?"), "")) + "</code></pre>";
@@ -3944,6 +4794,7 @@ export function renderChatPage(): string {
       let list = null;
       let quote = [];
       let table = [];
+      let delimitedTable = [];
       let code = null;
 
       const flushParagraph = () => {
@@ -3975,8 +4826,18 @@ export function renderChatPage(): string {
         html.push(renderMarkdownTable(table.join("\\n"), { animate: true }));
         table = [];
       };
+      const flushDelimitedTable = () => {
+        if (!delimitedTable.length) return;
+        if (delimitedTable.length < 2) {
+          paragraph.push(...delimitedTable);
+        } else {
+          html.push(renderDelimitedTable(delimitedTable.join("\\n"), { animate: true }));
+        }
+        delimitedTable = [];
+      };
       const flushBlocks = () => {
         flushTable();
+        flushDelimitedTable();
         flushParagraph();
         flushList();
         flushQuote();
@@ -4002,6 +4863,15 @@ export function renderChatPage(): string {
           flushBlocks();
           continue;
         }
+        if (looksLikeDelimitedTableLine(line)) {
+          flushParagraph();
+          flushList();
+          flushQuote();
+          flushTable();
+          delimitedTable.push(line.trim());
+          continue;
+        }
+        if (delimitedTable.length) flushDelimitedTable();
         if (/^\\|.+\\|$/.test(trimmed)) {
           flushParagraph();
           flushList();
@@ -4010,7 +4880,7 @@ export function renderChatPage(): string {
           continue;
         }
         if (table.length) flushTable();
-        const heading = /^(#{1,3})\\s+(.+)$/.exec(trimmed);
+        const heading = /^(#{1,6})\\s+(.+)$/.exec(trimmed);
         if (heading) {
           flushBlocks();
           const level = heading[1].length;
@@ -4053,6 +4923,27 @@ export function renderChatPage(): string {
     function isMarkdownTableDivider(row) {
       return splitMarkdownTableRow(row).every((cell) => /^:?-{3,}:?$/.test(cell));
     }
+    function looksLikeDelimitedTableLine(line) {
+      const cells = String(line || "").split("\\t").map((cell) => cell.trim()).filter(Boolean);
+      if (cells.length < 2) return false;
+      if (cells.length === 2 && cells.some((cell) => cell.length > 80)) return false;
+      return cells.length >= 3 || /^[\\u4e00-\\u9fa5A-Za-z0-9（）()%/ ._-]+$/.test(cells[0]);
+    }
+    function renderDelimitedTable(text, { animate = false } = {}) {
+      const rows = String(text || "").split("\\n")
+        .map((line) => line.split("\\t").map((cell) => cell.trim()))
+        .filter((row) => row.length >= 2);
+      if (rows.length < 2) return "<p>" + rows.map((row) => row.map(renderInline).join(" ")).join("<br>") + "</p>";
+      const header = rows[0];
+      const bodyRows = rows.slice(1).filter((row) => row.some(Boolean));
+      return (
+        '<div class="md-table-wrap' + (animate ? " table-enter" : "") + '"><table><thead><tr>' +
+        header.map((cell) => "<th>" + renderInline(cell) + "</th>").join("") +
+        "</tr></thead><tbody>" +
+        bodyRows.map((row) => "<tr>" + header.map((_, index) => "<td>" + renderInline(row[index] || "") + "</td>").join("") + "</tr>").join("") +
+        "</tbody></table></div>"
+      );
+    }
     function renderMarkdownTable(text, { animate = false } = {}) {
       const lines = String(text || "").split("\\n").map((line) => line.trim()).filter(Boolean);
       const dividerIndex = lines.findIndex((line) => isMarkdownTableDivider(line));
@@ -4077,14 +4968,14 @@ export function renderChatPage(): string {
       const placeholders = [];
       const escaped = escapeHtml(text || "").replace(new RegExp(tick + "([^" + tick + "]+)" + tick, "g"), (_, code) => {
         placeholders.push("<code>" + code + "</code>");
-        return "__MD_CODE_" + (placeholders.length - 1) + "__";
+        return "\u0000MD_CODE_" + (placeholders.length - 1) + "\u0000";
       });
       return escaped
         .replace(/\\*\\*(.+?)\\*\\*/g, "<strong>$1</strong>")
         .replace(/__(.+?)__/g, "<strong>$1</strong>")
         .replace(/\\*(.+?)\\*/g, "<em>$1</em>")
         .replace(/\\[(.+?)\\]\\((https?:\\/\\/[^\\s)]+)\\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
-        .replace(/__MD_CODE_(\\d+)__/g, (_, index) => placeholders[Number(index)] || "");
+        .replace(/\u0000MD_CODE_(\\d+)\u0000/g, (_, index) => placeholders[Number(index)] || "");
     }
     function formatDuration(ms) {
       const value = Number(ms);

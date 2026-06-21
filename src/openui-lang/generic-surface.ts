@@ -13,6 +13,8 @@ export interface GenericOpenUIStructuredData {
   decision: OpenUIPresentationDecision;
   normalized: NormalizedOpenUIOutput;
   component:
+    | "BusinessBriefSurface"
+    | "ProductLaunchFormSurface"
     | "DataTableSurface"
     | "RiskListSurface"
     | "MetricCardsSurface"
@@ -43,6 +45,30 @@ const FIELD_LABELS: Record<string, string> = {
   delivery_date: "交付日期",
   risk: "风险",
   owner: "负责人",
+  owner_user_id: "负责人",
+  owner_team: "负责团队",
+  metric_id: "指标ID",
+  metric_group: "指标分组",
+  metric_name: "指标名称",
+  metric_value: "指标值",
+  period: "周期",
+  as_of_date: "统计日期",
+  unit: "单位",
+  compare_period: "对比周期",
+  compare_value: "对比值",
+  change_rate: "变化率",
+  source_type: "来源类型",
+  mocked: "Demo假设",
+  confidence: "置信度",
+  billing_month: "账期",
+  amount_cny: "金额",
+  dispute_amount_cny: "争议金额",
+  dispute_reason: "争议原因",
+  step: "流程环节",
+  delay_hours: "延迟小时",
+  blocker_reason: "阻塞原因",
+  renewal_probability: "续约概率",
+  risk_level: "风险等级",
   followup_at: "跟进时间",
   created_at: "创建时间"
 };

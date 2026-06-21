@@ -19,6 +19,7 @@ interface QueryEngineLike {
     userContext?: JsonObject;
     wecomUserId?: string;
     message: string;
+    domainId?: string;
     sessionId?: string;
     debug?: boolean;
     attachmentIds?: string[];
@@ -28,6 +29,7 @@ interface QueryEngineLike {
     userContext?: JsonObject;
     wecomUserId?: string;
     message: string;
+    domainId?: string;
     sessionId?: string;
     debug?: boolean;
     attachmentIds?: string[];
@@ -41,6 +43,7 @@ interface StreamAgentLike {
     userContext?: JsonObject;
     wecomUserId?: string;
     message: string;
+    domainId?: string;
     sessionId?: string;
     debug?: boolean;
     onEvent?: (event: JsonObject) => Promise<void> | void;
@@ -504,6 +507,7 @@ function toQueryInput(dto: OpenUILangChatRequestDto) {
     userContext: dto.user_context,
     wecomUserId: dto.wecom_userid,
     message: dto.message,
+    domainId: dto.domain_id,
     sessionId: dto.session_id,
     debug: dto.debug === true,
     attachmentIds: dto.attachment_ids

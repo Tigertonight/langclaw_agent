@@ -56,6 +56,53 @@ const MetricSchema = z.object({
   delta: z.union([z.string(), z.number()]).optional()
 }).passthrough();
 
+const TagSchema = z.object({
+  label: z.string().min(1),
+  value: z.union([z.string(), z.number(), z.boolean()]).optional(),
+  tone: z.string().optional(),
+  group: z.string().optional()
+}).passthrough();
+
+const BusinessBriefItemSchema = z.object({
+  label: z.string().min(1).optional(),
+  title: z.string().min(1).optional(),
+  value: z.union([z.string(), z.number(), z.boolean()]).optional(),
+  detail: z.string().optional(),
+  owner: z.string().optional(),
+  impact: z.string().optional(),
+  tone: z.string().optional()
+}).passthrough();
+
+const BusinessBriefDetailSchema = z.object({
+  component: z.string().min(1),
+  props: z.record(z.string(), z.unknown()).optional()
+}).passthrough();
+
+const ProductLaunchFormFieldSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  value: z.union([z.string(), z.number(), z.boolean(), z.null()]).optional(),
+  required: z.boolean().optional(),
+  status: z.string().optional(),
+  hint: z.string().optional(),
+  source: z.string().optional(),
+  input_type: z.enum(["text", "textarea", "select", "number", "money", "checkbox"]).optional(),
+  options: z.array(z.string()).optional()
+}).passthrough();
+
+const ProductLaunchFormSectionSchema = z.object({
+  title: z.string().min(1),
+  description: z.string().optional(),
+  fields: z.array(ProductLaunchFormFieldSchema).max(40)
+}).passthrough();
+
+const ProductLaunchActionSchema = z.object({
+  label: z.string().min(1),
+  tone: z.string().optional(),
+  disabled: z.boolean().optional(),
+  detail: z.string().optional()
+}).passthrough();
+
 const GroupSchema = z.object({
   label: z.string().min(1),
   count: z.number().int().nonnegative().optional(),
@@ -81,12 +128,36 @@ const SourceSchema = z.object({
 }).passthrough();
 
 const OpenUIComponentContracts = {
+  BusinessBriefSurface: z.object({
+    title: z.string().optional(),
+    verdict: z.string().min(1),
+    tone: z.string().optional(),
+    subtitle: z.string().optional(),
+    kpis: z.array(MetricSchema).max(8).optional(),
+    priority_items: z.array(BusinessBriefItemSchema).max(8).optional(),
+    next_actions: z.array(BusinessBriefItemSchema).max(8).optional(),
+    evidence_label: z.string().optional(),
+    boundary_label: z.string().optional(),
+    details: BusinessBriefDetailSchema.optional()
+  }).strict(),
   DataTableSurface: z.object({
     title: z.string().optional(),
     description: z.string().optional(),
     columns: z.array(DataTableColumnSchema).min(1).max(20),
     rows: z.array(z.record(z.string(), z.unknown())).max(200),
     rowCount: z.number().int().nonnegative().optional()
+  }).strict(),
+  ProductLaunchFormSurface: z.object({
+    title: z.string().optional(),
+    product_name: z.string().optional(),
+    guide: z.string().optional(),
+    status_label: z.string().optional(),
+    sections: z.array(ProductLaunchFormSectionSchema).min(1).max(8),
+    missing_items: z.array(z.string()).max(30).optional(),
+    review_notes: z.array(z.string()).max(20).optional(),
+    actions: z.array(ProductLaunchActionSchema).max(6).optional(),
+    evidence_label: z.string().optional(),
+    boundary_label: z.string().optional()
   }).strict(),
   GroupedListSurface: z.object({
     title: z.string().optional(),
@@ -100,6 +171,10 @@ const OpenUIComponentContracts = {
   MetricCardsSurface: z.object({
     title: z.string().optional(),
     metrics: z.array(MetricSchema).min(1).max(24)
+  }).strict(),
+  TagListSurface: z.object({
+    title: z.string().optional(),
+    tags: z.array(TagSchema).min(1).max(80)
   }).strict(),
   BarChartSurface: z.object({
     title: z.string().optional(),
@@ -137,7 +212,8 @@ const OpenUIComponentContracts = {
     }).passthrough()).max(12).optional(),
     columns: z.array(DataTableColumnSchema).max(20).optional(),
     rows: z.array(z.record(z.string(), z.unknown())).max(200).optional(),
-    insights: z.array(InsightSchema).max(50).optional()
+    insights: z.array(InsightSchema).max(50).optional(),
+    tags: z.array(TagSchema).max(80).optional()
   }).strict(),
   CitationDisclosure: z.object({
     sources: z.array(SourceSchema).optional()
@@ -194,10 +270,13 @@ export const BASIC_OPENUI_COMPONENT_CONTRACT_DOCS: OpenUIComponentContractDoc[] 
 ];
 
 export const OPENUI_BUSINESS_COMPONENT_CONTRACT_DOCS: OpenUIComponentContractDoc[] = [
+  { name: "BusinessBriefSurface", signature: "BusinessBriefSurface(title?, verdict, tone?, subtitle?, kpis?, priority_items?, next_actions?, evidence_label?, boundary_label?, details?)", description: "First-screen business briefing that highlights conclusion, KPIs, priorities, next actions, evidence and data boundary before detailed tables/charts." },
   { name: "DataTableSurface", signature: "DataTableSurface(title?, description?, columns: {key,label,type?}[], rows: object[], rowCount?)", description: "Structured row/column data table with text, number, date, status, or currency cells." },
+  { name: "ProductLaunchFormSurface", signature: "ProductLaunchFormSurface(title?, product_name?, guide?, status_label?, sections, missing_items?, review_notes?, actions?, evidence_label?, boundary_label?)", description: "Guided cloud product launch form for draft-only product modeling, field confirmation, review gaps, and approval preparation." },
   { name: "GroupedListSurface", signature: "GroupedListSurface(title?, groupKey?, groups: {label,count?,items?}[])", description: "Grouped summary list for segmented rows." },
   { name: "RiskListSurface", signature: "RiskListSurface(title?, risks: {id?,level?,message?,tool?,mitigated?}[])", description: "Prioritized risk/alert list." },
   { name: "MetricCardsSurface", signature: "MetricCardsSurface(title?, metrics: {key?,label,value,unit?,trend?,delta?}[])", description: "Compact KPI/metric cards." },
+  { name: "TagListSurface", signature: "TagListSurface(title?, tags: {label,value?,tone?,group?}[])", description: "Compact business labels for status, audience, boundaries, owners, and stages." },
   { name: "BarChartSurface", signature: "BarChartSurface(title?, xKey: string, yKey: string, series: object[])", description: "Minimal grouped bar chart for numeric series." },
   { name: "PieChartSurface", signature: "PieChartSurface(title?, categoryKey: string, valueKey: string, series: object[])", description: "Distribution or composition pie chart." },
   { name: "LineChartSurface", signature: "LineChartSurface(title?, xKey: string, yKey: string, series: object[])", description: "Time series or trend line chart." },

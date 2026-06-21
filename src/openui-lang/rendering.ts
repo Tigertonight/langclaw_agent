@@ -134,9 +134,12 @@ export class OpenUILangBasicHtmlRenderer implements OpenUILangRenderer<string> {
   }
 
   private registerDefaultOpenUIRenderers(): void {
+    this.openui.register("BusinessBriefSurface", (_input) => renderBusinessBriefHtml(_input.props));
+    this.openui.register("ProductLaunchFormSurface", (_input) => renderProductLaunchFormHtml(_input.props));
     this.openui.register("DataTableSurface", (_input) => renderDataTableHtml(_input.props));
     this.openui.register("RiskListSurface", (_input) => renderRiskListHtml(_input.props));
     this.openui.register("MetricCardsSurface", (_input) => renderMetricCardsHtml(_input.props));
+    this.openui.register("TagListSurface", (_input) => renderTagListHtml(_input.props));
     this.openui.register("BarChartSurface", (_input) => renderBarChartHtml(_input.props));
     this.openui.register("PieChartSurface", (_input) => renderPieChartHtml(_input.props));
     this.openui.register("LineChartSurface", (_input) => renderLineChartHtml(_input.props));
@@ -179,6 +182,46 @@ export class OpenUILangBasicHtmlRenderer implements OpenUILangRenderer<string> {
   }
 }
 
+function renderBusinessBriefHtml(props: JsonObject): string {
+  const title = escapeHtml(String(props.title ?? "业务结论"));
+  const verdict = escapeHtml(String(props.verdict ?? ""));
+  const subtitle = props.subtitle ? `<p>${escapeHtml(String(props.subtitle))}</p>` : "";
+  const kpis = Array.isArray(props.kpis) ? props.kpis.filter(isJsonObject) : [];
+  const priorityItems = Array.isArray(props.priority_items) ? props.priority_items.filter(isJsonObject) : [];
+  const nextActions = Array.isArray(props.next_actions) ? props.next_actions.filter(isJsonObject) : [];
+  const metrics = kpis.length ? renderMetricCardsHtml({ title: "关键指标", metrics: kpis.slice(0, 4) }) : "";
+  const priorities = priorityItems.length ? `<section><strong>优先处理事项</strong><ol>${priorityItems.slice(0, 4).map((item) => `<li>${escapeHtml(String(item.title ?? item.label ?? item.value ?? ""))}</li>`).join("")}</ol></section>` : "";
+  const actions = nextActions.length ? `<section><strong>后续动作</strong><ol>${nextActions.slice(0, 4).map((item, index) => `<li>${escapeHtml(cleanBusinessBriefActionTitle(String(item.title ?? item.label ?? item.detail ?? ""), index))}</li>`).join("")}</ol></section>` : "";
+  const evidence = props.evidence_label ? `<p>证据：${escapeHtml(String(props.evidence_label))}</p>` : "";
+  const boundary = props.boundary_label ? `<p>${escapeHtml(String(props.boundary_label))}</p>` : "";
+  return `<section class="openui-card openui-business-brief"><strong>${title}</strong><h3>${verdict}</h3>${subtitle}${metrics}${priorities}${actions}${evidence}${boundary}</section>`;
+}
+
+function cleanBusinessBriefActionTitle(value: string, index: number): string {
+  if (/^(下一步|行动)\s*\d+$/i.test(value.trim())) return `动作 ${index + 1}`;
+  return value;
+}
+
+function renderProductLaunchFormHtml(props: JsonObject): string {
+  const sections = Array.isArray(props.sections) ? props.sections.filter(isJsonObject) : [];
+  const missing = Array.isArray(props.missing_items) ? props.missing_items : [];
+  const actions = Array.isArray(props.actions) ? props.actions.filter(isJsonObject) : [];
+  const sectionHtml = sections.map((section) => {
+    const fields = Array.isArray(section.fields) ? section.fields.filter(isJsonObject) : [];
+    const fieldHtml = fields.map((field) => {
+      const label = escapeHtml(String(field.label ?? field.key ?? ""));
+      const value = escapeHtml(String(field.value ?? field.hint ?? "待确认"));
+      const required = field.required ? " *" : "";
+      return `<label><span>${label}${required}</span><input value="${value}" readonly></label>`;
+    }).join("");
+    return `<section><strong>${escapeHtml(String(section.title ?? "配置字段"))}</strong>${section.description ? `<p>${escapeHtml(String(section.description))}</p>` : ""}${fieldHtml}</section>`;
+  }).join("");
+  const missingHtml = missing.length ? `<section><strong>待补齐</strong><ul>${missing.slice(0, 8).map((item) => `<li>${escapeHtml(String(item))}</li>`).join("")}</ul></section>` : "";
+  const actionHtml = actions.length ? `<section><strong>后续动作</strong><ul>${actions.slice(0, 4).map((item) => `<li>${escapeHtml(String(item.label ?? item.detail ?? ""))}</li>`).join("")}</ul></section>` : "";
+  const boundary = props.boundary_label ? `<p>${escapeHtml(String(props.boundary_label))}</p>` : "";
+  return `<section class="openui-card openui-product-launch-form"><strong>${escapeHtml(String(props.title ?? "云商品上架表单"))}</strong>${props.guide ? `<p>${escapeHtml(String(props.guide))}</p>` : ""}${sectionHtml}${missingHtml}${actionHtml}${boundary}</section>`;
+}
+
 function renderDataTableHtml(props: JsonObject): string {
   const columns = Array.isArray(props.columns) ? props.columns.filter(isJsonObject) : [];
   const rows = Array.isArray(props.rows) ? props.rows.filter(isJsonObject) : [];
@@ -218,6 +261,18 @@ function renderMetricCardsHtml(props: JsonObject): string {
     return `<div class="openui-metric"><strong>${value}${unit}</strong><span>${label}</span></div>`;
   }).join("");
   return `<section class="openui-card"><strong>${title}</strong><div class="openui-metrics">${items}</div></section>`;
+}
+
+function renderTagListHtml(props: JsonObject): string {
+  const tags = Array.isArray(props.tags) ? props.tags.filter(isJsonObject) : [];
+  const title = escapeHtml(String(props.title ?? "业务标签"));
+  if (!tags.length) return `<section class="openui-card"><strong>${title}</strong><p class="openui-empty">暂无标签</p></section>`;
+  const items = tags.slice(0, 40).map((tag) => {
+    const label = escapeHtml(String(tag.label ?? "-"));
+    const value = tag.value === undefined || tag.value === null || tag.value === "" ? "" : `<strong>${escapeHtml(String(tag.value))}</strong>`;
+    return `<span class="openui-chip">${label}${value}</span>`;
+  }).join("");
+  return `<section class="openui-card"><strong>${title}</strong><div class="openui-tags">${items}</div></section>`;
 }
 
 function renderBarChartHtml(props: JsonObject): string {
@@ -274,6 +329,7 @@ function renderInsightsHtml(props: JsonObject): string {
 function renderAnalyticsDashboardHtml(props: JsonObject): string {
   const parts: string[] = [];
   if (Array.isArray(props.metrics) && props.metrics.length) parts.push(renderMetricCardsHtml({ title: "关键指标", metrics: props.metrics }));
+  if (Array.isArray(props.tags) && props.tags.length) parts.push(renderTagListHtml({ title: "业务标签", tags: props.tags }));
   if (Array.isArray(props.charts)) {
     for (const chart of props.charts.filter(isJsonObject).slice(0, 4)) {
       const kind = String(chart.kind ?? "").toLowerCase();

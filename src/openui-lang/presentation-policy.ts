@@ -3,6 +3,8 @@ import type { NormalizedOpenUIOutput } from "./output-normalizer.js";
 
 export type OpenUIPresentationIntent = "none" | "table" | "metrics" | "risk_list" | "grouped_list" | "form" | "chart" | "insights" | "analytics" | "sources";
 export type OpenUIPresentationSurfaceKind =
+  | "BusinessBriefSurface"
+  | "ProductLaunchFormSurface"
   | "DataTableSurface"
   | "MetricCardsSurface"
   | "RiskListSurface"
@@ -42,11 +44,11 @@ export const OPENUI_PRESENTATION_POLICY_CAPABILITIES: JsonObject = {
     { output_shape: "rows[] with grouping hint", intent: "grouped_list", surface: "GroupedListSurface" },
     { output_shape: "sources[]", intent: "sources", surface: "CitationDisclosure" }
   ],
-  explicit_hints: ["表格", "列表", "卡片", "指标", "图表", "柱状图", "饼图", "折线图", "趋势", "分布", "排行", "分析", "统计", "明细", "风险", "分组", "引用"],
+  explicit_hints: ["表格", "列表", "卡片", "指标", "图表", "柱状图", "饼图", "折线图", "趋势", "分布", "排行", "分析", "统计", "明细", "风险", "分组", "引用", "经营", "报价", "估算", "套餐", "上架", "审批", "回滚", "续约"],
   fallback: "markdown"
 };
 
-const STRUCTURED_HINTS = /(表格|列表|看板|面板|卡片|图表|柱状图|条形图|饼图|折线图|趋势图|图形|业绩|KPI|kpi|图标|进度|状态|分组|统计|分析|指标|排行|分布|构成|明细|汇总|日报|审批|表单|填写|提交|引用|来源|风险)/;
+const STRUCTURED_HINTS = /(表格|列表|看板|面板|卡片|图表|柱状图|条形图|饼图|折线图|趋势图|图形|业绩|KPI|kpi|图标|进度|状态|分组|统计|分析|指标|排行|分布|构成|明细|汇总|日报|审批|表单|填写|提交|引用|来源|风险|经营|报价|估算|套餐|上架|发布|回滚|续约|合同|账单|询价|方案)/;
 
 export function decideOpenUIPresentation(input: {
   message?: unknown;
@@ -101,7 +103,7 @@ export function decideOpenUIPresentation(input: {
     if (/(指标|业绩|统计|汇总|同比|环比|KPI|kpi)/.test(text) && rows.length <= 6) {
       return decision("metrics", "MetricCardsSurface", "metric hint with compact rows", "medium", "explicit_hint");
     }
-    if (rows.some(isRiskRow) || /(风险|预警|异常|逾期|阻塞)/.test(text)) {
+    if (rows.some(isRiskRow) || /(风险|预警|异常|逾期|阻塞|审批|回滚|上架|发布|续约)/.test(text)) {
       return decision("risk_list", "RiskListSurface", "risk-shaped rows or risk hint", "high", rows.some(isRiskRow) ? "output_shape" : "explicit_hint");
     }
     if (/(分组|按.+组)/.test(text)) {

@@ -8,6 +8,7 @@ export interface OpenUILangClientCapabilitiesDto extends JsonObject {
 export interface OpenUILangChatRequestDto extends JsonObject {
   user_id: string;
   message: string;
+  domain_id?: string;
   session_id?: string;
   wecom_userid?: string;
   user_context?: JsonObject;
@@ -38,6 +39,7 @@ export function parseOpenUILangChatRequest(body: Record<string, unknown>): OpenU
   return {
     user_id: body.user_id,
     message: body.message,
+    domain_id: typeof body.domain_id === "string" ? body.domain_id : typeof body.selected_domain === "string" ? body.selected_domain : undefined,
     session_id: typeof body.session_id === "string" ? body.session_id : undefined,
     wecom_userid: typeof body.wecom_userid === "string" ? body.wecom_userid : undefined,
     user_context: isJsonObject(body.user_context) ? normalizeJsonObject(body.user_context) : undefined,
