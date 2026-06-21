@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>云商品平台产品经理工作手册 · 首屏样张</title>
+    <style>
+      :root {
+        --ra-color-bg: #fbfaf7;
+        --ra-color-paper: #fffefb;
+        --ra-color-fg: #1f2328;
+        --ra-color-muted: #6e7378;
+        --ra-color-line: #d8d2c2;
+        --ra-color-line-soft: #ebe6da;
+        --ra-color-accent: #256d85;
+        --ra-color-risk: #a84532;
+        --ra-color-warn: #9a6a10;
+        --ra-color-ok: #4f7b54;
+        --ra-font-body: ui-serif, "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+        --ra-font-ui: ui-sans-serif, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+        --ra-space-1: 0.25rem;
+        --ra-space-2: 0.5rem;
+        --ra-space-3: 0.75rem;
+        --ra-space-4: 1rem;
+        --ra-space-5: 1.5rem;
+        --ra-space-6: 2rem;
+        --ra-space-7: 3rem;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--ra-color-bg);
+        color: var(--ra-color-fg);
+        font-family: var(--ra-font-body);
+        font-size: 17px;
+        line-height: 1.72;
+      }
+
+      a {
+        color: var(--ra-color-accent);
+        text-decoration-thickness: 1px;
+        text-underline-offset: 0.18em;
+      }
+
+      .cover-shell {
+        min-height: 100svh;
+        display: grid;
+        place-items: center;
+        padding: clamp(1.5rem, 4vw, 4rem);
+      }
+
+      .cover {
+        width: min(100%, 72rem);
+        min-height: min(42rem, calc(100svh - 6rem));
+        background: var(--ra-color-paper);
+        border: 1px solid var(--ra-color-line);
+        display: grid;
+        grid-template-columns: minmax(22rem, 0.9fr) minmax(28rem, 1.1fr);
+        position: relative;
+      }
+
+      .cover-title {
+        padding: clamp(2.4rem, 5vw, 4.6rem);
+        border-right: 1px solid var(--ra-color-line);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-width: 0;
+      }
+
+      .cover-kicker,
+      .eyebrow,
+      .meta,
+      .toc-title,
+      .tag,
+      th {
+        font-family: var(--ra-font-ui);
+        letter-spacing: 0;
+      }
+
+      .cover-kicker {
+        color: var(--ra-color-muted);
+        font-size: 0.78rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .cover h1 {
+        margin: 0;
+        font-size: clamp(2.5rem, 5vw, 4.8rem);
+        line-height: 1.02;
+        font-weight: 500;
+      }
+
+      .cover-subtitle {
+        margin-top: 1.35rem;
+        max-width: 28rem;
+        color: var(--ra-color-muted);
+        font-size: clamp(0.98rem, 1.35vw, 1.18rem);
+        line-height: 1.68;
+      }
+
+      .cover-use {
+        margin-top: var(--ra-space-6);
+        padding-top: var(--ra-space-4);
+        border-top: 1px solid var(--ra-color-line-soft);
+        font-family: var(--ra-font-ui);
+        color: var(--ra-color-muted);
+        font-size: 0.84rem;
+        line-height: 1.65;
+      }
+
+      .cover-map {
+        position: relative;
+        padding: clamp(2rem, 4vw, 4rem);
+        display: grid;
+        align-items: center;
+      }
+
+      .cover-flow {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: var(--ra-space-3);
+        align-items: stretch;
+      }
+
+      .cover-flow-card {
+        min-height: 6rem;
+        border: 1px solid var(--ra-color-line);
+        padding: var(--ra-space-3);
+        background: var(--ra-color-paper);
+        font-family: var(--ra-font-ui);
+      }
+
+      .cover-flow-card strong {
+        display: block;
+        font-size: 1rem;
+        margin-bottom: 0.35rem;
+        color: var(--ra-color-fg);
+      }
+
+      .cover-flow-card span {
+        display: block;
+        color: var(--ra-color-muted);
+        font-size: 0.8rem;
+        line-height: 1.5;
+      }
+
+      .cover-flow-card.is-core {
+        border-color: var(--ra-color-accent);
+        background: color-mix(in srgb, var(--ra-color-accent) 7%, var(--ra-color-paper));
+      }
+
+      .cover-loop-note {
+        margin-top: var(--ra-space-4);
+        border-top: 1px solid var(--ra-color-line-soft);
+        padding-top: var(--ra-space-4);
+        color: var(--ra-color-muted);
+        font-family: var(--ra-font-ui);
+        font-size: 0.86rem;
+        line-height: 1.6;
+      }
+
+      .page {
+        display: grid;
+        grid-template-columns: minmax(12rem, 16rem) minmax(0, 58rem);
+        gap: var(--ra-space-7);
+        max-width: 84rem;
+        margin: 0 auto;
+        padding: var(--ra-space-7) var(--ra-space-6);
+      }
+
+      .toc {
+        position: sticky;
+        top: 2rem;
+        align-self: start;
+        max-height: calc(100svh - 4rem);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        font-family: var(--ra-font-ui);
+        font-size: 0.86rem;
+        color: var(--ra-color-muted);
+        border-right: 1px solid var(--ra-color-line-soft);
+        padding-right: var(--ra-space-5);
+        scrollbar-width: thin;
+        scrollbar-color: var(--ra-color-line) transparent;
+      }
+
+      .toc::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .toc::-webkit-scrollbar-thumb {
+        background: var(--ra-color-line);
+        border-radius: 999px;
+      }
+
+      .toc-title {
+        color: var(--ra-color-fg);
+        font-weight: 650;
+        margin-bottom: var(--ra-space-3);
+      }
+
+      .toc ol {
+        margin: 0;
+        padding-left: 1.25rem;
+      }
+
+      .toc li {
+        margin: 0.55rem 0;
+      }
+
+      main {
+        min-width: 0;
+      }
+
+      .hero {
+        padding-bottom: var(--ra-space-6);
+        border-bottom: 1px solid var(--ra-color-line);
+      }
+
+      .eyebrow {
+        color: var(--ra-color-accent);
+        font-size: 0.82rem;
+        margin-bottom: var(--ra-space-3);
+      }
+
+      h1,
+      h2,
+      h3 {
+        font-weight: 500;
+        line-height: 1.18;
+        margin: 0;
+      }
+
+      .hero h1 {
+        font-size: clamp(2.2rem, 4vw, 3.4rem);
+        max-width: 50rem;
+      }
+
+      .subtitle {
+        margin: var(--ra-space-4) 0 0;
+        color: var(--ra-color-muted);
+        font-size: 1.15rem;
+        max-width: 45rem;
+      }
+
+      .meta {
+        margin-top: var(--ra-space-4);
+        color: var(--ra-color-muted);
+        font-size: 0.85rem;
+      }
+
+      .lead {
+        margin: var(--ra-space-6) 0;
+        font-size: 1.22rem;
+        line-height: 1.75;
+        color: var(--ra-color-fg);
+      }
+
+      .summary {
+        border-top: 1px solid var(--ra-color-line);
+        border-bottom: 1px solid var(--ra-color-line);
+        padding: var(--ra-space-5) 0;
+        margin-bottom: var(--ra-space-7);
+      }
+
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: var(--ra-space-4);
+      }
+
+      .summary-item {
+        border-left: 1px solid var(--ra-color-line);
+        padding-left: var(--ra-space-3);
+      }
+
+      .summary-item strong {
+        display: block;
+        font-size: 1.05rem;
+        margin-bottom: 0.25rem;
+      }
+
+      .summary-item span {
+        color: var(--ra-color-muted);
+        font-size: 0.92rem;
+        font-family: var(--ra-font-ui);
+        line-height: 1.55;
+      }
+
+      section {
+        margin: var(--ra-space-7) 0;
+      }
+
+      .section-head {
+        display: grid;
+        grid-template-columns: 3rem minmax(0, 1fr);
+        gap: var(--ra-space-4);
+        align-items: baseline;
+        margin-bottom: var(--ra-space-5);
+      }
+
+      .index {
+        font-family: var(--ra-font-ui);
+        color: var(--ra-color-accent);
+        font-size: 0.96rem;
+      }
+
+      h2 {
+        font-size: 1.85rem;
+      }
+
+      h3 {
+        font-size: 1.2rem;
+        margin: var(--ra-space-6) 0 var(--ra-space-3);
+      }
+
+      p {
+        margin: 1rem 0;
+      }
+
+      .raw {
+        margin: var(--ra-space-6) 0;
+        border-top: 1px solid var(--ra-color-line);
+        border-bottom: 1px solid var(--ra-color-line);
+        padding: var(--ra-space-5) 0;
+      }
+
+      .raw-title {
+        font-family: var(--ra-font-ui);
+        color: var(--ra-color-muted);
+        font-size: 0.86rem;
+        margin-bottom: var(--ra-space-4);
+      }
+
+      .learning-rail {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: var(--ra-space-3);
+        align-items: stretch;
+      }
+
+      .rail-step {
+        border-left: 2px solid var(--ra-color-line);
+        padding: var(--ra-space-3);
+        min-height: 9rem;
+        position: relative;
+      }
+
+      .rail-step::before {
+        content: "";
+        position: absolute;
+        top: 1rem;
+        left: -5px;
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--ra-color-accent);
+      }
+
+      .rail-step:nth-child(4)::before {
+        background: var(--ra-color-ok);
+      }
+
+      .rail-step strong {
+        display: block;
+        font-size: 1rem;
+        margin-bottom: var(--ra-space-2);
+      }
+
+      .rail-step span {
+        display: block;
+        color: var(--ra-color-muted);
+        font-family: var(--ra-font-ui);
+        font-size: 0.84rem;
+        line-height: 1.6;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: var(--ra-space-5) 0;
+        font-size: 0.96rem;
+      }
+
+      th,
+      td {
+        border-top: 1px solid var(--ra-color-line-soft);
+        padding: 0.72rem 0.6rem;
+        vertical-align: top;
+        text-align: left;
+      }
+
+      th {
+        color: var(--ra-color-muted);
+        font-size: 0.8rem;
+        font-weight: 650;
+      }
+
+      .tag {
+        display: inline-block;
+        border: 1px solid var(--ra-color-line);
+        padding: 0.05rem 0.42rem;
+        border-radius: 999px;
+        color: var(--ra-color-muted);
+        font-size: 0.75rem;
+      }
+
+      .aside {
+        border-left: 2px solid var(--ra-color-accent);
+        padding: var(--ra-space-3) var(--ra-space-4);
+        margin: var(--ra-space-5) 0;
+        background: color-mix(in srgb, var(--ra-color-accent) 4%, transparent);
+      }
+
+      .aside strong {
+        display: block;
+        font-family: var(--ra-font-ui);
+        margin-bottom: 0.25rem;
+      }
+
+      .colophon {
+        margin-top: var(--ra-space-7);
+        padding-top: var(--ra-space-4);
+        border-top: 1px solid var(--ra-color-line-soft);
+        color: var(--ra-color-muted);
+        font-family: var(--ra-font-ui);
+        font-size: 0.78rem;
+      }
+
+      @media (max-width: 1000px) {
+        .page {
+          display: block;
+          padding: var(--ra-space-5);
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+          overflow: visible;
+          border-right: 0;
+          border-bottom: 1px solid var(--ra-color-line-soft);
+          padding: 0 0 var(--ra-space-4);
+          margin-bottom: var(--ra-space-6);
+        }
+
+        .summary-grid,
+        .learning-rail {
+          grid-template-columns: 1fr;
+        }
+
+        .cover {
+          grid-template-columns: 1fr;
+          min-height: auto;
+        }
+
+        .cover-title {
+          border-right: 0;
+          border-bottom: 1px solid var(--ra-color-line);
+        }
+
+        .cover-flow {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media print {
+        .cover-shell {
+          break-after: page;
+        }
+
+        .toc {
+          position: static;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="cover-shell">
+      <article class="cover" aria-label="文章封面">
+        <div class="cover-title">
+          <div>
+            <div class="cover-kicker">云商品平台学习手册 · 第一版</div>
+            <h1>云商品平台<br />产品经理<br />工作手册</h1>
+            <p class="cover-subtitle">云商品平台解决的是从技术能力到收入、交付、账单和续约的经营闭环。本手册面向产品经理，沉淀主数据、商品化、渠道、销售、财务、稳定性和经营治理方法。</p>
+          </div>
+          <div class="cover-use">建议用法：先看执行摘要建立主线，再按 4 大篇章查阅作业卡、机制图、案例差异和附录模板。</div>
+        </div>
+        <div class="cover-map" aria-hidden="true">
+          <div class="cover-flow">
+            <div class="cover-flow-card"><strong>技术能力</strong><span>资源、模型、存储、网络或平台服务。</span></div>
+            <div class="cover-flow-card"><strong>产品定义</strong><span>目标客户、核心场景、能力边界和服务承诺。</span></div>
+            <div class="cover-flow-card is-core"><strong>商品主数据</strong><span>售卖方案、规格、计量、价格和权益规则。</span></div>
+            <div class="cover-flow-card"><strong>渠道发布</strong><span>官网、控制台、云市场、销售和客服视图。</span></div>
+            <div class="cover-flow-card"><strong>交易交付</strong><span>订单、合同、计量、账单、发票和交付状态。</span></div>
+            <div class="cover-flow-card"><strong>经营复盘</strong><span>目标达成、毛利、风险、续约和模板沉淀。</span></div>
+          </div>
+          <div class="cover-loop-note">阅读主线：先判断能力是否能产品化，再补齐商品主数据，最后通过渠道、交易、账单和经营复盘形成闭环。</div>
+        </div>
+      </article>
+    </div>
+
+    <div class="page">
+      <nav class="toc" aria-label="目录">
+        <div class="toc-title">目录预览</div>
+        <ol>
+          <li>第一篇：从技术能力到可售产品</li>
+          <li>第二篇：从商品主数据到多渠道交易</li>
+          <li>第三篇：从销售交付到经营治理</li>
+          <li>第四篇：从组织协同到平台化 Agent</li>
+        </ol>
+      </nav>
+
+      <main>
+        <header class="hero">
+          <div class="eyebrow">云商品平台 · 产品经理工作手册</div>
+          <h1>从技术能力到可售云商品，再到经营闭环</h1>
+          <p class="subtitle">
+            本手册帮助产品经理把“能做的技术能力”转成“可购买、可交付、可计量、可结算、可续约”的云商品，并让上下游围绕同一套事实协作。
+          </p>
+          <div class="meta">资料来源：云商品工作手册 · 版本：第一版 · 生成日期：2026-06-21</div>
+        </header>
+
+        <p class="lead">
+          云商品平台要解决一组连续问题：能力边界是否清楚，能否稳定交付，是否能准确计量和合理定价，官网、控制台、销售和账单口径是否一致，财务、销售、运维和客户能否基于同一套事实协作。本手册按项目推进顺序组织：先建立概念边界，再进入主数据和生命周期，最后回到经营、异常、续约和平台实现。
+        </p>
+
+        <div class="summary" aria-label="全书主线">
+          <div class="summary-grid">
+            <div class="summary-item">
+              <strong>产品定义清楚</strong>
+              <span>目标客户、能力边界、不可承诺项、成本、服务等级承诺和交付能力要先说清。</span>
+            </div>
+            <div class="summary-item">
+              <strong>商品主数据统一</strong>
+              <span>商品、售卖方案、可购买规格、计量项、价格规则和权益规则，是后续交易和账单的骨架。</span>
+            </div>
+            <div class="summary-item">
+              <strong>交易经营闭环</strong>
+              <span>官网、控制台、云市场、销售报价和客服口径必须来自同一事实源。</span>
+            </div>
+            <div class="summary-item">
+              <strong>组织协同可治理</strong>
+              <span>成交规模、毛利、稳定性、客户争议、续约风险和复盘模板共同决定业务健康度。</span>
+            </div>
+          </div>
+        </div>
+
+        <section id="section-01">
+          <div class="section-head">
+            <div class="index">01</div>
+            <h2>阅读地图与最小产出包</h2>
+          </div>
+
+          <p>
+            这本手册适合两种读法。第一种是快速建立全局感：先读术语、主数据关系和三条案例，理解“能力、产品、商品、交易、经营”如何连成一条线。第二种是项目实战读法：当你正在推进一个商品上架，就按阶段查阅产品化、商品建模、渠道发布、报价检查、稳定性门禁、发布后巡检和复盘模板。
+          </p>
+
+          <div class="raw">
+            <div class="raw-title">阅读路径图 · 从速读到项目实战</div>
+            <div class="learning-rail">
+              <div class="rail-step">
+                <strong>30 分钟速读</strong>
+                <span>先读术语速查、基础概念、生命周期作业卡和三条案例，建立业务闭环感。</span>
+              </div>
+              <div class="rail-step">
+                <strong>2 小时入门</strong>
+                <span>精读主数据、产品化、财务、稳定性保障、客户解释，再试填一个虚拟商品。</span>
+              </div>
+              <div class="rail-step">
+                <strong>新人第一周</strong>
+                <span>按日完成概念复述、产品化定义、字段消费图、报价清单和巡检表。</span>
+              </div>
+              <div class="rail-step">
+                <strong>项目实战</strong>
+                <span>围绕真实商品，交付产品定义、商品模型、报价检查、巡检表和客户解释话术。</span>
+              </div>
+            </div>
+          </div>
+
+          <h3>产品经理最小产出包</h3>
+          <p>
+            新人读完后，不要求立刻写出完整产品需求文档，但至少要能拿出一组可以被上下游评审的工作件。这组产出用于让财务、稳定性保障、法务、销售、客服和研发在同一张事实表上讨论风险。
+          </p>
+
+          <table>
+            <thead>
+              <tr>
+                <th>工作件</th>
+                <th>要回答的问题</th>
+                <th>主要校准对象</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>一页产品化定义</td>
+                <td>目标客户是谁，能力边界是什么，哪些事项不能承诺，成本和服务等级承诺是否成立。</td>
+                <td><span class="tag">产品经理</span> <span class="tag">研发</span> <span class="tag">稳定性保障</span></td>
+              </tr>
+              <tr>
+                <td>一张商品模型图</td>
+                <td>商品、售卖方案、可购买规格、计量项、价格规则、权益规则、可售地域和订阅关系如何关联。</td>
+                <td><span class="tag">平台研发</span> <span class="tag">商品产品经理</span></td>
+              </tr>
+              <tr>
+                <td>一份报价前检查清单</td>
+                <td>价格、折扣、容量、服务等级承诺、合同、权益和账单解释是否能进入正式报价。</td>
+                <td><span class="tag">销售</span> <span class="tag">财务</span> <span class="tag">法务</span></td>
+              </tr>
+              <tr>
+                <td>一份发布后巡检表</td>
+                <td>官网、控制台、订单、交付、计量、账单、客服、告警和客户反馈是否正常。</td>
+                <td><span class="tag">稳定性保障</span> <span class="tag">客服</span> <span class="tag">运营</span></td>
+              </tr>
+              <tr>
+                <td>一份客户解释话术</td>
+                <td>估算与正式报价差异、额度过期、失败扣费、合同价差异、地域不可售等问题如何解释。</td>
+                <td><span class="tag">销售</span> <span class="tag">客服</span> <span class="tag">客户成功</span></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="aside">
+            <strong>本章核心判断</strong>
+            本章优先解决三个问题：下一步该交付什么，找谁确认，遇到哪些风险需要暂停推进。
+          </div>
+
+          <h3>新手产品经理的场景入口</h3>
+          <p>
+            如果销售催你今天给客户报价，先判断这是估算、草稿还是正式报价；如果研发说能力已经具备技术条件，先做产品化就绪评审；如果运营要做大促活动页，先检查价格、资源包、容量、限流、常见问题说明和禁承诺项；如果客户投诉账单高于预估，先核对订单、计量、价格、资源包抵扣和合同版本。
+          </p>
+        </section>
+
+      </main>
+    </div>
+  </body>
+</html>

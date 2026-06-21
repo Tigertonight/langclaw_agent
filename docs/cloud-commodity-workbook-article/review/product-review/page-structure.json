@@ -1,0 +1,190 @@
+{
+  "totalText": 53486,
+  "sections": [
+    {
+      "id": "s01",
+      "title": "阅读地图与最小产出包",
+      "textLen": 383,
+      "diagrams": 1,
+      "tables": 1
+    },
+    {
+      "id": "s02",
+      "title": "概念边界：能力、产品、商品",
+      "textLen": 307,
+      "diagrams": 1,
+      "tables": 1
+    },
+    {
+      "id": "s03",
+      "title": "产品化定义与就绪评审",
+      "textLen": 236,
+      "diagrams": 0,
+      "tables": 1
+    },
+    {
+      "id": "s04",
+      "title": "商品主数据模型",
+      "textLen": 251,
+      "diagrams": 1,
+      "tables": 1
+    },
+    {
+      "id": "s05",
+      "title": "主数据治理与血缘",
+      "textLen": 347,
+      "diagrams": 1,
+      "tables": 1
+    },
+    {
+      "id": "s06",
+      "title": "售卖方案、规格、计量和价格设计",
+      "textLen": 228,
+      "diagrams": 0,
+      "tables": 1
+    },
+    {
+      "id": "s07",
+      "title": "套餐型产品与权益治理",
+      "textLen": 202,
+      "diagrams": 0,
+      "tables": 1
+    },
+    {
+      "id": "s08",
+      "title": "产品生命周期全流程",
+      "textLen": 307,
+      "diagrams": 1,
+      "tables": 1
+    },
+    {
+      "id": "s09",
+      "title": "渠道发布与上下游协同",
+      "textLen": 267,
+      "diagrams": 1,
+      "tables": 1
+    },
+    {
+      "id": "s10",
+      "title": "上市打法、销售方案与报价前检查",
+      "textLen": 209,
+      "diagrams": 0,
+      "tables": 1
+    },
+    {
+      "id": "s11",
+      "title": "财务商业化与经营口径",
+      "textLen": 289,
+      "diagrams": 1,
+      "tables": 1
+    },
+    {
+      "id": "s12",
+      "title": "稳定性上架门禁",
+      "textLen": 270,
+      "diagrams": 1,
+      "tables": 1
+    },
+    {
+      "id": "s13",
+      "title": "客户自助购买与售后解释",
+      "textLen": 191,
+      "diagrams": 0,
+      "tables": 1
+    },
+    {
+      "id": "s14",
+      "title": "异常链路、反向链路与治理",
+      "textLen": 242,
+      "diagrams": 1,
+      "tables": 1
+    },
+    {
+      "id": "s15",
+      "title": "发布后巡检、续约与客户成功",
+      "textLen": 191,
+      "diagrams": 0,
+      "tables": 1
+    },
+    {
+      "id": "s16",
+      "title": "组织层级、指标与外部客户场景",
+      "textLen": 200,
+      "diagrams": 0,
+      "tables": 1
+    },
+    {
+      "id": "s17",
+      "title": "平台实现视角：领域化的 Agent 系统",
+      "textLen": 358,
+      "diagrams": 1,
+      "tables": 1
+    },
+    {
+      "id": "s18",
+      "title": "三条完整案例",
+      "textLen": 370,
+      "diagrams": 1,
+      "tables": 1
+    },
+    {
+      "id": "s19",
+      "title": "学习成果验收与可复制模板",
+      "textLen": 192,
+      "diagrams": 0,
+      "tables": 1
+    },
+    {
+      "id": "s20",
+      "title": "附录：详细章节与可复制模板",
+      "textLen": 178,
+      "diagrams": 0,
+      "tables": 1
+    }
+  ],
+  "overflow": [
+    {
+      "tag": "DIV",
+      "cls": "diagram-node",
+      "text": "01技术能力资源、模型、算法或服务能力。",
+      "sw": 315,
+      "cw": 299
+    },
+    {
+      "tag": "DIV",
+      "cls": "diagram-node",
+      "text": "02产品定义目标客户、核心场景、能力边界和服务承诺。",
+      "sw": 315,
+      "cw": 299
+    },
+    {
+      "tag": "DIV",
+      "cls": "diagram-node",
+      "text": "01容量地域资源池和可售范围。",
+      "sw": 189,
+      "cw": 174
+    },
+    {
+      "tag": "DIV",
+      "cls": "diagram-node",
+      "text": "02限流峰值保护和大促策略。",
+      "sw": 189,
+      "cw": 174
+    },
+    {
+      "tag": "DIV",
+      "cls": "diagram-node",
+      "text": "03告警失败率、队列、延迟阈值。",
+      "sw": 189,
+      "cw": 174
+    },
+    {
+      "tag": "DIV",
+      "cls": "diagram-node",
+      "text": "04灰度按客户、地域和渠道放量。",
+      "sw": 189,
+      "cw": 174
+    }
+  ],
+  "svgCount": 0
+}

@@ -1,0 +1,263 @@
+[
+  {
+    "title": "云商品平台产品工作手册",
+    "subtitle": "从技术能力、商品主数据到经营闭环的产品方法论",
+    "section": "总览",
+    "type": "cover",
+    "bullets": [
+      "面向云厂商商品平台建设",
+      "覆盖产品化、商品化、发布、销售、交付、经营治理",
+      "沉淀为可复用的 PM 工作手册"
+    ],
+    "diagram": "loop",
+    "file": "slide-01.png",
+    "imagegenPrompt": "Use case: productivity-visual. Asset type: 16:9 presales solution deck slide. Topic: 云商品平台产品工作手册. Style: premium enterprise cloud SaaS consulting deck, white soft-gray background, thin blue-green business diagrams, clear negative space, no logos, no watermark."
+  },
+  {
+    "title": "为什么需要一套云商品工作手册",
+    "subtitle": "云商品不是页面上架，而是跨系统、跨角色、跨经营口径的协同工程",
+    "section": "业务背景",
+    "bullets": [
+      "研发能力需要被定义为可售产品",
+      "商品主数据要连接渠道、订单、账单和合同",
+      "财务、稳定性、销售和客户成功需要同一套事实"
+    ],
+    "diagram": "problem",
+    "file": "slide-02.png",
+    "imagegenPrompt": "Use case: productivity-visual. Asset type: 16:9 presales solution deck slide. Topic: 为什么需要一套云商品工作手册. Style: premium enterprise cloud SaaS consulting deck, white soft-gray background, thin blue-green business diagrams, clear negative space, no logos, no watermark."
+  },
+  {
+    "title": "能力、产品、商品的边界",
+    "subtitle": "先分清三层对象，再谈商品化和规模化经营",
+    "section": "基础概念",
+    "bullets": [
+      "能力：底层资源、模型或服务能力",
+      "产品：面向客户场景的边界和承诺",
+      "商品：可订购、计量、定价、开票和续约的商业对象"
+    ],
+    "diagram": "layers",
+    "file": "slide-03.png",
+    "imagegenPrompt": "Use case: productivity-visual. Asset type: 16:9 presales solution deck slide. Topic: 能力、产品、商品的边界. Style: premium enterprise cloud SaaS consulting deck, white soft-gray background, thin blue-green business diagrams, clear negative space, no logos, no watermark."
+  },
+  {
+    "title": "产品化定义前置",
+    "subtitle": "判断一个能力是否具备进入商品化流程的条件",
+    "section": "产品化",
+    "bullets": [
+      "明确目标客户和核心场景",
+      "定义能力边界和不可承诺项",
+      "准备成本输入、服务等级承诺和交付物"
+    ],
+    "diagram": "gate",
+    "file": "slide-04.png",
+    "imagegenPrompt": "Use case: productivity-visual. Asset type: 16:9 presales solution deck slide. Topic: 产品化定义前置. Style: premium enterprise cloud SaaS consulting deck, white soft-gray background, thin blue-green business diagrams, clear negative space, no logos, no watermark."
+  },
+  {
+    "title": "商品主数据模型",
+    "subtitle": "把商品、售卖方案、规格、计量、价格和权益连成交易骨架",
+    "section": "主数据",
+    "bullets": [
+      "商品主对象回答“卖什么”",
+      "售卖方案回答“怎么卖”",
+      "计量和价格把使用事实转成金额"
+    ],
+    "diagram": "hub",
+    "file": "slide-05.png",
+    "imagegenPrompt": "Use case: productivity-visual. Asset type: 16:9 presales solution deck slide. Topic: 商品主数据模型. Style: premium enterprise cloud SaaS consulting deck, white soft-gray background, thin blue-green business diagrams, clear negative space, no logos, no watermark."
+  },
+  {
+    "title": "主数据治理与血缘",
+    "subtitle": "字段从哪里来、谁维护、谁消费、变更影响谁",
+    "section": "主数据治理",
+    "bullets": [
+      "高风险字段需要归属、审批和留痕",
+      "官网、控制台、销售、账单消费同一事实源",
+      "字段变更先做影响分析，再做渠道同步"
+    ],
+    "diagram": "lineage",
+    "file": "slide-06.png",
+    "imagegenPrompt": "Use case: productivity-visual. Asset type: 16:9 presales solution deck slide. Topic: 主数据治理与血缘. Style: premium enterprise cloud SaaS consulting deck, white soft-gray background, thin blue-green business diagrams, clear negative space, no logos, no watermark."
+  },
+  {
+    "title": "售卖方案、规格、计量、价格",
+    "subtitle": "商业包装必须和可计量、可结算、可解释的规则一致",
+    "section": "商业包装",
+    "bullets": [
+      "售卖方案定义购买方式",
+      "可购买规格定义客户选择",
+      "计量项和价格规则支撑账单解释"
+    ],
+    "diagram": "chain",
+    "file": "slide-07.png",
+    "imagegenPrompt": "Use case: productivity-visual. Asset type: 16:9 presales solution deck slide. Topic: 售卖方案、规格、计量、价格. Style: premium enterprise cloud SaaS consulting deck, white soft-gray background, thin blue-green business diagrams, clear negative space, no logos, no watermark."
+  },
+  {
+    "title": "套餐型产品与权益治理",
+    "subtitle": "额度发放、消耗顺序、过期、退订和超额确认是核心风险点",
+    "section": "权益治理",
+    "bullets": [
+      "权益规则影响客户体验和毛利",
+      "超额付费需要二次确认和账单解释",
+      "退订、退款、过期必须提前定义"
+    ],
+    "diagram": "entitlement",
+    "file": "slide-08.png",
+    "imagegenPrompt": "Use case: productivity-visual. Asset type: 16:9 presales solution deck slide. Topic: 套餐型产品与权益治理. Style: premium enterprise cloud SaaS consulting deck, white soft-gray background, thin blue-green business diagrams, clear negative space, no logos, no watermark."
+  },
+  {
+    "title": "产品生命周期全流程",
+    "subtitle": "从产品化到发布、交付、巡检、续约和复盘",
+    "section": "生命周期",
+    "bullets": [
+      "产品化：定义客户、边界、成本和承诺",
+      "商品化：补齐主数据、价格和权益",
+      "经营闭环：巡检、续约、复盘和模板沉淀"
+    ],
+    "diagram": "swimlane",
+    "file": "slide-09.png",
+    "imagegenPrompt": "Use case: productivity-visual. Asset type: 16:9 presales solution deck slide. Topic: 产品生命周期全流程. Style: premium enterprise cloud SaaS consulting deck, white soft-gray background, thin blue-green business diagrams, clear negative space, no logos, no watermark."
+  },
+  {
+    "title": "渠道发布与上下游协同",
+    "subtitle": "一套商品主数据，投射到官网、控制台、云市场、销售和客服",
+    "section": "渠道发布",
+    "bullets": [
+      "不同渠道展示不同字段，但必须来自同一事实源",
+      "禁展示项和禁承诺项要前置控制",
+      "渠道发布后要做一致性巡检"
+    ],
+    "diagram": "channels",
+    "file": "slide-10.png",
+    "imagegenPrompt": "Use case: productivity-visual. Asset type: 16:9 presales solution deck slide. Topic: 渠道发布与上下游协同. Style: premium enterprise cloud SaaS consulting deck, white soft-gray background, thin blue-green business diagrams, clear negative space, no logos, no watermark."
+  },
+  {
+    "title": "上市打法与销售方案",
+    "subtitle": "把商品带到目标行业、预算结构和客户成交路径中",
+    "section": "上市与销售",
+    "bullets": [
+      "明确目标客户、行业场景和预算",
+      "组合计算、存储、数据库、网络和 AI 服务",
+      "正式报价前确认价格、容量、服务承诺和合同边界"
+    ],
+    "diagram": "solution",
+    "file": "slide-11.png",
+    "imagegenPrompt": "Use case: productivity-visual. Asset type: 16:9 presales solution deck slide. Topic: 上市打法与销售方案. Style: premium enterprise cloud SaaS consulting deck, white soft-gray background, thin blue-green business diagrams, clear negative space, no logos, no watermark."
+  },
+  {
+    "title": "财务商业化与经营口径",
+    "subtitle": "成交规模不等于健康收入，毛利和收入确认要同步看",
+    "section": "财务经营",
+    "bullets": [
+      "成交规模、净收入、毛利率、递延收入分开看",
+      "免费额度、资源包和折扣可能影响毛利",
+      "财务审批边界要进入报价前检查"
+    ],
+    "diagram": "finance",
+    "file": "slide-12.png",
+    "imagegenPrompt": "Use case: productivity-visual. Asset type: 16:9 presales solution deck slide. Topic: 财务商业化与经营口径. Style: premium enterprise cloud SaaS consulting deck, white soft-gray background, thin blue-green business diagrams, clear negative space, no logos, no watermark."
+  },
+  {
+    "title": "稳定性上架门禁",
+    "subtitle": "容量、限流、告警、灰度、回滚和服务承诺是上架前条件",
+    "section": "稳定性",
+    "bullets": [
+      "资源池和地域容量决定可售范围",
+      "大促、队列和失败率需要监控阈值",
+      "灰度发布和回滚方案必须提前准备"
+    ],
+    "diagram": "sre",
+    "file": "slide-13.png",
+    "imagegenPrompt": "Use case: productivity-visual. Asset type: 16:9 presales solution deck slide. Topic: 稳定性上架门禁. Style: premium enterprise cloud SaaS consulting deck, white soft-gray background, thin blue-green business diagrams, clear negative space, no logos, no watermark."
+  },
+  {
+    "title": "客户自助购买与售后解释",
+    "subtitle": "把估算、正式报价、额度、超额、账单差异说清楚",
+    "section": "客户体验",
+    "bullets": [
+      "买前确认购买内容、权益额度和有效期",
+      "买后解释用量、抵扣、超额和合同价差异",
+      "客户可见字段要做权限过滤"
+    ],
+    "diagram": "customer",
+    "file": "slide-14.png",
+    "imagegenPrompt": "Use case: productivity-visual. Asset type: 16:9 presales solution deck slide. Topic: 客户自助购买与售后解释. Style: premium enterprise cloud SaaS consulting deck, white soft-gray background, thin blue-green business diagrams, clear negative space, no logos, no watermark."
+  },
+  {
+    "title": "异常链路与反向治理",
+    "subtitle": "调价、退款、退订、规格变更比新上架更复杂",
+    "section": "异常治理",
+    "bullets": [
+      "变更影响客户、合同、权益、账单和渠道",
+      "存量客户保护和版本兼容要提前设计",
+      "高风险变更只生成审批摘要和回滚方案"
+    ],
+    "diagram": "risk",
+    "file": "slide-15.png",
+    "imagegenPrompt": "Use case: productivity-visual. Asset type: 16:9 presales solution deck slide. Topic: 异常链路与反向治理. Style: premium enterprise cloud SaaS consulting deck, white soft-gray background, thin blue-green business diagrams, clear negative space, no logos, no watermark."
+  },
+  {
+    "title": "发布后巡检与续约经营",
+    "subtitle": "上架成功只是开始，业务健康要靠闭环巡检",
+    "section": "运营健康",
+    "bullets": [
+      "24 小时巡检官网、控制台、订单、计量、账单和告警",
+      "续约雷达关注用量、争议、服务事件和扩容机会",
+      "客户成功动作要回流到商品规则"
+    ],
+    "diagram": "radar",
+    "file": "slide-16.png",
+    "imagegenPrompt": "Use case: productivity-visual. Asset type: 16:9 presales solution deck slide. Topic: 发布后巡检与续约经营. Style: premium enterprise cloud SaaS consulting deck, white soft-gray background, thin blue-green business diagrams, clear negative space, no logos, no watermark."
+  },
+  {
+    "title": "组织层级与角色关注点",
+    "subtitle": "同一套事实，不同角色做不同决策",
+    "section": "组织协同",
+    "bullets": [
+      "老板看目标达成、毛利和风险负责人",
+      "产品看覆盖率、能力边界和渠道一致性",
+      "销售、财务、稳定性、客服各看自己的行动清单"
+    ],
+    "diagram": "roles",
+    "file": "slide-17.png",
+    "imagegenPrompt": "Use case: productivity-visual. Asset type: 16:9 presales solution deck slide. Topic: 组织层级与角色关注点. Style: premium enterprise cloud SaaS consulting deck, white soft-gray background, thin blue-green business diagrams, clear negative space, no logos, no watermark."
+  },
+  {
+    "title": "平台实现视角",
+    "subtitle": "领域能力包、资源注册、权限、路由、工具、展示和评测共同构成 Agent 系统",
+    "section": "平台实现",
+    "bullets": [
+      "领域隔离避免云商品和其他业务混淆",
+      "工具链承接查询、估算、评审、审批摘要和模拟",
+      "结构化展示优先给结论、风险、负责人和下一步动作"
+    ],
+    "diagram": "platform",
+    "file": "slide-18.png",
+    "imagegenPrompt": "Use case: productivity-visual. Asset type: 16:9 presales solution deck slide. Topic: 平台实现视角. Style: premium enterprise cloud SaaS consulting deck, white soft-gray background, thin blue-green business diagrams, clear negative space, no logos, no watermark."
+  },
+  {
+    "title": "三条演示案例主线",
+    "subtitle": "ECS GPU、Seedance Mini、Agent Plan 覆盖三类典型云商品",
+    "section": "案例",
+    "bullets": [
+      "资源型商品：容量、地域、交付和服务承诺",
+      "资源包型商品：自助购买、促销和大促稳定性",
+      "套餐权益型商品：额度、超额、毛利和客户体验"
+    ],
+    "diagram": "cases",
+    "file": "slide-19.png",
+    "imagegenPrompt": "Use case: productivity-visual. Asset type: 16:9 presales solution deck slide. Topic: 三条演示案例主线. Style: premium enterprise cloud SaaS consulting deck, white soft-gray background, thin blue-green business diagrams, clear negative space, no logos, no watermark."
+  },
+  {
+    "title": "售前呈现的核心结论",
+    "subtitle": "这套手册把云商品平台从“能上架”升级为“可治理、可销售、可经营”",
+    "section": "总结",
+    "bullets": [
+      "建立产品化到经营闭环的方法论",
+      "沉淀跨角色协同的检查清单和模板",
+      "支撑云厂商商品平台 Agent 的高标准演示"
+    ],
+    "diagram": "summary",
+    "file": "slide-20.png",
+    "imagegenPrompt": "Use case: productivity-visual. Asset type: 16:9 presales solution deck slide. Topic: 售前呈现的核心结论. Style: premium enterprise cloud SaaS consulting deck, white soft-gray background, thin blue-green business diagrams, clear negative space, no logos, no watermark."
+  }
+]

@@ -1,0 +1,3969 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>云商品平台产品经理工作手册</title>
+    <style>
+      :root {
+        --ra-color-bg: #fbfaf7;
+        --ra-color-paper: #fffefb;
+        --ra-color-fg: #1f2328;
+        --ra-color-muted: #6e7378;
+        --ra-color-line: #d8d2c2;
+        --ra-color-line-soft: #ebe6da;
+        --ra-color-accent: #256d85;
+        --ra-color-risk: #a84532;
+        --ra-color-warn: #9a6a10;
+        --ra-color-ok: #4f7b54;
+        --ra-font-body: ui-serif, "Songti SC", "Noto Serif CJK SC", Georgia, serif;
+        --ra-font-ui: ui-sans-serif, -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif;
+        --ra-space-1: 0.25rem;
+        --ra-space-2: 0.5rem;
+        --ra-space-3: 0.75rem;
+        --ra-space-4: 1rem;
+        --ra-space-5: 1.5rem;
+        --ra-space-6: 2rem;
+        --ra-space-7: 3rem;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--ra-color-bg);
+        color: var(--ra-color-fg);
+        font-family: var(--ra-font-body);
+        font-size: 17px;
+        line-height: 1.72;
+      }
+
+      a {
+        color: var(--ra-color-accent);
+        text-decoration-thickness: 1px;
+        text-underline-offset: 0.18em;
+      }
+
+      .cover-shell {
+        min-height: 100svh;
+        display: grid;
+        place-items: center;
+        padding: clamp(1.5rem, 4vw, 4rem);
+      }
+
+      .cover {
+        width: min(100%, 72rem);
+        min-height: min(42rem, calc(100svh - 6rem));
+        background: var(--ra-color-paper);
+        border: 1px solid var(--ra-color-line);
+        display: grid;
+        grid-template-columns: minmax(22rem, 0.9fr) minmax(28rem, 1.1fr);
+        position: relative;
+      }
+
+      .cover-title {
+        padding: clamp(2.4rem, 5vw, 4.6rem);
+        border-right: 1px solid var(--ra-color-line);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-width: 0;
+      }
+
+      .cover-kicker,
+      .eyebrow,
+      .meta,
+      .toc-title,
+      .tag,
+      th {
+        font-family: var(--ra-font-ui);
+        letter-spacing: 0;
+      }
+
+      .cover-kicker {
+        color: var(--ra-color-muted);
+        font-size: 0.78rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .cover h1 {
+        margin: 0;
+        font-size: clamp(2.5rem, 5vw, 4.8rem);
+        line-height: 1.02;
+        font-weight: 500;
+      }
+
+      .cover-subtitle {
+        margin-top: 1.35rem;
+        max-width: 28rem;
+        color: var(--ra-color-muted);
+        font-size: clamp(0.98rem, 1.35vw, 1.18rem);
+        line-height: 1.68;
+      }
+
+      .cover-use {
+        margin-top: var(--ra-space-6);
+        padding-top: var(--ra-space-4);
+        border-top: 1px solid var(--ra-color-line-soft);
+        font-family: var(--ra-font-ui);
+        color: var(--ra-color-muted);
+        font-size: 0.84rem;
+        line-height: 1.65;
+      }
+
+      .cover-map {
+        position: relative;
+        padding: clamp(2rem, 4vw, 4rem);
+        display: grid;
+        align-items: center;
+      }
+
+      .cover-flow {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: var(--ra-space-3);
+        align-items: stretch;
+      }
+
+      .cover-flow-card {
+        min-height: 6rem;
+        border: 1px solid var(--ra-color-line);
+        padding: var(--ra-space-3);
+        background: var(--ra-color-paper);
+        font-family: var(--ra-font-ui);
+      }
+
+      .cover-flow-card strong {
+        display: block;
+        font-size: 1rem;
+        margin-bottom: 0.35rem;
+        color: var(--ra-color-fg);
+      }
+
+      .cover-flow-card span {
+        display: block;
+        color: var(--ra-color-muted);
+        font-size: 0.8rem;
+        line-height: 1.5;
+      }
+
+      .cover-flow-card.is-core {
+        border-color: var(--ra-color-accent);
+        background: color-mix(in srgb, var(--ra-color-accent) 7%, var(--ra-color-paper));
+      }
+
+      .cover-loop-note {
+        margin-top: var(--ra-space-4);
+        border-top: 1px solid var(--ra-color-line-soft);
+        padding-top: var(--ra-space-4);
+        color: var(--ra-color-muted);
+        font-family: var(--ra-font-ui);
+        font-size: 0.86rem;
+        line-height: 1.6;
+      }
+
+      .page {
+        display: grid;
+        grid-template-columns: minmax(12rem, 16rem) minmax(0, 58rem);
+        gap: var(--ra-space-7);
+        max-width: 84rem;
+        margin: 0 auto;
+        padding: var(--ra-space-7) var(--ra-space-6);
+      }
+
+      .toc {
+        position: sticky;
+        top: 2rem;
+        align-self: start;
+        max-height: calc(100svh - 4rem);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        font-family: var(--ra-font-ui);
+        font-size: 0.86rem;
+        color: var(--ra-color-muted);
+        border-right: 1px solid var(--ra-color-line-soft);
+        padding-right: var(--ra-space-5);
+        scrollbar-width: thin;
+        scrollbar-color: var(--ra-color-line) transparent;
+      }
+
+      .toc::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .toc::-webkit-scrollbar-thumb {
+        background: var(--ra-color-line);
+        border-radius: 999px;
+      }
+
+      .toc-title {
+        color: var(--ra-color-fg);
+        font-weight: 650;
+        margin-bottom: var(--ra-space-3);
+      }
+
+      .toc ol {
+        margin: 0;
+        padding-left: 1.25rem;
+      }
+
+      .toc li {
+        margin: 0.55rem 0;
+      }
+
+      main {
+        min-width: 0;
+      }
+
+      .hero {
+        padding-bottom: var(--ra-space-6);
+        border-bottom: 1px solid var(--ra-color-line);
+      }
+
+      .eyebrow {
+        color: var(--ra-color-accent);
+        font-size: 0.82rem;
+        margin-bottom: var(--ra-space-3);
+      }
+
+      h1,
+      h2,
+      h3 {
+        font-weight: 500;
+        line-height: 1.18;
+        margin: 0;
+      }
+
+      .hero h1 {
+        font-size: clamp(2.2rem, 4vw, 3.4rem);
+        max-width: 50rem;
+      }
+
+      .subtitle {
+        margin: var(--ra-space-4) 0 0;
+        color: var(--ra-color-muted);
+        font-size: 1.15rem;
+        max-width: 45rem;
+      }
+
+      .meta {
+        margin-top: var(--ra-space-4);
+        color: var(--ra-color-muted);
+        font-size: 0.85rem;
+      }
+
+      .lead {
+        margin: var(--ra-space-6) 0;
+        font-size: 1.22rem;
+        line-height: 1.75;
+        color: var(--ra-color-fg);
+      }
+
+      .summary {
+        border-top: 1px solid var(--ra-color-line);
+        border-bottom: 1px solid var(--ra-color-line);
+        padding: var(--ra-space-5) 0;
+        margin-bottom: var(--ra-space-7);
+      }
+
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: var(--ra-space-4);
+      }
+
+      .summary-item {
+        border-left: 1px solid var(--ra-color-line);
+        padding-left: var(--ra-space-3);
+      }
+
+      .summary-item strong {
+        display: block;
+        font-size: 1.05rem;
+        margin-bottom: 0.25rem;
+      }
+
+      .summary-item span {
+        color: var(--ra-color-muted);
+        font-size: 0.92rem;
+        font-family: var(--ra-font-ui);
+        line-height: 1.55;
+      }
+
+      section {
+        margin: var(--ra-space-7) 0;
+      }
+
+      .section-head {
+        display: grid;
+        grid-template-columns: 3rem minmax(0, 1fr);
+        gap: var(--ra-space-4);
+        align-items: baseline;
+        margin-bottom: var(--ra-space-5);
+      }
+
+      .index {
+        font-family: var(--ra-font-ui);
+        color: var(--ra-color-accent);
+        font-size: 0.96rem;
+      }
+
+      h2 {
+        font-size: 1.85rem;
+      }
+
+      h3 {
+        font-size: 1.2rem;
+        margin: var(--ra-space-6) 0 var(--ra-space-3);
+      }
+
+      p {
+        margin: 1rem 0;
+      }
+
+      .raw {
+        margin: var(--ra-space-6) 0;
+        border-top: 1px solid var(--ra-color-line);
+        border-bottom: 1px solid var(--ra-color-line);
+        padding: var(--ra-space-5) 0;
+      }
+
+      .raw-title {
+        font-family: var(--ra-font-ui);
+        color: var(--ra-color-muted);
+        font-size: 0.86rem;
+        margin-bottom: var(--ra-space-4);
+      }
+
+      .learning-rail {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: var(--ra-space-3);
+        align-items: stretch;
+      }
+
+      .rail-step {
+        border-left: 2px solid var(--ra-color-line);
+        padding: var(--ra-space-3);
+        min-height: 9rem;
+        position: relative;
+      }
+
+      .rail-step::before {
+        content: "";
+        position: absolute;
+        top: 1rem;
+        left: -5px;
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--ra-color-accent);
+      }
+
+      .rail-step:nth-child(4)::before {
+        background: var(--ra-color-ok);
+      }
+
+      .rail-step strong {
+        display: block;
+        font-size: 1rem;
+        margin-bottom: var(--ra-space-2);
+      }
+
+      .rail-step span {
+        display: block;
+        color: var(--ra-color-muted);
+        font-family: var(--ra-font-ui);
+        font-size: 0.84rem;
+        line-height: 1.6;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: var(--ra-space-5) 0;
+        font-size: 0.96rem;
+      }
+
+      th,
+      td {
+        border-top: 1px solid var(--ra-color-line-soft);
+        padding: 0.72rem 0.6rem;
+        vertical-align: top;
+        text-align: left;
+      }
+
+      th {
+        color: var(--ra-color-muted);
+        font-size: 0.8rem;
+        font-weight: 650;
+      }
+
+      .tag {
+        display: inline-block;
+        border: 1px solid var(--ra-color-line);
+        padding: 0.05rem 0.42rem;
+        border-radius: 999px;
+        color: var(--ra-color-muted);
+        font-size: 0.75rem;
+      }
+
+      .aside {
+        border-left: 2px solid var(--ra-color-accent);
+        padding: var(--ra-space-3) var(--ra-space-4);
+        margin: var(--ra-space-5) 0;
+        background: color-mix(in srgb, var(--ra-color-accent) 4%, transparent);
+      }
+
+      .aside strong {
+        display: block;
+        font-family: var(--ra-font-ui);
+        margin-bottom: 0.25rem;
+      }
+
+      .colophon {
+        margin-top: var(--ra-space-7);
+        padding-top: var(--ra-space-4);
+        border-top: 1px solid var(--ra-color-line-soft);
+        color: var(--ra-color-muted);
+        font-family: var(--ra-font-ui);
+        font-size: 0.78rem;
+      }
+
+      @media (max-width: 1000px) {
+        .page {
+          display: block;
+          padding: var(--ra-space-5);
+        }
+
+        .toc {
+          position: static;
+          max-height: none;
+          overflow: visible;
+          border-right: 0;
+          border-bottom: 1px solid var(--ra-color-line-soft);
+          padding: 0 0 var(--ra-space-4);
+          margin-bottom: var(--ra-space-6);
+        }
+
+        .summary-grid,
+        .learning-rail {
+          grid-template-columns: 1fr;
+        }
+
+        .cover {
+          grid-template-columns: 1fr;
+          min-height: auto;
+        }
+
+        .cover-title {
+          border-right: 0;
+          border-bottom: 1px solid var(--ra-color-line);
+        }
+
+        .cover-flow {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media print {
+        .cover-shell {
+          break-after: page;
+        }
+
+        .toc {
+          position: static;
+        }
+      }
+    
+
+      .toc a { color: inherit; text-decoration: none; }
+      .toc a:hover { color: var(--ra-color-accent); text-decoration: underline; }
+      .toc > ol { padding-left: 0; list-style: none; }
+      .toc-group { margin: 1rem 0 1.25rem; list-style: none; }
+      .toc-group > span { display:block; color: var(--ra-color-fg); font-weight: 700; margin-bottom: .35rem; line-height:1.35; }
+      .toc-group ol { padding-left: 1.1rem; }
+      .toc-group li { margin: .42rem 0; }
+      .section-lead { font-size: 1.08rem; color: var(--ra-color-fg); }
+      .block-kicker { font-family: var(--ra-font-ui); color: var(--ra-color-accent); font-size: .82rem; font-weight: 700; margin-bottom: var(--ra-space-3); }
+      .executive-summary { margin: var(--ra-space-7) 0; padding: var(--ra-space-5) 0; border-top: 1px solid var(--ra-color-line); border-bottom: 1px solid var(--ra-color-line); }
+      .executive-summary h2 { font-size: clamp(1.45rem, 2.6vw, 2.1rem); max-width: 50rem; margin-bottom: var(--ra-space-5); }
+      .executive-grid { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: var(--ra-space-4); }
+      .executive-card { border-left: 3px solid var(--ra-color-accent); padding: var(--ra-space-3); background: color-mix(in srgb, var(--ra-color-paper) 72%, transparent); }
+      .executive-card strong { display:block; margin-bottom:.45rem; }
+      .executive-card span { display:block; color: var(--ra-color-muted); font-family: var(--ra-font-ui); font-size:.9rem; line-height:1.6; }
+      .reading-path { margin-top: var(--ra-space-5); padding: var(--ra-space-4); border: 1px solid var(--ra-color-line-soft); font-family: var(--ra-font-ui); color: var(--ra-color-muted); line-height:1.65; }
+      .reading-path strong { color: var(--ra-color-fg); margin-right:.6rem; }
+      .chapter-group { margin: var(--ra-space-7) 0 var(--ra-space-6); padding: var(--ra-space-5) 0; border-top: 2px solid var(--ra-color-fg); border-bottom: 1px solid var(--ra-color-line); }
+      .chapter-group-index { font-family: var(--ra-font-ui); color: var(--ra-color-accent); font-size:.86rem; font-weight:700; margin-bottom:.65rem; }
+      .chapter-group h2 { font-size: clamp(1.65rem, 3vw, 2.35rem); }
+      .chapter-group p { max-width: 46rem; color: var(--ra-color-muted); font-family: var(--ra-font-ui); line-height:1.65; }
+      .section-part { font-family: var(--ra-font-ui); color: var(--ra-color-muted); font-size:.82rem; margin-bottom:.35rem; }
+      .pm-work-card { margin: var(--ra-space-5) 0; padding: var(--ra-space-4); border: 1px solid var(--ra-color-line); background: color-mix(in srgb, var(--ra-color-paper) 82%, transparent); }
+      .pm-work-grid { display:grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: var(--ra-space-3); }
+      .pm-work-item { border-top: 2px solid var(--ra-color-line); padding-top: var(--ra-space-3); font-family: var(--ra-font-ui); }
+      .pm-work-item.is-risk { border-top-color: var(--ra-color-risk); }
+      .pm-work-item b { display:block; font-size:.78rem; color: var(--ra-color-muted); margin-bottom:.4rem; }
+      .pm-work-item span { display:block; font-size:.9rem; line-height:1.55; color: var(--ra-color-fg); }
+      .case-thread-strip { margin: var(--ra-space-5) 0; padding: var(--ra-space-4) 0; border-top: 1px solid var(--ra-color-line-soft); border-bottom: 1px solid var(--ra-color-line-soft); }
+      .case-thread-grid { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ra-space-3); }
+      .case-thread-card { padding: var(--ra-space-3); border-left: 2px solid var(--ra-color-line); font-family: var(--ra-font-ui); }
+      .case-thread-card strong { display:block; color: var(--ra-color-fg); margin-bottom:.35rem; }
+      .case-thread-card span { color: var(--ra-color-muted); font-size:.86rem; line-height:1.55; }
+      .rail { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--ra-space-3); }
+      .rail-card { border-left: 1px solid var(--ra-color-line); padding: var(--ra-space-3); min-height: 9rem; }
+      .rail-card i { display:block; color: var(--ra-color-accent); font-family: var(--ra-font-ui); font-style: normal; font-size: .78rem; margin-bottom: .5rem; }
+      .rail-card strong { display:block; margin-bottom: .35rem; }
+      .rail-card span { color: var(--ra-color-muted); font-family: var(--ra-font-ui); font-size: .86rem; line-height: 1.6; }
+      .node-map { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: var(--ra-space-3); }
+      .node { border-top: 1px solid var(--ra-color-line); padding: var(--ra-space-3) 0; }
+      .node strong { display:block; margin-bottom: .35rem; }
+      .node span { color: var(--ra-color-muted); font-family: var(--ra-font-ui); font-size: .88rem; line-height:1.65; }
+      .diagram-card { background: color-mix(in srgb, var(--ra-color-paper) 86%, transparent); }
+      .diagram-step { display: grid; grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr)); gap: var(--ra-space-3); align-items: stretch; }
+      .diagram-node { position: relative; border: 1px solid var(--ra-color-line); background: var(--ra-color-paper); padding: var(--ra-space-4); min-height: 8.5rem; }
+      .diagram-node:not(:last-child)::after { content: "→"; position: absolute; right: -.95rem; top: 50%; transform: translateY(-50%); color: var(--ra-color-accent); font-family: var(--ra-font-ui); font-weight: 700; background: var(--ra-color-paper); padding: 0 .25rem; }
+      .diagram-node i { display: inline-block; font-family: var(--ra-font-ui); font-style: normal; color: var(--ra-color-accent); font-size: .78rem; margin-bottom: .45rem; }
+      .diagram-node strong { display: block; font-size: 1.06rem; margin-bottom: .35rem; }
+      .diagram-node span { display: block; color: var(--ra-color-muted); font-family: var(--ra-font-ui); font-size: .86rem; line-height: 1.55; }
+      .entity-map, .channel-map, .impact-map { display: grid; gap: var(--ra-space-3); align-items: stretch; }
+      .source-map { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: var(--ra-space-3); }
+      .source-center { grid-column: 1 / -1; text-align:center; border:2px solid var(--ra-color-accent); background: color-mix(in srgb, var(--ra-color-accent) 8%, var(--ra-color-paper)); padding: var(--ra-space-4); font-family: var(--ra-font-ui); }
+      .source-center strong { display:block; font-size:1.15rem; margin-bottom:.25rem; }
+      .source-center span { color: var(--ra-color-muted); font-size:.86rem; }
+      .source-node { border:1px solid var(--ra-color-line); background: var(--ra-color-paper); padding: var(--ra-space-3); font-family: var(--ra-font-ui); min-height:6.8rem; }
+      .source-node strong { display:block; margin-bottom:.35rem; }
+      .source-node span { color: var(--ra-color-muted); font-size:.84rem; line-height:1.5; }
+      .entity-map { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+      .entity-center, .channel-source, .impact-center { border: 2px solid var(--ra-color-accent); background: color-mix(in srgb, var(--ra-color-accent) 8%, var(--ra-color-paper)); padding: var(--ra-space-4); font-family: var(--ra-font-ui); }
+      .entity-center { grid-column: 2 / span 2; text-align: center; }
+      .entity-center strong, .channel-source strong { display:block; font-size:1.1rem; margin-bottom:.25rem; }
+      .entity-center span, .channel-source span { color: var(--ra-color-muted); font-size:.86rem; }
+      .entity-node, .channel-node, .impact-node { border: 1px solid var(--ra-color-line); background: var(--ra-color-paper); padding: var(--ra-space-3); font-family: var(--ra-font-ui); text-align: center; min-height: 3.6rem; display:flex; align-items:center; justify-content:center; }
+      .channel-map { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .channel-source { grid-column: 1 / -1; text-align:center; }
+      .publication-map { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: var(--ra-space-3); font-family: var(--ra-font-ui); }
+      .publication-card { border:1px solid var(--ra-color-line); background: var(--ra-color-paper); padding: var(--ra-space-3); min-height:8.5rem; }
+      .publication-card strong { display:block; font-size:1.02rem; margin-bottom:.45rem; }
+      .publication-card span { display:block; color: var(--ra-color-muted); font-size:.84rem; line-height:1.5; margin-top:.35rem; }
+      .publication-card .risk { color: var(--ra-color-risk); }
+      .publication-footer { grid-column:1 / -1; border-top:1px solid var(--ra-color-line); padding-top: var(--ra-space-3); color: var(--ra-color-accent); font-weight:700; }
+      .diagram-matrix { border-top: 1px solid var(--ra-color-line); font-family: var(--ra-font-ui); }
+      .matrix-row { display: grid; grid-template-columns: 1.05fr repeat(5, minmax(0, 1fr)); border-bottom: 1px solid var(--ra-color-line-soft); }
+      .case-matrix .matrix-row { grid-template-columns: 1fr 1.2fr 1.8fr 1.7fr; }
+      .matrix-cell { padding: .75rem .6rem; min-width: 0; line-height: 1.45; }
+      .matrix-row:first-child .matrix-cell, .matrix-head { color: var(--ra-color-accent); font-weight: 700; }
+      .health-grid { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--ra-space-3); }
+      .health-card { border-top: 4px solid var(--ra-color-accent); background: var(--ra-color-paper); padding: var(--ra-space-4); min-height: 8rem; }
+      .health-card.risk { border-top-color: var(--ra-color-risk); }
+      .health-card strong { display:block; font-size:1.08rem; margin-bottom:.5rem; }
+      .health-card span { color: var(--ra-color-muted); font-family: var(--ra-font-ui); font-size:.88rem; line-height:1.55; }
+      .finance-flow, .exception-flow { display:grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: var(--ra-space-3); }
+      .finance-node, .exception-node { position:relative; border:1px solid var(--ra-color-line); background: var(--ra-color-paper); padding: var(--ra-space-3); min-height:9rem; font-family: var(--ra-font-ui); }
+      .finance-node:not(:last-child)::after, .exception-node:not(:last-child)::after { content:"→"; position:absolute; right:-.95rem; top:50%; transform:translateY(-50%); color: var(--ra-color-accent); font-weight:700; background: var(--ra-color-paper); padding:0 .25rem; }
+      .finance-node.risk, .exception-node.is-risk { border-color: var(--ra-color-risk); background: color-mix(in srgb, var(--ra-color-risk) 6%, var(--ra-color-paper)); }
+      .finance-node strong, .exception-node strong { display:block; margin-bottom:.4rem; }
+      .finance-node span, .exception-node span { color: var(--ra-color-muted); font-size:.84rem; line-height:1.5; }
+      .exception-node i { display:block; font-style:normal; color: var(--ra-color-accent); font-size:.78rem; margin-bottom:.35rem; }
+      .impact-map { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .impact-center { grid-column: 1 / -1; text-align:center; border-color: var(--ra-color-risk); color: var(--ra-color-risk); font-weight: 700; }
+      .cover-flow { display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--ra-space-3); align-items: stretch; }
+      .cover-flow-card { min-height: 6rem; border: 1px solid var(--ra-color-line); padding: var(--ra-space-3); background: var(--ra-color-paper); font-family: var(--ra-font-ui); }
+      .cover-flow-card strong { display:block; font-size:1rem; margin-bottom:.35rem; color: var(--ra-color-fg); }
+      .cover-flow-card span { display:block; color: var(--ra-color-muted); font-size:.8rem; line-height:1.5; }
+      .cover-flow-card.is-core { border-color: var(--ra-color-accent); background: color-mix(in srgb, var(--ra-color-accent) 7%, var(--ra-color-paper)); }
+      .cover-loop-note { margin-top: var(--ra-space-4); border-top: 1px solid var(--ra-color-line-soft); padding-top: var(--ra-space-4); font-family: var(--ra-font-ui); color: var(--ra-color-muted); font-size:.86rem; line-height:1.6; }
+      .storyline-grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: var(--ra-space-3); }
+      .storyline-card { border:1px solid var(--ra-color-line); background: var(--ra-color-paper); padding: var(--ra-space-4); font-family: var(--ra-font-ui); }
+      .storyline-card strong { display:block; font-size:1.05rem; margin-bottom:.55rem; color: var(--ra-color-accent); }
+      .storyline-card span { display:block; border-top:1px solid var(--ra-color-line-soft); padding-top:.55rem; margin-top:.55rem; color: var(--ra-color-muted); font-size:.86rem; line-height:1.5; }
+      .table-wrap { overflow-x: auto; margin: var(--ra-space-5) 0; }
+      details.appendix { border-top: 1px solid var(--ra-color-line); border-bottom: 1px solid var(--ra-color-line); padding: var(--ra-space-4) 0; margin: var(--ra-space-7) 0; }
+      details.appendix > summary { cursor: pointer; font-family: var(--ra-font-ui); color: var(--ra-color-accent); font-weight: 650; }
+      code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .9em; color: var(--ra-color-accent); }
+      pre { overflow-x:auto; border-top:1px solid var(--ra-color-line); border-bottom:1px solid var(--ra-color-line); padding: var(--ra-space-4) 0; font-size: .82rem; line-height:1.55; }
+      blockquote { margin: var(--ra-space-4) 0; padding-left: var(--ra-space-4); border-left: 2px solid var(--ra-color-line); color: var(--ra-color-muted); }
+      @media (max-width: 1000px) {
+        .rail, .node-map, .entity-map, .channel-map, .impact-map, .health-grid, .cover-flow, .executive-grid, .pm-work-grid, .case-thread-grid, .source-map, .publication-map, .finance-flow, .exception-flow, .storyline-grid { grid-template-columns: 1fr; }
+        .entity-center, .channel-source, .impact-center, .source-center, .publication-footer { grid-column: auto; }
+        .diagram-node:not(:last-child)::after, .finance-node:not(:last-child)::after, .exception-node:not(:last-child)::after { display: none; }
+        .matrix-row, .case-matrix .matrix-row { grid-template-columns: 1fr; }
+        .matrix-cell { border-bottom: 1px solid var(--ra-color-line-soft); }
+      }
+
+    </style>
+  </head>
+  <body>
+    <div class="cover-shell">
+      <article class="cover" aria-label="文章封面">
+        <div class="cover-title">
+          <div>
+            <div class="cover-kicker">云商品平台学习手册 · 第一版</div>
+            <h1>云商品平台<br />产品经理<br />工作手册</h1>
+            <p class="cover-subtitle">云商品平台解决的是从技术能力到收入、交付、账单和续约的经营闭环。本手册面向产品经理，沉淀主数据、商品化、渠道、销售、财务、稳定性和经营治理方法。</p>
+          </div>
+          <div class="cover-use">建议用法：先看执行摘要建立主线，再按 4 大篇章查阅作业卡、机制图、案例差异和附录模板。</div>
+        </div>
+        <div class="cover-map" aria-hidden="true">
+          <div class="cover-flow">
+            <div class="cover-flow-card"><strong>技术能力</strong><span>资源、模型、存储、网络或平台服务。</span></div>
+            <div class="cover-flow-card"><strong>产品定义</strong><span>目标客户、核心场景、能力边界和服务承诺。</span></div>
+            <div class="cover-flow-card is-core"><strong>商品主数据</strong><span>售卖方案、规格、计量、价格和权益规则。</span></div>
+            <div class="cover-flow-card"><strong>渠道发布</strong><span>官网、控制台、云市场、销售和客服视图。</span></div>
+            <div class="cover-flow-card"><strong>交易交付</strong><span>订单、合同、计量、账单、发票和交付状态。</span></div>
+            <div class="cover-flow-card"><strong>经营复盘</strong><span>目标达成、毛利、风险、续约和模板沉淀。</span></div>
+          </div>
+          <div class="cover-loop-note">阅读主线：先判断能力是否能产品化，再补齐商品主数据，最后通过渠道、交易、账单和经营复盘形成闭环。</div>
+        </div>
+      </article>
+    </div>
+    <div class="page">
+      <nav class="toc" aria-label="目录">
+        <div class="toc-title">目录</div>
+        <ol><li class="toc-group"><span>第一篇：从技术能力到可售产品</span><ol><li><a href="#s01">01 阅读地图与最小产出包</a></li><li><a href="#s02">02 概念边界：能力、产品、商品</a></li><li><a href="#s03">03 产品化定义与就绪评审</a></li></ol></li>
+<li class="toc-group"><span>第二篇：从商品主数据到多渠道交易</span><ol><li><a href="#s04">04 商品主数据模型</a></li><li><a href="#s05">05 主数据治理与血缘</a></li><li><a href="#s06">06 售卖方案、规格、计量和价格设计</a></li><li><a href="#s07">07 套餐型产品与权益治理</a></li><li><a href="#s08">08 产品生命周期全流程</a></li><li><a href="#s09">09 渠道发布与上下游协同</a></li></ol></li>
+<li class="toc-group"><span>第三篇：从销售交付到经营治理</span><ol><li><a href="#s10">10 上市打法、销售方案与报价前检查</a></li><li><a href="#s11">11 财务商业化与经营口径</a></li><li><a href="#s12">12 稳定性上架门禁</a></li><li><a href="#s13">13 客户自助购买与售后解释</a></li><li><a href="#s14">14 异常链路、反向链路与治理</a></li><li><a href="#s15">15 发布后巡检、续约与客户成功</a></li></ol></li>
+<li class="toc-group"><span>第四篇：从组织协同到平台化 Agent</span><ol><li><a href="#s16">16 组织层级、指标与外部客户场景</a></li><li><a href="#s17">17 平台实现视角：领域化的 Agent 系统</a></li><li><a href="#s18">18 三条完整案例</a></li><li><a href="#s19">19 学习成果验收与可复制模板</a></li><li><a href="#s20">20 附录：详细章节与可复制模板</a></li></ol></li></ol>
+      </nav>
+      <main>
+        <header class="hero">
+          <div class="eyebrow">云商品平台 · 产品经理工作手册</div>
+          <h1>从技术能力到可售云商品，再到经营闭环</h1>
+          <p class="subtitle">本手册帮助产品经理把“能做的技术能力”转成“可购买、可交付、可计量、可结算、可续约”的云商品，并让上下游围绕同一套事实协作。</p>
+          <div class="meta">资料来源：云商品工作手册 · 版本：第一版 · 生成日期：2026-06-21</div>
+        </header>
+        <p class="lead">云商品平台要解决一组连续问题：能力边界是否清楚，能否稳定交付，是否能准确计量和合理定价，官网、控制台、销售和账单口径是否一致，财务、销售、运维和客户能否基于同一套事实协作。本手册按项目推进顺序组织：先建立概念边界，再进入主数据和生命周期，最后回到经营、异常、续约和平台实现。</p>
+        <div class="executive-summary" aria-label="执行摘要">
+    <div class="block-kicker">执行摘要 / 一页看懂</div>
+    <h2>云商品平台解决的是从技术能力到收入、交付、账单和续约的经营闭环</h2>
+    <div class="executive-grid"><div class="executive-card"><strong>产品定义清楚</strong><span>先判断技术能力是否具备产品化条件，明确客户、边界、成本和服务承诺。</span></div><div class="executive-card"><strong>商品主数据统一</strong><span>用商品、售卖方案、规格、计量、价格和权益规则支撑全渠道交易。</span></div><div class="executive-card"><strong>交易经营闭环</strong><span>从渠道发布、销售报价、订单交付、计量账单到续约复盘形成闭环。</span></div><div class="executive-card"><strong>组织协同可治理</strong><span>产品、财务、SRE、销售、客服和老板基于同一套事实做不同决策。</span></div></div>
+    <div class="reading-path"><strong>阅读路径</strong><span>30 分钟看执行摘要和 4 大篇章；2 小时看主数据、生命周期和经营治理；项目落地时按章节作业卡补交付物。</span></div>
+  </div>
+        <div class="summary" aria-label="全书主线">
+          <div class="summary-grid">
+            <div class="summary-item"><strong>产品化</strong><span>目标客户、能力边界、不可承诺项、成本、服务等级承诺和交付能力先说清。</span></div>
+            <div class="summary-item"><strong>主数据</strong><span>商品、售卖方案、规格、计量、价格和权益规则构成交易骨架。</span></div>
+            <div class="summary-item"><strong>渠道与销售</strong><span>官网、控制台、云市场、销售报价和客服口径来自同一事实源。</span></div>
+            <div class="summary-item"><strong>经营治理</strong><span>成交规模、毛利、稳定性、客户争议、续约风险和复盘模板共同决定健康度。</span></div>
+          </div>
+        </div>
+        <div class="chapter-group" id="part-1"><div class="chapter-group-index">第一篇</div><h2>从技术能力到可售产品</h2><p>先判断能力是否能产品化，再定义客户、边界、成本和服务承诺。</p></div><section id="s01">
+  <div class="section-head"><div class="index">01</div><div><div class="section-part">第一篇：从技术能力到可售产品</div><h2>阅读地图与最小产出包</h2></div></div>
+  <p class="section-lead">先建立读法，再开始学习。产品经理需要知道本手册适合速读、入门和项目实战三种路径，并在第一周交付一组能被上下游评审的工作件。</p>
+  <div class="pm-work-card"><div class="block-kicker">产品经理作业卡</div><div class="pm-work-grid"><div class="pm-work-item "><b>解决问题</b><span>建立学习路径和最小产出包</span></div><div class="pm-work-item "><b>PM 交付物</b><span>阅读路径、阶段清单、第一周产出包</span></div><div class="pm-work-item "><b>协作方</b><span>产品经理、导师、业务负责人</span></div><div class="pm-work-item is-risk"><b>关键风险</b><span>只读概念不形成可评审材料</span></div><div class="pm-work-item "><b>验收标准</b><span>能用 5 个产出物组织一次启动评审</span></div></div></div>
+  <div class="raw"><div class="raw-title">本节阅读路径</div><div class="rail"><div class="rail-card"><i>01</i><strong>30 分钟速读</strong><span>术语速查、主数据关系、生命周期作业卡和三条案例。</span></div><div class="rail-card"><i>02</i><strong>2 小时入门</strong><span>精读主数据、产品化、财务、稳定性保障、客户解释，并试填一个虚拟商品。</span></div><div class="rail-card"><i>03</i><strong>项目实战</strong><span>围绕真实商品查阅产品化、建模、渠道、报价、巡检和复盘模板。</span></div><div class="rail-card"><i>04</i><strong>最小产出</strong><span>产品化定义、商品模型图、报价前检查、发布后巡检表和客户解释话术。</span></div></div></div>
+  <div class="case-thread-strip"><div class="block-kicker">三类商品差异</div><div class="case-thread-grid"><div class="case-thread-card"><strong>ECS GPU</strong><span>资源型商品，重点看容量、地域、交付、服务等级和合同价。</span></div><div class="case-thread-card"><strong>Seedance Mini</strong><span>资源包/能力型商品，重点看自助购买、促销、大促队列和账单解释。</span></div><div class="case-thread-card"><strong>Agent Plan</strong><span>套餐权益型商品，重点看额度、过期、超额、退款退订和毛利。</span></div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>关注点</th><th>业务含义</th></tr></thead><tbody><tr><td>30 分钟速读</td><td>术语速查、主数据关系、生命周期作业卡和三条案例。</td></tr><tr><td>2 小时入门</td><td>精读主数据、产品化、财务、稳定性保障、客户解释，并试填一个虚拟商品。</td></tr><tr><td>项目实战</td><td>围绕真实商品查阅产品化、建模、渠道、报价、巡检和复盘模板。</td></tr><tr><td>最小产出</td><td>产品化定义、商品模型图、报价前检查、发布后巡检表和客户解释话术。</td></tr></tbody></table></div>
+</section>
+<section id="s02">
+  <div class="section-head"><div class="index">02</div><div><div class="section-part">第一篇：从技术能力到可售产品</div><h2>概念边界：能力、产品、商品</h2></div></div>
+  <p class="section-lead">技术能力解决“能不能做”，产品定义解决“面向谁、解决什么问题”，云商品解决“如何售卖、交付、计量、结算和解释”。这三个层次必须分清。</p>
+  <div class="pm-work-card"><div class="block-kicker">产品经理作业卡</div><div class="pm-work-grid"><div class="pm-work-item "><b>解决问题</b><span>分清能力、产品、商品的边界</span></div><div class="pm-work-item "><b>PM 交付物</b><span>三层边界说明、判断标准</span></div><div class="pm-work-item "><b>协作方</b><span>产品经理、研发、销售方案</span></div><div class="pm-work-item is-risk"><b>关键风险</b><span>把技术能力直接包装成商品</span></div><div class="pm-work-item "><b>验收标准</b><span>能解释为什么“能做”不等于“可售”</span></div></div></div>
+  <div class="raw diagram-card flow"><div class="raw-title">能力、产品、商品三层边界</div><div class="diagram-step"><div class="diagram-node"><i>01</i><strong>技术能力</strong><span>资源、模型、算法或服务能力。</span></div><div class="diagram-node"><i>02</i><strong>产品定义</strong><span>目标客户、核心场景、能力边界和服务承诺。</span></div><div class="diagram-node"><i>03</i><strong>可售商品</strong><span>可订购、可计量、可定价、可开票和可续约。</span></div></div></div>
+  <div class="case-thread-strip"><div class="block-kicker">三类商品差异</div><div class="case-thread-grid"><div class="case-thread-card"><strong>ECS GPU</strong><span>资源型商品，重点看容量、地域、交付、服务等级和合同价。</span></div><div class="case-thread-card"><strong>Seedance Mini</strong><span>资源包/能力型商品，重点看自助购买、促销、大促队列和账单解释。</span></div><div class="case-thread-card"><strong>Agent Plan</strong><span>套餐权益型商品，重点看额度、过期、超额、退款退订和毛利。</span></div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>关注点</th><th>业务含义</th></tr></thead><tbody><tr><td>能力</td><td>底层技术或资源，例如模型、算力、存储、网络能力。</td></tr><tr><td>产品</td><td>面向目标客户和场景的能力组合，有边界、承诺、交付物和验收标准。</td></tr><tr><td>商品</td><td>可被订购、计量、定价、开票、续约和治理的商业对象。</td></tr><tr><td>判断标准</td><td>研发具备技术条件之后，还要通过产品化定义、成本、服务承诺和交付能力评审。</td></tr></tbody></table></div>
+</section>
+<section id="s03">
+  <div class="section-head"><div class="index">03</div><div><div class="section-part">第一篇：从技术能力到可售产品</div><h2>产品化定义与就绪评审</h2></div></div>
+  <p class="section-lead">商品化之前先做产品化定义。评审要回答目标客户、核心场景、能力边界、不可承诺项、成本输入、服务等级承诺初稿和交付物是否清楚。</p>
+  <div class="pm-work-card"><div class="block-kicker">产品经理作业卡</div><div class="pm-work-grid"><div class="pm-work-item "><b>解决问题</b><span>判断能力是否具备产品化条件</span></div><div class="pm-work-item "><b>PM 交付物</b><span>产品化定义、边界清单、服务承诺草案</span></div><div class="pm-work-item "><b>协作方</b><span>产品经理、研发、财务、法务、SRE</span></div><div class="pm-work-item is-risk"><b>关键风险</b><span>目标客户不清、成本不可测、服务承诺过满</span></div><div class="pm-work-item "><b>验收标准</b><span>产品化交付物齐备后再进入商品建模</span></div></div></div>
+  
+  <div class="case-thread-strip"><div class="block-kicker">三类商品差异</div><div class="case-thread-grid"><div class="case-thread-card"><strong>ECS GPU</strong><span>先确认 GPU 资源池、地域和交付窗口能否支撑产品承诺。</span></div><div class="case-thread-card"><strong>Seedance Mini</strong><span>先定义模型能力边界、自助购买范围和不可承诺项。</span></div><div class="case-thread-card"><strong>Agent Plan</strong><span>先定义套餐承诺、权益口径和高成本能力边界。</span></div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>关注点</th><th>业务含义</th></tr></thead><tbody><tr><td>交付物</td><td>一页产品定义、能力边界清单、不可承诺项、成本输入、服务等级承诺草案。</td></tr><tr><td>负责人</td><td>产品经理牵头，研发、稳定性保障、财务、法务和销售方案共同校准。</td></tr><tr><td>阻塞点</td><td>目标客户不清、成本不可测、服务承诺过满、交付链路没有责任人。</td></tr><tr><td>案例</td><td>Seedance Mini 这类模型能力，需要先定义自助购买边界，再进入商品建模。</td></tr></tbody></table></div>
+</section>
+<div class="chapter-group" id="part-2"><div class="chapter-group-index">第二篇</div><h2>从商品主数据到多渠道交易</h2><p>用统一主数据承接售卖方案、规格、计量、价格、权益和渠道发布。</p></div><section id="s04">
+  <div class="section-head"><div class="index">04</div><div><div class="section-part">第二篇：从商品主数据到多渠道交易</div><h2>商品主数据模型</h2></div></div>
+  <p class="section-lead">商品主数据是交易和账单的共同语言。它把商品主对象、售卖方案、可购买规格、计量项、价格规则、权益规则、地域、订阅、订单、账单和发票连接在一起。</p>
+  <div class="pm-work-card"><div class="block-kicker">产品经理作业卡</div><div class="pm-work-grid"><div class="pm-work-item "><b>解决问题</b><span>搭建交易和账单共同语言</span></div><div class="pm-work-item "><b>PM 交付物</b><span>商品主数据表、实体关系图</span></div><div class="pm-work-item "><b>协作方</b><span>产品经理、商品中台、订单、账单</span></div><div class="pm-work-item is-risk"><b>关键风险</b><span>商品、售卖方案、规格、计量和价格口径不一致</span></div><div class="pm-work-item "><b>验收标准</b><span>下游渠道和账单能引用同一事实源</span></div></div></div>
+  <div class="raw diagram-card entity"><div class="raw-title">商品主数据如何驱动交易、账单和渠道</div><div class="source-map">
+      <div class="source-center"><strong>商品主数据</strong><span>商品 / 售卖方案 / 规格 / 计量 / 价格 / 权益</span></div>
+      <div class="source-node"><strong>官网</strong><span>营销介绍、价格提示、购买入口</span></div><div class="source-node"><strong>控制台</strong><span>购买字段、可售地域、订阅状态</span></div><div class="source-node"><strong>销售报价</strong><span>方案组合、折扣边界、合同价</span></div><div class="source-node"><strong>订单合同</strong><span>订购关系、生效时间、客户主体</span></div><div class="source-node"><strong>计量账单</strong><span>用量、抵扣、应收、发票</span></div><div class="source-node"><strong>客服解释</strong><span>客户可见口径、争议处理话术</span></div>
+    </div></div>
+  <div class="case-thread-strip"><div class="block-kicker">三类商品差异</div><div class="case-thread-grid"><div class="case-thread-card"><strong>ECS GPU</strong><span>主数据重点是地域、规格、资源池、包月价和服务等级。</span></div><div class="case-thread-card"><strong>Seedance Mini</strong><span>主数据重点是资源包、生成计量、促销和购买页字段。</span></div><div class="case-thread-card"><strong>Agent Plan</strong><span>主数据重点是套餐、权益、消耗顺序、超额确认和续费。</span></div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>关注点</th><th>业务含义</th></tr></thead><tbody><tr><td>主对象</td><td>回答卖的是什么。</td></tr><tr><td>售卖方案</td><td>回答怎么卖，例如按量、包月、资源包、企业套餐。</td></tr><tr><td>可购买规格</td><td>回答客户买哪一档、哪种配置、哪组能力。</td></tr><tr><td>计量与价格</td><td>记录用量事实，并在合同、地域、生效时间等上下文中转成金额。</td></tr></tbody></table></div>
+</section>
+<section id="s05">
+  <div class="section-head"><div class="index">05</div><div><div class="section-part">第二篇：从商品主数据到多渠道交易</div><h2>主数据治理与血缘</h2></div></div>
+  <p class="section-lead">主数据治理关注字段源头、维护责任、消费系统、变更影响和审计记录。官网、控制台、销售报价、订单、合同、账单和客服解释都应该消费同一套事实。</p>
+  <div class="pm-work-card"><div class="block-kicker">产品经理作业卡</div><div class="pm-work-grid"><div class="pm-work-item "><b>解决问题</b><span>明确字段源头、归属和变更影响</span></div><div class="pm-work-item "><b>PM 交付物</b><span>字段归属表、血缘图、变更影响清单</span></div><div class="pm-work-item "><b>协作方</b><span>产品经理、数据治理、渠道、财务</span></div><div class="pm-work-item is-risk"><b>关键风险</b><span>价格、地域、权益、服务承诺变更无审批</span></div><div class="pm-work-item "><b>验收标准</b><span>关键字段有维护方、消费方和回滚方案</span></div></div></div>
+  <div class="raw"><div class="raw-title">关系图</div><div class="node-map"><div class="node"><strong>治理五问</strong><span>字段是谁维护、谁消费、何时生效、影响谁、如何回滚。</span></div><div class="node"><strong>高风险字段</strong><span>价格、地域、服务承诺、权益额度、资源包抵扣、合同折扣和计量单位。</span></div><div class="node"><strong>变更步骤</strong><span>先做影响分析，再出审批摘要，最后同步渠道和客户解释。</span></div><div class="node"><strong>输出</strong><span>主数据血缘图、字段归属表、下游消费清单和变更审计记录。</span></div></div></div>
+  <div class="case-thread-strip"><div class="block-kicker">三类商品差异</div><div class="case-thread-grid"><div class="case-thread-card"><strong>ECS GPU</strong><span>资源型商品，重点看容量、地域、交付、服务等级和合同价。</span></div><div class="case-thread-card"><strong>Seedance Mini</strong><span>资源包/能力型商品，重点看自助购买、促销、大促队列和账单解释。</span></div><div class="case-thread-card"><strong>Agent Plan</strong><span>套餐权益型商品，重点看额度、过期、超额、退款退订和毛利。</span></div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>关注点</th><th>业务含义</th></tr></thead><tbody><tr><td>治理五问</td><td>字段是谁维护、谁消费、何时生效、影响谁、如何回滚。</td></tr><tr><td>高风险字段</td><td>价格、地域、服务承诺、权益额度、资源包抵扣、合同折扣和计量单位。</td></tr><tr><td>变更步骤</td><td>先做影响分析，再出审批摘要，最后同步渠道和客户解释。</td></tr><tr><td>输出</td><td>主数据血缘图、字段归属表、下游消费清单和变更审计记录。</td></tr></tbody></table></div>
+</section>
+<section id="s06">
+  <div class="section-head"><div class="index">06</div><div><div class="section-part">第二篇：从商品主数据到多渠道交易</div><h2>售卖方案、规格、计量和价格设计</h2></div></div>
+  <p class="section-lead">售卖方案决定商业包装，可购买规格决定客户选择，计量项记录使用事实，价格规则把使用事实转成金额。四者不一致时，订单、账单和客户解释都会出问题。</p>
+  <div class="pm-work-card"><div class="block-kicker">产品经理作业卡</div><div class="pm-work-grid"><div class="pm-work-item "><b>解决问题</b><span>设计可购买、可计量、可结算的售卖规则</span></div><div class="pm-work-item "><b>PM 交付物</b><span>Offer 设计、SKU 清单、计量和价格规则</span></div><div class="pm-work-item "><b>协作方</b><span>产品经理、商业化、财务、订单账单</span></div><div class="pm-work-item is-risk"><b>关键风险</b><span>促销、资源包、合同折扣和超额付费冲突</span></div><div class="pm-work-item "><b>验收标准</b><span>客户可购买，后台可结算，客服可解释</span></div></div></div>
+  
+  <div class="case-thread-strip"><div class="block-kicker">三类商品差异</div><div class="case-thread-grid"><div class="case-thread-card"><strong>ECS GPU</strong><span>资源型商品，重点看容量、地域、交付、服务等级和合同价。</span></div><div class="case-thread-card"><strong>Seedance Mini</strong><span>资源包/能力型商品，重点看自助购买、促销、大促队列和账单解释。</span></div><div class="case-thread-card"><strong>Agent Plan</strong><span>套餐权益型商品，重点看额度、过期、超额、退款退订和毛利。</span></div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>关注点</th><th>业务含义</th></tr></thead><tbody><tr><td>售卖方案类型</td><td>按量、包月、资源包、试用包、企业套餐、超额付费。</td></tr><tr><td>设计步骤</td><td>先确定客户购买方式，再定义规格和计量口径，最后补价格和互斥规则。</td></tr><tr><td>冲突检查</td><td>免费额度、资源包、促销价、合同折扣和超额付费是否能叠加。</td></tr><tr><td>风险</td><td>销售承诺和系统规则不一致，账单解释会变成售后争议。</td></tr></tbody></table></div>
+</section>
+<section id="s07">
+  <div class="section-head"><div class="index">07</div><div><div class="section-part">第二篇：从商品主数据到多渠道交易</div><h2>套餐型产品与权益治理</h2></div></div>
+  <p class="section-lead">套餐型产品的难点在权益规则。每天发多少额度、怎么消耗、何时过期、退订后如何处理、超额是否二次确认，都会影响毛利、法务和客户体验。</p>
+  <div class="pm-work-card"><div class="block-kicker">产品经理作业卡</div><div class="pm-work-grid"><div class="pm-work-item "><b>解决问题</b><span>定义套餐权益的发放、消耗和超额规则</span></div><div class="pm-work-item "><b>PM 交付物</b><span>权益规则表、超额确认说明、账单解释话术</span></div><div class="pm-work-item "><b>协作方</b><span>产品经理、财务、法务、客服</span></div><div class="pm-work-item is-risk"><b>关键风险</b><span>赠送额度成本失控或客户误解自动扣费</span></div><div class="pm-work-item "><b>验收标准</b><span>权益、过期、退订、退款、超额规则可解释</span></div></div></div>
+  
+  <div class="case-thread-strip"><div class="block-kicker">三类商品差异</div><div class="case-thread-grid"><div class="case-thread-card"><strong>ECS GPU</strong><span>资源型商品，重点看容量、地域、交付、服务等级和合同价。</span></div><div class="case-thread-card"><strong>Seedance Mini</strong><span>资源包/能力型商品，重点看自助购买、促销、大促队列和账单解释。</span></div><div class="case-thread-card"><strong>Agent Plan</strong><span>套餐权益型商品，重点看额度、过期、超额、退款退订和毛利。</span></div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>关注点</th><th>业务含义</th></tr></thead><tbody><tr><td>额度发放</td><td>明确发放周期、额度单位、适用地域和有效期。</td></tr><tr><td>消耗顺序</td><td>先消耗赠送额度、资源包还是合同额度，需要可解释。</td></tr><tr><td>超额规则</td><td>客户是否需要二次确认，是否自动扣费，账单如何展示。</td></tr><tr><td>客户解释</td><td>权益过期、退订、退款和失败扣费都要提前准备话术。</td></tr></tbody></table></div>
+</section>
+<section id="s08">
+  <div class="section-head"><div class="index">08</div><div><div class="section-part">第二篇：从商品主数据到多渠道交易</div><h2>产品生命周期全流程</h2></div></div>
+  <p class="section-lead">云商品生命周期从产品化定义开始，经过商品建模、渠道发布、上市准备、销售报价、订单交付、计量账单、发布后巡检、续约和复盘。</p>
+  <div class="pm-work-card"><div class="block-kicker">产品经理作业卡</div><div class="pm-work-grid"><div class="pm-work-item "><b>解决问题</b><span>把产品、财务、SRE、销售动作串成生命周期</span></div><div class="pm-work-item "><b>PM 交付物</b><span>生命周期泳道、阶段门禁、责任人表</span></div><div class="pm-work-item "><b>协作方</b><span>产品经理、财务、SRE、销售、客户成功</span></div><div class="pm-work-item is-risk"><b>关键风险</b><span>阶段交付物缺失导致上线后返工</span></div><div class="pm-work-item "><b>验收标准</b><span>每阶段有负责人、交付物和异常出口</span></div></div></div>
+  <div class="raw diagram-card swimlane"><div class="raw-title">产品生命周期：横向流程 + 角色泳道</div><div class="diagram-matrix"><div class="matrix-row"><div class="matrix-cell matrix-head">角色</div><div class="matrix-cell ">产品化</div><div class="matrix-cell ">商品建模</div><div class="matrix-cell ">渠道发布</div><div class="matrix-cell ">销售交付</div><div class="matrix-cell ">巡检复盘</div></div><div class="matrix-row"><div class="matrix-cell matrix-head">产品</div><div class="matrix-cell ">客户/边界</div><div class="matrix-cell ">主数据</div><div class="matrix-cell ">购买页</div><div class="matrix-cell ">交付反馈</div><div class="matrix-cell ">模板沉淀</div></div><div class="matrix-row"><div class="matrix-cell matrix-head">财务</div><div class="matrix-cell ">成本输入</div><div class="matrix-cell ">毛利底线</div><div class="matrix-cell ">折扣边界</div><div class="matrix-cell ">收入确认</div><div class="matrix-cell ">健康解释</div></div><div class="matrix-row"><div class="matrix-cell matrix-head">稳定性</div><div class="matrix-cell ">容量判断</div><div class="matrix-cell ">告警阈值</div><div class="matrix-cell ">灰度方案</div><div class="matrix-cell ">事件处理</div><div class="matrix-cell ">门禁优化</div></div><div class="matrix-row"><div class="matrix-cell matrix-head">销售</div><div class="matrix-cell ">目标客群</div><div class="matrix-cell ">方案包</div><div class="matrix-cell ">报价检查</div><div class="matrix-cell ">合同推进</div><div class="matrix-cell ">续约动作</div></div></div></div>
+  <div class="case-thread-strip"><div class="block-kicker">三类商品差异</div><div class="case-thread-grid"><div class="case-thread-card"><strong>ECS GPU</strong><span>资源型商品，重点看容量、地域、交付、服务等级和合同价。</span></div><div class="case-thread-card"><strong>Seedance Mini</strong><span>资源包/能力型商品，重点看自助购买、促销、大促队列和账单解释。</span></div><div class="case-thread-card"><strong>Agent Plan</strong><span>套餐权益型商品，重点看额度、过期、超额、退款退订和毛利。</span></div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>关注点</th><th>业务含义</th></tr></thead><tbody><tr><td>产品化</td><td>定义目标客户、能力边界、成本和服务承诺。</td></tr><tr><td>商品化</td><td>补齐主数据、售卖方案、规格、计量、价格和权益。</td></tr><tr><td>发布与销售</td><td>同步官网、控制台、云市场、销售方案和禁承诺项。</td></tr><tr><td>运营闭环</td><td>巡检订单、计量、账单、客户反馈、续约和经营健康度。</td></tr></tbody></table></div>
+</section>
+<section id="s09">
+  <div class="section-head"><div class="index">09</div><div><div class="section-part">第二篇：从商品主数据到多渠道交易</div><h2>渠道发布与上下游协同</h2></div></div>
+  <p class="section-lead">官网、控制台、云市场、销售报价、客服和账单是不同渠道和消费方。渠道发布不是复制文案，而是把同一套主数据转换成不同角色可理解的视图。</p>
+  <div class="pm-work-card"><div class="block-kicker">产品经理作业卡</div><div class="pm-work-grid"><div class="pm-work-item "><b>解决问题</b><span>把同一套主数据发布为多渠道视图</span></div><div class="pm-work-item "><b>PM 交付物</b><span>渠道发布矩阵、禁展示项、巡检清单</span></div><div class="pm-work-item "><b>协作方</b><span>产品经理、官网、控制台、销售、客服</span></div><div class="pm-work-item is-risk"><b>关键风险</b><span>官网、控制台、销售报价和账单口径不一致</span></div><div class="pm-work-item "><b>验收标准</b><span>各渠道字段来源、可见性和发布状态清楚</span></div></div></div>
+  <div class="raw diagram-card channels"><div class="raw-title">渠道发布矩阵：展示、禁展示和巡检</div><div class="publication-map">
+      <div class="publication-card"><strong>官网</strong><span><b>可展示：</b>展示卖点、适用场景、公开价格提示</span><span class="risk"><b>禁展示：</b>不展示未审批折扣、固定产能承诺</span></div><div class="publication-card"><strong>控制台</strong><span><b>可展示：</b>展示购买字段、地域、规格、订阅状态</span><span class="risk"><b>禁展示：</b>不展示客户不可见的内部成本和审批流</span></div><div class="publication-card"><strong>云市场</strong><span><b>可展示：</b>展示套餐、服务说明、合同入口</span><span class="risk"><b>禁展示：</b>不展示未生效 SKU 或灰度能力</span></div><div class="publication-card"><strong>销售报价</strong><span><b>可展示：</b>展示方案组合、折扣边界、正式报价前检查</span><span class="risk"><b>禁展示：</b>不承诺未确认容量和服务等级</span></div><div class="publication-card"><strong>客服解释</strong><span><b>可展示：</b>展示用量、抵扣、账单差异和发票状态</span><span class="risk"><b>禁展示：</b>不暴露内部表名和工程字段</span></div>
+      <div class="publication-footer">发布后巡检：官网、控制台、报价、订单、账单和客服口径必须一致。</div>
+    </div></div>
+  <div class="case-thread-strip"><div class="block-kicker">三类商品差异</div><div class="case-thread-grid"><div class="case-thread-card"><strong>ECS GPU</strong><span>资源型商品，重点看容量、地域、交付、服务等级和合同价。</span></div><div class="case-thread-card"><strong>Seedance Mini</strong><span>资源包/能力型商品，重点看自助购买、促销、大促队列和账单解释。</span></div><div class="case-thread-card"><strong>Agent Plan</strong><span>套餐权益型商品，重点看额度、过期、超额、退款退订和毛利。</span></div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>关注点</th><th>业务含义</th></tr></thead><tbody><tr><td>上游</td><td>研发、成本、容量、法务、稳定性保障提供能力和边界。</td></tr><tr><td>下游</td><td>官网、控制台、销售、客服、订单、账单消费字段。</td></tr><tr><td>一致性原则</td><td>价格、地域、规格、权益和服务承诺需要统一来源。</td></tr><tr><td>最低标准</td><td>渠道字段可见性、禁展示项、发布状态、责任人和回滚口径清楚。</td></tr></tbody></table></div>
+</section>
+<div class="chapter-group" id="part-3"><div class="chapter-group-index">第三篇</div><h2>从销售交付到经营治理</h2><p>把上市、报价、财务、稳定性、客户解释、异常和续约串成经营闭环。</p></div><section id="s10">
+  <div class="section-head"><div class="index">10</div><div><div class="section-part">第三篇：从销售交付到经营治理</div><h2>上市打法、销售方案与报价前检查</h2></div></div>
+  <p class="section-lead">上市打法把商品带到目标客户、行业场景和销售动作里。正式报价前必须确认价格、容量、服务承诺、折扣权限、合同边界和客户解释。</p>
+  <div class="pm-work-card"><div class="block-kicker">产品经理作业卡</div><div class="pm-work-grid"><div class="pm-work-item "><b>解决问题</b><span>把商品转化为行业方案和销售动作</span></div><div class="pm-work-item "><b>PM 交付物</b><span>GTM 包、报价前检查清单、禁承诺项</span></div><div class="pm-work-item "><b>协作方</b><span>产品经理、GTM、销售、财务、SRE</span></div><div class="pm-work-item is-risk"><b>关键风险</b><span>销售承诺未审批折扣、容量或服务等级</span></div><div class="pm-work-item "><b>验收标准</b><span>正式报价前完成价格、容量、合同边界检查</span></div></div></div>
+  
+  <div class="case-thread-strip"><div class="block-kicker">三类商品差异</div><div class="case-thread-grid"><div class="case-thread-card"><strong>ECS GPU</strong><span>资源型商品，重点看容量、地域、交付、服务等级和合同价。</span></div><div class="case-thread-card"><strong>Seedance Mini</strong><span>资源包/能力型商品，重点看自助购买、促销、大促队列和账单解释。</span></div><div class="case-thread-card"><strong>Agent Plan</strong><span>套餐权益型商品，重点看额度、过期、超额、退款退订和毛利。</span></div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>关注点</th><th>业务含义</th></tr></thead><tbody><tr><td>目标客户</td><td>明确行业、规模、预算、合规要求和购买路径。</td></tr><tr><td>方案组合</td><td>计算、存储、数据库、网络和 AI 服务按场景组合。</td></tr><tr><td>报价检查</td><td>估算、草稿和正式报价要分清，价格和合同边界要可追溯。</td></tr><tr><td>禁承诺项</td><td>不可承诺固定产能、无限容量、未审批折扣或未确认服务等级。</td></tr></tbody></table></div>
+</section>
+<section id="s11">
+  <div class="section-head"><div class="index">11</div><div><div class="section-part">第三篇：从销售交付到经营治理</div><h2>财务商业化与经营口径</h2></div></div>
+  <p class="section-lead">成交规模不等于健康收入。产品经理需要理解净收入、毛利、收入确认、递延收入、资源包消耗、免费额度成本和折扣叠加风险。</p>
+  <div class="pm-work-card"><div class="block-kicker">产品经理作业卡</div><div class="pm-work-grid"><div class="pm-work-item "><b>解决问题</b><span>用经营口径判断收入健康</span></div><div class="pm-work-item "><b>PM 交付物</b><span>经营指标口径、毛利风险清单、收入确认说明</span></div><div class="pm-work-item "><b>协作方</b><span>产品经理、财务、业务负责人</span></div><div class="pm-work-item is-risk"><b>关键风险</b><span>只看 GMV 忽略净收入、毛利和递延收入</span></div><div class="pm-work-item "><b>验收标准</b><span>能解释规模、收入、毛利和风险差异</span></div></div></div>
+  <div class="raw diagram-card health"><div class="raw-title">财务经营口径：成交规模只是起点</div><div class="finance-flow">
+      <div class="finance-node "><strong>GMV</strong><span>客户成交和 pipeline 进度</span></div><div class="finance-node "><strong>净收入</strong><span>扣除资源包、抵扣、促销和合同折扣</span></div><div class="finance-node "><strong>毛利</strong><span>叠加资源成本、免费额度和高成本能力调用</span></div><div class="finance-node "><strong>递延收入</strong><span>资源包、包月和权益消耗的确认节奏</span></div><div class="finance-node risk"><strong>经营风险</strong><span>账单争议、容量阻塞、续约流失和折扣越权</span></div>
+    </div></div>
+  <div class="case-thread-strip"><div class="block-kicker">三类商品差异</div><div class="case-thread-grid"><div class="case-thread-card"><strong>ECS GPU</strong><span>关注包月收入、GPU 成本、折扣审批和交付延期影响。</span></div><div class="case-thread-card"><strong>Seedance Mini</strong><span>关注资源包收入、促销抵扣、生成成本和账单争议。</span></div><div class="case-thread-card"><strong>Agent Plan</strong><span>关注免费额度、高成本模型调用、超额收入和毛利底线。</span></div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>关注点</th><th>业务含义</th></tr></thead><tbody><tr><td>经营指标</td><td>成交规模、净收入、毛利率、活跃客户、争议金额、续约风险。</td></tr><tr><td>收入确认</td><td>按量、包月、资源包和权益型产品的确认方式不同。</td></tr><tr><td>毛利风险</td><td>免费额度、高成本模型、促销和合同折扣可能击穿毛利底线。</td></tr><tr><td>财务问题</td><td>价格是否覆盖成本、折扣是否审批、发票和税务口径是否清楚。</td></tr></tbody></table></div>
+</section>
+<section id="s12">
+  <div class="section-head"><div class="index">12</div><div><div class="section-part">第三篇：从销售交付到经营治理</div><h2>稳定性上架门禁</h2></div></div>
+  <p class="section-lead">稳定性保障不是发布后的补救动作，而是云商品上架前的门禁。容量、限流、告警、灰度、回滚、客户通知和服务承诺边界都要前置确认。</p>
+  <div class="pm-work-card"><div class="block-kicker">产品经理作业卡</div><div class="pm-work-grid"><div class="pm-work-item "><b>解决问题</b><span>把稳定性作为上架前置门禁</span></div><div class="pm-work-item "><b>PM 交付物</b><span>SRE 门禁清单、灰度和回滚方案</span></div><div class="pm-work-item "><b>协作方</b><span>产品经理、SRE、客服、销售</span></div><div class="pm-work-item is-risk"><b>关键风险</b><span>容量不足或告警缺失导致交付事故</span></div><div class="pm-work-item "><b>验收标准</b><span>容量、限流、告警、灰度、回滚均已确认</span></div></div></div>
+  <div class="raw diagram-card flow"><div class="raw-title">稳定性上架门禁</div><div class="diagram-step"><div class="diagram-node"><i>01</i><strong>容量</strong><span>地域资源池和可售范围。</span></div><div class="diagram-node"><i>02</i><strong>限流</strong><span>峰值保护和大促策略。</span></div><div class="diagram-node"><i>03</i><strong>告警</strong><span>失败率、队列、延迟阈值。</span></div><div class="diagram-node"><i>04</i><strong>灰度</strong><span>按客户、地域和渠道放量。</span></div><div class="diagram-node"><i>05</i><strong>回滚</strong><span>触发条件、客户通知和止损动作。</span></div></div></div>
+  <div class="case-thread-strip"><div class="block-kicker">三类商品差异</div><div class="case-thread-grid"><div class="case-thread-card"><strong>ECS GPU</strong><span>资源型商品，重点看容量、地域、交付、服务等级和合同价。</span></div><div class="case-thread-card"><strong>Seedance Mini</strong><span>资源包/能力型商品，重点看自助购买、促销、大促队列和账单解释。</span></div><div class="case-thread-card"><strong>Agent Plan</strong><span>套餐权益型商品，重点看额度、过期、超额、退款退订和毛利。</span></div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>关注点</th><th>业务含义</th></tr></thead><tbody><tr><td>容量</td><td>地域、资源池、峰值、排队和扩容计划。</td></tr><tr><td>监控</td><td>失败率、延迟、队列深度、用量异常、资源池健康度。</td></tr><tr><td>灰度和回滚</td><td>发布比例、触发阈值、回滚步骤、客户沟通。</td></tr><tr><td>销售同步</td><td>容量不足时调整可售地域、交付窗口和销售话术。</td></tr></tbody></table></div>
+</section>
+<section id="s13">
+  <div class="section-head"><div class="index">13</div><div><div class="section-part">第三篇：从销售交付到经营治理</div><h2>客户自助购买与售后解释</h2></div></div>
+  <p class="section-lead">自助购买场景要把估算、正式报价、额度、超额、过期、失败扣费和账单差异讲清楚。客户能理解，售后争议才会少。</p>
+  <div class="pm-work-card"><div class="block-kicker">产品经理作业卡</div><div class="pm-work-grid"><div class="pm-work-item "><b>解决问题</b><span>让客户看懂购买、权益、超额和账单</span></div><div class="pm-work-item "><b>PM 交付物</b><span>买前确认页、售后解释话术、权限过滤规则</span></div><div class="pm-work-item "><b>协作方</b><span>产品经理、客服、账单、法务</span></div><div class="pm-work-item is-risk"><b>关键风险</b><span>估算被误认为正式报价，超额扣费引发争议</span></div><div class="pm-work-item "><b>验收标准</b><span>客户可理解买了什么、用了什么、为什么收费</span></div></div></div>
+  
+  <div class="case-thread-strip"><div class="block-kicker">三类商品差异</div><div class="case-thread-grid"><div class="case-thread-card"><strong>ECS GPU</strong><span>资源型商品，重点看容量、地域、交付、服务等级和合同价。</span></div><div class="case-thread-card"><strong>Seedance Mini</strong><span>资源包/能力型商品，重点看自助购买、促销、大促队列和账单解释。</span></div><div class="case-thread-card"><strong>Agent Plan</strong><span>套餐权益型商品，重点看额度、过期、超额、退款退订和毛利。</span></div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>关注点</th><th>业务含义</th></tr></thead><tbody><tr><td>买前确认</td><td>购买内容、权益额度、有效期、计量单位、超额规则。</td></tr><tr><td>买后解释</td><td>为什么账单高于估算、为什么额度过期、为什么某地域不可售。</td></tr><tr><td>权限边界</td><td>客户只能看到自己的订单、账单、发票和权益。</td></tr><tr><td>话术原则</td><td>用客户语言解释，不暴露系统字段和内部表名。</td></tr></tbody></table></div>
+</section>
+<section id="s14">
+  <div class="section-head"><div class="index">14</div><div><div class="section-part">第三篇：从销售交付到经营治理</div><h2>异常链路、反向链路与治理</h2></div></div>
+  <p class="section-lead">真实平台里大量工作来自变更和异常：调价、规格下线、权益调整、退款、退订、合同变更、计量异常和账单争议。反向链路需要更强的影响分析。</p>
+  <div class="pm-work-card"><div class="block-kicker">产品经理作业卡</div><div class="pm-work-grid"><div class="pm-work-item "><b>解决问题</b><span>治理调价、退款、退订和规格变更</span></div><div class="pm-work-item "><b>PM 交付物</b><span>变更影响分析、审批摘要、回滚和通知方案</span></div><div class="pm-work-item "><b>协作方</b><span>产品经理、财务、法务、客服、渠道</span></div><div class="pm-work-item is-risk"><b>关键风险</b><span>存量合同、权益、账单和渠道展示被误伤</span></div><div class="pm-work-item "><b>验收标准</b><span>变更影响对象、风险、审批和回滚清楚</span></div></div></div>
+  <div class="raw diagram-card impact"><div class="raw-title">异常治理：从变更触发到回滚通知</div><div class="exception-flow">
+      <div class="exception-node "><i>01</i><strong>变更触发</strong><span>调价、退款、退订、规格下线、权益调整</span></div><div class="exception-node "><i>02</i><strong>影响对象</strong><span>客户、合同、订单、权益、账单、发票、渠道</span></div><div class="exception-node is-risk"><i>03</i><strong>风险判断</strong><span>存量客户保护、毛利、合规、客户体验</span></div><div class="exception-node "><i>04</i><strong>审批摘要</strong><span>原因、范围、负责人、风险等级、时间窗口</span></div><div class="exception-node "><i>05</i><strong>回滚通知</strong><span>回滚步骤、客户沟通、客服话术、复盘记录</span></div>
+    </div></div>
+  <div class="case-thread-strip"><div class="block-kicker">三类商品差异</div><div class="case-thread-grid"><div class="case-thread-card"><strong>ECS GPU</strong><span>资源型商品，重点看容量、地域、交付、服务等级和合同价。</span></div><div class="case-thread-card"><strong>Seedance Mini</strong><span>资源包/能力型商品，重点看自助购买、促销、大促队列和账单解释。</span></div><div class="case-thread-card"><strong>Agent Plan</strong><span>套餐权益型商品，重点看额度、过期、超额、退款退订和毛利。</span></div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>关注点</th><th>业务含义</th></tr></thead><tbody><tr><td>影响对象</td><td>客户、合同、订单、权益、账单、发票、渠道展示和客服话术。</td></tr><tr><td>保护策略</td><td>存量客户保护、灰度变更、版本兼容和回滚窗口。</td></tr><tr><td>审批摘要</td><td>变更原因、影响范围、风险等级、负责人、回滚方案。</td></tr><tr><td>治理记录</td><td>所有高风险变更都需要审计和复盘。</td></tr></tbody></table></div>
+</section>
+<section id="s15">
+  <div class="section-head"><div class="index">15</div><div><div class="section-part">第三篇：从销售交付到经营治理</div><h2>发布后巡检、续约与客户成功</h2></div></div>
+  <p class="section-lead">上架成功只代表按钮可见，业务健康需要看订单、交付、计量、账单、客户反馈、告警、续约概率和扩容机会。</p>
+  <div class="pm-work-card"><div class="block-kicker">产品经理作业卡</div><div class="pm-work-grid"><div class="pm-work-item "><b>解决问题</b><span>用巡检和续约验证业务健康</span></div><div class="pm-work-item "><b>PM 交付物</b><span>24 小时巡检表、续约风险雷达、客户成功动作</span></div><div class="pm-work-item "><b>协作方</b><span>产品经理、SRE、销售、客户成功</span></div><div class="pm-work-item is-risk"><b>关键风险</b><span>上线后无人闭环订单、计量、账单和客户反馈</span></div><div class="pm-work-item "><b>验收标准</b><span>发布后健康日报能驱动续约和复盘动作</span></div></div></div>
+  
+  <div class="case-thread-strip"><div class="block-kicker">三类商品差异</div><div class="case-thread-grid"><div class="case-thread-card"><strong>ECS GPU</strong><span>资源型商品，重点看容量、地域、交付、服务等级和合同价。</span></div><div class="case-thread-card"><strong>Seedance Mini</strong><span>资源包/能力型商品，重点看自助购买、促销、大促队列和账单解释。</span></div><div class="case-thread-card"><strong>Agent Plan</strong><span>套餐权益型商品，重点看额度、过期、超额、退款退订和毛利。</span></div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>关注点</th><th>业务含义</th></tr></thead><tbody><tr><td>24 小时巡检</td><td>官网、控制台、订单、交付、计量、账单、客服、告警。</td></tr><tr><td>健康日报</td><td>成交、交付、失败、争议、容量、客户反馈和待办。</td></tr><tr><td>续约雷达</td><td>用量健康、账单争议、服务事件、满意度、续约概率。</td></tr><tr><td>增长机会</td><td>扩容、升级、行业方案复用和客户成功动作。</td></tr></tbody></table></div>
+</section>
+<div class="chapter-group" id="part-4"><div class="chapter-group-index">第四篇</div><h2>从组织协同到平台化 Agent</h2><p>让不同角色围绕同一套事实协作，并沉淀为 Agent 工作台能力。</p></div><section id="s16">
+  <div class="section-head"><div class="index">16</div><div><div class="section-part">第四篇：从组织协同到平台化 Agent</div><h2>组织层级、指标与外部客户场景</h2></div></div>
+  <p class="section-lead">同一套数据在不同角色眼里代表不同决策。老板看目标达成和风险，财务看收入和毛利，稳定性团队看容量和告警，销售看客户和报价，客户看购买和账单解释。</p>
+  <div class="pm-work-card"><div class="block-kicker">产品经理作业卡</div><div class="pm-work-grid"><div class="pm-work-item "><b>解决问题</b><span>让不同层级基于同一事实决策</span></div><div class="pm-work-item "><b>PM 交付物</b><span>角色关注矩阵、指标口径、权限边界</span></div><div class="pm-work-item "><b>协作方</b><span>产品经理、老板、财务、销售、客户</span></div><div class="pm-work-item is-risk"><b>关键风险</b><span>不同角色看到不同口径导致决策偏差</span></div><div class="pm-work-item "><b>验收标准</b><span>每类角色有清楚指标、风险和下一步动作</span></div></div></div>
+  
+  <div class="case-thread-strip"><div class="block-kicker">三类商品差异</div><div class="case-thread-grid"><div class="case-thread-card"><strong>ECS GPU</strong><span>资源型商品，重点看容量、地域、交付、服务等级和合同价。</span></div><div class="case-thread-card"><strong>Seedance Mini</strong><span>资源包/能力型商品，重点看自助购买、促销、大促队列和账单解释。</span></div><div class="case-thread-card"><strong>Agent Plan</strong><span>套餐权益型商品，重点看额度、过期、超额、退款退订和毛利。</span></div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>关注点</th><th>业务含义</th></tr></thead><tbody><tr><td>老板</td><td>成交规模、净收入、毛利、风险、目标达成和负责人。</td></tr><tr><td>产品</td><td>覆盖率、能力边界、渠道一致性、商品健康度。</td></tr><tr><td>销售</td><td>机会池、报价、合同、客户风险和下一步动作。</td></tr><tr><td>客户</td><td>预算、购买、用量、账单、发票、续费和售后解释。</td></tr></tbody></table></div>
+</section>
+<section id="s17">
+  <div class="section-head"><div class="index">17</div><div><div class="section-part">第四篇：从组织协同到平台化 Agent</div><h2>平台实现视角：领域化的 Agent 系统</h2></div></div>
+  <p class="section-lead">平台实现不是写死案例答案，而是用领域能力包、资源注册、权限、路由、工具、结构化展示、评测和审计，把云商品业务事实接入 Agent 工作流。</p>
+  <div class="pm-work-card"><div class="block-kicker">产品经理作业卡</div><div class="pm-work-grid"><div class="pm-work-item "><b>解决问题</b><span>把手册沉淀为领域化 Agent 能力</span></div><div class="pm-work-item "><b>PM 交付物</b><span>领域能力包、工具清单、展示契约、评测样例</span></div><div class="pm-work-item "><b>协作方</b><span>产品经理、研发、算法、数据、评测</span></div><div class="pm-work-item is-risk"><b>关键风险</b><span>写死演示答案或跨业务域混淆</span></div><div class="pm-work-item "><b>验收标准</b><span>查询、评审、估算、审批摘要均走领域链路</span></div></div></div>
+  <div class="raw"><div class="raw-title">关系图</div><div class="node-map"><div class="node"><strong>领域隔离</strong><span>云商品和其他业务域有独立数据、意图、权限和展示策略。</span></div><div class="node"><strong>查询与工具</strong><span>通用查询承接数据问答，专用工具承接估算、评审、审批摘要和模拟。</span></div><div class="node"><strong>展示契约</strong><span>优先输出业务结论、关键指标、风险、负责人、后续动作和证据。</span></div><div class="node"><strong>安全边界</strong><span>写入类动作只生成草稿、审批摘要和模拟计划。</span></div></div></div>
+  <div class="case-thread-strip"><div class="block-kicker">三类商品差异</div><div class="case-thread-grid"><div class="case-thread-card"><strong>ECS GPU</strong><span>资源型商品，重点看容量、地域、交付、服务等级和合同价。</span></div><div class="case-thread-card"><strong>Seedance Mini</strong><span>资源包/能力型商品，重点看自助购买、促销、大促队列和账单解释。</span></div><div class="case-thread-card"><strong>Agent Plan</strong><span>套餐权益型商品，重点看额度、过期、超额、退款退订和毛利。</span></div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>关注点</th><th>业务含义</th></tr></thead><tbody><tr><td>领域隔离</td><td>云商品和其他业务域有独立数据、意图、权限和展示策略。</td></tr><tr><td>查询与工具</td><td>通用查询承接数据问答，专用工具承接估算、评审、审批摘要和模拟。</td></tr><tr><td>展示契约</td><td>优先输出业务结论、关键指标、风险、负责人、后续动作和证据。</td></tr><tr><td>安全边界</td><td>写入类动作只生成草稿、审批摘要和模拟计划。</td></tr></tbody></table></div>
+</section>
+<section id="s18">
+  <div class="section-head"><div class="index">18</div><div><div class="section-part">第四篇：从组织协同到平台化 Agent</div><h2>三条完整案例</h2></div></div>
+  <p class="section-lead">ECS GPU、Seedance Mini 和 Agent Plan 分别代表资源型商品、AI 视频资源包和套餐权益型产品。三条案例帮助读者把概念、主数据、渠道、销售、交付和经营串起来。</p>
+  <div class="pm-work-card"><div class="block-kicker">产品经理作业卡</div><div class="pm-work-grid"><div class="pm-work-item "><b>解决问题</b><span>用三类商品验证方法论可落地</span></div><div class="pm-work-item "><b>PM 交付物</b><span>ECS GPU、Seedance Mini、Agent Plan 演示链路</span></div><div class="pm-work-item "><b>协作方</b><span>产品经理、销售、财务、SRE、客户成功</span></div><div class="pm-work-item is-risk"><b>关键风险</b><span>案例只是点状问题，没有串成闭环</span></div><div class="pm-work-item "><b>验收标准</b><span>每条案例能跑通产品化到经营复盘</span></div></div></div>
+  <div class="raw diagram-card case-matrix"><div class="raw-title">三条完整演示链路</div><div class="storyline-grid">
+      <div class="storyline-card"><strong>ECS GPU</strong><span>产品化：GPU 资源和地域边界</span><span>商品化：规格、包月价、SLA</span><span>经营：容量风险、交付延期、金融客户方案</span></div><div class="storyline-card"><strong>Seedance Mini</strong><span>产品化：模型能力和不可承诺项</span><span>商品化：资源包、促销、购买页字段</span><span>经营：大促队列、账单解释、客户反馈</span></div><div class="storyline-card"><strong>Agent Plan</strong><span>产品化：套餐承诺和能力边界</span><span>商品化：权益发放、消耗、超额确认</span><span>经营：毛利、退款退订、续约风险</span></div>
+    </div></div>
+  <div class="case-thread-strip"><div class="block-kicker">三类商品差异</div><div class="case-thread-grid"><div class="case-thread-card"><strong>ECS GPU</strong><span>从容量评审到金融客户方案，再到交付延期经营影响。</span></div><div class="case-thread-card"><strong>Seedance Mini</strong><span>从模型能力产品化到自助购买、大促、账单解释。</span></div><div class="case-thread-card"><strong>Agent Plan</strong><span>从套餐权益设计到超额确认、毛利和续约风险。</span></div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>关注点</th><th>业务含义</th></tr></thead><tbody><tr><td>ECS GPU</td><td>重点看容量、地域、包月价格、金融客户方案和交付延期影响。</td></tr><tr><td>Seedance Mini</td><td>重点看模型能力产品化、自助购买、资源包、促销和大促稳定性。</td></tr><tr><td>Agent Plan</td><td>重点看套餐承诺、权益发放、超额确认、毛利和客户体验。</td></tr><tr><td>复盘</td><td>每条案例都沉淀为下一次商品上架模板。</td></tr></tbody></table></div>
+</section>
+<section id="s19">
+  <div class="section-head"><div class="index">19</div><div><div class="section-part">第四篇：从组织协同到平台化 Agent</div><h2>学习成果验收与可复制模板</h2></div></div>
+  <p class="section-lead">学习成果要能被验收：概念说得清，流程画得出，案例讲得完整，模板能落地填写。模板包是把学习转为项目推进的工具。</p>
+  <div class="pm-work-card"><div class="block-kicker">产品经理作业卡</div><div class="pm-work-grid"><div class="pm-work-item "><b>解决问题</b><span>把学习成果转为可复制模板</span></div><div class="pm-work-item "><b>PM 交付物</b><span>验收清单、模板包、复盘材料</span></div><div class="pm-work-item "><b>协作方</b><span>产品经理、导师、评审人</span></div><div class="pm-work-item is-risk"><b>关键风险</b><span>只有知识总结，没有可复用作业资产</span></div><div class="pm-work-item "><b>验收标准</b><span>能用模板组织跨角色评审和复盘</span></div></div></div>
+  
+  <div class="case-thread-strip"><div class="block-kicker">三类商品差异</div><div class="case-thread-grid"><div class="case-thread-card"><strong>ECS GPU</strong><span>资源型商品，重点看容量、地域、交付、服务等级和合同价。</span></div><div class="case-thread-card"><strong>Seedance Mini</strong><span>资源包/能力型商品，重点看自助购买、促销、大促队列和账单解释。</span></div><div class="case-thread-card"><strong>Agent Plan</strong><span>套餐权益型商品，重点看额度、过期、超额、退款退订和毛利。</span></div></div></div>
+  <div class="table-wrap"><table><thead><tr><th>关注点</th><th>业务含义</th></tr></thead><tbody><tr><td>概念验收</td><td>解释主数据实体、售卖方案、计量、价格、权益和渠道关系。</td></tr><tr><td>流程验收</td><td>从能力到商品，从发布到经营，从异常到复盘。</td></tr><tr><td>产出物</td><td>产品化定义、商品模型、报价检查、巡检表、变更分析、经营简报。</td></tr><tr><td>通过标准</td><td>能带着模板组织一次跨角色评审。</td></tr></tbody></table></div>
+</section>
+<section id="s20">
+  <div class="section-head"><div class="index">20</div><div><div class="section-part">第四篇：从组织协同到平台化 Agent</div><h2>附录：详细章节与可复制模板</h2></div></div>
+  <p class="section-lead">附录保留详细章节和可复制模板。正文用于建立学习路径，附录用于查阅具体清单、模板和案例。</p>
+  <div class="pm-work-card"><div class="block-kicker">产品经理作业卡</div><div class="pm-work-grid"><div class="pm-work-item "><b>解决问题</b><span>保留详细资料和项目落地模板</span></div><div class="pm-work-item "><b>PM 交付物</b><span>附录章节、模板索引、查阅说明</span></div><div class="pm-work-item "><b>协作方</b><span>产品经理、项目团队</span></div><div class="pm-work-item is-risk"><b>关键风险</b><span>附录过重影响主线阅读</span></div><div class="pm-work-item "><b>验收标准</b><span>正文看主线，附录查细节</span></div></div></div>
+  
+  
+  <div class="table-wrap"><table><thead><tr><th>关注点</th><th>业务含义</th></tr></thead><tbody><tr><td>详细章节</td><td>保留主数据、生命周期、财务治理和平台案例的展开内容。</td></tr><tr><td>模板</td><td>保留可复制模板和填写样例，便于真实项目直接套用。</td></tr><tr><td>查阅方式</td><td>先看正文判断阶段，再到附录找对应模板和清单。</td></tr><tr><td>用法</td><td>真实项目中把附录作为评审材料和复盘基线。</td></tr></tbody></table></div>
+</section>
+        <details class="appendix" open>
+          <summary>附录：详细章节与可复制模板</summary>
+          <h4>详细章节：基础概念与商品主数据</h4>
+<h3>01 基础概念与商品主数据</h3>
+<p>本章面向刚进入云商品领域的新人和商品产品经理，目标是先建立一套稳定的“术语地图”和“主数据地图”：知道一个技术能力如何被定义成产品，如何进一步成为可售、可订购、可计量、可开票、可续约的云商品。</p>
+<p>读完本章，你应该能做到：</p>
+<ul>
+<li>区分能力、产品、商品、商品主对象、售卖方案、可购买规格、计量项、价格规则、权益规则、订阅关系。</li>
+<li>判断一个技术能力是否已经具备产品化条件，而不是直接进入上架。</li>
+<li>画出基础商品主数据模型，并说明每类数据由谁维护、被谁消费。</li>
+<li>理解主数据治理、字段血缘和变更审批为什么是商品平台的核心能力。</li>
+<li>设计基础 售卖方案、可购买规格、计量项、价格规则 关系，并识别互斥、叠加、折扣和账单风险。</li>
+<li>理解 Plan 型产品的权益发放、消耗、过期、退款、超额和账单解释规则。</li>
+</ul>
+<p>本章不讨论完整生命周期、上市打法、稳定性保障 门禁和经营复盘的全部细节，只聚焦商品成立之前和成立之初最关键的主数据基础。</p>
+<h4>1. 基础概念</h4>
+<p>云商品工作中最常见的混乱，是把“技术能力、产品、商品、套餐、规格、价格、权益”混成一件事。新人要先记住：云商品不是一个展示页，也不是一张报价表，而是一组能驱动购买、交付、计量、账单和服务解释的业务对象。</p>
+<h5>1.1 关键概念解释</h5>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>概念</th>
+<th>通俗解释</th>
+<th>典型问题</th>
+</tr></thead>
+<tbody><tr>
+<td>产品能力</td>
+<td>底层技术或资源能力，例如模型推理、GPU 实例、对象存储、CDN 分发。</td>
+<td>这个能力能不能稳定交付？成本如何？</td>
+</tr>
+<tr>
+<td>产品</td>
+<td>已经定义清楚能力边界、目标客户、交付方式、服务等级承诺 和成本模型的对象。</td>
+<td>卖给谁？解决什么问题？不能承诺什么？</td>
+</tr>
+<tr>
+<td>商品</td>
+<td>可以被购买、报价、计费、交付、开票和续约的商业对象。</td>
+<td>客户怎么买？怎么收费？怎么开票？</td>
+</tr>
+<tr>
+<td>商品主对象</td>
+<td>商品主对象，描述“卖的是什么”。</td>
+<td>商品名称、分类、描述、状态、负责人是什么？</td>
+</tr>
+<tr>
+<td>售卖方案</td>
+<td>售卖方案，描述“怎么卖”。</td>
+<td>按量、包月、资源包、企业套餐还是试用？</td>
+</tr>
+<tr>
+<td>可购买规格</td>
+<td>可购买规格，描述“买哪一档”。</td>
+<td>2C4G、Medium、Pro、企业版分别是什么？</td>
+</tr>
+<tr>
+<td>计量项</td>
+<td>计量项，描述“按什么消耗”。</td>
+<td>Token、实例小时、GB、请求次数、秒数怎么记录？</td>
+</tr>
+<tr>
+<td>价格规则</td>
+<td>价格规则，描述“怎么算钱”。</td>
+<td>目录价、阶梯价、合同价、促销价如何生效？</td>
+</tr>
+<tr>
+<td>权益规则</td>
+<td>权益规则，描述“买了后拥有什么”。</td>
+<td>额度、功能开关、席位、地域、有效期是什么？</td>
+</tr>
+<tr>
+<td>订阅关系</td>
+<td>客户当前购买并生效的订阅关系。</td>
+<td>谁买了什么、何时生效、何时到期、剩余额度多少？</td>
+</tr>
+</tbody>
+</table></div>
+<h5>1.2 必须建立的关系感</h5>
+<ul>
+<li><strong>能力不等于产品</strong>：API 能调用，不代表有客户定位、服务等级承诺、成本、交付和售后解释。</li>
+<li><strong>产品不等于商品</strong>：产品定义清楚后，还要有 售卖方案、可购买规格、计量项、价格规则、权益和上架渠道，客户才可以买。</li>
+<li><strong>售卖方案 不是 可购买规格</strong>：售卖方案 是售卖包装，例如按量、包月、资源包；可购买规格 是购买规格，例如 Medium、Pro 或 2C4G。</li>
+<li><strong>计量项 不是 价格规则</strong>：计量项 记录用量，价格规则 把用量、周期、折扣和合同规则转换成金额。</li>
+<li><strong>官网不是主数据源</strong>：官网只是渠道投影，真正源头应是商品中台或产品定义系统。</li>
+</ul>
+<h5>1.3 新人理解路径</h5>
+<p>建议用一句话串起来：</p>
+<blockquote>我们先把技术能力定义成产品，再把产品包装成 商品主对象 和 售卖方案，拆成 可购买规格，指定 计量项 和 价格规则，最后用 权益规则 和 订阅关系 管住客户买后能用什么。</blockquote>
+<p>如果这句话中的任意对象没有定义清楚，后续通常会出现四类问题：销售解释不一致、客户购买不清楚、账单对不上、售后无法判断责任。</p>
+<h4>2. 产品化定义前置</h4>
+<p>产品化定义前置，是为了避免“技术能力刚能跑，就被包装成商品卖出去”。云商品 产品经理 的第一项责任不是填后台字段，而是判断这个能力是否已经具备产品条件。</p>
+<h5>2.1 产品化 就绪评审 要回答的问题</h5>
+<ol>
+<li><strong>目标客户是谁</strong>：中小自助客户、大客户、内部客户、开发者、行业客户是否不同？</li>
+<li><strong>核心场景是什么</strong>：训练、推理、存储、分发、生成、分析、办公协作，场景越模糊，商品越难卖。</li>
+<li><strong>能力边界是什么</strong>：支持哪些地域、并发、模型版本、数据格式、实例规格？不支持什么？</li>
+<li><strong>交付方式是什么</strong>：控制台自助、API、销售开通、工单交付、专属部署还是混合模式？</li>
+<li><strong>服务等级承诺 能否承诺</strong>：可用性、延迟、交付时效、容量保障是否有 稳定性保障 背书？</li>
+<li><strong>成本能否测算</strong>：GPU、存储、带宽、模型推理、第三方服务、人工支持成本是否可估？</li>
+<li><strong>合规和法务边界是什么</strong>：数据、内容安全、地域、合同、退款、禁承诺项是否明确？</li>
+<li><strong>售后能否解释</strong>：客户问“为什么扣费、为什么失败、为什么不能买”时是否有口径？</li>
+</ol>
+<h5>2.2 关键交付物</h5>
+<ul>
+<li>产品化 就绪评审 结论：通过、带条件通过、退回补齐。</li>
+<li>产品定义草稿：客户、场景、价值、边界、版本、依赖。</li>
+<li>能力边界和不可承诺项：尤其是地域、容量、时延、效果、模型输出、安全合规。</li>
+<li>服务等级承诺 初稿：哪些指标可承诺，哪些只能作为参考。</li>
+<li>成本测算输入：单位成本、峰值成本、免费额度成本、折扣空间。</li>
+<li>交付物清单：控制台、API、文档、工单、客服话术、销售材料。</li>
+</ul>
+<h5>2.3 工作步骤</h5>
+<ol>
+<li><strong>收集能力信息</strong>：让研发、算法或资源团队说明当前能力状态、限制和依赖。</li>
+<li><strong>定义客户与场景</strong>：产品经理 明确首批目标客户和高频使用路径，不追求覆盖所有场景。</li>
+<li><strong>拆解承诺与不可承诺</strong>：把销售容易承诺但系统未准备好的内容提前列出。</li>
+<li><strong>拉齐成本和稳定性</strong>：财务 BP 给成本底线，稳定性保障 给容量和 服务等级承诺 边界。</li>
+<li><strong>形成产品化结论</strong>：只有当客户、场景、边界、成本、服务等级承诺 和交付方式基本成立，才进入商品建模。</li>
+</ol>
+<h5>2.4 角色分工</h5>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>角色</th>
+<th>主要责任</th>
+</tr></thead>
+<tbody><tr>
+<td>商品 产品经理</td>
+<td>牵头产品定义、边界、客户体验和商品化路径。</td>
+</tr>
+<tr>
+<td>研发/算法/资源团队</td>
+<td>说明能力范围、技术限制、依赖系统和实现成本。</td>
+</tr>
+<tr>
+<td>稳定性保障</td>
+<td>确认可用性、容量、限流、告警、交付窗口和回滚条件。</td>
+</tr>
+<tr>
+<td>财务 BP</td>
+<td>确认成本输入、毛利底线、折扣空间和收入影响。</td>
+</tr>
+<tr>
+<td>法务/合规</td>
+<td>确认合同承诺、数据合规、服务等级承诺 表述和退款边界。</td>
+</tr>
+<tr>
+<td>销售/上市打法/客服</td>
+<td>提供客户需求、销售话术、常见问题说明 和售后解释要求。</td>
+</tr>
+</tbody>
+</table></div>
+<h5>2.5 常见风险</h5>
+<ul>
+<li><strong>技术能力冒充产品</strong>：只有接口，没有客户定位、服务等级承诺、成本和售后路径。</li>
+<li><strong>不可承诺项后置</strong>：销售已经卖出，才发现地域、容量、效果或合规无法承诺。</li>
+<li><strong>成本未穿透</strong>：免费额度、促销价或高成本模型调用导致毛利被打穿。</li>
+<li><strong>交付方式不清</strong>：客户下单后不知道是自动开通、工单开通还是销售跟进。</li>
+<li><strong>文案过度营销</strong>：官网宣传与合同、服务等级承诺、账单解释不一致。</li>
+</ul>
+<h5>2.6 产品化小案例</h5>
+<p><strong>Seedance Mini</strong> 如果目前只是一个视频生成模型能力，产品经理 不能直接把它放到控制台售卖。需要先确认：支持哪些分辨率和时长、生成失败是否扣费、队列拥塞如何处理、是否需要内容安全审核、单位生成成本是多少、客户能否自助购买资源包、官网效果示例是否代表正式承诺。</p>
+<p><strong>ECS GPU 训练实例</strong> 如果要成为商品，需要确认：GPU 型号、地域、库存、实例规格、交付时效、容量预约、包月和按量成本、服务等级承诺、故障赔付、销售是否能承诺固定交付日期。</p>
+<h4>3. 商品主数据模型</h4>
+<p>商品主数据模型是云商品平台的骨架。它不是单纯为了后台录入，而是为了让官网、控制台、销售报价、合同、订单、计量、账单、发票、客服和经营看板使用同一套可信来源。</p>
+<h5>3.1 核心实体</h5>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>实体</th>
+<th>它是什么</th>
+<th>维护方</th>
+<th>主要消费方</th>
+</tr></thead>
+<tbody><tr>
+<td>产品族</td>
+<td>产品在更大能力体系中的归类，如计算、存储、AI、数据库。</td>
+<td>商品 产品经理/产品线</td>
+<td>官网、控制台、经营看板</td>
+</tr>
+<tr>
+<td>商品主对象</td>
+<td>商品主对象，描述卖的是什么。</td>
+<td>商品 产品经理</td>
+<td>全部渠道和下游系统</td>
+</tr>
+<tr>
+<td>售卖方案</td>
+<td>售卖方案，如按量、包月、资源包、企业套餐。</td>
+<td>商品 产品经理/财务</td>
+<td>订购、报价、合同、账单</td>
+</tr>
+<tr>
+<td>可购买规格</td>
+<td>可购买规格或档位。</td>
+<td>商品 产品经理/研发/稳定性保障</td>
+<td>控制台、订单、交付系统</td>
+</tr>
+<tr>
+<td>Spec</td>
+<td>可购买规格 的规格参数，如 CPU、内存、模型版本、额度。</td>
+<td>研发/稳定性保障/产品经理</td>
+<td>控制台、交付、客服解释</td>
+</tr>
+<tr>
+<td>计量项</td>
+<td>计量项，如 Token、GB、请求数、实例小时。</td>
+<td>研发/计量平台/产品经理</td>
+<td>计量、账单、用量看板</td>
+</tr>
+<tr>
+<td>价格规则</td>
+<td>价格规则，包括目录价、阶梯价、合同价、促销价。</td>
+<td>财务 BP/商品 产品经理</td>
+<td>报价、订单、账单、经营看板</td>
+</tr>
+<tr>
+<td>可售地域</td>
+<td>地域和可售范围。</td>
+<td>稳定性保障/资源团队/产品经理</td>
+<td>控制台、销售、交付</td>
+</tr>
+<tr>
+<td>权益规则</td>
+<td>权益规则，如额度、功能、席位、有效期。</td>
+<td>产品经理/研发/财务</td>
+<td>权益系统、控制台、账单解释</td>
+</tr>
+<tr>
+<td>订阅关系</td>
+<td>客户购买并生效的订阅关系。</td>
+<td>订购系统</td>
+<td>控制台、账单、客服、续约</td>
+</tr>
+<tr>
+<td>Order / Order Item</td>
+<td>订单和订单明细。</td>
+<td>订单系统</td>
+<td>交付、账单、财务、客服</td>
+</tr>
+<tr>
+<td>计量记录</td>
+<td>计量记录。</td>
+<td>计量系统</td>
+<td>账单、用量查询、争议处理</td>
+</tr>
+<tr>
+<td>Bill / Invoice</td>
+<td>账单和发票。</td>
+<td>账单/财务系统</td>
+<td>客户、财务、客服</td>
+</tr>
+<tr>
+<td>Release Request</td>
+<td>发布申请。</td>
+<td>产品经理/发布平台</td>
+<td>审批、渠道发布、巡检</td>
+</tr>
+<tr>
+<td>Approval Task</td>
+<td>审批任务。</td>
+<td>流程系统</td>
+<td>财务、法务、稳定性保障、管理者</td>
+</tr>
+<tr>
+<td>Risk Signal</td>
+<td>风险信号，如毛利、容量、合规风险。</td>
+<td>各专业系统</td>
+<td>产品经理、老板、审批人</td>
+</tr>
+<tr>
+<td>Workflow Task</td>
+<td>流程任务。</td>
+<td>工作流平台</td>
+<td>跨团队协同</td>
+</tr>
+<tr>
+<td>Renewal Opportunity</td>
+<td>续约机会。</td>
+<td>CRM/客户成功</td>
+<td>销售、客户成功、经营层</td>
+</tr>
+</tbody>
+</table></div>
+<h5>3.2 每个实体都要补齐的元信息</h5>
+<p>产品经理 不应只问“字段填了没有”，而要问：</p>
+<ul>
+<li><strong>业务定义</strong>：这个字段用业务语言怎么解释？</li>
+<li><strong>主键和展示字段</strong>：系统识别用什么，客户或运营看到什么？</li>
+<li><strong>维护方</strong>：谁有权修改？谁审批？</li>
+<li><strong>消费方</strong>：哪些系统读取它？官网、控制台、报价、账单是否都用？</li>
+<li><strong>生效规则</strong>：立即生效、灰度生效、下个计费周期生效还是合同续约后生效？</li>
+<li><strong>客户可见性</strong>：哪些字段能展示给客户，哪些只能内部使用？</li>
+<li><strong>变更影响</strong>：修改后会影响哪些存量订单、合同、账单和渠道？</li>
+</ul>
+<h5>3.3 主数据示例：Agent Plan Medium</h5>
+<p>一个 Agent Plan Medium 不能只建一个“Medium 套餐”名称，至少要拆成：</p>
+<ul>
+<li>商品主对象：Agent 企业助手。</li>
+<li>售卖方案：包月套餐 售卖方案、试用 售卖方案、超额付费 售卖方案。</li>
+<li>可购买规格：Medium、Pro、Enterprise 等档位。</li>
+<li>计量项：Token 消耗、联网搜索次数、视频生成秒数或任务数。</li>
+<li>价格规则：包月目录价、企业合同价、促销价、超额单价。</li>
+<li>权益规则：每日赠送额度、席位数、功能权限、额度有效期。</li>
+<li>订阅关系：某客户购买 Medium 后的生效周期、剩余额度、续约状态。</li>
+</ul>
+<h5>3.4 主数据字段展示原则</h5>
+<ul>
+<li>对客户展示业务语言，不展示工程 key。例如展示“每日赠送额度”，不要展示 <code>daily_free_quota</code>。</li>
+<li><code>source</code>、<code>演示</code>、<code>confidence</code> 等数据边界字段可以保留在内部，但对外应转写为“演示数据”“估算假设”“置信度”。</li>
+<li>价格字段要明确是目录价、参考价、估算价、促销价、合同价还是正式报价。</li>
+<li>权益字段要能回答客户最关心的问题：买了有什么、什么时候生效、何时过期、能否退款、用完后怎么办。</li>
+</ul>
+<h4>4. 主数据治理与血缘</h4>
+<p>商品平台之所以叫“中台”，不是因为它有很多表单，而是因为它要为多个渠道和系统提供一致、可追溯、可审批的主数据。主数据治理的核心问题是：字段从哪里来、谁能改、谁在用、改了影响谁。</p>
+<h5>4.1 治理要回答的五个问题</h5>
+<ol>
+<li><strong>谁是主数据源</strong>：价格来自财务系统还是商品中台？地域来自资源系统还是 产品经理 手填？</li>
+<li><strong>字段归属方是谁</strong>：服务等级承诺 文案归 稳定性保障 和法务，毛利底线归财务，规格参数归研发和资源团队。</li>
+<li><strong>下游系统怎么消费</strong>：官网、控制台、API/云市场、销售报价、合同、账单是否读取同一字段？</li>
+<li><strong>变更影响哪些对象</strong>：新客户、存量客户、合同、订阅、账单、发票、渠道页面是否受影响？</li>
+<li><strong>是否需要审批后生效</strong>：价格、计费模式、权益额度、地域可售、服务等级承诺 文案必须有审批和审计。</li>
+</ol>
+<h5>4.2 关键交付物</h5>
+<ul>
+<li>主数据血缘图：展示 商品主对象、售卖方案、可购买规格、计量项、价格规则、权益规则 到下游系统的流向。</li>
+<li>字段归属矩阵：每个字段的 owner、审批人、维护入口和生效规则。</li>
+<li>下游消费系统清单：官网、控制台、报价、合同、订单、计量、账单、客服、经营看板。</li>
+<li>字段变更影响分析：说明影响客户、合同、账单、渠道和风险。</li>
+<li>主数据完整性校验报告：缺字段、错字段、过期字段、渠道不一致。</li>
+<li>渠道一致性检查报告：官网、控制台、销售报价和 API 输出是否一致。</li>
+</ul>
+<h5>4.3 角色分工</h5>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>角色</th>
+<th>在治理中的职责</th>
+</tr></thead>
+<tbody><tr>
+<td>商品 产品经理</td>
+<td>定义字段业务含义、客户可见口径、变更目标和影响分析。</td>
+</tr>
+<tr>
+<td>平台研发</td>
+<td>维护数据模型、接口契约、一致性校验、审计日志和权限控制。</td>
+</tr>
+<tr>
+<td>下游系统负责人</td>
+<td>确认字段消费口径、兼容性和上线节奏。</td>
+</tr>
+<tr>
+<td>财务 BP</td>
+<td>维护价格、折扣、毛利、收入确认相关字段。</td>
+</tr>
+<tr>
+<td>稳定性保障/资源团队</td>
+<td>维护地域、容量、可售状态、服务等级承诺、限流和交付窗口。</td>
+</tr>
+<tr>
+<td>法务/合规</td>
+<td>审核合同、服务等级承诺、退款、隐私和禁承诺项表述。</td>
+</tr>
+<tr>
+<td>销售/客服/客户成功</td>
+<td>反馈客户理解问题、账单争议和话术一致性问题。</td>
+</tr>
+</tbody>
+</table></div>
+<h5>4.4 高风险字段</h5>
+<p>以下字段不能随意修改，必须有审批、灰度、通知和审计：</p>
+<ul>
+<li>计费模式：按量改包月、包月改资源包，会影响订购、合同和账单。</li>
+<li>价格：目录价、阶梯价、合同价、促销价、超额单价。</li>
+<li>权益额度：每日赠送额度、资源包总量、席位数、功能权限。</li>
+<li>地域可售：地域上线、下线、库存不足、容量预约。</li>
+<li>服务等级承诺 和交付承诺：可用性、赔付、交付日期、性能指标。</li>
+<li>退款和退订规则：是否退未消耗金额、赠送权益如何处理。</li>
+</ul>
+<h5>4.5 工作步骤：一次字段变更怎么做</h5>
+<ol>
+<li><strong>提出变更</strong>：说明变更字段、原因、期望生效时间。</li>
+<li><strong>查血缘</strong>：列出消费该字段的所有系统和渠道。</li>
+<li><strong>做影响分析</strong>：区分新购客户、存量订阅、合同客户、试用客户。</li>
+<li><strong>生成审批摘要</strong>：给财务、稳定性保障、法务、销售或负责人审批。</li>
+<li><strong>灰度或定时生效</strong>：避免立即影响全部客户。</li>
+<li><strong>渠道同步检查</strong>：官网、控制台、报价单、API、客服话术同步。</li>
+<li><strong>发布后巡检</strong>：看订单、计量、账单和客户反馈是否异常。</li>
+</ol>
+<h5>4.6 常见风险</h5>
+<ul>
+<li>官网文案已改，但控制台价格未改，导致客户质疑。</li>
+<li>销售报价使用旧 可购买规格，订单系统已下线，导致合同无法履约。</li>
+<li>权益额度在控制台展示更新，但权益系统仍按旧规则发放。</li>
+<li>财务已批准促销价，但账单系统未接入促销规则。</li>
+<li>字段没有审计记录，出现账单争议时无法还原谁在什么时候修改。</li>
+</ul>
+<h4>5. 售卖方案 / 可购买规格 / 计量项 / 价格规则 设计</h4>
+<p>售卖方案、可购买规格、计量项、价格规则 是云商品商业包装的核心。设计时不能只问“客户愿不愿意买”，还要问“系统能不能计量、账单能不能解释、销售能不能报价、财务能不能确认收入、客服能不能处理争议”。</p>
+<h5>5.1 四者关系</h5>
+<ul>
+<li><strong>售卖方案：怎么卖</strong>。例如按量、包月、资源包、企业套餐、试用包、超额付费。</li>
+<li><strong>可购买规格：买哪档</strong>。例如 Small、Medium、Large，或 2C4G、4C8G。</li>
+<li><strong>计量项：按什么记录用量</strong>。例如 Token、实例小时、GB、请求次数、生成秒数。</li>
+<li><strong>价格规则：如何算钱</strong>。例如固定月费、单价、阶梯价、资源包抵扣价、合同折扣价。</li>
+</ul>
+<p>一个 商品主对象 可以有多个 售卖方案；一个 售卖方案 可以包含多个 可购买规格；一个 可购买规格 可能关联一个或多个 计量项。需要特别注意：价格规则 通常不是只绑定 计量项，而是在具体售卖上下文中生效的价格规则，会同时受 商品主对象、售卖方案、可购买规格、计量项、可售地域、计费周期、币种/税费、客户合同、生效时间、承诺消费和资源包抵扣规则影响。计量项 记录“用量事实”，价格规则 在具体上下文中把用量、权益和合同条件转换成金额。</p>
+<h5>5.2 常见 售卖方案 类型</h5>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>售卖方案 类型</th>
+<th>适用场景</th>
+<th>设计重点</th>
+</tr></thead>
+<tbody><tr>
+<td>按量 售卖方案</td>
+<td>用量波动大、客户希望低门槛开始。</td>
+<td>单价清晰、计量准确、预算提醒、账单解释。</td>
+</tr>
+<tr>
+<td>包月 售卖方案</td>
+<td>资源或权益相对固定，客户需要可预测成本。</td>
+<td>周期、生效时间、续费、降级、退款。</td>
+</tr>
+<tr>
+<td>资源包 售卖方案</td>
+<td>客户预付费购买一定额度。</td>
+<td>抵扣顺序、有效期、递延收入、过期提醒。</td>
+</tr>
+<tr>
+<td>企业套餐 售卖方案</td>
+<td>大客户按组织、席位、用量或合同组合购买。</td>
+<td>合同边界、专属价、权限、服务等级承诺、续约。</td>
+</tr>
+<tr>
+<td>试用 售卖方案</td>
+<td>获客和产品验证。</td>
+<td>防滥用、试用额度、转正路径、禁承诺项。</td>
+</tr>
+<tr>
+<td>超额付费 售卖方案</td>
+<td>套餐额度用完后的补充购买。</td>
+<td>二次确认、预算上限、账单解释、管理员权限。</td>
+</tr>
+</tbody>
+</table></div>
+<h5>5.3 设计步骤</h5>
+<ol>
+<li><strong>从客户购买心理出发</strong>：客户是想低门槛试用、锁定预算、获得折扣，还是获得稳定交付？</li>
+<li><strong>确定 售卖方案 组合</strong>：不要一开始设计过多 售卖方案，先覆盖主路径，再扩展资源包、试用和企业套餐。</li>
+<li><strong>拆 可购买规格</strong>：可购买规格 要能表达规格差异，也要能被交付系统和账单系统识别。</li>
+<li><strong>定义 计量项</strong>：计量项 必须可采集、可校验、可追溯，不能只是营销口径。</li>
+<li><strong>定义 价格规则</strong>：明确目录价、折扣价、促销价、合同价和超额价的优先级。</li>
+<li><strong>设计互斥和叠加规则</strong>：资源包、促销价、合同折扣、赠送额度是否能同时使用。</li>
+<li><strong>做正式报价前检查</strong>：价格、税费、合同、服务等级承诺、容量和交付窗口是否确认。</li>
+</ol>
+<h5>5.4 互斥和叠加规则示例</h5>
+<p>以 Seedance Mini 为例，可能存在按量、资源包、促销价和合同折扣。产品经理 必须明确：</p>
+<ul>
+<li>资源包是否优先抵扣按量消耗？</li>
+<li>促销价是否仅适用于新购，不适用于续费？</li>
+<li>合同折扣能否叠加促销价？</li>
+<li>资源包过期后是否自动转为按量计费？</li>
+<li>生成失败是否计入消耗？如果不计入，计量系统如何识别失败？</li>
+<li>客户预算估算是否可以被销售当成正式报价？答案通常是否定的。</li>
+</ul>
+<h5>5.5 常见风险</h5>
+<ul>
+<li><strong>售卖方案 过多</strong>：客户选择困难，销售难解释，系统规则复杂。</li>
+<li><strong>可购买规格 只服务营销</strong>：规格名称好看，但无法映射到真实交付能力。</li>
+<li><strong>计量项 不可审计</strong>：客户质疑账单时无法提供证据链。</li>
+<li><strong>价格规则 优先级不清</strong>：合同价、促销价、资源包抵扣重复叠加。</li>
+<li><strong>退款规则缺失</strong>：资源包未消耗金额、赠送额度、合同折扣无法处理。</li>
+<li><strong>报价边界混乱</strong>：估算价、参考价、目录价、正式报价被混用。</li>
+</ul>
+<h4>6. Plan 型产品与权益治理</h4>
+<p>Plan 型产品包括套餐、会员、企业版、按席位订阅等。它比单品型云商品复杂，因为客户买到的不是一个单一资源，而是一组额度、功能、有效期、权限、赠送和超额规则。</p>
+<h5>6.1 Plan 必须回答的问题</h5>
+<ul>
+<li>每天、每月或每个周期什么时候发放权益？</li>
+<li>未用完额度是否过期？过期前是否提醒？</li>
+<li>退订后是否还能继续使用已发放权益？</li>
+<li>退款时赠送权益、已消耗权益和未消耗权益如何处理？</li>
+<li>合同折扣、促销价、赠送额度能否叠加？</li>
+<li>超额后是否自动扣费？是否需要管理员二次确认？</li>
+<li>多个资源包或套餐同时存在时，消耗顺序是什么？</li>
+<li>账单中如何解释赠送、抵扣、消耗、过期和超额？</li>
+</ul>
+<h5>6.2 关键交付物</h5>
+<ul>
+<li>权益规则表：权益类型、额度、周期、有效期、适用 可购买规格、客户可见说明。</li>
+<li>额度发放规则：发放时间、发放对象、失败重试、补发机制。</li>
+<li>消耗顺序规则：赠送额度、资源包、合同额度、按量扣费的优先级。</li>
+<li>过期、退订、退款规则：权益冻结、回收、保留、补偿和财务处理。</li>
+<li>超额付费确认页：客户管理员确认、预算提醒、是否自动续费。</li>
+<li>账单解释模板：如何展示赠送、消耗、抵扣、过期和超额。</li>
+<li>Plan 毛利穿透分析：高成本能力、免费额度和促销对毛利的影响。</li>
+</ul>
+<h5>6.3 角色分工</h5>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>角色</th>
+<th>责任</th>
+</tr></thead>
+<tbody><tr>
+<td>商品 产品经理</td>
+<td>定义权益规则、客户体验、购买确认、超额路径和账单解释。</td>
+</tr>
+<tr>
+<td>财务 BP</td>
+<td>确认赠送成本、收入确认、毛利底线、退款和递延影响。</td>
+</tr>
+<tr>
+<td>研发</td>
+<td>实现权益发放、消耗、冻结、过期、补发、查询和账单关联。</td>
+</tr>
+<tr>
+<td>客户成功/客服</td>
+<td>解释客户争议，沉淀 常见问题说明 和话术。</td>
+</tr>
+<tr>
+<td>法务</td>
+<td>确认权益承诺、退款边界、合同措辞和责任限制。</td>
+</tr>
+<tr>
+<td>稳定性保障/资源团队</td>
+<td>确认高峰使用、容量、限流和降级策略。</td>
+</tr>
+</tbody>
+</table></div>
+<h5>6.4 Agent Plan Medium 示例</h5>
+<p>假设 Agent Plan Medium 的营销文案是“每天赠送 50 元等值 Token”。这句话背后至少要落成以下规则：</p>
+<ul>
+<li>发放对象：购买 Medium 且订阅处于有效状态的客户组织。</li>
+<li>发放时间：每天 0 点发放，失败后重试，补发需要审计。</li>
+<li>有效期：当天有效、月底有效，还是订阅期内有效，必须明确。</li>
+<li>消耗顺序：先消耗每日赠送 Token，再消耗资源包，最后进入超额付费。</li>
+<li>超额规则：默认不自动扣费，客户管理员需要二次确认并设置预算上限。</li>
+<li>退订规则：退订立即停止新权益发放；已发放未使用权益是否保留需写清。</li>
+<li>退款规则：已消耗权益、赠送权益和现金购买权益要分开处理。</li>
+<li>账单解释：展示“赠送额度抵扣”“资源包抵扣”“超额付费”三类明细。</li>
+</ul>
+<h5>6.5 常见风险</h5>
+<ul>
+<li><strong>营销话术过度简化</strong>：“每天送 50 元”没有说明有效期、消耗顺序和超额规则。</li>
+<li><strong>默认自动扣费</strong>：客户以为套餐用完就停止，实际自动按量扣费，引发争议。</li>
+<li><strong>免费额度成本失控</strong>：高成本模型、联网搜索、视频生成被大量免费使用，毛利被打穿。</li>
+<li><strong>退订和退款不清</strong>：权益已发放但未消耗，财务和客服无法判断怎么处理。</li>
+<li><strong>客户看不懂账单</strong>：客户只看到扣费金额，看不到赠送抵扣和消耗依据。</li>
+<li><strong>多套餐叠加混乱</strong>：客户同时有会员、资源包和合同额度，消耗顺序不透明。</li>
+</ul>
+<h4>7. 综合工作流、案例与练习</h4>
+<h5>7.1 从能力到主数据的标准工作流</h5>
+<ol>
+<li><strong>能力识别</strong>：确认技术能力、资源能力或模型能力是否稳定存在。</li>
+<li><strong>产品化评审</strong>：补齐客户、场景、边界、服务等级承诺、成本和交付方式。</li>
+<li><strong>建立 商品主对象</strong>：定义商品名称、产品族、描述、负责人、状态和客户可见口径。</li>
+<li><strong>设计 售卖方案</strong>：选择按量、包月、资源包、试用、企业套餐或超额付费。</li>
+<li><strong>拆分 可购买规格 和 Spec</strong>：把客户可购买档位映射到真实交付规格。</li>
+<li><strong>定义 计量项</strong>：明确用量采集方式、口径、单位、精度和审计证据。</li>
+<li><strong>定义 价格规则</strong>：确定目录价、阶梯价、促销价、合同价、超额价和优先级。</li>
+<li><strong>定义 权益规则</strong>：明确权益发放、消耗、过期、退订、退款和超额规则。</li>
+<li><strong>建立血缘和审批</strong>：确认字段 owner、下游系统、审批人、生效时间和回滚方案。</li>
+<li><strong>渠道投影检查</strong>：官网、控制台、报价、合同、账单和客服话术保持一致。</li>
+</ol>
+<h5>7.2 案例 A：ECS GPU 包月商品</h5>
+<ul>
+<li>商品主对象：GPU 训练实例。</li>
+<li>售卖方案：包月 售卖方案、按量 售卖方案、企业容量预约 售卖方案。</li>
+<li>可购买规格：A10 1 卡、A100 4 卡、H 系列 8 卡等规格。</li>
+<li>计量项：实例小时、GPU 小时、存储 GB、带宽流量。</li>
+<li>价格规则：包月目录价、按量单价、大客户合同折扣。</li>
+<li>权益规则：实例使用权、地域可用范围、服务等级承诺、容量预约权益。</li>
+<li>关键风险：新加坡等地域容量不足时，不能承诺固定交付日期；折扣不能突破毛利底线；GPU 故障和 服务等级承诺 赔付要有法务口径。</li>
+</ul>
+<p>练习：如果销售提出给金融客户 30 万预算的 GPU 训练方案，产品经理 应列出哪些 售卖方案、可购买规格、价格、地域和 服务等级承诺 检查项？</p>
+<h5>7.3 案例 B：Seedance Mini 资源包</h5>
+<ul>
+<li>商品主对象：视频生成服务。</li>
+<li>售卖方案：按量 售卖方案、资源包 售卖方案、促销 售卖方案。</li>
+<li>可购买规格：基础版、高清版、批量生成版。</li>
+<li>计量项：生成秒数、生成次数、分辨率倍率、失败任务标识。</li>
+<li>价格规则：按量单价、资源包折扣价、促销价、合同价。</li>
+<li>权益规则：资源包余额、有效期、失败不扣费规则、内容安全限制。</li>
+<li>关键风险：估算不等于正式报价；资源包和促销折扣不能无边界叠加；生成失败是否扣费要在计量和客服话术中一致。</li>
+</ul>
+<p>练习：请设计 Seedance Mini 的资源包抵扣顺序，并说明合同折扣是否可以叠加促销价。</p>
+<h5>7.4 案例 C：Agent Plan 套餐权益</h5>
+<ul>
+<li>商品主对象：企业 Agent 套餐。</li>
+<li>售卖方案：包月套餐、试用包、超额付费。</li>
+<li>可购买规格：Small、Medium、Enterprise。</li>
+<li>计量项：Token、联网搜索次数、工具调用次数、视频生成任务。</li>
+<li>价格规则：月费、年费、合同折扣、超额单价。</li>
+<li>权益规则：每日赠送额度、席位数、功能权限、超额二次确认。</li>
+<li>关键风险：免费额度成本、自动扣费争议、退订退款口径、账单解释复杂。</li>
+</ul>
+<p>练习：Agent Plan Medium 额度用完后，系统应该直接扣费、停止服务还是提示管理员确认？请写出你选择的规则和客户提示文案。</p>
+<h4>8. 产品经理 总检查清单</h4>
+<h5>8.1 产品化检查</h5>
+<ul>
+<li>[ ] 目标客户和核心场景已明确。</li>
+<li>[ ] 能力边界和不可承诺项已写清。</li>
+<li>[ ] 服务等级承诺、容量、地域和交付窗口已由 稳定性保障 确认。</li>
+<li>[ ] 成本输入和毛利底线已由财务确认。</li>
+<li>[ ] 法务和合规风险已识别。</li>
+<li>[ ] 客户买前、买后、账单和售后解释路径已准备。</li>
+</ul>
+<h5>8.2 主数据检查</h5>
+<ul>
+<li>[ ] 商品主对象、售卖方案、可购买规格、Spec、计量项、价格规则、权益规则 已建模。</li>
+<li>[ ] 每个字段有业务说明、owner、维护入口和审批规则。</li>
+<li>[ ] 客户可见字段和内部字段已区分。</li>
+<li>[ ] 工程 key 不会直接展示给客户。</li>
+<li>[ ] 官网、控制台、报价、合同、订单、计量、账单消费口径已确认。</li>
+<li>[ ] 价格、权益、地域、服务等级承诺 等高风险字段有审计记录。</li>
+</ul>
+<h5>8.3 售卖方案 / 可购买规格 / 计量项 / 价格规则 检查</h5>
+<ul>
+<li>[ ] 售卖方案 类型与客户购买路径匹配。</li>
+<li>[ ] 可购买规格 能映射到真实交付规格。</li>
+<li>[ ] 计量项 可采集、可校验、可追溯。</li>
+<li>[ ] 价格规则 明确目录价、促销价、合同价、超额价和优先级。</li>
+<li>[ ] 折扣、资源包、促销和合同价的互斥/叠加规则已定义。</li>
+<li>[ ] 退款、退订、降级、续费和过期规则已确认。</li>
+</ul>
+<h5>8.4 Plan 权益检查</h5>
+<ul>
+<li>[ ] 权益发放时间、对象、周期和失败补发规则已定义。</li>
+<li>[ ] 消耗顺序、过期规则、退订规则和退款规则已定义。</li>
+<li>[ ] 超额付费默认需要客户管理员二次确认，或已明确例外依据。</li>
+<li>[ ] 免费额度和高成本能力已经做毛利穿透分析。</li>
+<li>[ ] 账单能解释赠送、抵扣、消耗、过期和超额。</li>
+<li>[ ] 客服和客户成功已有争议处理话术。</li>
+</ul>
+<h5>8.5 本章自测题</h5>
+<ol>
+<li>为什么说 售卖方案 不是 可购买规格？请用一个包月套餐举例。</li>
+<li>计量项 和 价格规则 分别解决什么问题？为什么不能合并理解？</li>
+<li>如果 售卖方案 的计费模式从按量改为包月，会影响哪些下游系统？</li>
+<li>Seedance Mini 官网介绍页、控制台购买页和销售报价单分别应该消费哪些主数据？</li>
+<li>Agent Plan 的每日赠送额度调整，会影响哪些权益、账单、财务和客户体验问题？</li>
+<li>一个字段从“内部估算”变为“客户可见报价”，需要经过哪些检查？</li>
+</ol>
+<h5>8.6 新人完成本章后的产出</h5>
+<p>完成本章学习后，建议独立产出三份练习文档：</p>
+<ul>
+<li>一份产品化定义草稿：选择一个能力，写清客户、场景、边界、服务等级承诺、成本和交付方式。</li>
+<li>一份商品主数据草稿：画出 商品主对象、售卖方案、可购买规格、计量项、价格规则、权益规则 关系。</li>
+<li>一份权益治理规则：选择一个 Plan，写清额度发放、消耗、过期、退订、退款和超额确认。</li>
+</ul>
+<h4>详细章节：生命周期、渠道发布与上市打法</h4>
+<h3>生命周期、渠道发布与 上市打法 工作手册</h3>
+<blockquote>本章面向云商品新人和产品经理，聚焦产品生命周期全流程、渠道发布与上下游协同、上市打法、销售方案与客户成交。</blockquote>
+<h4>1. 本章使用方式</h4>
+<p>本章把大纲中的第 7、8、9 章合并成一套可执行工作手册：先判断产品能不能卖，再组织上架发布，最后用 上市打法 和销售方案把商品带到客户成交场景里。</p>
+<p>新人阅读时请抓住三条主线：</p>
+<ul>
+<li><strong>生命周期主线</strong>：能力识别 → 产品化定义 → 商品化建模 → 审查 → 发布 → 灰度 → 验证 → 复盘 → 续约/扩容/下线。</li>
+<li><strong>渠道协同主线</strong>：同一套商品主数据，被官网、控制台、API/云市场、销售报价、客服话术以不同方式展示。</li>
+<li><strong>成交主线</strong>：上市打法 定义目标客户和卖点，销售识别预算和决策链，解决方案组合产品，财务/稳定性保障/法务守住报价、交付和承诺边界。</li>
+</ul>
+<p>使用本章时，不要把它当成“上架流程说明”。正确用法是：每推进一个商品，都按阶段作业卡检查输入、输出、负责人和阻塞处理；每准备对外发布，都用渠道矩阵和报价前检查清单核对；每进入客户沟通，都先确认客户分层和禁承诺项。</p>
+<h4>2. 产品生命周期全流程</h4>
+<p>云商品生命周期不是单向流水线，而是多角色反复校准的闭环。标准流程如下：</p>
+<ol>
+<li><strong>产品能力识别</strong>：判断一个技术能力、资源能力或服务能力是否具备商业化潜力。</li>
+<li><strong>产品化定义</strong>：明确目标客户、核心场景、能力边界、服务等级承诺 初稿、交付物和不可承诺项。</li>
+<li><strong>IPD 立项和 产品需求文档</strong>：把机会变成正式产品项目，形成需求范围、里程碑和验收口径。</li>
+<li><strong>商业测算</strong>：测算成本、目录价、折扣空间、毛利底线和收入确认风险。</li>
+<li><strong>商品模型设计</strong>：定义 商品主对象、售卖方案、可购买规格、计量项、价格规则、可售地域、权益规则 等主数据。</li>
+<li><strong>售卖方案 / 可购买规格 / 计量项 / 价格规则 设计</strong>：确定按量、包月、资源包、企业套餐、试用包等售卖方式。</li>
+<li><strong>权益和合同规则设计</strong>：定义额度发放、消耗顺序、过期、退订、退款、超额付费和合同边界。</li>
+<li><strong>稳定性保障 上架门禁</strong>：确认容量、限流、告警、灰度比例、回滚触发条件和可承诺 服务等级承诺。</li>
+<li><strong>法务和合规审查</strong>：确认营销文案、合同条款、服务等级承诺、隐私、安全和地域合规边界。</li>
+<li><strong>上市打法 和销售 enablement</strong>：准备目标客户分层、行业场景、卖点、常见问题说明、禁承诺项、销售话术和 battlecard。</li>
+<li><strong>渠道发布</strong>：同步官网、控制台、API/云市场、销售资料、客服话术等渠道。</li>
+<li><strong>灰度上线</strong>：按客户、地域、流量、可购买规格 或渠道范围逐步开放。</li>
+<li><strong>订单、交付、计量、账单验证</strong>：验证客户能买、能开通、能使用、能计量、能出账、能解释。</li>
+<li><strong>发布后巡检</strong>：上线后 24 小时内检查渠道一致性、订单闭环、计量账单、告警、客户反馈。</li>
+<li><strong>经营复盘和版本迭代</strong>：看 成交规模、净收入、毛利、活跃客户、转化率、投诉、稳定性和销售反馈。</li>
+<li><strong>续约、扩容、下线或替换</strong>：进入生命周期后半段，处理续约机会、扩容需求、存量迁移和商品下线。</li>
+</ol>
+<p>判断某个阶段是否完成，不能只看“表单是否提交”。必须看四件事：输入是否齐、输出是否可被下游消费、负责人是否确认、阻塞是否有明确处理路径。</p>
+<h4>3. 阶段作业卡：输入、输出、负责人、阻塞处理</h4>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>阶段</th>
+<th>关键输入</th>
+<th>必须输出</th>
+<th>主负责人</th>
+<th>常见阻塞</th>
+<th>阻塞处理</th>
+</tr></thead>
+<tbody><tr>
+<td>产品能力识别</td>
+<td>技术能力说明、目标场景、竞品信号、客户需求</td>
+<td>机会判断、候选产品清单、初步风险</td>
+<td>商品 产品经理</td>
+<td>能力只是 演示，缺少交付边界</td>
+<td>拉研发/稳定性保障 做能力边界评审；不能承诺的先写入风险清单</td>
+</tr>
+<tr>
+<td>产品化定义</td>
+<td>能力边界、客户画像、场景、服务等级承诺 初稿、成本输入</td>
+<td>产品定义草稿、不可承诺项、交付物清单</td>
+<td>商品 产品经理</td>
+<td>目标客户不清、场景过宽</td>
+<td>缩小首发场景；按客户分层拆版本</td>
+</tr>
+<tr>
+<td>IPD/产品需求文档</td>
+<td>产品定义草稿、里程碑、资源需求</td>
+<td>产品需求文档、checkpoint、验收口径</td>
+<td>产品负责人</td>
+<td>需求过多、里程碑不可控</td>
+<td>拆 MVP 与后续版本；未进入首发的能力不进承诺</td>
+</tr>
+<tr>
+<td>商业测算</td>
+<td>成本、用量假设、价格假设、折扣诉求</td>
+<td>毛利测算、价格建议、折扣边界</td>
+<td>财务 BP + 商品 产品经理</td>
+<td>成本不稳定、毛利打穿</td>
+<td>降低免费额度；限制试用；调高价格或设置审批门槛</td>
+</tr>
+<tr>
+<td>商品模型设计</td>
+<td>产品定义、售卖方式、计量方式、地域</td>
+<td>商品主对象/售卖方案/可购买规格/计量项/价格规则 草稿</td>
+<td>商品 产品经理</td>
+<td>主数据缺字段或字段口径冲突</td>
+<td>先出字段归属表；高风险字段必须有审批人</td>
+</tr>
+<tr>
+<td>权益/合同规则</td>
+<td>套餐、资源包、赠送、退款、合同条款</td>
+<td>权益规则表、合同边界、账单解释模板</td>
+<td>商品 产品经理 + 法务 + 财务</td>
+<td>销售希望灵活组合但系统不支持</td>
+<td>区分标准商品和特批合同；特批必须形成审批摘要</td>
+</tr>
+<tr>
+<td>稳定性保障 门禁</td>
+<td>容量、压测、告警、限流、回滚</td>
+<td>稳定性保障 就绪 checklist、灰度计划</td>
+<td>稳定性保障</td>
+<td>容量不足、服务等级承诺 不能确认</td>
+<td>降低灰度比例；限定地域/客户；销售同步延期风险</td>
+</tr>
+<tr>
+<td>法务合规审查</td>
+<td>官网文案、合同条款、服务等级承诺、地域、隐私</td>
+<td>法务审查结论、禁承诺项</td>
+<td>法务/合规</td>
+<td>文案过度承诺或合规材料缺失</td>
+<td>修改对外话术；未确认内容只能作为内部假设</td>
+</tr>
+<tr>
+<td>上市打法 enablement</td>
+<td>产品卖点、客户分层、竞品边界、常见问题说明</td>
+<td>行业包、销售话术、常见问题说明、禁承诺项</td>
+<td>上市打法/运营</td>
+<td>卖点抽象，销售无法使用</td>
+<td>用客户场景重写；补充报价案例和异议处理</td>
+</tr>
+<tr>
+<td>渠道发布</td>
+<td>商品主数据、审批结论、渠道素材</td>
+<td>渠道发布矩阵、发布记录、一致性检查</td>
+<td>商品 产品经理 + 渠道负责人</td>
+<td>官网/控制台/报价单字段不一致</td>
+<td>暂停对外发布；以商品主数据为源头重新同步</td>
+</tr>
+<tr>
+<td>灰度上线</td>
+<td>灰度范围、监控指标、回滚方案</td>
+<td>灰度发布记录、问题清单</td>
+<td>商品 产品经理 + 稳定性保障</td>
+<td>订单或开通失败</td>
+<td>停止扩量；保留现场；通知销售和客服统一口径</td>
+</tr>
+<tr>
+<td>闭环验证</td>
+<td>测试订单、计量记录、账单、客户通知</td>
+<td>订单-交付-计量-账单验证报告</td>
+<td>商品 产品经理 + 研发 + 财务</td>
+<td>订单成功但计费异常</td>
+<td>不扩大售卖；财务确认账单影响；必要时出补偿方案</td>
+</tr>
+<tr>
+<td>发布后复盘</td>
+<td>经营指标、客户反馈、告警、销售反馈</td>
+<td>发布后巡检报告、复盘结论、后续动作</td>
+<td>商品 产品经理</td>
+<td>问题分散没人收口</td>
+<td>建立问题 owner、截止时间和升级路径</td>
+</tr>
+<tr>
+<td>续约/扩容/下线</td>
+<td>存量客户、合同、用量、续约机会</td>
+<td>续约清单、扩容方案、下线计划</td>
+<td>客户成功 + 销售 + 商品 产品经理</td>
+<td>存量客户受影响</td>
+<td>做影响客户清单；提前通知；提供迁移或替代方案</td>
+</tr>
+</tbody>
+</table></div>
+<p>工作原则：任何高风险动作都先形成草稿、模拟计划或审批摘要，不能直接生产变更；任何对外承诺都必须能回连到产品定义、稳定性保障、财务和法务依据。</p>
+<h4>4. 渠道发布与上下游协同</h4>
+<p>渠道发布的核心不是“把内容复制到多个地方”，而是让不同渠道消费同一套主数据，并按各自场景做正确投影。</p>
+<h5>4.1 上游协同</h5>
+<ul>
+<li><strong>产品/研发/算法/资源团队</strong>：提供能力边界、规格参数、计量口径、地域限制、版本依赖。</li>
+<li><strong>稳定性保障</strong>：提供容量、限流、告警、灰度、回滚、服务等级承诺 可承诺范围。</li>
+<li><strong>财务 BP</strong>：提供成本、价格、折扣、毛利、收入确认、资源包递延规则。</li>
+<li><strong>法务/合规</strong>：提供合同边界、隐私安全、合规材料、禁止承诺表述。</li>
+<li><strong>上市打法/运营</strong>：提供行业场景、核心卖点、常见问题说明、活动节奏和销售 enablement 材料。</li>
+</ul>
+<h5>4.2 下游协同</h5>
+<ul>
+<li><strong>官网</strong>：用于公开介绍和获客，展示客户能理解的卖点、场景、价格入口和 常见问题说明。</li>
+<li><strong>控制台</strong>：用于自助购买、配置、用量查看、账单查看，字段必须与计量、权益和账单一致。</li>
+<li><strong>API / 云市场</strong>：用于生态销售、自动化订购和第三方集成，需要稳定接口、上架资料和可售状态。</li>
+<li><strong>销售解决方案</strong>：用于大客户售前、报价、方案包和合同协同，可以组合但不能突破审批边界。</li>
+<li><strong>客服/客户成功</strong>：用于解释账单、处理争议、续约和健康度跟进，必须拿到客户友好话术。</li>
+</ul>
+<h5>4.3 渠道一致性原则</h5>
+<ul>
+<li>官网不是主数据源，商品中台/商品定义才是源头。</li>
+<li>控制台购买页必须与价格、计量、权益、账单一致，否则客户买后一定会产生争议。</li>
+<li>销售方案可以有定制组合，但正式报价前必须经过财务、稳定性保障、法务边界检查。</li>
+<li>内部字段、成本字段、演示/演示/source/confidence 等不能直接对客户展示，需要转写为客户可理解语言。</li>
+<li>渠道发布后必须做巡检：同一个 可购买规格、价格、地域、权益、服务等级承诺，在官网、控制台、销售报价和客服话术中不能互相矛盾。</li>
+</ul>
+<h4>5. 渠道矩阵</h4>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>渠道</th>
+<th>主要用户</th>
+<th>应展示字段/内容</th>
+<th>禁止展示</th>
+<th>字段来源</th>
+<th>发布前审批</th>
+<th>一致性检查重点</th>
+</tr></thead>
+<tbody><tr>
+<td>工作台</td>
+<td>产品经理、财务、稳定性保障、销售、经营层</td>
+<td>主数据、审批状态、风险、阻塞 owner、经营指标</td>
+<td>客户无权查看的数据、跨客户合同价</td>
+<td>商品中台、审批流、经营看板</td>
+<td>按字段归属审批</td>
+<td>字段归属、状态流转、审计记录</td>
+</tr>
+<tr>
+<td>官网</td>
+<td>潜在客户、市场访客</td>
+<td>产品定位、核心卖点、适用场景、公开价格入口、常见问题说明、联系销售</td>
+<td>内部成本、未确认 服务等级承诺、客户合同价、工程字段</td>
+<td>商品主数据 + 上市打法 文案</td>
+<td>产品经理、上市打法、法务</td>
+<td>文案是否过度承诺；价格入口是否指向正式口径</td>
+</tr>
+<tr>
+<td>控制台</td>
+<td>客户管理员、开发者、采购人员</td>
+<td>可购 可购买规格、地域、价格、权益、超额规则、用量、账单、订单状态</td>
+<td>其他客户价格、内部审批信息、未发布 可购买规格</td>
+<td>商品中台、订单、计量、账单系统</td>
+<td>产品经理、研发、财务、稳定性保障</td>
+<td>购买、开通、计量、账单是否闭环</td>
+</tr>
+<tr>
+<td>API / 云市场</td>
+<td>生态伙伴、自动化采购方、第三方系统</td>
+<td>商品编码、可购买规格、可售状态、订购接口、计量/回调规则、上架资料</td>
+<td>非公开折扣、内部风控规则、未稳定接口</td>
+<td>商品中台、开放平台、云市场</td>
+<td>产品经理、开放平台、法务</td>
+<td>接口契约、版本兼容、上架状态</td>
+</tr>
+<tr>
+<td>销售解决方案</td>
+<td>销售、售前、重点客户</td>
+<td>客户场景、产品组合、预算拆分、报价假设、风险边界、下一步动作</td>
+<td>未审批折扣、未确认交付日期、超出 服务等级承诺 承诺</td>
+<td>商品主数据、财务政策、稳定性保障 结论</td>
+<td>销售主管、财务、稳定性保障、法务</td>
+<td>估算与正式报价是否区分</td>
+</tr>
+<tr>
+<td>客服/客户成功</td>
+<td>客服、CSM、存量客户</td>
+<td>账单解释、额度规则、争议处理、续约风险、升级建议</td>
+<td>内部责任归因、不可公开事故细节、其他客户信息</td>
+<td>商品规则、账单系统、工单系统</td>
+<td>产品经理、客服负责人、法务视情况</td>
+<td>话术是否与合同、账单、控制台一致</td>
+</tr>
+</tbody>
+</table></div>
+<h5>渠道发布的最低完成标准</h5>
+<ul>
+<li>每个渠道都有明确 owner，不允许“默认由 产品经理 同步所有渠道”。</li>
+<li>每个渠道都能说明字段来源和审批状态。</li>
+<li>客户可见内容必须区分：正式报价、估算、演示数据、参考价格、合同价。</li>
+<li>发布后至少完成一次端到端巡检：官网入口 → 控制台购买 → 订单生成 → 权益开通 → 用量计量 → 账单展示 → 客服解释。</li>
+</ul>
+<h4>6. 上市打法 与销售方案</h4>
+<p>上市打法 的任务是把“商品能卖”转成“客户愿意买、销售知道怎么卖”。销售方案的任务是把客户预算、场景和约束，转成可报价、可交付、可签约的组合。</p>
+<h5>6.1 上市打法 必备内容</h5>
+<ul>
+<li><strong>目标客户分层</strong>：大客户、中型客户、小客户/自助客户、行业客户、生态伙伴。</li>
+<li><strong>行业场景</strong>：金融、内容、电商、游戏、教育、制造等客户为什么需要这个商品。</li>
+<li><strong>核心卖点</strong>：用客户语言表达，不要只写技术参数。</li>
+<li><strong>竞品边界与行业竞争力</strong>：哪些场景我们有优势，哪些场景不要硬卖；对标客户常见替代方案、竞品价格包装、行业案例、迁移成本和差异化证据。</li>
+<li><strong>套餐组合</strong>：单品、资源包、企业套餐、试用包、超额包如何搭配。</li>
+<li><strong>常见问题说明</strong>：价格、交付、服务等级承诺、地域、账单、退款、超额、续约等常见问题。</li>
+<li><strong>销售禁承诺项</strong>：销售不能承诺的交付日期、效果、容量、折扣、合规结论。</li>
+<li><strong>正式报价前检查清单</strong>：确保报价不是口头估算。</li>
+<li><strong>云市场 与伙伴运营</strong>：如果通过云市场、生态伙伴或分销渠道售卖，要补充伙伴分佣、渠道价格一致性、上架材料、客户归属、售后责任和渠道经营指标。</li>
+</ul>
+<h5>6.2 销售方案必须回答的问题</h5>
+<ul>
+<li>客户预算是多少？预算是年度、季度还是项目制？</li>
+<li>客户业务场景是什么？是生产核心链路、试点验证还是营销活动？</li>
+<li>客户需要哪些地域、合规、审计、安全材料？</li>
+<li>客户所在行业的竞品替代方案是什么？我们在价格、交付、稳定性、生态和案例上有什么可证明的竞争力？</li>
+<li>客户需要什么 服务等级承诺？这个 服务等级承诺 是否被 稳定性保障 和法务确认？</li>
+<li>产品组合如何拆分？主商品、配套商品、服务支持分别是什么？</li>
+<li>预算如何拆到不同商品、资源包、服务和折扣？</li>
+<li>报价假设是什么？哪些用量、地域、周期、并发、容量是假设？</li>
+<li>风险和边界是什么？哪些内容不能写进合同或邮件承诺？</li>
+<li>下一步动作是什么？谁跟客户确认需求，谁出正式报价，谁拉审批？</li>
+</ul>
+<h5>6.3 大客户与自助客户差异</h5>
+<ul>
+<li>大客户通常需要方案、合同、发票、审计、服务等级承诺、容量预约和折扣审批；推进节奏由销售和解决方案牵引。</li>
+<li>自助客户更关注购买简单、价格清晰、额度好理解、账单能解释、用完是否自动扣费；体验由控制台和客服话术决定。</li>
+<li>续约客户更关注稳定性、账单争议、用量健康和升级/降级空间；客户成功要把风险反馈给 产品经理。</li>
+</ul>
+<h4>7. 销售报价前检查</h4>
+<p>销售报价前必须区分三类输出：</p>
+<ul>
+<li><strong>预算估算</strong>：基于假设帮助客户判断大概费用，不能作为正式承诺。</li>
+<li><strong>报价草稿</strong>：销售/售前准备的方案，需要财务、稳定性保障、法务等审批。</li>
+<li><strong>正式报价</strong>：经过审批，可进入合同、订单或采购流程的价格和条款。</li>
+</ul>
+<h5>报价前检查清单</h5>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>检查项</th>
+<th>必问问题</th>
+<th>负责人</th>
+<th>未通过时处理</th>
+</tr></thead>
+<tbody><tr>
+<td>商品可售</td>
+<td>商品主对象/售卖方案/可购买规格 是否处于可售状态？地域是否开放？</td>
+<td>商品 产品经理</td>
+<td>不出正式报价，只能说明预计可售时间且标注不承诺</td>
+</tr>
+<tr>
+<td>价格口径</td>
+<td>目录价、合同价、促销价、资源包价是否明确？能否叠加？</td>
+<td>财务 BP</td>
+<td>先做折扣/价格审批，不能口头承诺</td>
+</tr>
+<tr>
+<td>折扣边界</td>
+<td>折扣是否低于毛利底线？是否需要主管或财务特批？</td>
+<td>销售 + 财务</td>
+<td>进入特批流程，未批前只能给估算</td>
+</tr>
+<tr>
+<td>用量假设</td>
+<td>并发、调用量、存储、Token、实例小时等假设是否写清？</td>
+<td>解决方案 + 产品经理</td>
+<td>补充测算模型，避免客户把估算当保底</td>
+</tr>
+<tr>
+<td>容量交付</td>
+<td>所需地域、容量、交付窗口是否被 稳定性保障 确认？</td>
+<td>稳定性保障</td>
+<td>降低承诺级别；改为预约或分批交付</td>
+</tr>
+<tr>
+<td>服务等级承诺</td>
+<td>服务等级承诺 是否是已批准版本？是否可写入合同？</td>
+<td>稳定性保障 + 法务</td>
+<td>使用标准 服务等级承诺；非标 服务等级承诺 走法务审批</td>
+</tr>
+<tr>
+<td>合规材料</td>
+<td>客户行业是否有隐私、安全、审计、跨境要求？</td>
+<td>法务/合规</td>
+<td>先补材料，不承诺已满足</td>
+</tr>
+<tr>
+<td>权益规则</td>
+<td>资源包、赠送额度、过期、退订、超额是否说清？</td>
+<td>商品 产品经理 + 财务</td>
+<td>补充客户确认页和账单解释</td>
+</tr>
+<tr>
+<td>计量账单</td>
+<td>计量项和账单展示能否解释报价？</td>
+<td>产品经理 + 财务 + 研发</td>
+<td>不建议正式报价，先补闭环验证</td>
+</tr>
+<tr>
+<td>合同条款</td>
+<td>报价内容是否能进入合同？是否有禁承诺项？</td>
+<td>法务</td>
+<td>删除或改写风险表述</td>
+</tr>
+<tr>
+<td>客户权限</td>
+<td>报价是否包含其他客户专属价格或内部信息？</td>
+<td>销售 + 产品经理</td>
+<td>立即撤回材料并重新生成</td>
+</tr>
+</tbody>
+</table></div>
+<p>报价材料必须写明“有效期、适用地域、适用 可购买规格、计费周期、用量假设、是否含税、是否包含折扣、是否包含赠送额度、超额处理方式”。没有这些字段的报价，默认只能视为草稿。</p>
+<h4>8. 客户分层与禁承诺项</h4>
+<h5>8.1 客户分层</h5>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>客户层级</th>
+<th>典型诉求</th>
+<th>推荐销售方式</th>
+<th>产品经理 关注点</th>
+</tr></thead>
+<tbody><tr>
+<td>战略/大客户</td>
+<td>合同价、服务等级承诺、容量预约、审计、专属支持、长期路线图</td>
+<td>销售 + 解决方案 + 高层协同</td>
+<td>不能因单客定制破坏标准商品模型；特批要沉淀成规则</td>
+</tr>
+<tr>
+<td>行业重点客户</td>
+<td>行业方案、合规材料、成功案例、稳定交付</td>
+<td>行业包 + 方案报价</td>
+<td>行业话术必须与产品能力一致，不夸大效果</td>
+</tr>
+<tr>
+<td>中型客户</td>
+<td>成本可控、配置清晰、可升级、服务响应</td>
+<td>标准套餐 + 有限折扣</td>
+<td>可购买规格 和套餐要易解释，避免复杂组合造成账单争议</td>
+</tr>
+<tr>
+<td>小客户/自助客户</td>
+<td>价格透明、购买简单、额度清楚、用完提醒</td>
+<td>控制台自助 + 常见问题说明 + 客服</td>
+<td>买前确认页、超额确认、账单解释必须清晰</td>
+</tr>
+<tr>
+<td>试用/PoC 客户</td>
+<td>快速验证效果、低成本试用、转正路径</td>
+<td>试用包 + PoC 计划</td>
+<td>试用边界、防滥用、到期转化和数据留存规则</td>
+</tr>
+<tr>
+<td>续约客户</td>
+<td>稳定性、账单争议、折扣延续、扩容/降级</td>
+<td>客户成功 + 销售续约</td>
+<td>用量健康、投诉、服务等级承诺 事件要进入续约风险清单</td>
+</tr>
+<tr>
+<td>生态伙伴/云市场 客户</td>
+<td>接口稳定、分佣、上架资料、自动化订购</td>
+<td>伙伴渠道 + API/云市场</td>
+<td>接口契约、可售状态、渠道分佣和客户归属</td>
+</tr>
+</tbody>
+</table></div>
+<h5>8.2 禁承诺项</h5>
+<p>销售、上市打法、产品经理 在客户沟通中不得承诺以下内容，除非已经取得对应审批并能落入合同或正式报价：</p>
+<ul>
+<li><strong>未确认交付日期</strong>：例如“下周一定能开通新加坡 GPU 容量”。必须以 稳定性保障 确认的交付窗口为准。</li>
+<li><strong>未批准 服务等级承诺</strong>：例如“绝不会失败”“100% 可用”。只能使用批准后的 服务等级承诺 文案。</li>
+<li><strong>效果保证</strong>：例如“模型一定达到某准确率/转化率/播放量”。可以说明测试结果和适用条件，不能保证客户业务结果。</li>
+<li><strong>无限容量或无限额度</strong>：云资源、模型调用、队列并发都受容量、限流和成本约束。</li>
+<li><strong>自动折扣或永久低价</strong>：折扣要受财务和毛利边界约束，合同价也有有效期。</li>
+<li><strong>免费额度永不过期</strong>：赠送额度、试用额度、资源包都有发放、过期、退订和退款规则。</li>
+<li><strong>超额自动可用且不收费</strong>：超额付费应有客户管理员确认；不应默认自动扣费且不告知。</li>
+<li><strong>合规已经满足</strong>：隐私、安全、跨境、行业监管材料必须由法务/合规确认。</li>
+<li><strong>功能路线图必然上线</strong>：路线图只能作为规划沟通，不能成为合同承诺，除非已进入正式交付范围。</li>
+<li><strong>估算就是正式报价</strong>：估算必须标注假设和非正式属性，正式报价需审批。</li>
+</ul>
+<h5>8.3 客户沟通建议话术</h5>
+<ul>
+<li>对交付：<code>当前可承诺范围以正式报价、合同或交付确认中的地域、容量和交付窗口为准；未确认部分我们可以协助预约，但不能作为正式承诺。</code></li>
+<li>对价格：<code>这份是基于当前用量假设的预算估算，正式报价需要完成商品、财务和合同审批。</code></li>
+<li>对额度：<code>资源包/赠送额度有有效期和使用规则，超额是否继续付费需要管理员确认。</code></li>
+<li>对效果：<code>我们可以提供基准测试、案例和 PoC 方法，但实际业务效果取决于数据、场景和使用方式。</code></li>
+</ul>
+<h4>9. 产品经理 检查清单</h4>
+<h5>9.1 产品化检查</h5>
+<ul>
+<li>[ ] 目标客户、核心场景、首发范围已经明确。</li>
+<li>[ ] 能力边界和不可承诺项已经写入产品定义。</li>
+<li>[ ] 交付物、服务等级承诺 初稿、地域和容量限制已经确认。</li>
+<li>[ ] 研发/稳定性保障/财务/法务已对各自边界给出结论。</li>
+<li>[ ] 首发 MVP 与后续版本已经拆开，未上线能力没有进入对外承诺。</li>
+</ul>
+<h5>9.2 商品化检查</h5>
+<ul>
+<li>[ ] 商品主对象、售卖方案、可购买规格、计量项、价格规则、可售地域、权益规则 已建模。</li>
+<li>[ ] 售卖方案 与 可购买规格、计量项、价格、权益、合同规则关系一致。</li>
+<li>[ ] 资源包、包月、按量、试用、企业套餐之间的互斥和叠加规则明确。</li>
+<li>[ ] 退款、退订、过期、超额、降级、升级规则明确。</li>
+<li>[ ] 高风险字段有字段 owner、审批人和变更影响分析。</li>
+</ul>
+<h5>9.3 发布检查</h5>
+<ul>
+<li>[ ] 稳定性保障 就绪 checklist 已通过，灰度和回滚方案已确认。</li>
+<li>[ ] 法务/合规审查已通过，官网和销售文案无过度承诺。</li>
+<li>[ ] 官网、控制台、API/云市场、销售资料、客服话术已纳入渠道发布矩阵。</li>
+<li>[ ] 控制台购买、订单、开通、计量、账单、发票至少完成一轮验证。</li>
+<li>[ ] 发布后 24 小时巡检 owner、指标和升级路径已经确定。</li>
+</ul>
+<h5>9.4 上市打法 与销售检查</h5>
+<ul>
+<li>[ ] 目标客户分层、行业场景、核心卖点和 常见问题说明 已准备。</li>
+<li>[ ] 销售禁承诺项已同步给销售、售前、客服和客户成功。</li>
+<li>[ ] 报价前检查清单已嵌入销售流程。</li>
+<li>[ ] 估算、报价草稿、正式报价在材料中有清晰区分。</li>
+<li>[ ] 重点客户方案中的容量、服务等级承诺、合规和折扣已完成相应审批。</li>
+</ul>
+<h5>9.5 发布后经营检查</h5>
+<ul>
+<li>[ ] 成交规模、净收入、毛利、活跃客户、转化率、投诉和账单争议有监控。</li>
+<li>[ ] 发布问题有 owner、截止时间和复盘结论。</li>
+<li>[ ] 客户反馈能回流到产品定义、商品规则和销售话术。</li>
+<li>[ ] 续约、扩容、降级、下线和替换路径已经规划。</li>
+</ul>
+<h4>10. 常见阻塞处理速查</h4>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>阻塞场景</th>
+<th>典型表现</th>
+<th>处理原则</th>
+<th>下一步动作</th>
+</tr></thead>
+<tbody><tr>
+<td>产品定义不清</td>
+<td>销售说不清卖什么，研发说只是能力接口</td>
+<td>先产品化，后商品化</td>
+<td>召开 就绪评审，补目标客户、场景、边界、交付物</td>
+</tr>
+<tr>
+<td>价格未定</td>
+<td>控制台、官网、报价单价格不一致</td>
+<td>商品主数据为源头，财务确认价格</td>
+<td>暂停发布价格；生成价格审批摘要</td>
+</tr>
+<tr>
+<td>容量不足</td>
+<td>某地域无法按期交付或队列不健康</td>
+<td>不承诺未经确认交付</td>
+<td>降灰度、限地域、通知销售，必要时改成交付预约</td>
+</tr>
+<tr>
+<td>法务未批</td>
+<td>官网文案、合同或 服务等级承诺 存在风险</td>
+<td>未批内容不得对外承诺</td>
+<td>改写文案，删除绝对化表述，补合规材料</td>
+</tr>
+<tr>
+<td>销售特批过多</td>
+<td>每个客户都要不同折扣和条款</td>
+<td>标准优先，特批可审计</td>
+<td>建立特批边界，沉淀可复用行业包</td>
+</tr>
+<tr>
+<td>计量账单不通</td>
+<td>能下单但账单解释不了</td>
+<td>不扩大售卖</td>
+<td>做订单-计量-账单闭环验证，财务确认影响</td>
+</tr>
+<tr>
+<td>渠道不一致</td>
+<td>官网说 A，控制台显示 B，销售报价 C</td>
+<td>以主数据和审批结论为准</td>
+<td>渠道 owner 逐项修正，发布后复检</td>
+</tr>
+<tr>
+<td>客户误解估算</td>
+<td>客户把预算估算当正式报价</td>
+<td>明确材料类型和假设</td>
+<td>重发带假设、有效期、审批状态的报价草稿</td>
+</tr>
+<tr>
+<td>权益争议</td>
+<td>客户不理解赠送额度过期或超额扣费</td>
+<td>用客户语言解释规则</td>
+<td>补买前确认页、超额确认页和客服话术</td>
+</tr>
+<tr>
+<td>上线后问题无人收口</td>
+<td>产品经理、稳定性保障、销售、客服各自处理</td>
+<td>必须有单一 owner 和升级路径</td>
+<td>建问题清单，按客户影响和收入影响排序</td>
+</tr>
+</tbody>
+</table></div>
+<h4>本章小结</h4>
+<p>生命周期协同的关键，不是把商品“发布出去”，而是确保产品定义、商品主数据、渠道展示、销售报价、交付能力、合同承诺和账单解释处在同一套事实之上。对新人和 产品经理 来说，最重要的工作习惯是：凡是对客户可见的内容，都要能追溯到主数据和审批依据；凡是跨团队阻塞，都要明确 owner、输出物和处理时限。</p>
+<h4>详细章节：财务商业化与运营治理</h4>
+<h3>03 财务商业化与运营治理</h3>
+<blockquote>本章依据 <code>docs/cloud-commodity-workbook-outline.md</code> 第 10-17 章扩写，面向产品经理解释财务、稳定性保障、客户成功与经营治理口径。</blockquote>
+<h4>1. 本章定位与阅读方式</h4>
+<p>本章只讨论商品发布前后最容易被低估的治理问题：财务能不能算清楚、稳定性保障 能不能扛住、客户能不能买明白、异常能不能闭环、发布后是否健康、续约是否可预警、不同角色是否看同一套事实。</p>
+<p>对产品经理来说，财务、稳定性保障、客户成功不是“审批部门”，而是把技术能力变成可持续商业商品的专业边界：</p>
+<ul>
+<li>财务商业化回答：卖出去的钱是否能被确认成收入，扣除成本后是否有毛利，折扣和退款是否可控。</li>
+<li>稳定性保障 上架门禁回答：商品能不能稳定交付，容量、限流、告警、灰度、回滚是否可执行。</li>
+<li>客户成功回答：客户买前是否理解规则，买后是否解释得清，续约前是否能提前识别风险。</li>
+<li>运营治理回答：正向销售、反向变更、异常事故、发布巡检和经营复盘是否有统一口径。</li>
+</ul>
+<p>阅读本章时，建议始终用四个问题审视每个动作：</p>
+<ol>
+<li>这个动作影响哪些客户、合同、账单和渠道展示？</li>
+<li>是否影响收入确认、毛利、服务等级承诺 或续约？</li>
+<li>是否需要审批、灰度、回滚和客户通知？</li>
+<li>事后能否通过数据、日志、报表和客户沟通记录追溯？</li>
+</ol>
+<h4>2. 财务商业化与经营口径</h4>
+<h5>2.1 产品经理必须理解的财务口径</h5>
+<p>云商品不是“有订单就算成功”。同一个商品在 成交规模、净收入、毛利、现金流和收入确认上的表现可能完全不同。</p>
+<ul>
+<li><strong>成交规模</strong>：订单或合同口径的成交规模，适合看市场声量和目标达成，但不能直接代表公司赚到的钱。</li>
+<li><strong>净收入</strong>：扣除退款、退订、补偿、渠道分佣等影响后的收入口径，更接近真实经营质量。</li>
+<li><strong>年度经常性收入 / 月度经常性收入</strong>：年度或月度经常性收入，适合看订阅型、包月型、企业套餐型商品的稳定盘。</li>
+<li><strong>毛利率</strong>：收入扣除直接成本后的盈利能力。AI 推理、GPU、联网搜索、视频生成等高成本能力尤其要看毛利。</li>
+<li><strong>销售机会池</strong>：还未成交但有机会转化的销售机会金额，不能等同收入。</li>
+<li><strong>资源包消耗率</strong>：客户购买的预付额度被消耗的进度，影响递延收入结转和续约判断。</li>
+<li><strong>账单争议金额</strong>：客户对账单不认可的金额，可能导致回款延迟、退款、续约风险和口碑损失。</li>
+<li><strong>收入确认风险</strong>：收款、开票、交付和消耗之间不一致时，财务不能简单把钱全部确认为收入。</li>
+</ul>
+<p>产品经理要避免只汇报“卖了多少”。更健康的表达是：本月 成交规模、净收入、毛利率、有效 年度经常性收入、新增付费客户、资源包消耗率、账单争议金额、续约风险金额分别是多少，以及偏离原因是什么。</p>
+<h5>2.2 不同商业模式的收入确认解释</h5>
+<ul>
+<li><strong>按量付费</strong>：客户实际用多少，按计量记录和价格规则生成账单。风险在于计量延迟、计量缺失、重复计量、客户不理解单位换算。</li>
+<li><strong>包月 / 包年</strong>：客户购买一段时间内的固定权益或规格。收入通常需要按服务期分摊，不能只看一次性收款；实际确认口径仍以合同履约义务、服务交付方式和公司财务政策为准。</li>
+<li><strong>资源包</strong>：客户先买额度，后续逐步消耗。财务上通常涉及递延收入管理，但具体收入确认要依据合同履约义务、服务期限、消耗规则、过期规则、breakage 估计和适用会计准则确定；多数按用量消耗型资源包会随消耗逐步结转，最终口径必须由财务确认。</li>
+<li><strong>免费额度 / 赠送权益</strong>：客户不付费但平台有真实成本，需要进入成本归集和毛利测算，不能被当作“无成本营销”。</li>
+<li><strong>合同价 / 折扣价 / 促销价</strong>：必须有优先级和互斥规则。多种优惠叠加可能导致毛利击穿。</li>
+<li><strong>退款 / 退订 / 补偿券</strong>：不只是客服动作，还会影响权益回收、账单重算、收入冲回和客户成功记录。</li>
+</ul>
+<h5>2.3 关键指标看板</h5>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>指标</th>
+<th>产品经理要看什么</th>
+<th>风险信号</th>
+</tr></thead>
+<tbody><tr>
+<td>成交规模</td>
+<td>是否达成销售目标</td>
+<td>成交规模 高但净收入低</td>
+</tr>
+<tr>
+<td>净收入</td>
+<td>扣除退款和补偿后的真实收入</td>
+<td>退款、退订、争议增长</td>
+</tr>
+<tr>
+<td>毛利率</td>
+<td>商品是否可持续销售</td>
+<td>高成本调用、折扣过深</td>
+</tr>
+<tr>
+<td>年度经常性收入 / 月度经常性收入</td>
+<td>订阅盘是否稳定</td>
+<td>到期客户集中、续约概率低</td>
+</tr>
+<tr>
+<td>活跃付费客户</td>
+<td>商品是否被真实使用</td>
+<td>购买后不用、只薅免费额度</td>
+</tr>
+<tr>
+<td>资源包消耗率</td>
+<td>客户是否进入健康消耗</td>
+<td>消耗过快引发争议，消耗过慢影响续约</td>
+</tr>
+<tr>
+<td>折扣率</td>
+<td>销售让利是否可控</td>
+<td>个案折扣变成默认预期</td>
+</tr>
+<tr>
+<td>账单争议金额</td>
+<td>客户对计费是否认可</td>
+<td>争议金额接近续约金额</td>
+</tr>
+<tr>
+<td>收入确认风险</td>
+<td>财务是否能确认收入</td>
+<td>交付、计量、账单、合同不一致</td>
+</tr>
+</tbody>
+</table></div>
+<h5>2.4 财务风险边界</h5>
+<p>产品经理在设计商品时必须守住以下边界：</p>
+<ol>
+<li><strong>估算不是正式报价</strong>：预算测算、ROI 计算、演示页价格都要标注假设，正式报价以合同、报价单或控制台确认页为准。</li>
+<li><strong>折扣不能无限叠加</strong>：合同折扣、促销价、渠道券、资源包优惠需要互斥或优先级。</li>
+<li><strong>毛利底线必须可审批</strong>：低于毛利底线的报价，必须进入财务 BP 和业务负责人审批。</li>
+<li><strong>免费额度有成本</strong>：尤其是 AI 模型、视频生成、GPU 训练等高成本能力，赠送额度必须进入成本测算。</li>
+<li><strong>资源包不能简单按收款或开票确认收入</strong>：收款、开票、合同履约、服务交付和用量消耗可能不同步，收入确认应以合同履约义务和财务确认口径为准；开票更多影响税务和应收管理。</li>
+<li><strong>退款退订要联动权益和账单</strong>：不能只退钱，不回收未用权益或不重算账单。</li>
+</ol>
+<h5>2.5 产品经理 必须问财务的 5 个问题</h5>
+<p>产品经理不替财务判断会计准则，但必须把财务判断需要的业务事实提前整理清楚。每个新商品、套餐或促销上线前，至少问清五件事：</p>
+<ol>
+<li>这笔钱在什么条件下才能确认收入，是下单、开通、服务期经过、用量消耗，还是客户验收？</li>
+<li>赠送额度、试用包、资源包、补偿券和渠道券分别如何归集成本，是否会影响毛利底线？</li>
+<li>合同折扣、促销价、资源包优惠、渠道分佣能否叠加，优先级和互斥规则是什么？</li>
+<li>退款、退订、账单冲正和发票调整分别由谁审批，是否会影响历史报表和客户续约？</li>
+<li>自助购买页、销售报价单和合同中哪些价格表述必须经过财务确认，哪些只能作为估算假设？</li>
+</ol>
+<h5>2.6 财务异常处理 SOP</h5>
+<ol>
+<li><strong>发现异常</strong>：来源可能是账单争议、毛利看板、销售反馈、客户工单或财务月结。</li>
+<li><strong>冻结扩散</strong>：对疑似错误价格、错误折扣、错误计量先暂停新增使用或新增报价，避免影响扩大。</li>
+<li><strong>定位对象</strong>：确认 商品主对象、售卖方案、可购买规格、计量项、价格规则、Contract、订阅关系、Bill 的具体版本。</li>
+<li><strong>评估影响</strong>：列出影响客户、订单、合同、账单、收入确认、发票和毛利金额。</li>
+<li><strong>制定方案</strong>：选择补账、冲正、退款、补偿券、权益调整、合同补充协议或价格回滚。</li>
+<li><strong>审批确认</strong>：财务 BP、商品 产品经理、销售负责人、法务和必要时经营负责人确认。</li>
+<li><strong>客户沟通</strong>：用客户能理解的语言说明原因、影响金额、处理方式和完成时间。</li>
+<li><strong>复盘沉淀</strong>：补充价格校验、折扣互斥、计量校验、账单解释模板和巡检规则。</li>
+</ol>
+<h4>3. 稳定性保障 上架门禁与稳定性</h4>
+<h5>3.1 稳定性保障 为什么是上架门禁</h5>
+<p>稳定性保障 的目标不是上线后救火，而是在商品可售前判断“承诺是否可交付”。云商品一旦进入官网、控制台、销售报价和合同，就会形成客户预期。若容量、限流、告警、灰度、回滚没有准备好，问题会从技术事故扩大成收入损失、账单争议和续约风险。</p>
+<p>产品经理要把 稳定性保障 评审当作商品上架的必要 checkpoint，而不是可选会签。</p>
+<h5>3.2 稳定性保障 就绪 checklist</h5>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>检查项</th>
+<th>产品经理 需要确认的业务含义</th>
+<th>不通过时的风险</th>
+</tr></thead>
+<tbody><tr>
+<td>容量评审</td>
+<td>当前库存、地域、并发、队列是否支撑销售目标</td>
+<td>卖出后无法交付</td>
+</tr>
+<tr>
+<td>压测基线</td>
+<td>峰值流量下是否能稳定服务</td>
+<td>大促或发布首日故障</td>
+</tr>
+<tr>
+<td>限流策略</td>
+<td>超出容量时如何保护系统和客户体验</td>
+<td>全量雪崩、账单争议</td>
+</tr>
+<tr>
+<td>告警阈值</td>
+<td>哪些指标触发 P0/P1/P2 告警</td>
+<td>发现太晚、影响扩大</td>
+</tr>
+<tr>
+<td>灰度计划</td>
+<td>先给哪些客户、哪些地域、多少比例开放</td>
+<td>一次性放量不可控</td>
+</tr>
+<tr>
+<td>回滚方案</td>
+<td>出问题时能否恢复旧版本、旧价格、旧入口</td>
+<td>事故无法收敛</td>
+</tr>
+<tr>
+<td>服务等级承诺 边界</td>
+<td>技术可达性、服务稳定性目标、容量和故障响应是否支撑对外承诺</td>
+<td>销售或合同过度承诺</td>
+</tr>
+<tr>
+<td>通知机制</td>
+<td>事故时谁通知销售、客服、客户成功和客户</td>
+<td>口径不一致、客户不信任</td>
+</tr>
+</tbody>
+</table></div>
+<h5>3.3 稳定性关键指标</h5>
+<ul>
+<li><strong>可用性</strong>：客户能否正常购买、调用、交付和查看账单。</li>
+<li><strong>错误率</strong>：API 调用失败、生成失败、订单失败、计量写入失败的比例。</li>
+<li><strong>延迟 / 排队时长</strong>：尤其适用于模型生成、GPU 训练、批处理任务。</li>
+<li><strong>容量水位</strong>：资源池、地域、队列、配额、并发和库存的使用率。</li>
+<li><strong>限流触发次数</strong>：判断是否接近容量边界，也用于客户解释。</li>
+<li><strong>告警响应时间</strong>：从触发到有人处理的时间。</li>
+<li><strong>回滚耗时</strong>：从决策回滚到恢复客户可用的时间。</li>
+<li><strong>服务等级承诺 违约次数和影响客户数</strong>：直接关联赔付、满意度和续约风险。</li>
+</ul>
+<h5>3.4 稳定性保障 风险边界</h5>
+<ol>
+<li>未经 稳定性保障 确认的地域，不承诺固定交付日期。</li>
+<li>未完成压测的商品，不承诺大促峰值能力。</li>
+<li>未配置限流和降级的高成本能力，不应开放无限自助购买。</li>
+<li>稳定性保障 负责确认技术可达性、容量、服务稳定性目标、告警、回滚和故障响应能力；合同级 服务等级承诺、赔付和客户承诺必须由 稳定性保障、法务、财务和业务负责人共同确认，不能仅凭 稳定性保障 结论对外承诺。</li>
+<li>服务等级承诺 文案必须和合同、官网、销售话术、控制台一致。</li>
+<li>容量不足时，优先保护已付费客户、合同承诺客户和关键业务链路。</li>
+<li>技术事故需要同步经营影响：受影响 成交规模、账单金额、客户数、续约风险。</li>
+</ol>
+<h5>3.5 稳定性异常 SOP</h5>
+<ol>
+<li><strong>识别等级</strong>：按影响客户数、收入金额、核心链路、服务等级承诺 违约可能性定级。</li>
+<li><strong>止血优先</strong>：限流、降级、暂停新购、切换备用资源或回滚版本。</li>
+<li><strong>同步口径</strong>：稳定性保障 给出技术事实，产品经理 转成业务影响，销售/客服使用统一客户话术。</li>
+<li><strong>客户分层处理</strong>：合同客户、重点客户、自助客户分别给出通知方式和补偿策略。</li>
+<li><strong>恢复验证</strong>：验证购买、调用、计量、账单、告警均恢复，而不是只看服务重启。</li>
+<li><strong>事故复盘</strong>：沉淀根因、影响范围、时间线、赔付、改进项和负责人。</li>
+</ol>
+<h5>3.6 示例：大促队列不健康</h5>
+<p>若 Seedance Mini 大促期间生成队列积压，产品经理 不应只问“多久恢复”。正确动作是：确认排队时长、失败率、影响客户数、是否继续扣费、是否触发 服务等级承诺、是否暂停活动入口、是否通知销售停止承诺即时交付，以及是否需要给客户展示“当前排队较长，预计完成时间”。</p>
+<h4>4. 客户自助购买与售后解释</h4>
+<h5>4.1 自助购买的产品原则</h5>
+<p>自助购买不是把内部后台开放给客户，而是把复杂商品规则翻译成客户能理解、能确认、能追溯的购买体验。</p>
+<p>客户买前最关心五件事：买的是什么、多少钱、能用多久、用完怎么办、出问题找谁。产品经理需要把 售卖方案、可购买规格、计量项、价格规则、权益规则 翻译成清晰页面，而不是暴露内部字段。</p>
+<h5>4.2 买前确认页必须说清楚</h5>
+<ul>
+<li>商品类型：按量、包月、资源包、企业套餐、试用包或组合方案。</li>
+<li>价格属性：目录价、促销价、合同价、估算价还是正式报价。</li>
+<li>计费单位：Token、GB、实例小时、请求数、席位数等，要提供例子。</li>
+<li>生效时间：立即生效、次日生效、审批后生效或交付后生效。</li>
+<li>权益规则：额度、有效期、发放周期、消耗顺序、是否过期。</li>
+<li>超额规则：用完后是否停止、降级、提醒、二次确认或自动按量计费。</li>
+<li>退款退订：可退条件、不可退条件、已消耗权益处理方式。</li>
+<li>服务等级承诺 和交付边界：哪些地域可用，哪些能力不承诺固定完成时间。</li>
+</ul>
+<h5>4.3 售后解释模板</h5>
+<p>客户问“为什么账单比估算高”时，建议解释为：</p>
+<blockquote>您购买前看到的是基于输入假设的费用估算，不是最终账单。最终账单会根据实际使用量、计费单位、价格规则、折扣和资源包抵扣情况生成。我们可以一起核对本账期的用量明细、资源包抵扣、超额部分和适用价格。</blockquote>
+<p>客户问“赠送 Token 为什么过期”时，建议解释为：</p>
+<blockquote>赠送额度属于套餐权益，按规则在指定周期内发放并在有效期结束后过期。购买页和权益说明中会展示有效期。已过期额度通常不能恢复，但如因系统异常导致展示或扣减错误，我们会按争议流程核查。</blockquote>
+<p>客户问“生成失败为什么扣费”时，建议解释为：</p>
+<blockquote>是否计费取决于您购买时确认的商品规则、合同条款和计量口径中对成功、失败、取消、超时等状态的定义。我们会核对请求状态、计量记录、账单记录和相关服务日志；如果属于平台异常导致的错误扣费，会按规则冲正或补偿。</blockquote>
+<p>客户问“合同价和控制台价为什么不同”时，建议解释为：</p>
+<blockquote>控制台展示通常是目录价或当前公开价。合同价是基于您的合同、采购范围、折扣审批和有效期形成的专属价格。最终以合同约定或已确认订单为准。</blockquote>
+<h5>4.4 自助场景的风险边界</h5>
+<ol>
+<li>客户只能看到自己的合同、账单、用量和权益，不能看到其他客户价格。</li>
+<li>估算页必须标注假设和非正式报价属性。</li>
+<li>超额付费默认不应静默发生，尤其是高成本能力，应由管理员二次确认。</li>
+<li>演示数据、演示 数据、置信度字段不能包装成官方承诺。</li>
+<li>客户可见字段必须使用业务语言，不展示工程 key、内部状态码和未解释缩写。</li>
+<li>售后解释要以可核验数据为依据：订单、用量、计量、价格、账单、合同版本。</li>
+</ol>
+<h4>5. 异常链路、反向链路与治理</h4>
+<h5>5.1 为什么反向链路比新上架更复杂</h5>
+<p>新上架通常没有存量客户，问题主要是定义是否完整。反向变更面对的是已经购买、已经签约、已经计费、已经形成客户预期的商品。任何改规格、调价、可购买规格 下线、权益调整、退款退订，都可能同时影响客户体验、合同有效性、账单准确性、收入确认和渠道展示。</p>
+<h5>5.2 常见异常分类</h5>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>异常类型</th>
+<th>典型触发</th>
+<th>必看影响</th>
+</tr></thead>
+<tbody><tr>
+<td>改规格 / 新增 可购买规格</td>
+<td>能力升级、市场需求</td>
+<td>存量合同、报价、购买页、交付能力</td>
+</tr>
+<tr>
+<td>可购买规格 下线</td>
+<td>成本过高、能力替换</td>
+<td>存量客户续约、迁移方案、公告</td>
+</tr>
+<tr>
+<td>售卖方案 改名</td>
+<td>品牌升级、包装调整</td>
+<td>官网、控制台、合同、账单名称一致性</td>
+</tr>
+<tr>
+<td>调价</td>
+<td>成本变化、竞品压力</td>
+<td>折扣、合同价、历史订单、客户通知</td>
+</tr>
+<tr>
+<td>权益调整</td>
+<td>套餐升级、成本控制</td>
+<td>额度、过期、超额、毛利、争议</td>
+</tr>
+<tr>
+<td>地域扩容 / 下线</td>
+<td>容量变化、合规要求</td>
+<td>可售范围、交付承诺、服务等级承诺</td>
+</tr>
+<tr>
+<td>退款 / 退订</td>
+<td>客户不满、买错、故障补偿</td>
+<td>权益回收、账单冲正、收入冲回</td>
+</tr>
+<tr>
+<td>计量异常</td>
+<td>漏计、重计、延迟</td>
+<td>账单准确性、争议金额、补账</td>
+</tr>
+<tr>
+<td>发布失败</td>
+<td>渠道或配置错误</td>
+<td>是否回滚、是否暂停销售</td>
+</tr>
+<tr>
+<td>服务等级承诺 事故</td>
+<td>可用性或性能未达标</td>
+<td>赔付、客户通知、续约风险</td>
+</tr>
+</tbody>
+</table></div>
+<h5>5.3 变更影响分析模板</h5>
+<p>每个异常或反向变更，都应先生成影响分析，而不是直接改生产数据。</p>
+<ul>
+<li>变更对象：商品主对象 / 售卖方案 / 可购买规格 / 计量项 / 价格规则 / 权益规则 / 可售地域。</li>
+<li>变更原因：业务需求、成本变化、合规要求、事故修复、客户请求。</li>
+<li>影响客户：客户数量、重点客户名单、到期客户、合同客户、自助客户。</li>
+<li>影响合同：是否改变已签约价格、权益、服务等级承诺、地域和交付承诺。</li>
+<li>影响账单：是否需要重算、补账、冲正、退款或发票调整。</li>
+<li>影响渠道：官网、控制台、云市场、销售报价、客服知识库是否同步。</li>
+<li>财务影响：成交规模、净收入、毛利、递延收入、争议金额。</li>
+<li>稳定性保障 影响：容量、限流、告警、灰度、回滚、服务等级承诺。</li>
+<li>客户沟通：是否需要公告、站内信、销售一对一通知或客服话术。</li>
+<li>回滚方案：什么条件触发回滚，回滚后数据如何修复。</li>
+</ul>
+<h5>5.4 存量客户保护策略</h5>
+<p>涉及存量客户的调价、可购买规格 下线、权益调整和地域下线，不能只看新规则是否合理，还要先确定存量客户保护策略：</p>
+<ul>
+<li><strong>沿用旧规则</strong>：存量合同期内继续使用旧价格、旧权益或旧 可购买规格，适合合同承诺明确、客户影响大的场景。</li>
+<li><strong>合同到期切换</strong>：当前合同不变，续约时切换新规则，适合价格和权益体系升级。</li>
+<li><strong>客户可选迁移</strong>：提供新旧方案对比，让客户自主选择迁移时间，适合有替代方案的商品。</li>
+<li><strong>强制迁移</strong>：仅适用于安全、合规、资源不可用等必须下线场景，需要充分通知周期、替代方案和审批依据。</li>
+<li><strong>替代或补偿方案</strong>：对受影响客户提供替代地域、替代 可购买规格、补偿券或服务期延长，并明确财务和法务口径。</li>
+</ul>
+<p>产品经理 在审批摘要中必须写清：影响客户清单、合同依据、通知周期、迁移路径、客户成功 owner、争议处理口径和是否影响收入确认。</p>
+<h5>5.5 异常处理 SOP</h5>
+<ol>
+<li><strong>登记异常</strong>：记录触发来源、发现时间、发现人、初步影响对象。</li>
+<li><strong>定级定责</strong>：指定 产品经理 owner，并拉齐财务、稳定性保障、研发、销售、客服、法务。</li>
+<li><strong>影响分析</strong>：先出影响分析和审批摘要，不直接变更生产配置。</li>
+<li><strong>灰度验证</strong>：在小客户、测试组织、单地域或单渠道验证。</li>
+<li><strong>审批发布</strong>：高风险动作必须有财务、稳定性保障、法务或经营负责人审批。</li>
+<li><strong>客户通知</strong>：根据影响程度选择公告、邮件、站内信、销售通知或工单回复。</li>
+<li><strong>全量执行</strong>：按计划变更，并记录版本、时间、操作者和回滚点。</li>
+<li><strong>巡检闭环</strong>：验证渠道、订单、计量、账单、客户反馈和经营指标。</li>
+<li><strong>复盘治理</strong>：沉淀自动校验、审批规则、话术模板和监控指标。</li>
+</ol>
+<h5>5.6 典型例子：套餐额度调整</h5>
+<p>如果 Agent Plan Medium 要调整每日赠送额度，不能只改权益字段。要同时检查：存量客户是否沿用旧规则、合同是否写明额度、官网和控制台是否同步、账单解释是否变化、毛利是否改善或恶化、客户是否需要提前通知、超额付费确认页是否需要更新。</p>
+<h4>6. 发布后巡检与运营健康</h4>
+<h5>6.1 上架成功不等于业务健康</h5>
+<p>商品显示“已发布”只能说明配置进入渠道，不代表客户能顺利购买、订单能创建、计量能写入、账单能生成、销售能正确报价、客服能解释清楚。发布后 24 小时是发现配置错误、渠道不一致和链路断点的黄金窗口。</p>
+<h5>6.2 发布后 24 小时巡检清单</h5>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>巡检项</th>
+<th>检查方法</th>
+<th>负责人</th>
+</tr></thead>
+<tbody><tr>
+<td>官网展示</td>
+<td>名称、卖点、价格、常见问题说明、禁承诺项是否正确</td>
+<td>产品经理 / 上市打法</td>
+</tr>
+<tr>
+<td>控制台购买</td>
+<td>可购买规格、价格、地域、权益、确认页是否正确</td>
+<td>产品经理 / 研发</td>
+</tr>
+<tr>
+<td>销售报价</td>
+<td>报价单、折扣、合同价是否同步</td>
+<td>销售 / 财务</td>
+</tr>
+<tr>
+<td>订单创建</td>
+<td>新购、续费、升级、退订是否成功</td>
+<td>平台研发</td>
+</tr>
+<tr>
+<td>交付开通</td>
+<td>权益、实例、资源包或服务权限是否按时生效</td>
+<td>研发 / 稳定性保障</td>
+</tr>
+<tr>
+<td>计量写入</td>
+<td>计量记录 是否完整、无重复、无延迟异常</td>
+<td>研发 / 财务</td>
+</tr>
+<tr>
+<td>账单生成</td>
+<td>金额、折扣、资源包抵扣、税费是否合理</td>
+<td>财务 / 账单团队</td>
+</tr>
+<tr>
+<td>发票状态</td>
+<td>发票抬头、税务规则、开票状态是否正常</td>
+<td>财务</td>
+</tr>
+<tr>
+<td>告警和 服务等级承诺</td>
+<td>是否有错误率、延迟、容量、水位告警</td>
+<td>稳定性保障</td>
+</tr>
+<tr>
+<td>客户反馈</td>
+<td>工单、客服、销售群、客户成功记录是否异常</td>
+<td>客服 / 客成</td>
+</tr>
+<tr>
+<td>经营指标</td>
+<td>成交规模、净收入、毛利、转化率是否偏离预期</td>
+<td>产品经理 / 经营</td>
+</tr>
+</tbody>
+</table></div>
+<h5>6.3 发布后健康日报结构</h5>
+<ul>
+<li>今日结论：健康、观察中、需干预、需回滚。</li>
+<li>关键指标：访问、购买、订单、交付、计量、账单、错误率、客户反馈。</li>
+<li>风险列表：按客户影响和收入影响排序。</li>
+<li>阻塞事项：负责人、截止时间、升级路径。</li>
+<li>客户声音：高频问题、争议点、需更新 常见问题说明 的内容。</li>
+<li>下一步动作：继续灰度、扩大流量、暂停销售、修复配置或回滚。</li>
+</ul>
+<h5>6.4 渠道一致性重点</h5>
+<p>发布后最常见问题是价格和权益不一致。例如官网写“每日赠送 50 元等值 Token”，控制台显示 40 元，账单解释又按 Token 数量展示。产品经理要建立统一口径：客户看到的营销语言、购买页确认语言、账单解释语言可以不同，但底层规则必须一致，且能互相解释。</p>
+<h5>6.5 巡检异常处置</h5>
+<p>若发现控制台价和销售报价不一致：</p>
+<ol>
+<li>暂停使用错误报价继续成交。</li>
+<li>确认主数据源和生效版本。</li>
+<li>判断已成交客户是否受影响。</li>
+<li>财务确认是否需要补差、冲正或合同补充说明。</li>
+<li>销售和客服使用统一解释口径。</li>
+<li>修复渠道同步，并加入下一次巡检规则。</li>
+</ol>
+<h4>7. 续约、客户成功与增长</h4>
+<h5>7.1 续约不是到期前才开始</h5>
+<p>云商品的续约风险通常在账单争议、服务等级承诺 事故、用量异常、成本超预算、权益解释不清时就已经出现。客户成功要把这些信号提前转成续约雷达，而不是等合同到期再补救。</p>
+<h5>7.2 续约雷达指标</h5>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>信号</th>
+<th>健康表现</th>
+<th>风险表现</th>
+</tr></thead>
+<tbody><tr>
+<td>到期时间</td>
+<td>90 天前已有续约计划</td>
+<td>30 天内到期仍无负责人</td>
+</tr>
+<tr>
+<td>当前 年度经常性收入</td>
+<td>稳定或增长</td>
+<td>下降、拆单、只短续</td>
+</tr>
+<tr>
+<td>用量健康</td>
+<td>与业务增长匹配</td>
+<td>突增导致账单争议，突降说明替代风险</td>
+</tr>
+<tr>
+<td>资源包消耗</td>
+<td>接近业务节奏</td>
+<td>过快耗尽或长期不消耗</td>
+</tr>
+<tr>
+<td>账单争议</td>
+<td>少且及时关闭</td>
+<td>多次争议、金额大、客户不认可</td>
+</tr>
+<tr>
+<td>服务等级承诺 事故</td>
+<td>无重大影响或已补偿</td>
+<td>关键业务受损、客户升级投诉</td>
+</tr>
+<tr>
+<td>客户满意度</td>
+<td>决策人和使用人认可</td>
+<td>使用人抱怨、采购压价、决策人沉默</td>
+</tr>
+<tr>
+<td>竞品风险</td>
+<td>无替代评估</td>
+<td>客户询价竞品或迁移测试</td>
+</tr>
+<tr>
+<td>升级机会</td>
+<td>有扩容、加购、行业方案机会</td>
+<td>只谈降价或缩容</td>
+</tr>
+<tr>
+<td>下一步动作</td>
+<td>有明确 owner 和时间表</td>
+<td>无跟进、无会议、无方案</td>
+</tr>
+</tbody>
+</table></div>
+<h5>7.3 客户健康度评分建议</h5>
+<p>可用 100 分制做轻量评分。以下权重是产品经理做续约雷达时的示例，不是固定行业标准；真实业务要按产品类型、客户层级、合同周期和成本结构校准：</p>
+<ul>
+<li>用量健康 25 分：是否稳定、是否符合购买目的。</li>
+<li>账单健康 20 分：是否有争议、争议是否关闭。</li>
+<li>稳定性 20 分：是否出现 服务等级承诺 事故、恢复是否满意。</li>
+<li>商务健康 15 分：付款、合同、折扣、采购流程是否顺畅。</li>
+<li>关系健康 10 分：客户关键人是否明确，沟通是否顺畅。</li>
+<li>增长机会 10 分：是否有升级、扩容、交叉销售机会。</li>
+</ul>
+<p>低于 60 分应进入续约风险清单；60-80 分需要客户成功主动跟进；80 分以上可推进扩容或行业案例沉淀。</p>
+<h5>7.4 客户成功 SOP</h5>
+<ol>
+<li><strong>建档</strong>：记录客户购买商品、合同金额、到期日、使用场景、关键联系人。</li>
+<li><strong>监控</strong>：每周查看用量、账单、工单、服务等级承诺、资源包消耗和健康评分。</li>
+<li><strong>识别风险</strong>：将账单争议、使用下降、事故投诉、采购延迟标记为风险。</li>
+<li><strong>制定动作</strong>：销售负责商务推进，客户成功负责使用健康，产品经理 负责规则或体验问题，稳定性保障 负责稳定性改进。</li>
+<li><strong>客户沟通</strong>：用事实和数据解释问题，给出下一步时间表。</li>
+<li><strong>续约复盘</strong>：无论续约成功、缩容还是流失，都要回连到商品规则、价格、稳定性和服务问题。</li>
+</ol>
+<h5>7.5 用量高不一定健康</h5>
+<p>客户用量高可能说明产品有价值，也可能说明成本失控、额度消耗过快、即将触发超额账单。产品经理在看续约机会时，要同时看收入、毛利、账单争议和客户满意度。</p>
+<h4>8. 组织层级、指标与分角色关注点</h4>
+<h5>8.1 同一套事实，不同角色视角</h5>
+<p>云商品治理最大的组织问题，是每个角色只看自己熟悉的指标。销售看能不能卖，财务看毛利，稳定性保障 看稳定性，客户成功看续约，老板看目标。产品经理要把这些视角翻译到同一套商品事实上。</p>
+<h5>8.2 分角色关注点</h5>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>角色</th>
+<th>最关心</th>
+<th>需要 产品经理 提供</th>
+</tr></thead>
+<tbody><tr>
+<td>一线销售</td>
+<td>能卖什么、怎么报价、折扣能不能给</td>
+<td>商品边界、报价前检查、禁承诺项</td>
+</tr>
+<tr>
+<td>解决方案</td>
+<td>产品组合、架构可行性、行业复用</td>
+<td>推荐组合、适用场景、服务等级承诺 和地域边界</td>
+</tr>
+<tr>
+<td>商品 产品经理</td>
+<td>产品定义、主数据、上架、复盘</td>
+<td>统一事实源、流程 owner、风险闭环</td>
+</tr>
+<tr>
+<td>研发 / 平台</td>
+<td>数据模型、接口、权限、审计</td>
+<td>字段含义、状态机、异常流程</td>
+</tr>
+<tr>
+<td>财务 BP</td>
+<td>价格、毛利、收入确认、退款</td>
+<td>成本输入、折扣规则、资源包消耗</td>
+</tr>
+<tr>
+<td>稳定性保障</td>
+<td>容量、限流、告警、灰度、回滚</td>
+<td>上架节奏、销售预期、客户分层</td>
+</tr>
+<tr>
+<td>法务 / 合规</td>
+<td>合同边界、不可承诺项、数据合规</td>
+<td>服务等级承诺 文案、退款边界、客户承诺</td>
+</tr>
+<tr>
+<td>客户成功 / 客服</td>
+<td>用量、账单解释、争议、续约</td>
+<td>解释模板、客户影响清单、升级路径</td>
+</tr>
+<tr>
+<td>老板 / 经营层</td>
+<td>成交规模、净收入、毛利、风险、增长</td>
+<td>经营看板、阻塞负责人、下一步动作</td>
+</tr>
+</tbody>
+</table></div>
+<h5>8.3 组织层指标框架</h5>
+<ul>
+<li><strong>增长指标</strong>：成交规模、净收入、年度经常性收入、月度经常性收入、销售机会池、新增付费客户、转化率。</li>
+<li><strong>质量指标</strong>：毛利率、折扣率、资源包消耗率、收入确认风险、账单争议金额。</li>
+<li><strong>稳定性指标</strong>：可用性、错误率、容量水位、服务等级承诺 事故、告警响应时间。</li>
+<li><strong>客户指标</strong>：活跃客户、客户健康度、续约概率、续约风险金额、满意度、工单关闭时长。</li>
+<li><strong>效率指标</strong>：上架周期、审批耗时、异常关闭时长、巡检覆盖率、字段一致性通过率。</li>
+<li><strong>目标拆解指标</strong>：季度/月度目标值、实际值、差距、差距原因、责任 owner、下一步动作和预计追回时间。</li>
+<li><strong>长期指标</strong>：续约率、扩容率、客户健康度、产品覆盖率、长期留存率。</li>
+<li><strong>战略指标</strong>：市场份额、客户结构、行业竞争力、重点行业渗透率、战略投入产出。</li>
+</ul>
+<h5>8.4 示例：GPU 容量不足时各角色怎么问</h5>
+<ul>
+<li>老板：影响多少 成交规模、多少重点客户、什么时候恢复、谁负责。</li>
+<li>稳定性保障：哪个地域、哪个资源池、容量水位多少、是否限流或扩容。</li>
+<li>销售：哪些订单不能交付，客户该怎么解释，能否换地域或替代方案。</li>
+<li>财务：收入确认是否延迟，是否触发赔付或退款，毛利是否变化。</li>
+<li>客户成功：哪些客户续约受影响，是否需要主动通知和补偿。</li>
+<li>产品经理：商品可售状态是否要调整，购买页和销售话术是否要更新。</li>
+</ul>
+<h4>9. 客户场景与解释边界</h4>
+<h5>9.1 大客户场景</h5>
+<p>大客户通常不是直接点购买，而是经过方案、报价、合同、采购、交付和验收。其核心关注是合同价、服务等级承诺、稳定性、审计、交付窗口、容量预约和服务承诺。</p>
+<p>产品经理要支持销售和解决方案明确：哪些能力已经产品化，哪些只是方案集成；哪些地域有容量，哪些需要预约；哪些 服务等级承诺 能写进合同，哪些只能作为目标值；哪些折扣需要财务审批。</p>
+<h5>9.2 小客户自助场景</h5>
+<p>小客户关注购买是否简单、价格是否透明、额度是否能解释、用完是否自动扣费、能否快速升级。页面应该优先回答“我现在买会发生什么”，而不是展示复杂规则。</p>
+<p>对小客户尤其要避免三类误解：把估算当正式报价、把赠送额度当永久额度、把失败重试当免费使用。</p>
+<h5>9.3 续约客户场景</h5>
+<p>续约客户更关注历史体验：账单是否清楚、服务等级承诺 是否稳定、工单是否及时、用量是否匹配业务、是否需要升级或降级、竞品是否更便宜。客户成功要提前准备健康报告，而不是只发送续约报价。</p>
+<h5>9.4 客户采购场景</h5>
+<p>采购关注正式报价、合同、发票、税务、付款条件、交付证明和服务承诺。产品经理不需要替代财务和法务，但要保证商品规则能支持采购材料：报价有效期、价格口径、服务范围、退款退订边界、发票项目和交付验收依据。</p>
+<h5>9.5 客户管理员场景</h5>
+<p>客户管理员关注权限、预算、额度、通知人、超额付费确认和组织内成本分摊。对于 Plan 型或高成本商品，应提供预算上限、用量提醒、管理员二次确认、通知联系人和权限隔离。</p>
+<h5>9.6 行业差异示例</h5>
+<ul>
+<li>金融客户：更重视合规、审计、服务等级承诺、合同边界、数据安全和稳定交付。</li>
+<li>内容行业客户：更重视峰值弹性、生成速度、成本可控、活动保障和快速扩容。</li>
+<li>开发者 / 中小企业：更重视价格透明、接入简单、账单解释和自助升级。</li>
+</ul>
+<h5>9.7 对外解释边界</h5>
+<ol>
+<li>不把内部成本、毛利底线、审批意见直接暴露给客户。</li>
+<li>不承诺未经 稳定性保障 和法务确认的 服务等级承诺、地域、交付日期和赔付。</li>
+<li>不把演示效果、估算结果、测试数据包装成正式承诺。</li>
+<li>不用内部字段解释客户问题，要转成业务语言。</li>
+<li>不在客户争议中先归因客户错误，应先核对订单、计量、账单和合同事实。</li>
+</ol>
+<h4>10. 本章交付物清单</h4>
+<p>产品经理在推进云商品商业化与运营治理时，至少应沉淀以下交付物：</p>
+<ul>
+<li>财务商业化评审：商业测算、毛利底线、折扣规则、收入确认口径、资源包递延规则。</li>
+<li>经营健康看板：成交规模、净收入、年度经常性收入/月度经常性收入、毛利、活跃付费客户、争议金额、续约风险。</li>
+<li>稳定性保障 上架门禁清单：容量、压测、限流、告警、灰度、回滚、服务等级承诺、通知机制。</li>
+<li>客户购买确认页：商品类型、计费单位、权益规则、超额规则、退款退订和报价边界。</li>
+<li>售后解释模板：账单争议、赠送额度、生成失败扣费、合同价差异、地域不可售。</li>
+<li>变更影响分析：客户、合同、账单、渠道、财务、稳定性保障、客户沟通和回滚方案。</li>
+<li>异常处理 SOP：登记、定级、影响分析、灰度、审批、通知、执行、巡检、复盘。</li>
+<li>发布后巡检报告：官网、控制台、销售报价、订单、交付、计量、账单、告警、客户反馈。</li>
+<li>续约雷达：到期时间、年度经常性收入、用量健康、账单争议、服务等级承诺、满意度、竞品风险和下一步动作。</li>
+<li>分角色经营视图：销售、解决方案、财务、稳定性保障、法务、客户成功、老板分别看什么。</li>
+</ul>
+<p>本章的核心判断标准是：商品不仅能上架，而且能被正确售卖、稳定交付、准确计费、清楚解释、异常可控、续约可预警。</p>
+<h4>详细章节：平台视角、案例与模板</h4>
+<h3>04 研发平台视角、实战案例与可复用模板</h3>
+<h4>1. 研发和平台实现视角</h4>
+<p>本节的目标不是把产品经理训练成工程师，而是让产品经理知道：哪些规则可以靠运营流程兜底，哪些必须进入平台模型、权限、工具和验收用例。云商品平台的边界，可以用一句话概括：<strong>平台不替业务做判断，但必须把业务判断固化为可追溯、可校验、可回滚的规则。</strong></p>
+<h5>1.1 产品经理需要理解的平台边界</h5>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>业务问题</th>
+<th>平台应该提供什么</th>
+<th>平台不应该替代什么</th>
+</tr></thead>
+<tbody><tr>
+<td>这个能力能不能卖</td>
+<td>就绪 表单、稳定性保障 门禁、财务/法务审批流</td>
+<td>不替 产品经理 判断目标客户和产品定位</td>
+</tr>
+<tr>
+<td>怎么建 商品主对象、售卖方案、可购买规格、计量项、价格规则</td>
+<td>主数据模型、字段校验、血缘影响分析</td>
+<td>不替 产品经理 设计商业包装</td>
+</tr>
+<tr>
+<td>价格和权益是否能发布</td>
+<td>审批、灰度、渠道同步、审计日志</td>
+<td>不绕过财务毛利和法务承诺边界</td>
+</tr>
+<tr>
+<td>客户能看到什么</td>
+<td>权限策略、客户字段过滤、结构化展示界面 展示契约</td>
+<td>不把内部工程字段直接透出</td>
+</tr>
+<tr>
+<td>销售能不能报价</td>
+<td>报价前检查清单、估算工具、正式报价状态</td>
+<td>不把估算结果伪装成正式报价</td>
+</tr>
+<tr>
+<td>出问题后怎么处理</td>
+<td>变更影响分析、回滚计划、发布后巡检</td>
+<td>不用口头同步代替证据链</td>
+</tr>
+</tbody>
+</table></div>
+<p>产品经理提出规则时，应尽量用“输入、输出、责任人、风险、验收口径”表达；研发实现时，应把这些规则落到数据结构、接口契约、权限策略、工具动作和自动化测试中。</p>
+<h5>1.2 平台能力的分层</h5>
+<p>以下是某类智能业务平台或内部商品平台可能采用的实现分层，不是所有云厂商的行业标准命名。产品经理需要掌握的不是术语本身，而是背后的通用原则：领域隔离、主数据配置、权限控制、工具化流程、业务展示和自动化验收。</p>
+<ol>
+<li><strong>领域能力包：业务域包</strong></li>
+<p>   用于注册某个业务域的资源、工具、权限、路由和展示。例如云商品域要和经销商域隔离，避免客户、合同、账单、折扣等敏感数据跨域流动。</p>
+</ol>
+<ol>
+<li><strong>Resource Config：资源配置与数据字典</strong></li>
+<p>   定义表、字段、中文业务说明、主键、展示字段、可见范围和维护方。产品经理最关心的是：这个字段是什么意思、谁维护、谁消费、变更会影响什么。</p>
+</ol>
+<ol>
+<li><strong>Query Business Data：通用业务查询</strong></li>
+<p>   用于查询商品、客户、合同、订单、计量、账单、续约风险等数据。它解决“查得到、查得准、查得有权限”的问题。</p>
+</ol>
+<ol>
+<li><strong>Dedicated Tools：专用业务工具</strong></li>
+<p>   用于估算、商品评审、审批摘要、发布巡检、变更影响分析、经营日报、续约雷达等场景。写入类动作原则上先生成草稿、模拟计划或审批摘要，不直接修改生产规则。</p>
+</ol>
+<ol>
+<li><strong>Permission Policy：权限策略</strong></li>
+<p>   控制客户只能看自己的数据，销售只能看授权客户，财务能看价格与收入，稳定性保障 能看容量和稳定性，老板看聚合经营指标。权限不是前端隐藏按钮，而是查询、工具和展示层共同执行。</p>
+</ol>
+<ol>
+<li><strong>结构化展示界面 Surface：业务展示层</strong></li>
+<p>   将工具结果变成业务驾驶舱、流程图、表格、表单、标签和风险卡片。好的展示顺序是：先结论、风险、下一步动作，再给明细和证据。</p>
+</ol>
+<ol>
+<li><strong>评测：自动化验收</strong></li>
+<p>   用测试确保路由正确、字段中文化、权限隔离、估算边界、演示 标识、审批摘要和浏览器 UAT 稳定。Prompt 只能提醒，评测 才能持续守边界。</p>
+</ol>
+<h5>1.3 生产级工程能力清单</h5>
+<p>如果商品平台要支撑真实售卖，而不是只做演示，产品经理 需要和研发确认以下能力是否进入版本计划：</p>
+<ul>
+<li><strong>幂等与去重</strong>：订单创建、权益发放、计量写入、账单重算不能因重试产生重复权益或重复扣费。</li>
+<li><strong>审计日志</strong>：价格、权益、地域、服务等级承诺、折扣等高风险字段的每次变更都要记录操作者、时间、前后值、审批单和回滚点。</li>
+<li><strong>灰度发布</strong>：支持按客户、地域、可购买规格、渠道或流量比例发布，先小范围验证再扩大。</li>
+<li><strong>可观测性</strong>：订单、交付、计量、账单、权益、通知等链路要有 trace、指标、日志和告警。</li>
+<li><strong>故障回放</strong>：账单争议、计量异常、服务等级承诺 事故发生后，能还原客户路径、系统决策和数据版本。</li>
+<li><strong>数据权限</strong>：客户、合同价、账单、折扣和续约风险必须租户隔离、角色隔离、最小授权。</li>
+<li><strong>自动化验收</strong>：关键业务边界要有测试，不依赖人工记忆和 prompt 约束。</li>
+</ul>
+<h5>1.4 研发必须守住的红线</h5>
+<ul>
+<li>工程字段不能直接暴露给客户，例如 <code>source/演示/confidence/internal_status</code> 必须转写成业务语言。</li>
+<li>估算、演示数据、参考价格不能说成正式报价。</li>
+<li>写入类动作不能绕过审批，默认生成草稿、模拟计划、审批摘要或待办。</li>
+<li>客户、合同、账单、折扣、发票等敏感数据必须做租户和角色隔离。</li>
+<li>不同 domain 的工具和前端 surface 必须隔离，不能因为共享组件导致数据串场。</li>
+<li>所有高风险动作必须有审计：谁发起、基于什么数据、影响哪些客户、是否可回滚。</li>
+<li>发布不是完成按钮，而是要经过灰度、订单、计量、账单、渠道一致性和客户反馈巡检。</li>
+</ul>
+<h5>1.5 产品与研发的协作交付物</h5>
+<ul>
+<li>数据字典：字段中文名、业务含义、归属方、可见性、下游消费方。</li>
+<li>工具契约：工具能做什么、不能做什么、输入输出、失败状态、是否写入。</li>
+<li>权限策略：角色、租户、客户、合同、账单、折扣的访问边界。</li>
+<li>路由规则：什么问题进入云商品域，什么问题需要转人工或拒答。</li>
+<li>结构化展示界面 展示契约：不同角色看到的卡片、表格、风险提示和下一步动作。</li>
+<li>自动化验收用例：字段中文化、估算声明、权限隔离、审批摘要、巡检链路。</li>
+<li>浏览器 UAT 剧本：从官网、控制台、工作台、销售报价到账单解释的端到端检查。</li>
+</ul>
+<h4>2. 实战案例 A：ECS GPU 训练实例</h4>
+<h5>2.1 故事背景</h5>
+<p>一家金融科技客户计划训练风控模型，预算 30 万，希望在新加坡地域购买 GPU 训练能力，并配套 RDS、TOS、CLB。销售带着机会找到商品 产品经理：“客户下周要报价，能不能把 GPU 训练实例作为标准商品卖？”</p>
+<p>产品经理 的第一反应不应是“马上上架”，而是先判断这项能力是否完成产品化：GPU 资源是否稳定、地域容量是否可承诺、交付窗口是否明确、训练场景是否有 服务等级承诺、成本是否支持折扣、售后是否能解释账单。</p>
+<h5>2.2 产品化：从资源能力到可销售产品</h5>
+<p>产品化评审会由商品 产品经理 牵头，研发、资源团队、稳定性保障、财务 BP、法务和销售参加。会议不是讨论页面文案，而是确认产品边界：</p>
+<ul>
+<li>目标客户：需要模型训练、渲染、科学计算等高性能算力的企业客户。</li>
+<li>核心场景：短周期训练任务、长期包月训练集群、按项目采购算力。</li>
+<li>可承诺项：实例规格、地域、交付周期、基础 服务等级承诺、监控告警。</li>
+<li>不可承诺项：未经容量确认的固定交付日期、训练效果、客户模型收敛结果。</li>
+<li>成本输入：GPU 卡型、机房成本、网络和存储成本、运维成本。</li>
+<li>交付依赖：账号开通、VPC、存储、数据库、负载均衡、安全组。</li>
+</ul>
+<p>只有当 稳定性保障 确认容量、财务确认毛利底线、法务确认 服务等级承诺 表述后，GPU 训练能力才进入商品化设计。</p>
+<h5>2.3 商品化：商品主对象、售卖方案、可购买规格、计量项、价格规则、可售地域</h5>
+<p>商品 产品经理 将能力拆成平台可识别的商品模型：</p>
+<ul>
+<li>商品主对象：ECS GPU 训练实例。</li>
+<li>售卖方案：包月实例、按量实例、企业项目包。</li>
+<li>可购买规格：按 GPU 卡型、CPU/内存、显存、地域组合形成规格。</li>
+<li>计量项：实例小时、GPU 小时、带宽、存储用量。</li>
+<li>价格规则：目录价、阶梯价、合同价、折扣审批价。</li>
+<li>可售地域：新加坡、华东等可售地域，每个地域绑定容量状态。</li>
+</ul>
+<p>研发平台需要校验：同一个 可购买规格 是否绑定了正确 计量项，可售地域 是否可售，价格是否有生效时间，合同价是否只对授权客户可见，控制台展示是否和销售报价一致。</p>
+<h5>2.4 上架：审批不是形式，而是风险汇总</h5>
+<p>上架前会生成发布申请和审批摘要。摘要中必须列出：产品定义、商品模型、价格、容量、服务等级承诺、风险、回滚方案和巡检计划。</p>
+<ul>
+<li>财务关注：30 万预算下折扣后毛利是否达标。</li>
+<li>稳定性保障 关注：新加坡 GPU 是否有库存，是否需要容量预约。</li>
+<li>法务关注：合同能否写固定交付日期和 服务等级承诺 赔付。</li>
+<li>上市打法 关注：销售是否有方案、常见问题说明、禁承诺项。</li>
+<li>平台研发关注：订单、交付、计量、账单链路是否打通。</li>
+</ul>
+<p>如果新加坡容量只有部分可用，商品不能简单标记为“全量可售”，而应在 可售地域 和交付规则中标明需预约或需人工确认。</p>
+<h5>2.5 销售：30 万预算如何变成方案</h5>
+<p>销售和解决方案架构师把客户预算拆成组合方案：ECS GPU 承担训练，RDS 存储结构化数据，TOS 存储训练样本和模型文件，CLB 支持训练服务入口或后续推理服务流量。</p>
+<p>报价前检查三件事：</p>
+<ol>
+<li>价格是估算、目录价、还是正式合同报价。</li>
+<li>新加坡地域交付是否已经被 稳定性保障 确认。</li>
+<li>折扣是否触发财务审批。</li>
+</ol>
+<p>平台可生成“销售报价前检查清单”，但不能自动承诺客户交付日期；如果容量未确认，页面必须提示“需完成容量预约后才能形成正式承诺”。</p>
+<h5>2.6 交付：新加坡容量不足导致延期</h5>
+<p>客户确认意向后，订单进入交付。此时 稳定性保障 发现新加坡 GPU 库存不足，预计延期三天。这个问题不是单纯运维问题，而会影响：</p>
+<ul>
+<li>客户项目计划和满意度。</li>
+<li>销售本月 成交规模 统计节奏、订单达成节奏或经营目标达成节奏。</li>
+<li>合同交付承诺和法务风险。</li>
+<li>财务收入确认时间。</li>
+<li>客服解释和客户成功跟进。</li>
+</ul>
+<p>平台应生成延期影响分析：影响订单、客户、金额、预计恢复时间、可替代地域、是否需要补偿、客户通知模板。产品经理 需要和销售、稳定性保障、法务共同决定：等待新加坡容量、切换地域、拆分交付，还是调整合同。</p>
+<h5>2.7 经营：上架后看健康，不只看成交</h5>
+<p>发布后 24 小时和首周经营复盘要看：官网和控制台展示是否一致、销售报价是否同步、订单是否创建成功、实例是否交付、计量项 是否写入、账单是否正确、毛利是否低于底线、容量告警是否触发。</p>
+<p>老板可能只问“30 万签了吗”，但 产品经理 需要补充回答：净收入是多少、毛利是否健康、新加坡容量是否影响后续 pipeline、是否有客户延期风险、下一批 GPU 采购是否需要提前规划。</p>
+<h5>2.8 复盘：沉淀下一次上架模板</h5>
+<p>这次案例应沉淀为 GPU 类商品上架模板：容量评审、地域可售规则、报价前容量确认、折扣审批、交付延期通知、订单-计量-账单巡检、客户复盘。下一次新增 GPU 可购买规格 时，不应从零讨论，而应复用模板并只评审差异。</p>
+<h4>3. 实战案例 B：Seedance Mini 自助购买</h4>
+<h5>3.1 故事背景</h5>
+<p>Seedance Mini 原本只是一个视频生成模型能力，研发可以通过内部接口调用，运营希望借大促活动开放给内容创作者和中小企业自助购买。销售问：“能不能直接做一个活动页，挂一个低价资源包？”</p>
+<p>产品经理 需要把问题拉回完整链路：模型能力能调用，不代表客户能购买；客户能购买，不代表能计量、能账单、能退款、能解释失败扣费、能承受大促流量。</p>
+<h5>3.2 产品化：模型能力变成可自助购买商品</h5>
+<p>产品化要先定义清楚客户买到什么：</p>
+<ul>
+<li>输入：文本、图片或其他生成条件。</li>
+<li>输出：视频生成结果、清晰度、时长、格式。</li>
+<li>成功标准：什么情况下算生成成功，什么情况下不扣费或可补偿。</li>
+<li>限制：内容安全、并发、队列等待、地域、模型版本。</li>
+<li>服务等级承诺：生成成功率、排队时延、故障通知，不承诺创意效果。</li>
+<li>客户体验：预算估算、资源包余额、失败记录、账单解释。</li>
+</ul>
+<p>研发要提供模型调用、任务队列、内容安全、计量事件和错误码；产品要把错误码翻译成客户能理解的状态，例如“生成失败未扣费”“内容安全拦截”“队列繁忙请稍后”。</p>
+<h5>3.3 商品化：售卖方案 设计和互斥规则</h5>
+<p>Seedance Mini 的典型售卖方式包括：</p>
+<ul>
+<li>按量 售卖方案：按生成次数、视频秒数或算力消耗计费。</li>
+<li>资源包 售卖方案：预付费购买固定额度，适合预算明确的小客户。</li>
+<li>促销价：大促期间限时折扣。</li>
+<li>合同折扣：大客户通过销售签约获得专属价格。</li>
+</ul>
+<p>难点在互斥规则。促销价、资源包折扣和合同折扣不能无限叠加，否则可能击穿毛利。平台需要明确：客户若已有合同价，是否还能购买促销资源包；资源包过期后是否转按量；生成失败是否返还额度；退款时已消耗额度如何结算。</p>
+<h5>3.4 上架：官网、控制台、云市场 和销售口径一致</h5>
+<p>上架不是只发布活动页。不同渠道展示不同投影，但必须来自同一套主数据：</p>
+<ul>
+<li>官网：卖点、案例、常见问题说明、活动价格、禁承诺项。</li>
+<li>控制台：可购买 售卖方案、余额、用量、价格、超额确认。</li>
+<li>云市场：商品简介、规格、价格、服务条款。</li>
+<li>销售方案：预算估算、合同折扣、行业场景、风险边界。</li>
+<li>客服后台：订单、任务、扣费、失败原因和解释话术。</li>
+</ul>
+<p>如果官网写“低至 0.1 元/次”，控制台却按视频秒数扣费，客户会认为被误导。因此上线前必须做渠道一致性巡检。</p>
+<h5>3.5 稳定性保障：大促流量不是营销问题，而是稳定性问题</h5>
+<p>大促当天，流量可能瞬间上升，队列堆积。稳定性保障 需要提前给出：容量评审、队列阈值、限流策略、降级策略、告警联系人、销售通知机制和回滚方案。</p>
+<p>当队列不健康时，平台应自动给出风险提示：预计排队时长上升、部分任务延迟、是否暂停促销入口、是否通知销售停止承诺交付时间。产品经理 不能只关注转化率，还要关注失败率、排队时延、退款率和客服工单。</p>
+<h5>3.6 销售与客户：估算不等于正式报价</h5>
+<p>内容行业客户预算 2 万，销售用估算工具测算可以买多少生成额度。工具必须标注：这是基于平均视频时长、生成成功率和参考单价的估算，不是正式报价。正式报价需要确认 售卖方案、可购买规格、价格生效期、折扣审批和合同条款。</p>
+<p>客户自助购买时，也要在购买页看见：资源包额度、有效期、消耗规则、失败扣费规则、超额是否自动付费。默认建议：资源包用完后不自动扣费，除非管理员二次确认开通按量。</p>
+<h5>3.7 交付与巡检：订单、计量、账单闭环</h5>
+<p>Seedance Mini 的交付不一定是人工开通资源，而是客户购买后立即获得调用权限和额度。平台要验证：</p>
+<ol>
+<li>订单是否创建成功。</li>
+<li>权益是否发放到正确账号。</li>
+<li>任务调用是否写入计量记录。</li>
+<li>失败任务是否按规则扣费或返还。</li>
+<li>账单是否能解释资源包消耗和按量费用。</li>
+<li>客服是否能查到客户可见证据。</li>
+</ol>
+<p>上线后 24 小时巡检要看官网、控制台、订单、计量、账单、告警、客户反馈和 成交规模 偏离。若发现控制台价与销售报价不一致，应立即冻结相关报价或下线入口，生成影响客户清单和修复计划。</p>
+<h5>3.8 经营复盘：不只看活动 成交规模</h5>
+<p>复盘时除了 成交规模，还要看净收入、毛利、资源包消耗率、任务成功率、平均排队时长、退款率、账单争议、促销客户留存和升级机会。如果促销带来大量低毛利用量，但没有留存和升级，就不是健康增长。</p>
+<p>本案例应沉淀为 AI 模型自助商品模板：模型能力 就绪、资源包规则、促销互斥、任务计量、失败扣费、内容安全、队列限流、渠道 常见问题说明 和上线巡检。</p>
+<h4>4. 实战案例 C：Agent Plan 套餐权益</h4>
+<h5>4.1 故事背景</h5>
+<p>企业客户希望为团队购买 Agent 能力：员工可以使用对话、代码生成、联网搜索、文档处理和视频生成。业务团队想推出 Agent Plan Medium：每个组织每月固定付费，每天赠送一定额度 Token，用完后可升级或按量购买。</p>
+<p>这类产品看起来像会员套餐，实际比单一云资源更复杂，因为它同时涉及权益发放、用量消耗、超额、退款、退订、账单解释和高成本能力毛利风险。</p>
+<h5>4.2 产品化：先定义套餐承诺</h5>
+<p>产品经理 要先明确客户买的不是“一个模型”，而是一组企业 Agent 权益：</p>
+<ul>
+<li>用户范围：按组织、席位、管理员还是项目空间授权。</li>
+<li>能力范围：基础对话、代码能力、联网搜索、文件处理、视频生成等。</li>
+<li>权益额度：每日赠送 Token、月度总量、不同能力的折算规则。</li>
+<li>管理能力：管理员分配席位、查看用量、设置预算上限、确认超额。</li>
+<li>不可承诺项：不承诺所有问题一定正确，不承诺外部搜索结果稳定，不承诺视频生成无限可用。</li>
+</ul>
+<p>产品化阶段必须让研发、财务和法务一起评审，因为一句“每天送 50 元等值 Token”背后，是发放、消耗、过期、成本和合同解释规则。</p>
+<h5>4.3 商品化：Plan、可购买规格、权益规则 和 计量项 的关系</h5>
+<p>Agent Plan 的商品模型可以这样拆：</p>
+<ul>
+<li>商品主对象：企业 Agent 套餐。</li>
+<li>售卖方案：月付套餐、年付套餐、试用套餐、企业合同套餐。</li>
+<li>可购买规格：Basic、Medium、Pro 或按席位数量分档。</li>
+<li>权益规则：每日额度、月度额度、能力开关、席位数量、超额规则。</li>
+<li>计量项：Token、联网搜索次数、文件处理页数、视频生成秒数、高成本模型调用。</li>
+<li>价格规则：套餐价、席位价、超额单价、合同价。</li>
+</ul>
+<p>平台要处理权益与计量的映射：客户看到的是“剩余额度”和“为什么扣费”，内部记录的是多个 计量项。展示层不能把复杂公式直接抛给客户，而应解释为“本次使用消耗了基础对话额度/联网搜索额度/视频生成额度”。</p>
+<h5>4.4 上架：权益规则比页面按钮更重要</h5>
+<p>上架前必须确认以下规则：</p>
+<ul>
+<li>每日额度什么时候发放，按哪个时区计算。</li>
+<li>未用完额度是否过期，是否可累计。</li>
+<li>消耗顺序：赠送额度、资源包、合同额度、按量额度谁先消耗。</li>
+<li>退订后剩余额度是否冻结、失效或保留到周期末。</li>
+<li>退款时已消耗赠送额度如何处理。</li>
+<li>超额是否自动扣费，是否需要管理员二次确认。</li>
+<li>账单中如何展示赠送、消耗、超额和退款。</li>
+</ul>
+<p>建议默认规则是：套餐额度用完后不自动扣费，必须由客户管理员二次确认开通超额付费或升级 Plan。这样可以降低账单争议。</p>
+<h5>4.5 销售：企业预算如何分配</h5>
+<p>销售面对一个内容行业客户，预算 2 万，希望同时买 Seedance 和 Agent Plan。销售方案不能只按产品热度分配，而要看客户场景：如果客户团队主要做内容策划和脚本生成，Agent Plan 占比更高；如果客户主要批量生成视频，Seedance 资源包占比更高。</p>
+<p>报价前要确认：Agent Plan 的席位数、管理员、额度、超额规则、合同折扣是否影响毛利；Seedance 资源包是否和 Agent Plan 内的视频权益重复；两个产品的账单解释是否能让客户看懂。</p>
+<h5>4.6 交付：从订单到权益发放</h5>
+<p>客户购买后，交付链路不是创建一台机器，而是建立订阅和权益关系：</p>
+<ol>
+<li>创建订单和订阅。</li>
+<li>给组织开通 Plan。</li>
+<li>给管理员分配权限。</li>
+<li>发放每日或月度额度。</li>
+<li>启用对应 Agent 能力。</li>
+<li>建立计量记录与账单关联。</li>
+<li>在控制台展示余额、用量、超额状态和续约时间。</li>
+</ol>
+<p>平台要特别注意幂等：如果订单回调重试，不能重复发放权益；如果客户退订，不能只关前端按钮，必须冻结权益、停止发放、处理账单和通知客户成功。</p>
+<h5>4.7 经营：高成本能力可能击穿毛利</h5>
+<p>Agent Plan 的风险在于平均客户看似盈利，但少数重度客户频繁调用高成本模型、联网搜索和视频生成，可能把毛利打穿。经营看板要区分：收入、Token 消耗、不同能力成本、超额转化、活跃席位、账单争议和续约风险。</p>
+<p>如果某个客户用量异常高，不能简单限流。应先判断是健康增长、滥用、产品规则不清，还是销售承诺过度。可能的动作包括：客户成功沟通、升级 Plan、调整超额确认、增加预算提醒、修正销售话术。</p>
+<h5>4.8 复盘：把争议沉淀成规则</h5>
+<p>Agent Plan 最常见的复盘问题是：客户为什么觉得额度不够、为什么不理解扣费、为什么退订后还看到费用、为什么超额没有预警。每个争议都应回到规则和展示：权益说明是否清晰，账单解释是否可读，管理员通知是否到位，销售是否承诺了平台没有实现的权益。</p>
+<p>本案例应沉淀为 Plan 型产品模板：权益规则表、消耗顺序、额度过期、超额确认、退款退订、账单解释、毛利穿透、续约健康和客户通知。</p>
+<h4>5. 学习成果验收</h4>
+<p>学完本章后，不要求学习者能设计完整系统，但应能用业务语言讲清平台边界，并能把一个案例从产品化讲到复盘。</p>
+<h5>5.1 概念验收</h5>
+<p>学习者应能回答：</p>
+<ul>
+<li>技术能力、产品、商品、售卖方案、可购买规格、计量项、价格规则、权益规则 分别是什么。</li>
+<li>为什么官网不是商品主数据源，为什么控制台购买页必须和计量、账单一致。</li>
+<li>为什么 Plan 型产品比单品型产品复杂。</li>
+<li>为什么估算不能等同于正式报价。</li>
+<li>为什么 稳定性保障 是上架门禁，不是上线后救火。</li>
+<li>为什么客户可见字段和内部工程字段必须分离。</li>
+<li>为什么写入类动作要先生成草稿、模拟计划或审批摘要。</li>
+</ul>
+<h5>5.2 流程验收</h5>
+<p>给定任意一个云商品，学习者应能按顺序说明：</p>
+<ol>
+<li>产品化定义：目标客户、场景、可承诺项、不可承诺项、服务等级承诺、成本、交付依赖。</li>
+<li>商品化建模：商品主对象、售卖方案、可购买规格、计量项、价格规则、可售地域、权益规则。</li>
+<li>上架审批：IPD、财务毛利、稳定性保障 容量、法务合规、上市打法 具备技术条件。</li>
+<li>渠道发布：官网、控制台、云市场、销售、客服各自展示什么。</li>
+<li>销售成交：预算、方案、折扣、正式报价、合同边界。</li>
+<li>交付开通：订单、订阅、权益、资源、计量、账单。</li>
+<li>经营巡检：成交规模、净收入、毛利、容量、稳定性、客户反馈。</li>
+<li>复盘迭代：问题、根因、影响、修复、模板沉淀。</li>
+</ol>
+<h5>5.3 案例验收</h5>
+<p>学习者应能独立讲清三条故事线：</p>
+<ul>
+<li><strong>ECS GPU</strong>：金融客户 30 万预算如何从 GPU 训练需求变成组合方案；新加坡容量不足如何影响交付、合同、成交规模 和客户沟通；复盘如何沉淀容量和报价模板。</li>
+<li><strong>Seedance Mini</strong>：模型能力如何变成自助购买商品；资源包、促销价和合同折扣如何互斥；大促队列如何限流；上线后如何校验订单、计量、账单闭环。</li>
+<li><strong>Agent Plan</strong>：企业套餐如何定义权益；每日赠送 Token 如何发放、消耗和过期；额度用完为何不应自动扣费；高成本模型如何带来毛利风险和续约风险。</li>
+</ul>
+<h5>5.4 产出物验收</h5>
+<p>学习者应能独立产出以下草稿，并能说明每份文档的使用场景：</p>
+<ul>
+<li>产品化定义草稿。</li>
+<li>商品模型草稿。</li>
+<li>售卖方案/可购买规格/计量项/价格规则 关系图。</li>
+<li>权益治理规则。</li>
+<li>渠道发布矩阵。</li>
+<li>稳定性保障 上架门禁清单。</li>
+<li>财务商业化评审。</li>
+<li>销售方案和报价前检查清单。</li>
+<li>客户解释话术。</li>
+<li>变更影响分析。</li>
+<li>发布后巡检报告。</li>
+<li>经营健康简报。</li>
+<li>续约风险清单。</li>
+<li>上线复盘模板。</li>
+</ul>
+<h5>5.5 通过标准</h5>
+<ul>
+<li>能把“能调用 API”与“能作为商品销售”区分开。</li>
+<li>能指出一个字段变更会影响哪些渠道、客户、合同和账单。</li>
+<li>能在面对销售紧急需求时，先确认报价边界、容量边界和审批边界。</li>
+<li>能在客户投诉账单时，用客户语言解释计量、权益和扣费。</li>
+<li>能在复盘时同时看业务指标、财务指标、稳定性指标和客户反馈。</li>
+</ul>
+<h4>6. 可复用模板清单</h4>
+<p>以下模板不必拆成多个文件，但在实际工作中应形成可复制的清单、表格或工作台表单。</p>
+<h5>6.1 产品化定义模板</h5>
+<ul>
+<li>产品/能力名称。</li>
+<li>目标客户和核心场景。</li>
+<li>客户痛点和替代方案。</li>
+<li>可承诺能力。</li>
+<li>不可承诺项。</li>
+<li>服务等级承诺 初稿。</li>
+<li>成本输入。</li>
+<li>交付依赖。</li>
+<li>风险与阻塞。</li>
+<li>责任人和下一步动作。</li>
+</ul>
+<h5>6.2 商品模型模板</h5>
+<ul>
+<li>商品主对象：商品主对象、产品族、展示名、业务说明。</li>
+<li>售卖方案：售卖方式、适用客户、计费模式、生效条件。</li>
+<li>可购买规格：规格、参数、地域、上下架状态。</li>
+<li>计量项：计量项、计量单位、采集来源、失败处理。</li>
+<li>价格规则：目录价、阶梯价、合同价、促销价、生效时间。</li>
+<li>权益规则：额度、权益、消耗顺序、过期、退订、退款。</li>
+<li>可售地域：可售地域、容量状态、交付周期。</li>
+<li>下游系统：官网、控制台、销售报价、订单、账单、客服。</li>
+</ul>
+<h5>6.3 售卖方案 设计模板</h5>
+<ul>
+<li>售卖方案 名称和目标客户。</li>
+<li>按量、包月、资源包、试用、企业套餐的选择依据。</li>
+<li>可购买规格 绑定关系。</li>
+<li>计量项 和 价格规则 关系。</li>
+<li>折扣、促销、合同价互斥规则。</li>
+<li>超额和续费规则。</li>
+<li>退款和退订规则。</li>
+<li>客户解释文案。</li>
+<li>财务和法务审批点。</li>
+</ul>
+<h5>6.4 权益治理模板</h5>
+<ul>
+<li>权益名称。</li>
+<li>发放对象：账号、组织、席位、项目。</li>
+<li>发放时间和时区。</li>
+<li>发放额度和有效期。</li>
+<li>消耗顺序。</li>
+<li>余额展示方式。</li>
+<li>用完后的处理：停止、升级、按量、二次确认。</li>
+<li>退订、退款、冻结和恢复规则。</li>
+<li>账单展示和客服解释。</li>
+<li>毛利穿透和异常用量告警。</li>
+</ul>
+<h5>6.5 渠道发布矩阵模板</h5>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>渠道</th>
+<th>展示字段</th>
+<th>禁止展示</th>
+<th>数据来源</th>
+<th>审批要求</th>
+<th>巡检口径</th>
+</tr></thead>
+<tbody><tr>
+<td>官网</td>
+<td>卖点、价格区间、常见问题说明</td>
+<td>内部成本、工程 key</td>
+<td>商品主数据/上市打法 文案</td>
+<td>产品经理/上市打法/法务</td>
+<td>文案与控制台一致</td>
+</tr>
+<tr>
+<td>控制台</td>
+<td>可购 售卖方案、价格、权益、余额</td>
+<td>其他客户合同价</td>
+<td>商品中台/订单/账单</td>
+<td>产品经理/研发/财务</td>
+<td>购买和账单一致</td>
+</tr>
+<tr>
+<td>销售报价</td>
+<td>方案、折扣、风险</td>
+<td>未审批承诺</td>
+<td>CRM/商品中台</td>
+<td>销售/财务/法务</td>
+<td>正式报价状态清晰</td>
+</tr>
+<tr>
+<td>云市场</td>
+<td>商品简介、规格、条款</td>
+<td>内部审批信息</td>
+<td>商品中台</td>
+<td>产品经理/法务</td>
+<td>上架资料完整</td>
+</tr>
+<tr>
+<td>客服后台</td>
+<td>订单、扣费、失败原因</td>
+<td>非授权客户数据</td>
+<td>订单/计量/账单</td>
+<td>客服权限</td>
+<td>可解释客户争议</td>
+</tr>
+</tbody>
+</table></div>
+<h5>6.6 稳定性保障 上架门禁模板</h5>
+<ul>
+<li>容量是否足够。</li>
+<li>可售地域和交付窗口。</li>
+<li>队列、限流、降级策略。</li>
+<li>告警阈值和联系人。</li>
+<li>灰度比例。</li>
+<li>回滚触发条件。</li>
+<li>服务等级承诺 边界。</li>
+<li>客户通知和销售通知机制。</li>
+<li>发布后 24 小时巡检项。</li>
+</ul>
+<h5>6.7 销售报价前检查模板</h5>
+<ul>
+<li>客户名称和预算。</li>
+<li>业务场景和产品组合。</li>
+<li>使用地域和合规要求。</li>
+<li>价格类型：估算、目录价、合同价、正式报价。</li>
+<li>折扣审批状态。</li>
+<li>容量确认状态。</li>
+<li>服务等级承诺 和不可承诺项。</li>
+<li>合同、发票和交付依赖。</li>
+<li>风险提示和下一步动作。</li>
+</ul>
+<h5>6.8 发布后巡检模板</h5>
+<ul>
+<li>官网展示是否正确。</li>
+<li>控制台购买是否正常。</li>
+<li>销售报价是否同步。</li>
+<li>订单是否创建成功。</li>
+<li>权益或资源是否交付。</li>
+<li>计量是否写入。</li>
+<li>账单是否生成且可解释。</li>
+<li>告警、限流和 服务等级承诺 是否异常。</li>
+<li>客户反馈和客服工单。</li>
+<li>成交规模、净收入、毛利与预期偏差。</li>
+<li>问题、负责人、截止时间。</li>
+</ul>
+<h5>6.9 变更影响分析模板</h5>
+<ul>
+<li>变更类型：改价、新增 可购买规格、下线、权益调整、地域变更、退款退订。</li>
+<li>触发原因。</li>
+<li>影响客户和合同。</li>
+<li>影响订单、计量、账单、发票。</li>
+<li>影响官网、控制台、销售、云市场、客服。</li>
+<li>财务收入确认和毛利影响。</li>
+<li>法务和客户通知要求。</li>
+<li>灰度、回滚和巡检计划。</li>
+<li>审批人和审计记录。</li>
+</ul>
+<h5>6.10 经营健康简报模板</h5>
+<ul>
+<li>本期 成交规模、净收入、年度经常性收入/月度经常性收入、毛利率。</li>
+<li>活跃付费客户和新增客户。</li>
+<li>销售机会池 和重点机会。</li>
+<li>续约风险金额。</li>
+<li>账单争议和退款金额。</li>
+<li>容量、稳定性和 服务等级承诺 风险。</li>
+<li>高成本能力消耗。</li>
+<li>本周阻塞和负责人。</li>
+<li>下周动作。</li>
+</ul>
+<h5>6.11 上线复盘模板</h5>
+<ul>
+<li>上线目标。</li>
+<li>实际结果。</li>
+<li>关键时间线。</li>
+<li>产品化、商品化、上架、销售、交付、经营各环节表现。</li>
+<li>问题和根因。</li>
+<li>客户影响和金额影响。</li>
+<li>修复动作。</li>
+<li>可复用模板和规则。</li>
+<li>后续版本计划。</li>
+</ul>
+<h4>附录模板：产品经理可复制模板</h4>
+<h3>产品经理可复制模板</h3>
+<h4>1. 产品化定义模板</h4>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>字段</th>
+<th>填写内容</th>
+</tr></thead>
+<tbody><tr>
+<td>商品/能力名称</td>
+<td></td>
+</tr>
+<tr>
+<td>目标客户</td>
+<td>大客户/中小客户/开发者/行业客户/内部客户</td>
+</tr>
+<tr>
+<td>核心场景</td>
+<td></td>
+</tr>
+<tr>
+<td>客户痛点</td>
+<td></td>
+</tr>
+<tr>
+<td>能力边界</td>
+<td>支持什么、不支持什么</td>
+</tr>
+<tr>
+<td>不可承诺项</td>
+<td>地域、容量、效果、时延、合规、交付日期等</td>
+</tr>
+<tr>
+<td>交付方式</td>
+<td>控制台/API/销售开通/工单/专属部署</td>
+</tr>
+<tr>
+<td>服务等级承诺/服务稳定性目标 初稿</td>
+<td>需 稳定性保障、法务确认</td>
+</tr>
+<tr>
+<td>成本输入</td>
+<td>单位成本、峰值成本、免费额度成本</td>
+</tr>
+<tr>
+<td>风险与依赖</td>
+<td>研发、资源、财务、法务、稳定性保障 依赖</td>
+</tr>
+<tr>
+<td>就绪 结论</td>
+<td>通过/带条件通过/退回补齐</td>
+</tr>
+</tbody>
+</table></div>
+<h4>2. 商品模型模板</h4>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>对象</th>
+<th>设计内容</th>
+<th>Owner</th>
+<th>下游消费方</th>
+<th>风险</th>
+</tr></thead>
+<tbody><tr>
+<td>商品主对象</td>
+<td>名称、分类、描述、状态、负责人</td>
+<td>商品 产品经理</td>
+<td>官网、控制台、报价、账单</td>
+<td>名称/状态不一致</td>
+</tr>
+<tr>
+<td>售卖方案</td>
+<td>按量/包月/资源包/企业套餐/试用</td>
+<td>商品 产品经理</td>
+<td>控制台、销售、合同</td>
+<td>售卖方式解释不清</td>
+</tr>
+<tr>
+<td>可购买规格</td>
+<td>规格档位、参数、地域、状态</td>
+<td>商品 产品经理/研发</td>
+<td>订单、交付、报价</td>
+<td>规格和交付能力不一致</td>
+</tr>
+<tr>
+<td>计量项</td>
+<td>计量项、单位、采集来源、失败处理</td>
+<td>研发/财务</td>
+<td>计量、账单、客服</td>
+<td>缺失/重复/延迟计量</td>
+</tr>
+<tr>
+<td>价格规则</td>
+<td>目录价、合同价、促销价、阶梯价、生效期</td>
+<td>财务/产品经理</td>
+<td>报价、订单、账单</td>
+<td>折扣叠加、过期价</td>
+</tr>
+<tr>
+<td>权益规则</td>
+<td>额度、席位、功能、有效期、消耗顺序</td>
+<td>产品经理/研发</td>
+<td>权益系统、控制台、客服</td>
+<td>客户解释困难</td>
+</tr>
+<tr>
+<td>可售地域</td>
+<td>可售地域、容量、合规限制</td>
+<td>稳定性保障/产品经理</td>
+<td>控制台、销售、交付</td>
+<td>卖出后不可交付</td>
+</tr>
+</tbody>
+</table></div>
+<h4>3. 销售报价前检查模板</h4>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>检查项</th>
+<th>结论</th>
+<th>Owner</th>
+<th>未通过处理</th>
+</tr></thead>
+<tbody><tr>
+<td>商品可售状态已确认</td>
+<td></td>
+<td>产品经理</td>
+<td>不出正式报价</td>
+</tr>
+<tr>
+<td>价格口径明确</td>
+<td></td>
+<td>财务 BP</td>
+<td>补价格/折扣审批</td>
+</tr>
+<tr>
+<td>折扣不低于毛利底线</td>
+<td></td>
+<td>财务/销售</td>
+<td>进入特批</td>
+</tr>
+<tr>
+<td>用量假设写清</td>
+<td></td>
+<td>解决方案/产品经理</td>
+<td>补测算模型</td>
+</tr>
+<tr>
+<td>地域和容量已确认</td>
+<td></td>
+<td>稳定性保障</td>
+<td>改为预约或分批交付</td>
+</tr>
+<tr>
+<td>服务等级承诺 为已批准版本</td>
+<td></td>
+<td>稳定性保障/法务</td>
+<td>使用标准 服务等级承诺 或走非标审批</td>
+</tr>
+<tr>
+<td>合规材料齐全</td>
+<td></td>
+<td>法务/合规</td>
+<td>不承诺已满足</td>
+</tr>
+<tr>
+<td>权益、过期、超额规则已解释</td>
+<td></td>
+<td>产品经理/客服</td>
+<td>补客户确认页和话术</td>
+</tr>
+<tr>
+<td>正式报价与估算已区分</td>
+<td></td>
+<td>销售/产品经理</td>
+<td>标注假设和审批状态</td>
+</tr>
+</tbody>
+</table></div>
+<h4>4. 变更影响分析模板</h4>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>维度</th>
+<th>填写内容</th>
+</tr></thead>
+<tbody><tr>
+<td>变更类型</td>
+<td>调价/可购买规格 下线/新增 可购买规格/权益调整/地域变化/退款退订/计量异常</td>
+</tr>
+<tr>
+<td>变更对象</td>
+<td>商品主对象/售卖方案/可购买规格/计量项/价格规则/权益规则/可售地域</td>
+</tr>
+<tr>
+<td>触发原因</td>
+<td></td>
+</tr>
+<tr>
+<td>影响客户</td>
+<td>客户数、重点客户、合同客户、小客户、自助客户</td>
+</tr>
+<tr>
+<td>存量客户策略</td>
+<td>沿用旧规则/到期切换/可选迁移/强制迁移/替代补偿</td>
+</tr>
+<tr>
+<td>合同影响</td>
+<td>是否违反合同，是否需要补充协议</td>
+</tr>
+<tr>
+<td>账单影响</td>
+<td>是否重算、冲正、退款、发票调整</td>
+</tr>
+<tr>
+<td>财务影响</td>
+<td>成交规模、净收入、毛利、递延收入、争议金额</td>
+</tr>
+<tr>
+<td>稳定性保障 影响</td>
+<td>容量、限流、告警、灰度、回滚、服务等级承诺</td>
+</tr>
+<tr>
+<td>渠道影响</td>
+<td>官网、控制台、云市场、报价单、客服知识库</td>
+</tr>
+<tr>
+<td>客户沟通</td>
+<td>公告/站内信/邮件/销售一对一/工单</td>
+</tr>
+<tr>
+<td>回滚方案</td>
+<td>回滚条件、回滚点、数据修复方式</td>
+</tr>
+</tbody>
+</table></div>
+<h4>5. 发布后巡检模板</h4>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>巡检项</th>
+<th>结果</th>
+<th>证据链接/截图</th>
+<th>Owner</th>
+<th>问题与动作</th>
+</tr></thead>
+<tbody><tr>
+<td>官网展示正确</td>
+<td></td>
+<td></td>
+<td>产品经理/上市打法</td>
+<td></td>
+</tr>
+<tr>
+<td>控制台购买正常</td>
+<td></td>
+<td></td>
+<td>产品经理/研发</td>
+<td></td>
+</tr>
+<tr>
+<td>销售报价同步</td>
+<td></td>
+<td></td>
+<td>销售/上市打法</td>
+<td></td>
+</tr>
+<tr>
+<td>订单创建成功</td>
+<td></td>
+<td></td>
+<td>研发/订单团队</td>
+<td></td>
+</tr>
+<tr>
+<td>权益/实例交付成功</td>
+<td></td>
+<td></td>
+<td>研发/稳定性保障</td>
+<td></td>
+</tr>
+<tr>
+<td>计量项 计量写入</td>
+<td></td>
+<td></td>
+<td>研发/财务</td>
+<td></td>
+</tr>
+<tr>
+<td>账单金额正确</td>
+<td></td>
+<td></td>
+<td>财务/账单团队</td>
+<td></td>
+</tr>
+<tr>
+<td>客服话术可用</td>
+<td></td>
+<td></td>
+<td>客服/产品经理</td>
+<td></td>
+</tr>
+<tr>
+<td>告警和 服务等级承诺 正常</td>
+<td></td>
+<td></td>
+<td>稳定性保障</td>
+<td></td>
+</tr>
+<tr>
+<td>客户反馈无异常</td>
+<td></td>
+<td></td>
+<td>客户成功/客服</td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<h4>6. 经营健康简报模板</h4>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>模块</th>
+<th>本期结论</th>
+<th>风险</th>
+<th>下一步动作</th>
+<th>Owner</th>
+</tr></thead>
+<tbody><tr>
+<td>成交规模/净收入/毛利</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>年度经常性收入/月度经常性收入/销售机会池</td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>目标达成差距</td>
+<td>目标值、实际值、差距原因</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>产品覆盖率</td>
+<td>覆盖哪些核心场景/行业/客户层级</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>行业竞争力</td>
+<td>竞品对标、差异化、行业案例</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>市场份额/客户结构</td>
+<td>大客户/中小客户/自助客户/行业客户结构</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>稳定性</td>
+<td>可用性、错误率、容量水位、服务等级承诺 事故</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>客户健康</td>
+<td>活跃、续约风险、账单争议、满意度</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>长期留存</td>
+<td>留存率、扩容率、降级/流失原因</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td>阻塞事项</td>
+<td>财务/稳定性保障/法务/研发/销售阻塞</td>
+<td></td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table></div>
+<h4>7. 售卖方案 设计模板</h4>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>字段</th>
+<th>填写内容</th>
+</tr></thead>
+<tbody><tr>
+<td>售卖方案 名称</td>
+<td>按量版/包月版/资源包/企业套餐/试用包/会员权益</td>
+</tr>
+<tr>
+<td>目标客户</td>
+<td>自助客户/中型客户/大客户/生态伙伴</td>
+</tr>
+<tr>
+<td>售卖方式</td>
+<td>按量、包月、包年、预付资源包、后付费、合同特批</td>
+</tr>
+<tr>
+<td>适用 可购买规格</td>
+<td>可购买规格、地域、容量限制</td>
+</tr>
+<tr>
+<td>计量项 计量项</td>
+<td>Token、实例小时、GB、请求次数、席位、视频秒数等</td>
+</tr>
+<tr>
+<td>价格规则 价格规则</td>
+<td>目录价、阶梯价、促销价、合同价、最低毛利边界</td>
+</tr>
+<tr>
+<td>权益规则</td>
+<td>额度、有效期、发放周期、消耗顺序、超额处理</td>
+</tr>
+<tr>
+<td>互斥与叠加</td>
+<td>合同价、促销、资源包、渠道券、赠送额度是否可叠加</td>
+</tr>
+<tr>
+<td>可售状态</td>
+<td>草稿/待审批/灰度/可售/停售/下线</td>
+</tr>
+<tr>
+<td>审批点</td>
+<td>财务、法务、稳定性保障、销售主管、经营负责人</td>
+</tr>
+<tr>
+<td>客户解释</td>
+<td>买的是什么、怎么计费、用完怎么办、是否正式报价</td>
+</tr>
+</tbody>
+</table></div>
+<h4>8. Plan 权益治理模板</h4>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>字段</th>
+<th>填写内容</th>
+</tr></thead>
+<tbody><tr>
+<td>权益名称</td>
+<td>会员每日赠送 Token / 企业席位 / 免费试用额度</td>
+</tr>
+<tr>
+<td>发放对象</td>
+<td>新购客户/续约客户/企业管理员/指定项目</td>
+</tr>
+<tr>
+<td>发放时间</td>
+<td>下单后、开通后、每天固定时间、每月账期开始</td>
+</tr>
+<tr>
+<td>权益额度</td>
+<td>数量、单位、等值金额、适用商品</td>
+</tr>
+<tr>
+<td>有效期</td>
+<td>当日有效、自然月有效、合同期有效、不过期</td>
+</tr>
+<tr>
+<td>消耗顺序</td>
+<td>赠送额度、资源包、合同额度、按量付费的扣减顺序</td>
+</tr>
+<tr>
+<td>用完后处理</td>
+<td>停止、降级、提醒、二次确认后超额付费</td>
+</tr>
+<tr>
+<td>退订/退款</td>
+<td>未用额度是否回收，已用额度是否影响退款</td>
+</tr>
+<tr>
+<td>账单展示</td>
+<td>客户账单中如何解释赠送、抵扣、超额和过期</td>
+</tr>
+<tr>
+<td>毛利风险</td>
+<td>免费额度成本、高成本模型、滥用风险、争议风险</td>
+</tr>
+</tbody>
+</table></div>
+<h4>9. 渠道发布矩阵模板</h4>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>渠道</th>
+<th>展示内容</th>
+<th>禁止展示</th>
+<th>数据来源</th>
+<th>审批要求</th>
+<th>巡检口径</th>
+</tr></thead>
+<tbody><tr>
+<td>官网</td>
+<td>定位、卖点、场景、公开价格入口、常见问题说明</td>
+<td>内部成本、未确认 服务等级承诺、客户合同价</td>
+<td>商品主数据 + 上市打法 文案</td>
+<td>产品经理/上市打法/法务</td>
+<td>文案不过度承诺</td>
+</tr>
+<tr>
+<td>控制台</td>
+<td>可购 可购买规格、地域、价格、权益、订单、账单</td>
+<td>其他客户价格、内部审批信息</td>
+<td>商品中台、订单、计量、账单</td>
+<td>产品经理/研发/财务/稳定性保障</td>
+<td>购买到出账闭环</td>
+</tr>
+<tr>
+<td>API/云市场</td>
+<td>商品编码、可售状态、订购接口、计量回调</td>
+<td>非公开折扣、未稳定接口</td>
+<td>商品中台、开放平台</td>
+<td>产品经理/开放平台/法务</td>
+<td>接口版本和上架状态</td>
+</tr>
+<tr>
+<td>销售方案</td>
+<td>组合方案、预算拆分、报价假设、边界</td>
+<td>未审批折扣、未确认交付日期</td>
+<td>商品主数据、财务政策、稳定性保障 结论</td>
+<td>销售/财务/稳定性保障/法务</td>
+<td>估算与正式报价区分</td>
+</tr>
+<tr>
+<td>客服/客户成功</td>
+<td>账单解释、额度规则、争议处理、续约动作</td>
+<td>内部责任归因、其他客户信息</td>
+<td>商品规则、账单、工单</td>
+<td>客服负责人/产品经理</td>
+<td>话术与合同一致</td>
+</tr>
+</tbody>
+</table></div>
+<h4>10. 稳定性保障 上架门禁模板</h4>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>门禁</th>
+<th>需要确认</th>
+<th>不通过处理</th>
+<th>Owner</th>
+</tr></thead>
+<tbody><tr>
+<td>容量</td>
+<td>地域、库存、并发、队列是否支撑首发目标</td>
+<td>限定地域、预约容量、分批开放</td>
+<td>稳定性保障</td>
+</tr>
+<tr>
+<td>压测</td>
+<td>峰值流量和关键链路是否验证</td>
+<td>降低发布规模，补压测</td>
+<td>稳定性保障/研发</td>
+</tr>
+<tr>
+<td>限流</td>
+<td>超出容量时如何保护系统和客户体验</td>
+<td>配置限流、排队、降级</td>
+<td>稳定性保障</td>
+</tr>
+<tr>
+<td>告警</td>
+<td>P0/P1/P2 阈值、响应人和升级路径</td>
+<td>补监控和响应机制</td>
+<td>稳定性保障</td>
+</tr>
+<tr>
+<td>灰度</td>
+<td>按客户、地域、可购买规格、流量的开放比例</td>
+<td>改小灰度范围</td>
+<td>产品经理/稳定性保障</td>
+</tr>
+<tr>
+<td>回滚</td>
+<td>回滚触发条件、回滚点、数据修复方式</td>
+<td>不进入全量发布</td>
+<td>产品经理/研发/稳定性保障</td>
+</tr>
+<tr>
+<td>服务等级承诺</td>
+<td>合同级承诺是否有法务和业务确认</td>
+<td>改写为边界说明或走审批</td>
+<td>稳定性保障/法务</td>
+</tr>
+<tr>
+<td>通知</td>
+<td>销售、客服、客户成功和客户通知口径</td>
+<td>补统一话术和通知模板</td>
+<td>产品经理/客服</td>
+</tr>
+</tbody>
+</table></div>
+<h4>11. 上线复盘模板</h4>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>模块</th>
+<th>填写内容</th>
+</tr></thead>
+<tbody><tr>
+<td>上线目标</td>
+<td>目标客户、可售地域、成交规模/转化目标、稳定性目标</td>
+</tr>
+<tr>
+<td>实际结果</td>
+<td>成交、转化、订单、计量、账单、告警、客户反馈</td>
+</tr>
+<tr>
+<td>时间线</td>
+<td>关键决策、发布、灰度、故障、修复、恢复时间</td>
+</tr>
+<tr>
+<td>问题根因</td>
+<td>主数据、渠道、价格、容量、服务等级承诺、客户解释、系统缺陷</td>
+</tr>
+<tr>
+<td>影响范围</td>
+<td>客户数、订单数、成交规模、净收入、账单争议、续约风险</td>
+</tr>
+<tr>
+<td>修复动作</td>
+<td>已完成动作、未完成动作、负责人、截止时间</td>
+</tr>
+<tr>
+<td>模板沉淀</td>
+<td>应补充到产品化、售卖方案、渠道、稳定性保障、报价或巡检模板的内容</td>
+</tr>
+<tr>
+<td>后续版本</td>
+<td>下一版本目标、是否调整 可购买规格/权益/价格/渠道/流程</td>
+</tr>
+</tbody>
+</table></div>
+<h4>填写样例</h4>
+<h5>样例 A：Seedance Mini 产品化定义</h5>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>字段</th>
+<th>样例</th>
+</tr></thead>
+<tbody><tr>
+<td>商品/能力名称</td>
+<td>Seedance Mini 视频生成能力</td>
+</tr>
+<tr>
+<td>目标客户</td>
+<td>电商运营、品牌营销、小型内容团队</td>
+</tr>
+<tr>
+<td>核心场景</td>
+<td>商品图转短视频、营销素材批量生成、创意 A/B 测试</td>
+</tr>
+<tr>
+<td>能力边界</td>
+<td>支持指定时长和分辨率的视频生成；不承诺固定创意效果和固定完成时间</td>
+</tr>
+<tr>
+<td>不可承诺项</td>
+<td>大促峰值即时完成、所有素材合规、特定地域无限容量</td>
+</tr>
+<tr>
+<td>成本输入</td>
+<td>单视频秒数成本、失败重试成本、免费额度成本、存储和 CDN 成本</td>
+</tr>
+<tr>
+<td>就绪 结论</td>
+<td>带条件通过：需补价格毛利、稳定性保障 队列限流、客户估算说明和法务 常见问题说明</td>
+</tr>
+</tbody>
+</table></div>
+<h5>样例 B：Agent Plan 权益治理</h5>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>字段</th>
+<th>样例</th>
+</tr></thead>
+<tbody><tr>
+<td>权益名称</td>
+<td>Agent Plan Medium 每日赠送 Token</td>
+</tr>
+<tr>
+<td>发放时间</td>
+<td>每日零点按账号发放</td>
+</tr>
+<tr>
+<td>权益额度</td>
+<td>每日 50 RMB 等值 Token，按内部换算规则抵扣</td>
+</tr>
+<tr>
+<td>有效期</td>
+<td>当日有效，次日不滚存</td>
+</tr>
+<tr>
+<td>消耗顺序</td>
+<td>先用当日赠送额度，再用资源包，最后进入二次确认后的按量付费</td>
+</tr>
+<tr>
+<td>用完后处理</td>
+<td>默认提醒并暂停高成本调用，管理员确认后才允许超额付费</td>
+</tr>
+<tr>
+<td>账单展示</td>
+<td>展示赠送额度、抵扣金额、超额用量和适用价格，明确非现金余额</td>
+</tr>
+<tr>
+<td>毛利风险</td>
+<td>高成本模型和联网搜索可能击穿毛利，需要设置单日限额和财务阈值</td>
+</tr>
+</tbody>
+</table></div>
+<h5>样例 C：ECS GPU 正式报价前检查</h5>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>检查项</th>
+<th>样例结论</th>
+</tr></thead>
+<tbody><tr>
+<td>商品可售状态</td>
+<td>华东 1 可灰度销售，新加坡需容量预约</td>
+</tr>
+<tr>
+<td>价格口径</td>
+<td>目录价可用于预算估算，合同价需财务审批</td>
+</tr>
+<tr>
+<td>折扣边界</td>
+<td>低于毛利底线必须业务负责人和财务 BP 特批</td>
+</tr>
+<tr>
+<td>容量交付</td>
+<td>新加坡首批仅支持 60% 峰值，销售不得承诺固定开通日期</td>
+</tr>
+<tr>
+<td>服务等级承诺</td>
+<td>使用标准 服务等级承诺，非标可用性承诺走法务审批</td>
+</tr>
+<tr>
+<td>材料类型</td>
+<td>当前为报价草稿，正式报价以审批后的报价单和合同为准</td>
+</tr>
+</tbody>
+</table></div>
+<h5>样例 D：上线后 24 小时巡检</h5>
+<div class="table-wrap"><table>
+<thead><tr>
+<th>巡检项</th>
+<th>样例结果</th>
+</tr></thead>
+<tbody><tr>
+<td>官网展示</td>
+<td>价格入口、常见问题说明、禁承诺项已同步</td>
+</tr>
+<tr>
+<td>控制台购买</td>
+<td>下单、权益开通、超额确认页通过冒烟验证</td>
+</tr>
+<tr>
+<td>计量账单</td>
+<td>计量写入正常，账单展示可解释赠送和超额</td>
+</tr>
+<tr>
+<td>稳定性保障 告警</td>
+<td>队列水位高于 70% 触发关注，未达到限流阈值</td>
+</tr>
+<tr>
+<td>客户反馈</td>
+<td>2 个客户咨询估算和正式报价差异，客服话术已更新</td>
+</tr>
+</tbody>
+</table></div>
+<h5>样例 E：客户解释话术</h5>
+<p>客户问“为什么账单比估算高”时：</p>
+<blockquote>您看到的估算是基于当时输入的用量假设，不是最终账单。最终账单会根据实际使用量、计费单位、资源包抵扣、折扣和超额规则生成。我们可以一起核对本账期的用量、抵扣和适用价格；如果发现计量或价格异常，会按账单争议流程处理。</blockquote>
+        </details>
+      </main>
+    </div>
+  </body>
+</html>
