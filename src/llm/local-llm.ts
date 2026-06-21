@@ -435,15 +435,39 @@ function formatBusinessDataResult(data: DataRecord): string {
 
   // 最终 fallback：按字段名输出
   const label = readableResourceNameFromRegistry(data.resource, "记录");
+  const fieldLabels = readFieldLabels(data, resourceConfig);
   const lines = [`查询到 ${rows.length} 条${label}：`];
   for (const row of rows) {
     const fields = Object.entries(row)
       .filter(([, v]) => v !== null && v !== undefined && v !== "")
-      .map(([k, v]) => `${k}: ${v}`)
+      .map(([k, v]) => `${fieldLabels[k] ?? k}：${formatReadableValue(v)}`)
       .join("，");
     lines.push(`- ${fields}`);
   }
   return lines.join("\n");
+}
+
+function readFieldLabels(data: DataRecord, resourceConfig?: { displayColumns?: Array<[string, string]>; schema?: Record<string, unknown> }): Record<string, string> {
+  const labels: Record<string, string> = {};
+  const displayLabels = data.display_field_labels;
+  if (displayLabels && typeof displayLabels === "object" && !Array.isArray(displayLabels)) {
+    Object.assign(labels, displayLabels as Record<string, string>);
+  }
+  for (const item of (data.field_metadata ?? []) as DataRecord[]) {
+    if (item.key && item.label) labels[String(item.key)] = String(item.label);
+  }
+  for (const [field, label] of resourceConfig?.displayColumns ?? []) {
+    labels[field] = label;
+  }
+  return labels;
+}
+
+function formatReadableValue(value: unknown): string {
+  if (Array.isArray(value)) return value.map(formatReadableValue).join("、");
+  if (value && typeof value === "object") return JSON.stringify(value);
+  if (value === true) return "是";
+  if (value === false) return "否";
+  return String(value);
 }
 
 function formatSafeComputeResult(data: DataRecord | undefined): string {

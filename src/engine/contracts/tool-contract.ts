@@ -70,10 +70,12 @@ export interface ToolObservationSanitizerDefinition {
  */
 export interface AgenticFallbackDefinition {
   id: string;
+  /** 命中时是否优先走本地 fallback，而不是先尝试 LLM 编排 */
+  preferLocal?: boolean;
   /** 检查消息是否匹配此 fallback */
   matches(message: string): boolean;
   /** 返回要执行的工具调用列表 */
   calls(message: string): Array<{ tool_name: string; args: JsonObject }>;
   /** 组装最终答案 */
-  composeAnswer(observations: Array<{ call: { tool_name: string; args: JsonObject }; answer?: string }>): string;
+  composeAnswer(observations: Array<{ call: { tool_name: string; args: JsonObject }; answer?: string; observation?: JsonObject }>): string;
 }

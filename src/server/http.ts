@@ -8,6 +8,7 @@ import { createOpenUILangModule } from "../openui-lang/module.js";
 import { OpenUILangBadRequestError } from "../openui-lang/dto.js";
 import { loadJson } from "../data/load-json.js";
 import { getResourceDataPath } from "../domains/runtime-registry.js";
+import { normalizeSelectedDomain, routeMatchesSelectedDomain } from "../domains/domain-isolation.js";
 import { resolveUserWorkspace, type WorkspaceContext } from "../runtime/workspace-context.js";
 import { renderChatPage } from "./chat-page.js";
 import { basicLiveness, checkReadiness } from "./health.js";
@@ -60,7 +61,7 @@ const { chatController: openuiChatController } = createOpenUILangModule({
 });
 const port = Number(process.env.PORT ?? 3000);
 const host = process.env.HOST ?? "0.0.0.0";
-const chatStreamTimeoutMs = readPositiveNumberEnv("CHAT_STREAM_TIMEOUT_MS", 60000);
+const chatStreamTimeoutMs = readPositiveNumberEnv("CHAT_STREAM_TIMEOUT_MS", 180000);
 const sseHeartbeatMs = readPositiveNumberEnv("SSE_HEARTBEAT_MS", 15_000);
 const shutdownDrainMs = readPositiveNumberEnv("SHUTDOWN_DRAIN_MS", 30_000);
 
@@ -388,6 +389,7 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
       // 鉴权：必须带 user_id（X-User-Id 或 ?user_id=），与 /api/handlers 分开
       // ——/api/handlers 是运维接口，commands 是用户接口。
       const userId = (typeof req.headers["x-user-id"] === "string" ? req.headers["x-user-id"] : url.searchParams.get("user_id")) || "";
+      const selectedDomain = normalizeSelectedDomain(url.searchParams.get("domain_id") ?? url.searchParams.get("selected_domain"));
       if (!userId) {
         sendJson(res, 401, { error: "unauthorized", message: "请提供 X-User-Id 或 ?user_id=" });
         return;
@@ -400,12 +402,15 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
         return;
       }
       const userPermissions = new Set(Array.isArray(user.permissions) ? user.permissions : []);
+      const userDomain = domainIdForUserRecord(user);
       const commands = intentRouter.commands.list();
       const visible: Array<JsonObject> = [];
       for (const command of commands) {
         const intentCode = command.intentCode;
         if (intentCode) {
           const manifest = intentRegistry.getCode(intentCode);
+          if (selectedDomain && manifest && !routeMatchesSelectedDomain(manifest, selectedDomain)) continue;
+          if (selectedDomain && userDomain && selectedDomain !== userDomain && manifest && manifest.intent_code !== "system.smalltalk") continue;
           const required = manifest?.required_permissions ?? [];
           if (required.length && !required.every((perm) => userPermissions.has(perm))) continue;
         }
@@ -429,6 +434,7 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
   if (req.method === "GET" && pathname === "/api/recommended-commands") {
     try {
       const userId = (typeof req.headers["x-user-id"] === "string" ? req.headers["x-user-id"] : url.searchParams.get("user_id")) || "";
+      const selectedDomain = normalizeSelectedDomain(url.searchParams.get("domain_id") ?? url.searchParams.get("selected_domain"));
       if (!userId) {
         sendJson(res, 401, { error: "unauthorized", message: "请提供 X-User-Id 或 ?user_id=" });
         return;
@@ -446,7 +452,10 @@ const server = http.createServer(async (req: IncomingMessage, res: ServerRespons
       } catch {
         mapping = {};
       }
-      const list = (typeof user.role === "string" && mapping[user.role]) || mapping["_default"] || [];
+      const userDomain = domainIdForUserRecord(user);
+      const list = selectedDomain && userDomain && selectedDomain !== userDomain
+        ? []
+        : (typeof user.role === "string" && mapping[user.role]) || mapping["_default"] || [];
       sendJson(res, 200, { commands: list, role: user.role ?? null, user_id: userId });
     } catch (error) {
       sendJson(res, 500, {
@@ -853,6 +862,15 @@ function guardRequest(
   }
   logEvent("info", "request_authorized", { trace_id: ctx.traceId, path, user_id: authCtx.userId, tenant: authCtx.tenantId });
   return authCtx;
+}
+
+function domainIdForUserRecord(user: Record<string, unknown>): string | null {
+  const text = [user.id, user.user_id, user.userid, user.role, user.department, user.department_name, user.name]
+    .filter((value) => typeof value === "string" && value)
+    .join(" ");
+  if (/cloud|云商品|云业务|客户自助/.test(text)) return "cloud_commodity";
+  if (/dealer|经销|门店|销售顾问|库存经理|售后|财务经理/.test(text)) return "dealer";
+  return null;
 }
 
 function handleError(error: unknown, res: ServerResponse, ctx: RequestContext, fields: Record<string, unknown>): void {

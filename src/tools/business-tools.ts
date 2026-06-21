@@ -1,6 +1,8 @@
 import { loadJson } from "../data/load-json.js";
 import { getResourceDataPath } from "../domains/runtime-registry.js";
+import { domainMismatchMessage, resourceMatchesSelectedDomain } from "../domains/domain-isolation.js";
 import { ResourceRegistry } from "../resources/registry.js";
+import { getResourceMetadata } from "../resources/metadata.js";
 import type { ResourceConfig } from "../resources/types.js";
 import type { JsonObject, JsonValue, QueryFilter, QuerySort, ToolDefinition } from "../types/agent-contracts.js";
 import { INTENTS } from "../agent/ports.js";
@@ -96,8 +98,22 @@ async function executeBusinessDataQuery(args: BusinessQueryArgs = {}, context: B
   if (!config) {
     return { ok: false, tool: "query_business_data", error: "invalid_resource", message: "不支持该业务资源。" };
   }
+  const selectedDomain = (context as unknown as Record<string, unknown>).selected_domain;
+  if (!resourceMatchesSelectedDomain(config, selectedDomain)) {
+    return {
+      ok: false,
+      tool: "query_business_data",
+      error: "domain_mismatch",
+      message: domainMismatchMessage({
+        selectedDomain,
+        actualDomain: config.domain,
+        subject: config.label ?? resource
+      }),
+    };
+  }
 
   const operation = args.operation ?? "search";
+  const baseMetadata = getResourceMetadata(resource, config, registry.getFieldLabels());
   let rows = config.loader ? await config.loader(context) : await loadJson(config.file ?? "") as DataRow[];
   // 资源特定的数据规范化（如 leave_requests 的时间格式化）
   if (config.normalizer) {
@@ -152,6 +168,7 @@ async function executeBusinessDataQuery(args: BusinessQueryArgs = {}, context: B
         ok: true,
         tool: "query_business_data",
         data: {
+          ...baseMetadata,
           resource,
           operation,
           total,
@@ -168,7 +185,8 @@ async function executeBusinessDataQuery(args: BusinessQueryArgs = {}, context: B
       ok: true,
       tool: "query_business_data",
       data: {
-          resource,
+        ...baseMetadata,
+        resource,
         operation,
         total,
         aggregates: { ...aggregateValues, ...derivedValues },
@@ -181,11 +199,13 @@ async function executeBusinessDataQuery(args: BusinessQueryArgs = {}, context: B
 
   const limit = clampLimit(args.limit ?? 20);
   const fields = normalizeFields(args.fields, config.fields);
+  const fieldMetadata = getResourceMetadata(resource, config, registry.getFieldLabels(), fields);
   const selectedRows = await enrichRows(resource, rows.slice(0, limit).map((row) => pickFields(row, fields)));
   return {
     ok: true,
     tool: "query_business_data",
     data: {
+      ...fieldMetadata,
       resource,
       operation: "search",
       total,
@@ -614,4 +634,3 @@ export function createBusinessTools(options: { resourceRegistry: ResourceRegistr
     }),
   ];
 }
-

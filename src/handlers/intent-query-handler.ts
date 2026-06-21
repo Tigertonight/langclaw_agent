@@ -25,6 +25,7 @@ import type { QueryAdapterRegistry } from "../domains/query-adapter-registry.js"
 import type { FilterTransformFn, PermissionRuleFn } from "../domains/types.js";
 import { getFieldLabelFromRegistry, readUserFieldFromRegistry } from "../domains/runtime-registry.js";
 import { translateTimeRangeToIso, formatLocalDate, extractMonthToken } from "../domains/shared/time-utils.js";
+import { getResourceMetadata } from "../resources/metadata.js";
 import { INTENTS } from "../agent/ports.js";
 
 interface AnswerLLM {
@@ -63,6 +64,7 @@ interface IntentQueryExecuteInput {
   params?: JsonObject;
   route?: Route;
   session?: Record<string, unknown>;
+  selectedDomain?: string;
 }
 
 interface AggregateInput {
@@ -73,6 +75,7 @@ interface AggregateInput {
   params: JsonObject;
   binding: IntentToolBinding;
   defaultsApplied?: JsonObject[];
+  selectedDomain?: string;
 }
 
 interface DefaultsInput {
@@ -146,7 +149,7 @@ export class IntentQueryHandler {
     this.resourceConfigs = resourceConfigs ?? {};
   }
 
-  async execute({ user, workspace, message, intent_code, params = {}, route: _route, session: _session }: IntentQueryExecuteInput = {}): Promise<IntentQueryResult> {
+  async execute({ user, workspace, message, intent_code, params = {}, route: _route, session: _session, selectedDomain }: IntentQueryExecuteInput = {}): Promise<IntentQueryResult> {
     const manifest = this.registry.getCode(intent_code);
     if (!manifest) {
       throw new Error(`IntentQueryHandler: 未知 intent_code ${intent_code}`);
@@ -174,7 +177,7 @@ export class IntentQueryHandler {
     params = effectiveParams;
 
     if (binding.operation === "aggregate") {
-      return this.executeAggregate({ user, workspace, message, manifest, params, binding, defaultsApplied });
+      return this.executeAggregate({ user, workspace, message, manifest, params, binding, defaultsApplied, selectedDomain });
     }
 
     const filters = this.buildFilters({ manifest, intent_code, resource: binding.resource, params, message, user });
@@ -191,7 +194,7 @@ export class IntentQueryHandler {
     };
     const toolPlan = { calls: [toolCall] };
 
-    const toolResult = normalizeToolResult(await this.toolRegistry.execute(toolCall, { user, workspace }));
+    const toolResult = normalizeToolResult(await this.toolRegistry.execute(toolCall, { user, workspace, selected_domain: selectedDomain }));
     const toolResults = [toolResult];
 
     const rows = toolResult?.data?.rows ?? [];
@@ -244,7 +247,7 @@ export class IntentQueryHandler {
     };
   }
 
-  async executeAggregate({ user, workspace, message, manifest, params, binding, defaultsApplied = [] }: AggregateInput): Promise<IntentQueryResult> {
+  async executeAggregate({ user, workspace, message, manifest, params, binding, defaultsApplied = [], selectedDomain }: AggregateInput): Promise<IntentQueryResult> {
     const intent_code = manifest.intent_code;
     const metric = typeof params?.metric === "string" ? params.metric : null;
     const groupBy = typeof params?.group_by === "string" ? params.group_by : null;
@@ -276,7 +279,7 @@ export class IntentQueryHandler {
       }
     };
     const toolPlan = { calls: [toolCall] };
-    const toolResult = normalizeToolResult(await this.toolRegistry.execute(toolCall, { user, workspace }));
+    const toolResult = normalizeToolResult(await this.toolRegistry.execute(toolCall, { user, workspace, selected_domain: selectedDomain }));
     const toolResults = [toolResult];
 
     let answer;
@@ -448,17 +451,18 @@ export class IntentQueryHandler {
           question: message,
           route: { intent: INTENTS.DATA_QUERY, intent_code, handler_type: "intent_query" },
           docs: [],
-          toolResults: [{
-            ok: true,
-            tool: "query_business_data",
-            data: {
-              resource,
-              operation: "search",
-              rows,
-              total: rows.length,
-              fields: inferDisplayFields(resource, rows, rc),
-              answer_preference: createSearchAnswerPreference({ message, resource, rows, resourceConfigs: rc })
-            }
+        toolResults: [{
+          ok: true,
+          tool: "query_business_data",
+          data: {
+            ...createResourceMetadata(resource, this.resourceConfigs, this.fieldLabels, inferDisplayFields(resource, rows, rc)),
+            resource,
+            operation: "search",
+            rows,
+            total: rows.length,
+            fields: inferDisplayFields(resource, rows, rc),
+            answer_preference: createSearchAnswerPreference({ message, resource, rows, resourceConfigs: rc })
+          }
           }]
         });
         if (result?.answer && acceptSearchAnswer(result.answer, { rows })) return result.answer;
@@ -470,6 +474,7 @@ export class IntentQueryHandler {
   }
 
   async summarizeAggregate({ user, message, intent_code, resource, metric, metricDef, groupBy, toolResult, deterministicAnswer }: SummarizeAggregateInput): Promise<string> {
+    if (Number(toolResult?.data?.total ?? 0) === 0) return deterministicAnswer;
     if (!canUseAnswerLLM(this.llm)) return deterministicAnswer;
     try {
       const result = await this.llm.generateAnswer({
@@ -482,6 +487,7 @@ export class IntentQueryHandler {
           tool: "query_business_data",
           data: {
             ...(toolResult?.data ?? {}),
+            ...createResourceMetadata(resource, this.resourceConfigs, this.fieldLabels),
             resource,
             operation: "aggregate",
             deterministic_answer: deterministicAnswer,
@@ -551,6 +557,8 @@ function createSearchAnswerPreference({ message, resource, rows, resourceConfigs
     rules: [
       "像一个业务同事一样组织回答：先给一句自然结论，再展开必要明细。",
       "不要说 rows、字段、工具结果、查询结果这些工程词。",
+      "如果工具结果提供 resource_label、resource_description、field_metadata 或 display_field_labels，必须用其中的中文业务名展示字段和来源。",
+      "不要把资源 key、字段 key、筛选表达式或表名原样写给用户；证据来源要写成中文业务口径。",
       "只根据 rows 组织回答，不得新增、推断或改写 rows 中没有的事实。",
       rows.length > 1
         ? "多条明细默认输出 Markdown 表格，表格前给一句短摘要。"
@@ -562,6 +570,17 @@ function createSearchAnswerPreference({ message, resource, rows, resourceConfigs
     ],
     user_question: String(message ?? "")
   };
+}
+
+function createResourceMetadata(
+  resource: string,
+  resourceConfigs?: Record<string, import("../resources/types.js").ResourceConfig>,
+  fieldLabels?: Record<string, string>,
+  fields?: string[],
+): JsonObject {
+  const config = resourceConfigs?.[resource];
+  if (!config) return {};
+  return getResourceMetadata(resource, config, fieldLabels ?? {}, fields ?? config.fields);
 }
 
 function acceptSearchAnswer(answer: unknown, { rows }: { rows: DataRecord[] }): boolean {
@@ -748,7 +767,12 @@ function formatAggregateAnswer({ metric, metricDef, groupBy, toolData, params: _
     const primaryAs = pickPrimaryAs(metricDef, metric);
     const value = aggregates[primaryAs];
     if (value === null || value === undefined) {
-      lines.push(`没有查到符合条件的记录，无法计算${labelOfMetric(metric, fieldLabels)}。`);
+      if (Number(toolData?.total ?? 0) === 0 && shouldRenderZeroForEmptyAggregate(metricDef)) {
+        lines.push(`${labelOfMetric(metric, fieldLabels)}是 **${fmt(0)}**。`);
+        lines.push("这次统计覆盖 0 条记录。");
+      } else {
+        lines.push(`没有查到符合条件的记录，无法计算${labelOfMetric(metric, fieldLabels)}。`);
+      }
     } else {
       lines.push(`${labelOfMetric(metric, fieldLabels)}是 **${fmt(value)}**。`);
       if (Number(toolData?.total ?? 0) > 0) lines.push(`这次统计覆盖 ${toolData.total} 条记录。`);
@@ -808,6 +832,14 @@ function pickPrimaryAs(metricDef: DataRecord | undefined, metric: string): strin
   return metric;
 }
 
+function shouldRenderZeroForEmptyAggregate(metricDef: DataRecord | undefined): boolean {
+  const aggregations = metricDef?.aggregations ?? [];
+  const aggregateTypes = Array.isArray(aggregations)
+    ? aggregations.map((item) => String(item?.type ?? ""))
+    : [];
+  return aggregateTypes.some((type) => ["sum", "count", "distinct_count"].includes(type));
+}
+
 /**
  * 查找 metric 的中文标签。优先从 domain 注册的 fieldLabels 查找，找不到走本地 fallback。
  */
@@ -839,30 +871,30 @@ function formatMetricValue(metric: string, value: unknown): string {
 
 function formatRowsTemplate({ rows, total, resource, fieldLabels, resourceConfigs }: { rows: DataRecord[]; total: number; resource: string; fieldLabels?: Record<string, string>; resourceConfigs?: Record<string, import("../resources/types.js").ResourceConfig> }): string {
   const head = rows.slice(0, 8);
-  const table = formatRowsTable({ rows: head, resource, resourceConfigs });
+  const table = formatRowsTable({ rows: head, resource, fieldLabels, resourceConfigs });
   if (table) return `最近有 ${total} 条相关记录：\n\n${table}`;
   const lines = head.map((row) => formatRowByResource(row, resource, fieldLabels, resourceConfigs));
   return `最近有 ${total} 条相关记录：\n${lines.join("\n")}`;
 }
 
-function formatRowsTable({ rows, resource, resourceConfigs }: { rows: DataRecord[]; resource: string; resourceConfigs?: Record<string, import("../resources/types.js").ResourceConfig> }): string {
+function formatRowsTable({ rows, resource, fieldLabels, resourceConfigs }: { rows: DataRecord[]; resource: string; fieldLabels?: Record<string, string>; resourceConfigs?: Record<string, import("../resources/types.js").ResourceConfig> }): string {
   if (!rows.length) return "";
-  const columns = getDisplayColumns(resource, rows, resourceConfigs);
+  const columns = getDisplayColumns(resource, rows, fieldLabels, resourceConfigs);
   if (!columns.length) return "";
   const header = `| ${columns.map((column) => column.label).join(" | ")} |`;
   const divider = `| ${columns.map(() => "---").join(" | ")} |`;
-  const body = rows.map((row) => `| ${columns.map((column) => escapeMarkdownCell(formatCellValue(row[column.field]))).join(" | ")} |`);
+  const body = rows.map((row) => `| ${columns.map((column) => escapeMarkdownCell(formatCellValue(row[column.field], column.field))).join(" | ")} |`);
   return [header, divider, ...body].join("\n");
 }
 
 function inferDisplayFields(resource: string, rows: DataRecord[], resourceConfigs?: Record<string, import("../resources/types.js").ResourceConfig>): string[] {
-  return getDisplayColumns(resource, rows, resourceConfigs).map((column: DisplayColumn) => column.field);
+  return getDisplayColumns(resource, rows, undefined, resourceConfigs).map((column: DisplayColumn) => column.field);
 }
 
 /**
  * 获取资源的展示列。优先从 ResourceConfig.displayColumns 查找，找不到走自动推断。
  */
-function getDisplayColumns(resource: string, rows: DataRecord[] = [], resourceConfigs?: Record<string, import("../resources/types.js").ResourceConfig>): DisplayColumn[] {
+function getDisplayColumns(resource: string, rows: DataRecord[] = [], fieldLabels?: Record<string, string>, resourceConfigs?: Record<string, import("../resources/types.js").ResourceConfig>): DisplayColumn[] {
   // 优先从 domain 注册的 ResourceConfig.displayColumns 查找
   const config = resourceConfigs?.[resource];
   if (config?.displayColumns?.length) {
@@ -874,18 +906,103 @@ function getDisplayColumns(resource: string, rows: DataRecord[] = [], resourceCo
   // 自动推断：取前 6 个字段
   return Object.keys(rows[0] ?? {})
     .slice(0, 6)
-    .map((field) => ({ field, label: field }));
+    .map((field) => ({ field, label: labelOfField(field, fieldLabels) }));
 }
 
-function formatCellValue(value: unknown): string {
+function formatCellValue(value: unknown, field?: string): string {
   if (value === undefined || value === null || value === "") return "-";
-  if (Array.isArray(value)) return value.join("、");
-  if (typeof value === "object") return JSON.stringify(value);
-  return String(value);
+  if (Array.isArray(value)) return value.map((item) => formatCellValue(item, field)).join("、");
+  if (typeof value === "object") return formatObjectCell(value as Record<string, unknown>);
+  return translateBusinessValue(String(value), field);
 }
 
 function escapeMarkdownCell(value: unknown): string {
   return String(value).replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
+}
+
+function formatObjectCell(value: Record<string, unknown>): string {
+  const entries = Object.entries(value)
+    .filter(([, item]) => item !== undefined && item !== null && item !== "")
+    .slice(0, 4)
+    .map(([key, item]) => `${labelOfField(key)}：${formatCellValue(item, key)}`);
+  return entries.join("；") || "-";
+}
+
+const BUSINESS_VALUE_LABELS: Record<string, string> = {
+  finance_reviewer_001: "财务复核负责人",
+  legal_001: "法务审核负责人",
+  sales_ai_001: "AI 内容客户销售负责人",
+  sales_media_001: "媒体客户销售负责人",
+  cloud_sales_001: "陆衡",
+  cloud_sales_002: "金融行业销售负责人",
+  cloud_pm_001: "程一川",
+  cloud_exec_001: "沈澜",
+  ai_business: "AI 商品经营团队",
+  cloud_business: "云业务经营团队",
+  finance: "财务团队",
+  legal: "法务团队",
+  sales: "销售团队",
+  product: "商品产品团队",
+  sre: "SRE 运维团队",
+  revenue: "收入",
+  margin: "毛利",
+  customer: "客户",
+  workflow: "流程",
+  billing: "账单",
+  normal: "正常",
+  watch: "需关注",
+  risk: "有风险",
+  blocked: "已阻塞",
+  in_progress: "处理中",
+  completed: "已完成",
+  active: "生效中",
+  paid: "已支付",
+  confirmed: "已确认",
+  disputed: "有争议",
+  draft: "草稿",
+  on_hold_dispute: "争议暂停",
+  issued: "已开票",
+  unbilled_estimate: "未出账估算",
+  high: "高",
+  medium: "中",
+  low: "低",
+  demo_mock: "演示样本",
+  true: "是",
+  false: "否",
+  all: "全部",
+  CNY: "元",
+  ratio: "比例",
+  count: "个",
+  model_pricing_review: "模型价格复核",
+  content_safety_terms: "内容安全条款审核",
+  afp_rule_finance_review: "AFP 计费规则财务复核",
+  legal_terms_review: "法务条款审核",
+  process_bottleneck: "流程阻塞",
+  renewal: "续约风险",
+};
+
+const METRIC_NAME_LABELS: Record<string, string> = {
+  "GMV MTD": "本月 GMV",
+  "Net Revenue MTD": "本月净收入",
+  "Gross Margin Rate": "毛利率",
+  "Active Paying Customers": "活跃付费客户",
+  "ARR At Risk": "续约风险金额",
+  "Bill Dispute Amount": "账单争议金额",
+  "Blocked Release Tasks": "阻塞发布任务数",
+};
+
+function translateBusinessValue(value: string, field?: string): string {
+  if (field === "metric_name" && METRIC_NAME_LABELS[value]) return METRIC_NAME_LABELS[value];
+  if (BUSINESS_VALUE_LABELS[value]) return BUSINESS_VALUE_LABELS[value];
+  if (field === "change_rate") {
+    const rate = Number(value);
+    if (Number.isFinite(rate) && Math.abs(rate) <= 1) return `${(rate * 100).toFixed(2)}%`;
+  }
+  if (field === "metric_value" || /amount|revenue|gmv|arr|cny|price|budget/.test(String(field ?? ""))) {
+    const number = Number(value);
+    if (Number.isFinite(number) && Math.abs(number) >= 1000) return number.toLocaleString("zh-CN");
+  }
+  return value;
 }
 
 function aggregateAnswerPreservesMetric(answer: unknown, data: DataRecord | undefined): boolean {
@@ -900,6 +1017,8 @@ function aggregateAnswerPreservesMetric(answer: unknown, data: DataRecord | unde
     }
   }
   if (!values.length) return true;
+  const hasZeroMetric = values.some((value) => typeof value === "number" && Object.is(value, 0));
+  if (hasZeroMetric && !/(^|[^\d])0([^\d]|$)|零/.test(text)) return false;
   return values.some((value) => answerContainsNumber(text, value));
 }
 

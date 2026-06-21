@@ -66,6 +66,7 @@ export interface RouteRequest {
   message?: string;
   now?: string;
   user_context?: UserContext;
+  selected_domain?: string;
   session_state?: SessionState;
 }
 

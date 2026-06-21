@@ -4,7 +4,8 @@ import { OpenUILangSchemaSanitizerError, sanitizeOpenUILangSchema } from "./core
 import { openUILangSurfaceToLegacyEnvelopes, surfaceOutputToOpenUILang } from "./legacy-adapter.js";
 import { defaultOpenUILangSurfacePlugins, type SurfacePlugin } from "./surface-plugins.js";
 import { OPENUI_LANG_PROTOCOL, type BuildOpenUILangResponseInput, type OpenUILangClientCapabilities, type OpenUILangCompatComponent, type OpenUILangCompatEnvelope, type OpenUILangDocument, type OpenUILangSurface } from "./types.js";
-import { getChatPageRenderers } from "../domains/runtime-registry.js";
+import { getChatPageRenderers, getRuntimeRegistry } from "../domains/runtime-registry.js";
+import { intentDomainId, normalizeSelectedDomain } from "../domains/domain-isolation.js";
 import { logEvent, sharedMetrics } from "../security/observability.js";
 import type { JsonObject } from "../types/agent-contracts.js";
 
@@ -58,6 +59,16 @@ export function buildOpenUILangSurfaces({
       sharedMetrics.inc("plugin_build_failed", { plugin: plugin.kind });
       logEvent("warn", "plugin_build_failed", { plugin: plugin.kind, run_id: runId, error: error instanceof Error ? error.message : String(error) });
       continue;
+    }
+    const selectedDomain = inferSelectedDomain(record);
+    const surfaceDomain = inferSurfaceDomain(built.data, record);
+    if (selectedDomain && surfaceDomain && selectedDomain !== surfaceDomain) {
+      sharedMetrics.inc("plugin_extract_skipped", { plugin: plugin.kind });
+      logEvent("info", "openui_surface_skipped_domain_mismatch", { plugin: plugin.kind, run_id: runId, selected_domain: selectedDomain, surface_domain: surfaceDomain });
+      continue;
+    }
+    if (surfaceDomain && !built.data.domain_id) {
+      built = { ...built, data: { ...built.data, domain_id: surfaceDomain } };
     }
     try {
       sanitizeOpenUILangSchema({ data: built.data, components: built.components });
@@ -179,4 +190,25 @@ function toRecord(value: unknown): Record<string, unknown> | null {
 
 function stringOr(value: unknown, fallback: string): string {
   return typeof value === "string" && value ? value : fallback;
+}
+
+function inferSelectedDomain(record: Record<string, unknown>): string | null {
+  const debug = toRecord(record.debug) ?? {};
+  const route = toRecord(debug.route) ?? {};
+  const params = toRecord(route.params) ?? {};
+  return normalizeSelectedDomain(record.domain_id ?? record.selected_domain ?? debug.selected_domain ?? params.selected_domain);
+}
+
+function inferSurfaceDomain(data: JsonObject, record: Record<string, unknown>): string | null {
+  const explicit = normalizeSelectedDomain(data.domain_id);
+  if (explicit) return explicit;
+  const resource = typeof data.resource === "string" ? data.resource : null;
+  if (resource) {
+    const resourceDomain = normalizeSelectedDomain(getRuntimeRegistry()?.allResources?.[resource]?.domain);
+    if (resourceDomain) return resourceDomain;
+  }
+  const debug = toRecord(record.debug) ?? {};
+  const route = toRecord(debug.route) ?? {};
+  const routeDomain = intentDomainId(typeof route.intent_code === "string" ? route.intent_code : typeof record.intent_code === "string" ? record.intent_code : null);
+  return routeDomain === "core" ? null : routeDomain;
 }

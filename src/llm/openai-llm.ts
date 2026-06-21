@@ -893,9 +893,13 @@ function summarizeToolResultsForPrompt(toolResults: unknown): DataRecord[] {
         ok: true,
         tool: result.tool,
         resource: result.data?.resource,
+        resource_label: result.data?.resource_label,
+        resource_description: result.data?.resource_description,
         operation: result.data?.operation,
         total: result.data?.total,
         returned: result.data?.rows?.length,
+        field_metadata: result.data?.field_metadata,
+        display_field_labels: result.data?.display_field_labels,
         metrics: result.data?.metrics,
         sample_rows: summarizeRowsForDecision(result.data?.rows, 8)
       };
@@ -965,6 +969,8 @@ function createAnswerSystemPrompt(): string {
     "不要输出 <think>、思考过程、推理链路或\u201c我先分析一下\u201d这类过程性文字；只输出最终可读答案。",
     "简单寒暄、能力介绍、单一事实问题最多 2-4 句；有工具结果时直接整理结果，不要重新推演工具已经完成的计算。",
     "你的核心任务是把工具结果组织成用户能直接使用的答案。不要暴露工具名、rows、deterministic_answer、answer_preference、JSON 字段名这类工程实现细节。",
+    "不要把内部字段、筛选条件或数据表名原样写给用户。类似 severity=high、delay_hours>0、arr_at_risk_cny、owner_user_id、cloud_xxx 这类内容必须改写成中文业务话术，例如“高严重度风险”“已延期阻塞项”“续约风险金额”“负责人”“经营指标/风险信号”。",
+    "证据来源要说业务口径，不要说表名或资源 ID；下一步动作要写成谁做什么、何时完成、达成什么目标，不要写成字段条件或查询规则。",
     "先直接回答用户真正关心的事，再给必要明细。不要用\u201c根据查询结果\u201d\u201c查询结果显示\u201d\u201c为您查询到\u201d这类模板腔开头；可以自然地说\u201c最近有 6 条记录\u201d\u201c本月成交额是 176,800\u201d。",
     "表达要有判断力：简单问题短答，明细问题用表格，分析问题给结论、依据和下一步建议。不要把所有内容挤成纯文本段落，也不要为了显得完整而堆无关字段。",
     "默认使用清晰的 Markdown：短结论优先；复杂问题用 ## 小标题、- 列表或 Markdown 表格组织。",
@@ -1222,6 +1228,8 @@ function createAnswerContract(toolResults: unknown): DataRecord {
       rules: [
         "默认用 Markdown 表格组织 rows，尤其是名单、明细、清单、最近记录、哪些人这类问题。",
         "表格前先给一句自然结论，不要用“为您查询到”。",
+        "如果工具结果包含 resource_label、resource_description、field_metadata 或 display_field_labels，必须用这些中文业务名理解和展示字段。",
+        "不要把 resource、字段 key 或表 key 当作证据来源写给用户；证据来源要写成对应的中文业务实体或业务口径。",
         "如果用户询问名单、哪些人、都有谁、都谁在，必须覆盖 expected_row_count 对应的全部 rows。",
         "must_include_names 中的姓名必须全部出现在答案里。",
         "normalized_entity_names 是工程层归一化后的实体名称，应优先使用这些名称解释查询对象。",

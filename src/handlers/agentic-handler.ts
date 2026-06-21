@@ -18,7 +18,8 @@ import { applyPromptCache } from "../llm/prompt-cache.js";
 import { createOpenUILangGenerationPrompt } from "../openui-lang/generation-prompt.js";
 import { buildItemStartEvent, buildItemEndEvent, nextAgentItemId } from "../runtime/agent-events.js";
 import { RuntimeHooks } from "../runtime/hooks.js";
-import { getAgenticFallbacks } from "../domains/runtime-registry.js";
+import { composeReportFromRegistry, getAgenticFallbacks } from "../domains/runtime-registry.js";
+import { domainMismatchMessage, intentDomainId, routeMatchesSelectedDomain, toolMatchesSelectedDomain } from "../domains/domain-isolation.js";
 import type { IntentManifest, IntentRegistry, JsonObject, JsonValue, Route, ToolCall, ToolResult, UserContext } from "../types/agent-contracts.js";
 
 interface AgenticIntentQueryHandler {
@@ -136,6 +137,7 @@ interface AgenticExecuteInput {
   message?: string;
   route?: Route;
   session?: Record<string, unknown>;
+  selectedDomain?: string;
   onEmit?: EmitFn;
 }
 
@@ -171,9 +173,9 @@ export class AgenticHandler {
    *   onEmit?: (event: Record<string, unknown>) => Promise<void> | void
    * }} [input]
    */
-  async execute({ user, workspace, message, route, session, onEmit }: AgenticExecuteInput = {}) {
+  async execute({ user, workspace, message, route, session, selectedDomain, onEmit }: AgenticExecuteInput = {}) {
     const startedAt = Date.now();
-    const tools = this.getAvailableTools({ user, workspace });
+    const tools = this.getAvailableTools({ user, workspace, selectedDomain });
     // 三流 traces（参考 openclaw agent loop）：
     //   - lifecycle：步骤级里程碑（start / decided / step_failed / answered / total_timeout / fallback）
     //   - assistant：LLM 侧事件（每一轮决策、propose_tool 提议）
@@ -284,17 +286,62 @@ export class AgenticHandler {
       }
     }
 
+    const forcedCloudCall = shouldUseDeterministicCloudShortcut()
+      ? deterministicCloudToolCall(route?.intent_code, route?.params ?? {})
+      : null;
+    if (forcedCloudCall) {
+      pushLifecycle("deterministic_cloud_tool_started", { intent_code: route?.intent_code, tool: forcedCloudCall.tool_name });
+      const itemId = pushToolStart({ tool: forcedCloudCall.tool_name, args: forcedCloudCall.args, step: 0 });
+      const observation = await this.callTool({ callName: forcedCloudCall.tool_name, args: forcedCloudCall.args, user, workspace, session, selectedDomain });
+      const toolName = forcedCloudCall.tool_name.replace(/^tool\./, "");
+      const toolResult = {
+        ok: observation?.ok !== false,
+        tool: toolName,
+        data: observation,
+        error: observation?.error,
+        message: observation?.message
+      };
+      executedToolResults.push(toolResult);
+      pushTool({ step: 0, type: "tool_call", tool: forcedCloudCall.tool_name, args: forcedCloudCall.args, observation_summary: summarizeObservation(observation), item_id: itemId });
+      const composed = composeReportFromRegistry({ question: String(message ?? ""), route, toolResults: [toolResult as ToolResult] });
+      answer = composed?.answer ?? summarizeDeterministicCloudObservation(observation);
+      pushLifecycle("answered", { source: "deterministic_cloud_tool", intent_code: route?.intent_code });
+      await this.recordTaskProgress({ user, claimedTask: taskContext.claimed, answer, plannerState });
+      const flatTraces = mergeStreams(streams);
+      return {
+        answer,
+        table: { rows: [] as JsonObject[], fields: [] as string[] },
+        debug: {
+          intent_code: route?.intent_code,
+          agentic: true,
+          deterministic_cloud_tool: true,
+          iterations: flatTraces.length,
+          traces: flatTraces,
+          streams,
+          planner_state: plannerState,
+          latency_ms: Date.now() - startedAt
+        },
+        toolPlan: { calls: streams.tool.filter((call) => call.type === "tool_call").map((call) => ({ name: String(call.tool ?? ""), args: call.args as JsonObject })) },
+        toolResults: executedToolResults
+      };
+    }
+
+    if (getAgenticFallbacks().some((fb) => fb.preferLocal === true && fb.matches(String(message ?? "")))) {
+      const localResult = await this.tryLocalAgenticFallback({ user, workspace, message, route, session, selectedDomain, streams, pushLifecycle, pushTool, pushToolStart });
+      if (localResult) return localResult;
+    }
+
     const apiKey = process.env.LLM_DECISION_API_KEY ?? process.env.LLM_API_KEY ?? process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      const localResult = await this.tryLocalAgenticFallback({ user, workspace, message, route, session, streams, pushLifecycle, pushTool, pushToolStart });
+      const localResult = await this.tryLocalAgenticFallback({ user, workspace, message, route, session, selectedDomain, streams, pushLifecycle, pushTool, pushToolStart });
       if (localResult) return localResult;
       pushLifecycle("fallback", { reason: "no_api_key" });
       return this.buildFallback({ message, route, reason: "未配置 LLM_API_KEY，agentic 直接兜底返回。", streams });
     }
 
     const conversation = [
-      { role: "system", content: this.buildSystemPrompt({ tools, user }) },
-      { role: "user", content: buildPlannerUserMessage({ message, plannerState }) }
+      { role: "system", content: this.buildSystemPrompt({ tools, user, route }) },
+      { role: "user", content: buildPlannerUserMessage({ message, plannerState, route }) }
     ];
 
     for (let step = 0; step < MAX_ITERATIONS; step += 1) {
@@ -321,7 +368,7 @@ export class AgenticHandler {
       if (stepErr) {
         lastError = stepErr instanceof Error ? stepErr.message : String(stepErr);
         pushLifecycle("step_failed", { step, error: lastError, attempts: attemptsUsed });
-        const localResult = await this.tryLocalAgenticFallback({ user, workspace, message, route, session, streams, pushLifecycle, pushTool, pushToolStart });
+        const localResult = await this.tryLocalAgenticFallback({ user, workspace, message, route, session, selectedDomain, streams, pushLifecycle, pushTool, pushToolStart });
         if (localResult) return localResult;
         break;
       }
@@ -342,7 +389,28 @@ export class AgenticHandler {
         break;
       }
       if (decision.action === "plan" || decision.action === "dag_plan") {
-        const dagResult = await this.executeDagPlan({ plan: decision.plan ?? decision.steps, user, workspace, session, step, pushLifecycle, pushTool, pushToolStart });
+        const planToolValidation = validateRoutePlanToolChoice(route, decision.plan ?? decision.steps);
+        if (planToolValidation.ok === false) {
+          pushLifecycle("route_tool_mismatch", {
+            step,
+            intent_code: route?.intent_code,
+            expected: planToolValidation.expected.tool_name,
+            actual: planToolValidation.actual
+          });
+          conversation.push({
+            role: "user",
+            content: JSON.stringify({
+              correction: "上一轮计划中的工具与当前业务路由不一致，请重新规划。",
+              route_intent: route?.intent_code,
+              required_first_tool: planToolValidation.expected.tool_name,
+              required_args: planToolValidation.expected.args,
+              rejected_tools: planToolValidation.actual,
+              instruction: "请返回 action=tool_call，tool_name 使用 required_first_tool，args 使用 required_args；不要直接 answer。你仍然是在 agentic loop 中自主重判，系统不会替你执行工具。"
+            }, null, 2)
+          });
+          continue;
+        }
+        const dagResult = await this.executeDagPlan({ plan: decision.plan ?? decision.steps, user, workspace, session, selectedDomain, step, pushLifecycle, pushTool, pushToolStart });
         if (!dagResult.ok) {
           lastError = dagResult.message;
           pushLifecycle("step_failed", { step, error: lastError });
@@ -363,16 +431,31 @@ export class AgenticHandler {
         continue;
       }
       if (decision.action === "tool_call") {
-        const calls = normalizeToolCalls(decision);
+        let calls = normalizeToolCalls(decision);
         if (!calls.length) {
           lastError = "agentic tool_call 缺少工具名";
           pushLifecycle("step_failed", { step, error: lastError });
           break;
         }
+        const routeToolValidation = validateRouteToolChoice(route, calls);
+        if (routeToolValidation.ok === false) {
+          pushLifecycle("route_tool_mismatch", {
+            step,
+            intent_code: route?.intent_code,
+            expected: routeToolValidation.expected.tool_name,
+            actual: routeToolValidation.actual
+          });
+          calls = [routeToolValidation.expected];
+          pushLifecycle("route_tool_enforced", {
+            step,
+            intent_code: route?.intent_code,
+            tool: routeToolValidation.expected.tool_name
+          });
+        }
         pushLifecycle("parallel_tools_started", { step, count: calls.length });
         const observations = await Promise.all(calls.map(async (call) => {
           const itemId = pushToolStart({ tool: call.tool_name, args: call.args, step });
-          const observation = await this.callTool({ callName: call.tool_name, args: call.args, user, workspace, session });
+          const observation = await this.callTool({ callName: call.tool_name, args: call.args, user, workspace, session, selectedDomain });
           return { call, observation, itemId };
         }));
         for (const { call, observation, itemId } of observations) {
@@ -431,12 +514,13 @@ export class AgenticHandler {
     };
   }
 
-  getAvailableTools({ user, workspace }: { user?: UserContext; workspace?: unknown }): AgenticToolView[] {
+  getAvailableTools({ user, workspace, selectedDomain }: { user?: UserContext; workspace?: unknown; selectedDomain?: string }): AgenticToolView[] {
     const list: AgenticToolView[] = [];
     // 1. intent.*
     for (const manifest of this.intentRegistry.listCodes()) {
       // 跨意图规划只暴露 intent_query / 聚合类（chitchat/agentic 不该被自己调用）
       if (manifest.handler_type !== "intent_query") continue;
+      if (!routeMatchesSelectedDomain(manifest, selectedDomain)) continue;
       list.push({
         name: `intent.${manifest.intent_code}`,
         kind: "intent",
@@ -456,6 +540,7 @@ export class AgenticHandler {
     if (this.toolRegistry?.list) {
       for (const tool of this.toolRegistry.list({ user, workspace }) ?? []) {
         if (!tool.metadata?.expose_to_agentic) continue;
+        if (!toolMatchesSelectedDomain(tool, selectedDomain)) continue;
         // tool.schema 是 JSON Schema（type=object, properties=...），转成统一的 {key:{type,description}}
         const params_schema: Record<string, { type?: string; description?: string }> = {};
         const props = tool.schema?.properties ?? {};
@@ -474,7 +559,7 @@ export class AgenticHandler {
     return list;
   }
 
-  buildSystemPrompt({ tools, user }: { tools: AgenticToolView[]; user?: UserContext }) {
+  buildSystemPrompt({ tools, user, route }: { tools: AgenticToolView[]; user?: UserContext; route?: Route }) {
     const toolLines = tools.map((t) => {
       const params = Object.entries(t.params_schema ?? {})
         .map(([k, s]) => `${k}(${s?.type ?? "string"})`)
@@ -485,6 +570,7 @@ export class AgenticHandler {
       "你是企业 agent 的跨意图规划器。当用户的问题需要组合多个查询、对比、归因、推理时由你处理。",
       "",
       `当前用户：${user?.name ?? "?"}（${user?.role ?? "?"}/${user?.department ?? "?"}）`,
+      `当前路由意图：${route?.intent_code ?? "unknown"}；路由参数：${JSON.stringify(route?.params ?? {})}`,
       "",
       "可用工具：",
       "- intent.* ：业务高级查询（按口径返回 rows/answer，先用它拿数据）。",
@@ -518,6 +604,12 @@ export class AgenticHandler {
       "6. 如果跨意图任务其实只需要单个 intent，仍然走单个 tool_call → answer 两步。",
       "7. 需要结构化 UI 展示时优先调用 tool.openui.lang.delegate；调用后不要再输出 Markdown 文案。",
       "8. 罕见情况：如果你强烈认为现有工具列表完全不够、需要某个全新能力，可以把 action 设为 propose_tool 并附 proposed_tool: {name, what_it_does, why_needed}（仅做记录，本期不会真执行；下一步你还得用现有工具或 answer）。绝大多数任务都不该走这条。",
+      "9. 云商品专用规则：当前路由意图为 cloud.master_data.impact_review 时，第一步必须调用 tool.cloud_master_data_impact_review；cloud.financial.commercialization_review 调用 tool.cloud_financial_commercialization_review；cloud.customer.explanation 调用 tool.cloud_customer_explanation；cloud.product_change.impact_review 调用 tool.cloud_product_change_impact_review；cloud.post_launch.health_check 调用 tool.cloud_post_launch_health_check；cloud.productization.readiness_review 调用 tool.cloud_productization_readiness_review；cloud.offer.design_review 调用 tool.cloud_offer_design_review；cloud.plan.entitlement_review 调用 tool.cloud_plan_entitlement_review；cloud.channel.publication_review 调用 tool.cloud_channel_publication_review；cloud.sre.launch_gate_review 调用 tool.cloud_sre_launch_gate_review；cloud.ipd.readiness_review 调用 tool.cloud_ipd_readiness_review；cloud.gtm.package_draft 调用 tool.cloud_gtm_package_draft；cloud.capacity.risk_review 调用 tool.cloud_capacity_risk_review；cloud.gmv.target_briefing 调用 tool.cloud_gmv_target_briefing；cloud.ops.incident_impact 调用 tool.cloud_ops_incident_business_impact；cloud.ops.degradation_plan 调用 tool.cloud_ops_degradation_plan；cloud.agent_plan.overage_policy 调用 tool.cloud_agent_plan_overage_policy；cloud.retrospective.template 调用 tool.cloud_retrospective_template；cloud.executive.briefing 调用 tool.cloud_executive_briefing，不要先用 intent.cloud.query.operations 单表查询；cloud.solution.recommendation 调用 tool.cloud_solution_recommendation；cloud.quote.self_service 调用 tool.cloud_self_service_quote；cloud.estimate.seedance_video_seconds 调用 tool.estimate_seedance_video_seconds；cloud.estimate.agent_plan_rounds 调用 tool.estimate_agent_plan_rounds；cloud.workflow.release_request 优先调用 tool.create_cloud_approval_summary 或 tool.simulate_cloud_closed_loop，不要调用 tool.cloud_solution_recommendation。",
+      "10. 云商品 OpenUI 展示规则：只要问题涉及经营、报价、估算、方案、上架、建模、风险、审批、流程、续约、账单、合同或客户自助询价，拿到云商品工具结果后必须优先调用 tool.openui.lang.delegate。委托后不要再输出 Markdown；如果确实不委托，最终回答也必须保持短、中文业务化、可直接给客户看。",
+      "11. 云商品展示契约：老板/管理者问题展示“结论、KPI、风险排序、影响金额/客户、负责人、下一步动作、证据来源、demo/mock 数据边界”；询价/销售问题展示“套餐/估算、公式、关键假设、报价边界、置信度”；IPD/上架问题展示“商品模型、购买页字段、IPD 检查点、缺口、负责人、下一步”；GTM 问题展示“目标客户、卖点、FAQ、销售话术、不可承诺项、报价前检查”；容量/SRE 问题展示“地域容量、健康度、限售/灰度建议、负责人”；运维事件问题展示“影响订单、GMV、客户、收入确认风险、回滚和客户沟通”；发布问题展示“字段清单、缺失项、风险、人审要求、审批摘要、回滚检查点”。",
+      "12. 云商品销售方案最终回答必须显式包含三个小节标题：关键假设、报价边界、置信度。云商品老板经营简报最终回答必须显式包含：结论、风险排序、影响金额/客户、负责人、下一步动作、证据来源、demo/mock 数据边界。",
+      "13. 最终回答必须面向业务用户，不得复制工具内部字段、筛选表达式或资源表名。禁止出现 severity=high、delay_hours>0、arr_at_risk_cny、owner_user_id、owner_team、metric_id、source_type、cloud_* 这类表达；要改写成“高严重度风险”“已经延期的阻塞项”“续约风险金额”“负责人”“负责团队”“经营指标样本/风险信号/流程任务”等中文业务话术。",
+      "14. “下一步动作”必须是可执行的人话动作，例如“请财务复核负责人今天内补齐价格证据并解除阻塞”；不要写成条件判断、字段过滤或查询规则。“证据来源”只写业务口径，例如“经营指标、风险信号、流程任务、续约机会”，不要写数据库/资源 ID。",
       "",
       createOpenUILangGenerationPrompt()
     ].join("\n");
@@ -555,11 +647,18 @@ export class AgenticHandler {
     return parseDecision(await response.json());
   }
 
-  async callTool({ callName, args, user, workspace, session }: { callName?: string; args?: JsonObject; user?: UserContext; workspace?: unknown; session?: Record<string, unknown> }): Promise<AgenticObservation> {
+  async callTool({ callName, args, user, workspace, session, selectedDomain }: { callName?: string; args?: JsonObject; user?: UserContext; workspace?: unknown; session?: Record<string, unknown>; selectedDomain?: string }): Promise<AgenticObservation> {
     if (callName?.startsWith("intent.")) {
       const intent_code = callName.slice("intent.".length);
       const manifest = this.intentRegistry.getCode(intent_code);
       if (!manifest) return { ok: false, error: "unknown_intent", message: `intent ${intent_code} 不存在` };
+      if (!routeMatchesSelectedDomain(manifest, selectedDomain)) {
+        return {
+          ok: false,
+          error: "domain_mismatch",
+          message: domainMismatchMessage({ selectedDomain, actualDomain: intentDomainId(intent_code), subject: intent_code }),
+        };
+      }
       const result = await this.intentQueryHandler.execute({
         user,
         workspace,
@@ -567,7 +666,8 @@ export class AgenticHandler {
         intent_code,
         params: args ?? {},
         route: { intent_code, params: args ?? {}, source: "agentic" },
-        session
+        session,
+        selectedDomain
       });
       return {
         ok: !Boolean(result.debug?.denied),
@@ -607,7 +707,7 @@ export class AgenticHandler {
       if (!tool.metadata?.expose_to_agentic) {
         return { ok: false, error: "tool_not_exposed", message: `tool ${underlying} 未授权 agentic 直接调用` };
       }
-      const result = await this.toolRegistry.execute({ name: underlying, args }, { user, workspace });
+      const result = await this.toolRegistry.execute({ name: underlying, args }, { user, workspace, selected_domain: selectedDomain });
       return normalizeObservation(result);
     }
     return { ok: false, error: "unknown_tool_namespace", message: `工具名 ${callName} 必须以 intent./skill./tool. 开头` };
@@ -619,6 +719,7 @@ export class AgenticHandler {
     message,
     route,
     session,
+    selectedDomain,
     streams,
     pushLifecycle,
     pushTool,
@@ -629,6 +730,7 @@ export class AgenticHandler {
     message?: string;
     route?: Route;
     session?: Record<string, unknown>;
+    selectedDomain?: string;
     streams: AgenticStreams;
     pushLifecycle: LifecyclePush;
     pushTool: StreamPush;
@@ -642,16 +744,39 @@ export class AgenticHandler {
     const fallbackCalls = matched.calls(text);
     const calls: AgenticToolCall[] = fallbackCalls.map((c) => ({ tool_name: c.tool_name, args: c.args }));
     pushLifecycle("local_fallback_started", { reason: matched.id });
+    const domainMismatch = calls.find((call) => !toolMatchesSelectedDomain({ name: normalizeToolName(call.tool_name), metadata: {} }, selectedDomain));
+    if (domainMismatch) {
+      const answer = domainMismatchMessage({ selectedDomain, actualDomain: "cloud_commodity", subject: "这个问题" });
+      pushLifecycle("fallback_domain_mismatch", { tool: domainMismatch.tool_name, selected_domain: selectedDomain });
+      const flatTraces = mergeStreams(streams);
+      return {
+        answer,
+        table: { rows: [] as JsonObject[], fields: [] as string[] },
+        debug: {
+          intent_code: route?.intent_code,
+          agentic: true,
+          local_fallback: true,
+          domain_mismatch: true,
+          fallback_id: matched.id,
+          iterations: flatTraces.length,
+          traces: flatTraces,
+          streams,
+        },
+        toolPlan: { calls: [] },
+        toolResults: []
+      };
+    }
     const observations: AgenticObservationItem[] = [];
     for (const [index, call] of calls.entries()) {
       const itemId = pushToolStart?.({ tool: call.tool_name, args: call.args as JsonValue, step: index });
-      const observation = await this.callTool({ callName: call.tool_name, args: call.args, user, workspace, session });
+      const observation = await this.callTool({ callName: call.tool_name, args: call.args, user, workspace, session, selectedDomain });
       observations.push({ call, observation });
       pushTool({ step: index, type: "tool_call", tool: call.tool_name, args: call.args, observation_summary: summarizeObservation(observation), item_id: itemId });
     }
     const answer = matched.composeAnswer(observations.map((item) => ({
       call: item.call,
       answer: typeof item.observation?.answer === "string" ? item.observation.answer : undefined,
+      observation: item.observation as JsonObject,
     })));
     const flatTraces = mergeStreams(streams);
     pushLifecycle("answered", { source: "local_agentic_fallback" });
@@ -678,11 +803,12 @@ export class AgenticHandler {
     };
   }
 
-  async executeDagPlan({ plan, user, workspace, session, step, pushLifecycle, pushTool, pushToolStart }: {
+  async executeDagPlan({ plan, user, workspace, session, selectedDomain, step, pushLifecycle, pushTool, pushToolStart }: {
     plan?: unknown;
     user?: UserContext;
     workspace?: unknown;
     session?: Record<string, unknown>;
+    selectedDomain?: string;
     step: number;
     pushLifecycle: LifecyclePush;
     pushTool: StreamPush;
@@ -700,7 +826,7 @@ export class AgenticHandler {
       const waveResults = await Promise.all(ready.map(async (node) => {
         const args = resolveDagArgs(node.args, completed);
         const itemId = pushToolStart?.({ tool: node.tool_name, args: args as JsonValue, step, dagNode: node.id });
-        const observation = await this.callTool({ callName: node.tool_name, args, user, workspace, session });
+        const observation = await this.callTool({ callName: node.tool_name, args, user, workspace, session, selectedDomain });
         return { call: { tool_name: node.tool_name, args, id: node.id }, observation, itemId };
       }));
       for (const result of waveResults) {
@@ -793,15 +919,23 @@ function createInitialPlannerState(message: unknown): PlannerState {
   };
 }
 
-function buildPlannerUserMessage({ message, plannerState }: { message?: string; plannerState: PlannerState }): string {
+function buildPlannerUserMessage({ message, plannerState, route }: { message?: string; plannerState: PlannerState; route?: Route }): string {
+  const cloudToolHint = deterministicCloudToolCall(route?.intent_code, route?.params ?? {});
   return JSON.stringify({
     user_request: message,
+    route_hint: route ? {
+      intent_code: route.intent_code,
+      params: route.params ?? {},
+      source: route.source ?? null,
+      recommended_first_tool: cloudToolHint?.tool_name ?? null,
+      recommended_args: cloudToolHint?.args ?? null
+    } : null,
     planner_state: plannerState,
     continuity_summary: plannerState.claimed_task ? createTaskContinuitySummary(plannerState.claimed_task) : null,
     task_instruction: plannerState.claimed_task
       ? "你已经恢复了一个相关长程任务。回答开头应自然承接：说明恢复到哪个任务、当前进度/next_action、接下来要做什么；然后继续执行。必要时调用 task.update/task.complete。"
       : "如用户表达继续上次、刚才那个、长期跟进，请优先使用 task.retrieve 找到相关任务。",
-    instruction: "请先判断是否需要工具。多个独立查询可以在同一轮用 tools 数组并发返回。"
+    instruction: "请先判断是否需要工具。多个独立查询可以在同一轮用 tools 数组并发返回。若 route_hint.recommended_first_tool 非空，除非用户问题明显不匹配，否则第一轮应调用该工具；这仍然是 agentic loop 决策，不是系统代你执行。"
   }, null, 2);
 }
 
@@ -846,6 +980,184 @@ function normalizeToolCalls(decision: AgenticDecision): AgenticToolCall[] {
       };
     })
     .filter((item): item is AgenticToolCall => Boolean(item.tool_name));
+}
+
+function validateRouteToolChoice(route: Route | undefined, calls: AgenticToolCall[]): { ok: true } | { ok: false; expected: AgenticToolCall; actual: string[] } {
+  const expected = deterministicCloudToolCall(route?.intent_code, route?.params ?? {});
+  if (!expected || !calls.length) return { ok: true };
+  const expectedName = normalizeToolName(expected.tool_name);
+  const matches = calls.some((call) => normalizeToolName(call.tool_name) === expectedName);
+  if (matches) return { ok: true };
+  return { ok: false, expected, actual: calls.map((call) => call.tool_name) };
+}
+
+function validateRoutePlanToolChoice(route: Route | undefined, plan: unknown): { ok: true } | { ok: false; expected: AgenticToolCall; actual: string[] } {
+  const nodes = normalizeDagPlan(plan);
+  return validateRouteToolChoice(route, nodes.map((node) => ({ tool_name: node.tool_name, args: node.args })));
+}
+
+function normalizeToolName(name: string): string {
+  return name.replace(/^tool\./, "");
+}
+
+function deterministicCloudToolCall(intentCode: string | undefined, params: JsonObject): AgenticToolCall | null {
+  const productCode = typeof params.product_code === "string" ? params.product_code : "SEEDANCE";
+  const releaseRequestId = typeof params.release_request_id === "string" ? params.release_request_id : "rel_seedance_mini_selfserve_202606";
+  const period = typeof params.period === "string" ? params.period : "2026-06";
+  const calls: Record<string, AgenticToolCall> = {
+    "cloud.master_data.impact_review": {
+      tool_name: "tool.cloud_master_data_impact_review",
+      args: { product_code: productCode, field_name: typeof params.field_name === "string" ? params.field_name : undefined }
+    },
+    "cloud.financial.commercialization_review": {
+      tool_name: "tool.cloud_financial_commercialization_review",
+      args: { product_code: productCode }
+    },
+    "cloud.customer.explanation": {
+      tool_name: "tool.cloud_customer_explanation",
+      args: { product_code: productCode, scenario: typeof params.scenario === "string" ? params.scenario : undefined }
+    },
+    "cloud.product_change.impact_review": {
+      tool_name: "tool.cloud_product_change_impact_review",
+      args: { product_code: productCode, change_id: typeof params.change_id === "string" ? params.change_id : undefined }
+    },
+    "cloud.post_launch.health_check": {
+      tool_name: "tool.cloud_post_launch_health_check",
+      args: { product_code: productCode, release_request_id: releaseRequestId }
+    },
+    "cloud.productization.readiness_review": {
+      tool_name: "tool.cloud_productization_readiness_review",
+      args: { product_code: productCode }
+    },
+    "cloud.offer.design_review": {
+      tool_name: "tool.cloud_offer_design_review",
+      args: { product_code: productCode }
+    },
+    "cloud.plan.entitlement_review": {
+      tool_name: "tool.cloud_plan_entitlement_review",
+      args: { product_code: productCode }
+    },
+    "cloud.channel.publication_review": {
+      tool_name: "tool.cloud_channel_publication_review",
+      args: { product_code: productCode }
+    },
+    "cloud.sre.launch_gate_review": {
+      tool_name: "tool.cloud_sre_launch_gate_review",
+      args: { product_code: productCode, release_request_id: releaseRequestId }
+    },
+    "cloud.ipd.readiness_review": {
+      tool_name: "tool.cloud_ipd_readiness_review",
+      args: { product_code: productCode, release_request_id: releaseRequestId }
+    },
+    "cloud.gtm.package_draft": {
+      tool_name: "tool.cloud_gtm_package_draft",
+      args: {
+        product_code: productCode,
+        industry: typeof params.industry === "string" ? params.industry : undefined,
+        customer_segment: typeof params.customer_segment === "string" ? params.customer_segment : undefined
+      }
+    },
+    "cloud.capacity.risk_review": {
+      tool_name: "tool.cloud_capacity_risk_review",
+      args: {
+        product_code: productCode,
+        region_id: typeof params.region_id === "string" ? params.region_id : undefined,
+        release_request_id: releaseRequestId
+      }
+    },
+    "cloud.gmv.target_briefing": {
+      tool_name: "tool.cloud_gmv_target_briefing",
+      args: { product_code: productCode, period }
+    },
+    "cloud.ops.incident_impact": {
+      tool_name: "tool.cloud_ops_incident_business_impact",
+      args: {
+        product_code: productCode,
+        incident_id: typeof params.incident_id === "string" ? params.incident_id : "inc_ecs_gpu_sg_delay_001"
+      }
+    },
+    "cloud.executive.briefing": {
+      tool_name: "tool.cloud_executive_briefing",
+      args: { focus: typeof params.focus === "string" ? params.focus : "risk_workflow_renewal" }
+    },
+    "cloud.modeling.product_to_commodity": {
+      tool_name: "tool.cloud_product_model_draft",
+      args: {
+        product_code: typeof params.product_code === "string" ? params.product_code : undefined,
+        product_name: typeof params.product_name === "string" ? params.product_name : undefined,
+        product_description: typeof params.product_description === "string" ? params.product_description : undefined
+      }
+    },
+    "cloud.solution.recommendation": {
+      tool_name: "tool.cloud_solution_recommendation",
+      args: {
+        industry: typeof params.industry === "string" ? params.industry : undefined,
+        budget_cny: typeof params.budget_cny === "number" ? params.budget_cny : undefined,
+        needs: Array.isArray(params.needs) ? params.needs : undefined,
+        customer_id: typeof params.customer_id === "string" ? params.customer_id : undefined
+      }
+    },
+    "cloud.quote.self_service": {
+      tool_name: "tool.cloud_self_service_quote",
+      args: {
+        budget_cny: typeof params.budget_cny === "number" ? params.budget_cny : 10000,
+        quality: typeof params.quality === "string" ? params.quality : "720p_standard",
+        target_duration_seconds: typeof params.target_duration_seconds === "number" ? params.target_duration_seconds : 5,
+        package_id: typeof params.package_id === "string" ? params.package_id : "agent_plan_medium",
+        scenario_type: typeof params.scenario_type === "string" ? params.scenario_type : "agent_with_search",
+        customer_id: typeof params.customer_id === "string" ? params.customer_id : undefined
+      }
+    },
+    "cloud.estimate.seedance_video_seconds": {
+      tool_name: "tool.estimate_seedance_video_seconds",
+      args: {
+        budget_cny: typeof params.budget_cny === "number" ? params.budget_cny : 10000,
+        quality: typeof params.quality === "string" ? params.quality : "720p_standard",
+        target_duration_seconds: typeof params.target_duration_seconds === "number" ? params.target_duration_seconds : 5,
+        customer_id: typeof params.customer_id === "string" ? params.customer_id : undefined
+      }
+    },
+    "cloud.estimate.agent_plan_rounds": {
+      tool_name: "tool.estimate_agent_plan_rounds",
+      args: {
+        package_id: typeof params.package_id === "string" ? params.package_id : "agent_plan_medium",
+        scenario_type: typeof params.scenario_type === "string" ? params.scenario_type : undefined,
+        extra_budget_cny: typeof params.extra_budget_cny === "number" ? params.extra_budget_cny : undefined
+      }
+    },
+    "cloud.ops.degradation_plan": {
+      tool_name: "tool.cloud_ops_degradation_plan",
+      args: { product_code: productCode }
+    },
+    "cloud.agent_plan.overage_policy": {
+      tool_name: "tool.cloud_agent_plan_overage_policy",
+      args: {}
+    },
+    "cloud.retrospective.template": {
+      tool_name: "tool.cloud_retrospective_template",
+      args: { product_code: productCode }
+    },
+    "cloud.risk.release_review": {
+      tool_name: "tool.cloud_release_risk_review",
+      args: { release_request_id: releaseRequestId }
+    },
+    "cloud.workflow.release_request": {
+      tool_name: "tool.create_cloud_approval_summary",
+      args: { release_request_id: releaseRequestId }
+    }
+  };
+  return intentCode ? calls[intentCode] ?? null : null;
+}
+
+function shouldUseDeterministicCloudShortcut(): boolean {
+  return /^(1|true|yes)$/i.test(process.env.CLOUD_AGENTIC_DETERMINISTIC_SHORTCUT ?? "");
+}
+
+function summarizeDeterministicCloudObservation(observation: Record<string, unknown>): string {
+  if (observation.ok === false) {
+    return `云商品工具执行失败：${String(observation.message ?? observation.error ?? "未知错误")}`;
+  }
+  return "已完成云商品业务分析。该结果来自演示数据和估算假设，不代表正式价格、库存、SLA 或生产变更。";
 }
 
 function normalizeDagPlan(plan: unknown): DagNode[] {

@@ -1,6 +1,6 @@
 import { summarizeUser } from "../auth/users.js";
 import { appendAuditEvent, appendConversationLog } from "../logs/logger.js";
-import { getRuntimeRegistry, inferSkillFromRegistry, getIntentForIntentCode } from "../domains/runtime-registry.js";
+import { composeReportFromRegistry, getRuntimeRegistry, inferSkillFromRegistry, getIntentForIntentCode } from "../domains/runtime-registry.js";
 
 const RECENT_MESSAGES_LIMIT = 5;
 const RECENT_ROUTES_LIMIT = 3;
@@ -43,6 +43,7 @@ import { checkToolPermission } from "../auth/permissions.js";
 import { INTENTS } from "./ports.js";
 import { createDefaultSessionId } from "./session-store.js";
 import { decideOpenUILangEligibility, isOpenUILangDelegateToolResult } from "../openui-lang/index.js";
+import { normalizeSelectedDomain } from "../domains/domain-isolation.js";
 import type { AgentSession, SessionHistoryItem } from "./session-store.js";
 import type { AgentStep } from "../runtime/agent-events.js";
 import type { JsonObject, JsonValue, Route, ToolCall, ToolPlan, ToolResult, UserContext } from "../types/agent-contracts.js";
@@ -58,6 +59,7 @@ interface RunInput {
   userContext?: Record<string, unknown>;
   wecomUserId?: string;
   message: string;
+  domainId?: string;
   sessionId?: string;
   runId?: string;
   debug?: boolean;
@@ -129,6 +131,7 @@ interface FlowInput {
   debug: boolean;
   startedAt: number;
   runId?: string;
+  selectedDomain?: string;
 }
 
 interface StreamFlowInput extends FlowInput {
@@ -240,15 +243,17 @@ export class SimpleWorkflowOrchestrator {
     });
   }
 
-  async run({ userId, userContext, wecomUserId, message, sessionId, runId, debug = false }: RunInput) {
+  async run({ userId, userContext, wecomUserId, message, domainId, sessionId, runId, debug = false }: RunInput) {
     const startedAt = Date.now();
     const resolvedRunId = runId ?? createRunId();
     const user = await this.userContextResolver.resolve({ userId, userContext, wecomUserId });
     const workspace = resolveUserWorkspace(user);
+    const selectedDomain = normalizeSelectedDomain(domainId ?? userContext?.domain_id ?? userContext?.selected_domain) ?? undefined;
     await this.hooks.emit("turn_start", { user_id: user.id, session_id: sessionId ?? createDefaultSessionId(user.id), run_id: resolvedRunId, message });
     const resolvedSessionId = sessionId ?? createDefaultSessionId(user.id);
     const enterpriseContext = await this.loadEnterpriseContext(user, workspace, message, resolvedSessionId);
     const session = await this.sessionStore.get(resolvedSessionId, workspace);
+    applySessionDomainBoundary(session, selectedDomain);
     session.owner_user_id = user.id;
     const conversationContext = buildConversationContext({ session, currentMessage: message, enterpriseContext });
 
@@ -293,6 +298,7 @@ export class SimpleWorkflowOrchestrator {
         message,
         now: nowDate.toISOString(),
         user_context: { user_id: user.id, name: user.name, department: user.department, role: user.role, permissions: user.permissions },
+        selected_domain: selectedDomain,
         session_state: {
           active_intent_code: session?.active_intent_code,
           last_route: session?.last_route ?? null,
@@ -315,12 +321,12 @@ export class SimpleWorkflowOrchestrator {
     if (isControlledExecution(routerResult)) {
       const controlledResult = await this.runControlledExecution({
         user, workspace, message, sessionId: resolvedSessionId, session, route: routerResult,
-        enterpriseContext, conversationContext, debug, startedAt, runId: resolvedRunId
+        enterpriseContext, conversationContext, debug, startedAt, runId: resolvedRunId, selectedDomain
       });
       if (controlledResult) return controlledResult;
     }
     if (isAutonomousPlanning(routerResult) && this.agenticHandler) {
-      return this.runAgentic({ user, workspace, message, sessionId: resolvedSessionId, session, route: routerResult, enterpriseContext, conversationContext, debug, startedAt, runId: resolvedRunId });
+      return this.runAgentic({ user, workspace, message, sessionId: resolvedSessionId, session, route: routerResult, enterpriseContext, conversationContext, debug, startedAt, runId: resolvedRunId, selectedDomain });
     }
     return this.finishRouterError({
       user, workspace, sessionId: resolvedSessionId, message, session, enterpriseContext, conversationContext, debug, startedAt, runId: resolvedRunId,
@@ -329,15 +335,17 @@ export class SimpleWorkflowOrchestrator {
     });
   }
 
-  async runStream({ userId, userContext, wecomUserId, message, sessionId, runId, debug = false, onEvent }: RunStreamInput) {
+  async runStream({ userId, userContext, wecomUserId, message, domainId, sessionId, runId, debug = false, onEvent }: RunStreamInput) {
     const startedAt = Date.now();
     const resolvedRunId = runId ?? createRunId();
     const user = await this.userContextResolver.resolve({ userId, userContext, wecomUserId });
     const workspace = resolveUserWorkspace(user);
+    const selectedDomain = normalizeSelectedDomain(domainId ?? userContext?.domain_id ?? userContext?.selected_domain) ?? undefined;
     await this.hooks.emit("turn_start", { user_id: user.id, session_id: sessionId ?? createDefaultSessionId(user.id), run_id: resolvedRunId, message });
     const resolvedSessionId = sessionId ?? createDefaultSessionId(user.id);
     const enterpriseContext = await this.loadEnterpriseContext(user, workspace, message, resolvedSessionId);
     const session = await this.sessionStore.get(resolvedSessionId, workspace);
+    applySessionDomainBoundary(session, selectedDomain);
     session.owner_user_id = user.id;
     const conversationContext = buildConversationContext({ session, currentMessage: message, enterpriseContext });
 
@@ -396,6 +404,7 @@ export class SimpleWorkflowOrchestrator {
         message,
         now: nowDate.toISOString(),
         user_context: { user_id: user.id, name: user.name, department: user.department, role: user.role, permissions: user.permissions },
+        selected_domain: selectedDomain,
         session_state: {
           active_intent_code: session?.active_intent_code,
           last_route: session?.last_route ?? null,
@@ -418,14 +427,14 @@ export class SimpleWorkflowOrchestrator {
     if (isControlledExecution(routerResult)) {
       const controlledResult = await this.runControlledExecutionStream({
         user, workspace, message, sessionId: resolvedSessionId, session, route: routerResult,
-        enterpriseContext, conversationContext, debug, startedAt, runId: resolvedRunId, emit, pushStep, visibleSteps
+        enterpriseContext, conversationContext, debug, startedAt, runId: resolvedRunId, selectedDomain, emit, pushStep, visibleSteps
       });
       if (controlledResult) return controlledResult;
     }
     if (isAutonomousPlanning(routerResult) && this.agenticHandler) {
       return this.runAgenticStream({
         user, workspace, message, sessionId: resolvedSessionId, session, route: routerResult,
-        enterpriseContext, conversationContext, debug, startedAt, runId: resolvedRunId, emit, pushStep, visibleSteps
+        enterpriseContext, conversationContext, debug, startedAt, runId: resolvedRunId, selectedDomain, emit, pushStep, visibleSteps
       });
     }
     return this.finishRouterErrorStream({
@@ -486,27 +495,27 @@ export class SimpleWorkflowOrchestrator {
     });
   }
 
-  async runControlledExecution({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId }: FlowInput) {
+  async runControlledExecution({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId, selectedDomain }: FlowInput) {
     if (route.handler_type === "intent_query" && this.intentQueryHandler) {
-      return this.runIntentQuery({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId });
+      return this.runIntentQuery({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId, selectedDomain });
     }
     if (route.handler_type === "chitchat" && this.chitchatHandler) {
       return this.runChitchat({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId });
     }
     if (route.handler_type === "knowledge_lookup") {
-      return this.runKnowledgeLookup({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId });
+      return this.runKnowledgeLookup({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId, selectedDomain });
     }
     if (route.handler_type === "workflow") {
       const workflowIntent = resolveWorkflowIntent(route);
       if (workflowIntent && this.workflowRunner.hasWorkflow(workflowIntent)) {
         const enrichedRoute = { ...route, intent: workflowIntent };
-        return this.runWorkflowFromIntentRouter({ user, workspace, message, sessionId, session, route: enrichedRoute, enterpriseContext, conversationContext, debug, startedAt, runId });
+        return this.runWorkflowFromIntentRouter({ user, workspace, message, sessionId, session, route: enrichedRoute, enterpriseContext, conversationContext, debug, startedAt, runId, selectedDomain });
       }
     }
     return null;
   }
 
-  async runControlledExecutionStream({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId, emit, pushStep, visibleSteps }: StreamFlowInput) {
+  async runControlledExecutionStream({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId, selectedDomain, emit, pushStep, visibleSteps }: StreamFlowInput) {
     await pushStep(createAgentStep("classify_intent", "识别任务类型", `Router 判定为 ${route.execution_class}/${route.handler_type}（${route.intent_code}, source=${route.source}）。`));
     await emit({ type: "route", route });
 
@@ -518,7 +527,8 @@ export class SimpleWorkflowOrchestrator {
         intent_code: route.intent_code,
         params: route.params ?? {},
         route,
-        session
+        session,
+        selectedDomain
       });
       const legacyRoute = buildLegacyRoute(route, {
         reason: route.reasoning ?? "Intent Router → controlled_execution/intent_query"
@@ -619,22 +629,22 @@ export class SimpleWorkflowOrchestrator {
     }
 
     if (route.handler_type === "knowledge_lookup") {
-      return this.runKnowledgeLookupStream({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId, emit, pushStep, visibleSteps });
+      return this.runKnowledgeLookupStream({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId, selectedDomain, emit, pushStep, visibleSteps });
     }
 
     if (route.handler_type === "workflow") {
       const workflowIntent = resolveWorkflowIntent(route);
       if (workflowIntent && this.workflowRunner.hasWorkflow(workflowIntent)) {
         const enrichedRoute = { ...route, intent: workflowIntent };
-        return this.runWorkflowFromIntentRouterStream({ user, workspace, message, sessionId, session, route: enrichedRoute, enterpriseContext, conversationContext, debug, startedAt, runId, emit, pushStep, visibleSteps });
+        return this.runWorkflowFromIntentRouterStream({ user, workspace, message, sessionId, session, route: enrichedRoute, enterpriseContext, conversationContext, debug, startedAt, runId, selectedDomain, emit, pushStep, visibleSteps });
       }
     }
 
     return null;
   }
 
-  async runKnowledgeLookup({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId }: FlowInput) {
-    const result = await this.executeKnowledgeLookup({ user, workspace, message, sessionId, runId, route, enterpriseContext, conversationContext });
+  async runKnowledgeLookup({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId, selectedDomain }: FlowInput) {
+    const result = await this.executeKnowledgeLookup({ user, workspace, message, sessionId, runId, route, enterpriseContext, conversationContext, selectedDomain });
     const legacyRoute = createLegacyKnowledgeRoute(route);
     const agentSteps = [
       createIdentifyUserStep(user),
@@ -667,10 +677,10 @@ export class SimpleWorkflowOrchestrator {
     });
   }
 
-  async runKnowledgeLookupStream({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId, emit, pushStep, visibleSteps }: StreamFlowInput) {
+  async runKnowledgeLookupStream({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId, selectedDomain, emit, pushStep, visibleSteps }: StreamFlowInput) {
     await pushStep(createAgentStep("classify_intent", "识别任务类型", `Router 判定为 ${route.execution_class}/${route.handler_type}（${route.intent_code}, source=${route.source}）。`));
     await emit({ type: "route", route });
-    const result = await this.executeKnowledgeLookup({ user, workspace, message, sessionId, runId, route, enterpriseContext, conversationContext });
+    const result = await this.executeKnowledgeLookup({ user, workspace, message, sessionId, runId, route, enterpriseContext, conversationContext, selectedDomain });
     for (const step of createToolSteps(result.toolPlan, result.toolResults)) {
       await pushStep(step);
     }
@@ -701,12 +711,12 @@ export class SimpleWorkflowOrchestrator {
     });
   }
 
-  async executeKnowledgeLookup({ user, workspace, message, sessionId, runId, route, enterpriseContext, conversationContext }: Pick<FlowInput, "user" | "workspace" | "message" | "sessionId" | "runId" | "route" | "enterpriseContext" | "conversationContext">): Promise<KnowledgeLookupResult> {
+  async executeKnowledgeLookup({ user, workspace, message, sessionId, runId, route, enterpriseContext, conversationContext, selectedDomain }: Pick<FlowInput, "user" | "workspace" | "message" | "sessionId" | "runId" | "route" | "enterpriseContext" | "conversationContext" | "selectedDomain">): Promise<KnowledgeLookupResult> {
     const query = typeof route.params?.query === "string" && route.params.query.trim() ? route.params.query.trim() : message;
     const call = { name: "retrieve_knowledge", args: { query, topK: 5 } };
     const permission = await checkToolPermission(user, call);
     const toolResult = normalizeToolResult(permission.allow
-      ? await this.toolRegistry.execute(call, { user, workspace, session_id: sessionId, run_id: runId })
+      ? await this.toolRegistry.execute(call, { user, workspace, session_id: sessionId, run_id: runId, selected_domain: selectedDomain })
       : { ok: false, tool: call.name, error: "permission_denied", code: permission.code, message: permission.message }
     );
     const toolResults = [toolResult];
@@ -786,7 +796,7 @@ export class SimpleWorkflowOrchestrator {
     });
   }
 
-  async runIntentQuery({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId }: FlowInput) {
+  async runIntentQuery({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId, selectedDomain }: FlowInput) {
     const handlerResult = await this.intentQueryHandler.execute({
       user,
       workspace,
@@ -794,7 +804,8 @@ export class SimpleWorkflowOrchestrator {
       intent_code: route.intent_code,
       params: route.params ?? {},
       route,
-      session
+      session,
+      selectedDomain
     });
     // 保留 legacy intent 字符串，兼容下游历史字段。
     const legacyRoute = buildLegacyRoute(route, {
@@ -873,8 +884,8 @@ export class SimpleWorkflowOrchestrator {
     });
   }
 
-  async runAgentic({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId }: FlowInput) {
-    const handlerResult = normalizeAgenticResult(await this.agenticHandler.execute({ user, workspace, message, route, session }));
+  async runAgentic({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId, selectedDomain }: FlowInput) {
+    const handlerResult = normalizeAgenticResult(await this.agenticHandler.execute({ user, workspace, message, route, session, selectedDomain }));
     if (session) {
       // agentic 走完不更新 last_query_route——它可能跨多个 intent，没有单一"这一次的查询"
       session.last_route = { intent_code: route.intent_code, params: route.params ?? {}, ts: new Date().toISOString() };
@@ -913,7 +924,7 @@ export class SimpleWorkflowOrchestrator {
 
   // 流式版本的 agentic：与 runAgentic 等价，但把 handler 内部的三流事件实时推到 SSE，
   // 同时也保留 pushStep 的兼容流（旧 chat-page.js 是按 pushStep 渲染的）。
-  async runAgenticStream({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId, emit, pushStep, visibleSteps }: StreamFlowInput) {
+  async runAgenticStream({ user, workspace, message, sessionId, session, route, enterpriseContext, conversationContext, debug, startedAt, runId, selectedDomain, emit, pushStep, visibleSteps }: StreamFlowInput) {
     await pushStep(createAgentStep("classify_intent", "识别任务类型", `Router 判定为 agentic（${route.intent_code}, source=${route.source}）。`));
     await emit({ type: "route", route });
 
@@ -931,7 +942,7 @@ export class SimpleWorkflowOrchestrator {
       }
     };
 
-    const handlerResult = normalizeAgenticResult(await this.agenticHandler.execute({ user, workspace, message, route, session, onEmit }));
+    const handlerResult = normalizeAgenticResult(await this.agenticHandler.execute({ user, workspace, message, route, session, selectedDomain, onEmit }));
     if (session) {
       session.last_route = { intent_code: route.intent_code, params: route.params ?? {}, ts: new Date().toISOString() };
     }
@@ -997,8 +1008,10 @@ export class SimpleWorkflowOrchestrator {
 
   async finish({ user, workspace, sessionId, message, route, docs, toolPlan, toolResults, answer, artifacts = [], scenarioDebug, agentSteps = [], agentState, enterpriseContext, conversationContext, skills = [], selectedSkill, session, debug, startedAt, runId, agenticDebug }: FinishInput) {
     const effectiveSelectedSkill = selectedSkill ?? inferSelectedSkillFromRoute(route);
+    const selectedDomain = typeof session?.domain_id === "string" ? session.domain_id : undefined;
     const openuiDelegated = hasOpenUILangDelegateResult(toolResults);
-    const finalAnswer = openuiDelegated ? "" : answer;
+    const composed = composeReportFromRegistry({ question: message, route, toolResults: toolResults.filter((result) => result.ok) });
+    const finalAnswer = openuiDelegated ? "" : sanitizeCloudVisibleAnswer(composed?.answer ?? answer, route, toolResults);
     const openuiLangDecision = createOpenUILangDecision({ message, answer: finalAnswer, toolResults });
     const output: Record<string, unknown> = {
       session_id: sessionId,
@@ -1008,6 +1021,7 @@ export class SimpleWorkflowOrchestrator {
       pending_actions: extractPendingActions(toolResults),
       artifacts,
       _openui_lang_context: normalizeJsonValue({
+        selected_domain: selectedDomain,
         route,
         tool_calls: toolPlan.calls,
         tool_results: toolResults,
@@ -1020,6 +1034,7 @@ export class SimpleWorkflowOrchestrator {
     const scenarioRecord = scenarioDebug && typeof scenarioDebug === "object" ? scenarioDebug as Record<string, unknown> : {};
     const rawDebugInfo = {
       user: summarizeUser(user),
+      selected_domain: selectedDomain,
       intent: route.intent,
       route,
       selected_skill: effectiveSelectedSkill?.id ?? null,
@@ -1125,7 +1140,8 @@ export class SimpleWorkflowOrchestrator {
     agenticDebug,
     answerAlreadyStreamed = false
   }: FinishStreamInput) {
-    const finalAnswer = hasOpenUILangDelegateResult(toolResults) ? "" : answer;
+    const composed = composeReportFromRegistry({ question: message, route, toolResults: toolResults.filter((result) => result.ok) });
+    const finalAnswer = hasOpenUILangDelegateResult(toolResults) ? "" : sanitizeCloudVisibleAnswer(composed?.answer ?? answer, route, toolResults);
     if (!answerAlreadyStreamed) {
       for (const token of splitForStreaming(finalAnswer)) {
         await emit({ type: "delta", text: token });
@@ -1603,6 +1619,49 @@ function createOpenUILangDecision({ message, answer, toolResults }: { message: s
   return normalizeJsonValue(decideOpenUILangEligibility({ message, answer, rows })) as JsonObject;
 }
 
+function sanitizeCloudVisibleAnswer(answer: string, route: Route | LegacyRoute, toolResults: ToolResult[]): string {
+  if (!isCloudTurn(route, toolResults)) return answer;
+  return answer
+    .replace(/\bseverity\s*=\s*high\b/gi, "高严重度风险")
+    .replace(/\bdelay_hours\s*>\s*0\b/gi, "已延期阻塞项")
+    .replace(/\barr_at_risk_cny\b/g, "续约风险金额")
+    .replace(/\bowner_user_id\b/g, "负责人")
+    .replace(/\bowner_team\b/g, "负责团队")
+    .replace(/\bmetric_id\b/g, "指标")
+    .replace(/\bsource_type\b/g, "来源类型")
+    .replace(/\bcloud_operating_metrics\b/g, "经营指标")
+    .replace(/\bcloud_risk_signals\b/g, "风险信号")
+    .replace(/\bcloud_workflow_tasks\b/g, "流程任务")
+    .replace(/\bcloud_renewal_opportunities\b/g, "续约机会")
+    .replace(/\bcloud_source_refs\b/g, "来源引用")
+    .replace(/\bnet_budget\b/g, "可用预算")
+    .replace(/\bbudget\b/g, "预算")
+    .replace(/\bstorage_cdn_cost\b/g, "存储和分发预估成本")
+    .replace(/\bdiscount\b/g, "合同折扣")
+    .replace(/\bprice_per_1k_tokens\b/g, "千 token 价格")
+    .replace(/\btoken_per_second\b/g, "每秒 token 消耗")
+    .replace(/\beffective_ratio\b/g, "有效产出比例")
+    .replace(/\bafp_quota\b/g, "AFP 套餐额度")
+    .replace(/\bextra_budget\b/g, "追加预算")
+    .replace(/\boverage_price\b/g, "超额单价")
+    .replace(/\bsafety_buffer\b/g, "安全缓冲")
+    .replace(/\bturn_afp\b/g, "每轮 AFP 消耗")
+    .replace(/\bretry\b/g, "重试损耗")
+    .replace(/\bmoderation\b/g, "内容安全审核损耗")
+    .replace(/\bsafety\b/g, "安全余量")
+    .replace(/\bsku_agent_plan_medium\b/g, "Agent Plan Medium 套餐");
+}
+
+function isCloudTurn(route: Route | LegacyRoute, toolResults: ToolResult[]): boolean {
+  const intentCode = String(route.intent_code ?? "");
+  if (intentCode.startsWith("cloud.")) return true;
+  return toolResults.some((result) => {
+    const tool = String(result.tool ?? "");
+    const resource = String((result as JsonObject).resource ?? readPath(result, ["data", "resource"]) ?? "");
+    return tool.includes("cloud_") || tool.includes("cloud.") || resource.startsWith("cloud_");
+  });
+}
+
 function firstStructuredRows(toolResults: ToolResult[]): JsonObject[] {
   for (const result of toolResults) {
     const rows = readRowsFromToolResult(result);
@@ -1629,6 +1688,28 @@ function readJsonObjectArray(value: unknown): JsonObject[] {
   return Array.isArray(value)
     ? value.filter((item): item is JsonObject => Boolean(item) && typeof item === "object" && !Array.isArray(item))
     : [];
+}
+
+function readPath(value: unknown, path: string[]): unknown {
+  let cursor: unknown = value;
+  for (const key of path) {
+    if (!cursor || typeof cursor !== "object" || Array.isArray(cursor)) return undefined;
+    cursor = (cursor as Record<string, unknown>)[key];
+  }
+  return cursor;
+}
+
+function applySessionDomainBoundary(session: AgentSession, selectedDomain?: string): void {
+  if (!selectedDomain) return;
+  const previous = typeof session.domain_id === "string" ? session.domain_id : null;
+  if (previous && previous !== selectedDomain) {
+    delete session.active_intent_code;
+    delete session.last_route;
+    delete session.last_query_route;
+    delete session.recent_routes;
+    delete session.recent_messages;
+  }
+  session.domain_id = selectedDomain;
 }
 
 function summarizeHistoryText(text: unknown, maxLength = 500): string {

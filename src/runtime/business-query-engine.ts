@@ -10,11 +10,11 @@ import { getAttachmentStore } from "../attachments/index.js";
 import type { AttachmentContext } from "../attachments/index.js";
 
 interface BusinessAgent {
-  run(input: { userId?: string; userContext?: Record<string, unknown>; wecomUserId?: string; message: string; sessionId?: string; runId?: string; debug?: boolean }): Promise<unknown>;
+  run(input: { userId?: string; userContext?: Record<string, unknown>; wecomUserId?: string; message: string; domainId?: string; sessionId?: string; runId?: string; debug?: boolean }): Promise<unknown>;
 }
 
 interface StreamAgent {
-  runStream(input: { userId?: string; userContext?: Record<string, unknown>; wecomUserId?: string; message: string; sessionId?: string; runId?: string; debug?: boolean; onEvent?: (event: JsonObject) => Promise<void> | void }): Promise<unknown>;
+  runStream(input: { userId?: string; userContext?: Record<string, unknown>; wecomUserId?: string; message: string; domainId?: string; sessionId?: string; runId?: string; debug?: boolean; onEvent?: (event: JsonObject) => Promise<void> | void }): Promise<unknown>;
 }
 
 interface UserContextResolverLike {
@@ -38,6 +38,7 @@ export interface QueryEngineInput {
   userContext?: Record<string, unknown>;
   wecomUserId?: string;
   message: string;
+  domainId?: string;
   sessionId?: string;
   debug?: boolean;
   /**
@@ -219,6 +220,7 @@ export class BusinessQueryEngine {
       userContext: input.userContext,
       wecomUserId: input.wecomUserId,
       message: expandedMessage,
+      domainId: input.domainId,
       sessionId,
       runId,
       debug: input.debug
@@ -399,6 +401,7 @@ export class BusinessQueryEngine {
       userContext: input.userContext,
       wecomUserId: input.wecomUserId,
       message: expandedMessage,
+      domainId: input.domainId,
       sessionId,
       runId,
       debug: input.debug,

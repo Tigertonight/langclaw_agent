@@ -7,6 +7,7 @@ import { applyPromptCache } from "../llm/prompt-cache.js";
 import { DeterministicRuleRegistry } from "./deterministic-rule-registry.js";
 import type { DeterministicRuleDefinition, ExtractorFn, CorrectionDeltaRule } from "../domains/types.js";
 import { getCorrectionDeltaRules, getShortCorrectionPatterns, getMetricKeywordMappings } from "../domains/runtime-registry.js";
+import { domainMismatchMessage, intentDomainId, normalizeSelectedDomain, routeMatchesSelectedDomain } from "../domains/domain-isolation.js";
 import type {
   Confidence,
   HandlerType,
@@ -97,54 +98,57 @@ export class IntentRouter {
    * @param {import("../types/agent-contracts.js").RouteRequest} [input]
    * @returns {Promise<import("../types/agent-contracts.js").Route>}
    */
-  async route({ message, now, user_context, session_state }: RouteRequest = {}): Promise<Route> {
+  async route({ message, now, user_context, selected_domain, session_state }: RouteRequest = {}): Promise<Route> {
     const startedAt = Date.now();
     const apiKey = process.env.LLM_DECISION_API_KEY ?? process.env.LLM_API_KEY ?? process.env.OPENAI_API_KEY;
     const nowIso = now ?? new Date().toISOString();
     let result: RouterLLMResult;
     const localControlled = this.tryLocalControlledRoute({ message });
     if (localControlled) {
+      const gated = this.applySelectedDomainGate(localControlled, selected_domain);
       this.appendLog({
         ts: new Date().toISOString(),
         message,
-        intent_code: localControlled.intent_code,
-        execution_class: localControlled.execution_class,
-        handler_type: localControlled.handler_type,
-        confidence: localControlled.confidence,
-        source: localControlled.source,
+        intent_code: gated.intent_code,
+        execution_class: gated.execution_class,
+        handler_type: gated.handler_type,
+        confidence: gated.confidence,
+        source: gated.source,
         latency_ms: Date.now() - startedAt
       });
-      return localControlled;
+      return gated;
     }
     const command = this.tryRegisteredCommand({ message });
     if (command) {
+      const gated = this.applySelectedDomainGate(command.route, selected_domain);
       this.appendLog({
         ts: new Date().toISOString(),
         message,
-        intent_code: command.route.intent_code,
-        execution_class: command.route.execution_class,
-        handler_type: command.route.handler_type,
-        confidence: command.route.confidence,
-        source: command.route.source,
+        intent_code: gated.intent_code,
+        execution_class: gated.execution_class,
+        handler_type: gated.handler_type,
+        confidence: gated.confidence,
+        source: gated.source,
         command_id: command.commandId,
         latency_ms: Date.now() - startedAt
       });
-      return command.route;
+      return gated;
     }
     const deterministic = this.tryShortCorrectionRoute({ message, session_state })
       ?? this.tryDeterministicControlledRoute({ message });
     if (deterministic) {
+      const gated = this.applySelectedDomainGate(deterministic, selected_domain);
       this.appendLog({
         ts: new Date().toISOString(),
         message,
-        intent_code: deterministic.intent_code,
-        execution_class: deterministic.execution_class,
-        handler_type: deterministic.handler_type,
-        confidence: deterministic.confidence,
-        source: deterministic.source,
+        intent_code: gated.intent_code,
+        execution_class: gated.execution_class,
+        handler_type: gated.handler_type,
+        confidence: gated.confidence,
+        source: gated.source,
         latency_ms: Date.now() - startedAt
       });
-      return deterministic;
+      return gated;
     }
     if (!apiKey) {
       const error = createRouterError("router_unavailable", "Intent Router 未配置模型 API Key。");
@@ -152,7 +156,7 @@ export class IntentRouter {
       throw error;
     }
     try {
-      result = await this.callLLM({ message, now: nowIso, user_context, session_state, apiKey });
+      result = await this.callLLM({ message, now: nowIso, user_context, selected_domain, session_state, apiKey });
     } catch (err) {
       const error = createRouterError("router_failed", err instanceof Error ? err.message : String(err));
       this.appendFailureLog({ message, startedAt, error });
@@ -195,6 +199,7 @@ export class IntentRouter {
         });
       }
     }
+    result = this.applySelectedDomainGate(result, selected_domain) as RouterLLMResult;
 
     const latency = Date.now() - startedAt;
     this.appendLog({
@@ -302,6 +307,30 @@ export class IntentRouter {
     };
   }
 
+  applySelectedDomainGate<T extends Route | RouterLLMResult>(route: T, selectedDomain: unknown): T {
+    const selected = normalizeSelectedDomain(selectedDomain);
+    if (!selected || routeMatchesSelectedDomain(route, selected)) return route;
+    const general = this.registry.getCode("general");
+    if (!general) return route;
+    const actual = intentDomainId(route.intent_code);
+    return {
+      ...route,
+      intent_code: general.intent_code,
+      execution_class: general.execution_class ?? executionClassForHandler(general.handler_type),
+      handler_type: general.handler_type,
+      params: {
+        original_intent_code: route.intent_code,
+        original_params: route.params ?? {},
+        selected_domain: selected,
+        actual_domain: actual ?? undefined,
+        domain_mismatch: true,
+      },
+      confidence: "medium",
+      reasoning: domainMismatchMessage({ selectedDomain: selected, actualDomain: actual, subject: route.intent_code }),
+      source: `${route.source ?? "router"}:domain_gate`
+    } as T;
+  }
+
   /**
    * @param {{
    *   message?: string,
@@ -312,17 +341,18 @@ export class IntentRouter {
    * }} input
    * @returns {Promise<import("../types/agent-contracts.js").RouterLLMResult>}
    */
-  async callLLM({ message, now, user_context, session_state, apiKey }: {
+  async callLLM({ message, now, user_context, selected_domain, session_state, apiKey }: {
     message?: string;
     now: string;
     user_context?: UserContext;
+    selected_domain?: string;
     session_state?: SessionState;
     apiKey: string;
   }): Promise<RouterLLMResult> {
     const baseUrl = (process.env.LLM_DECISION_BASE_URL ?? process.env.LLM_BASE_URL ?? process.env.OPENAI_BASE_URL ?? "https://api.minimaxi.com/v1").replace(/\/$/, "");
     const model = process.env.LLM_DECISION_MODEL ?? process.env.LLM_MODEL ?? process.env.OPENAI_MODEL ?? "MiniMax-M2.7";
     const systemPrompt = buildSystemPrompt(this.registry);
-    const userPrompt = buildUserPrompt({ message, now, user_context, session_state });
+    const userPrompt = buildUserPrompt({ message, now, user_context, selected_domain, session_state });
 
     const body: RouterChatBody = {
       model,

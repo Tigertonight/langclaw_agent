@@ -3,6 +3,8 @@ import { PendingActionStore } from "../runtime/pending-action-store.js";
 import { RuntimeHooks } from "../runtime/hooks.js";
 import { resolveUserWorkspace, type WorkspaceContext } from "../runtime/workspace-context.js";
 import { logEvent, sharedMetrics } from "../security/observability.js";
+import { domainMismatchMessage, toolDomainId, toolMatchesSelectedDomain } from "../domains/domain-isolation.js";
+import { getRuntimeRegistry } from "../domains/runtime-registry.js";
 import {
   formatConfirmationRequired,
   formatExecuteFailed,
@@ -85,6 +87,44 @@ export class ToolRegistry {
         error: "unknown_tool",
         message: formatUnknownTool(call.name)
       } satisfies ToolResult;
+    }
+
+    if (!toolMatchesSelectedDomain(tool, context?.selected_domain)) {
+      const actualDomain = toolDomainId(tool);
+      const message = domainMismatchMessage({
+        selectedDomain: context?.selected_domain,
+        actualDomain,
+        subject: tool.name,
+      });
+      await this.emitGovernance(call, context, tool, "domain_mismatch", message, "domain_mismatch");
+      return {
+        ok: false,
+        isError: true,
+        tool: call.name,
+        error: "domain_mismatch",
+        code: "domain_mismatch",
+        message
+      } satisfies ToolResult;
+    }
+    if (call.name === "query_business_data" && context?.selected_domain) {
+      const resource = typeof call.args?.resource === "string" ? call.args.resource : "";
+      const resourceConfig = resource ? getRuntimeRegistry()?.allResources?.[resource] : undefined;
+      if (resourceConfig?.domain && String(resourceConfig.domain) !== String(context.selected_domain)) {
+        const message = domainMismatchMessage({
+          selectedDomain: context.selected_domain,
+          actualDomain: resourceConfig.domain,
+          subject: resourceConfig.label ?? resource,
+        });
+        await this.emitGovernance(call, context, tool, "domain_mismatch", message, "domain_mismatch");
+        return {
+          ok: false,
+          isError: true,
+          tool: call.name,
+          error: "domain_mismatch",
+          code: "domain_mismatch",
+          message
+        } satisfies ToolResult;
+      }
     }
 
     const user: UserContext = context?.user ?? {
