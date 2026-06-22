@@ -1,8 +1,10 @@
 # Enterprise Agent Runtime
 
-面向企业内部业务场景的 TypeScript Agent Runtime。它已经从早期的汽车经销商单域 demo，演进为一套可插拔的多业务域 Agent 框架：一个运行时承载多个 DomainPack，通过统一的路由、工具治理、OpenUI Lang、会话记忆、任务自动化、渠道网关和观测能力，把业务问答、数据查询、工作流草稿和演示 cockpit 串成完整闭环。
+这是一个支持多领域业务模型的企业级 Agent Runtime，用来搭建能接入企业数据、工具、权限和流程的内部智能助手。
 
-当前内置业务域：
+它通过 DomainPack 承载不同业务领域的知识、数据、工具和工作流，并通过统一的路由、权限治理、结构化 UI、会话记忆、任务自动化、渠道网关和观测能力，把业务问答、数据查询、流程草稿、经营分析和人机协同动作串成完整闭环。
+
+内置领域能力：
 
 | Domain | 目录 | 说明 |
 |---|---|---|
@@ -10,7 +12,7 @@
 | `dealer` | `src/domains/dealer` | 汽车经销商经营、库存、线索、财务、售后等场景 |
 | `attendance` | `src/domains/attendance` | 请假查询和请假流程 |
 | `cloud_commodity` | `src/domains/cloud-commodity` | 云商品平台，覆盖产品化、Offer/SKU/计费、发布审批、GTM、容量、SRE、GMV、续约和客户自助询价 |
-| `retail-demo` | `src/domains/retail-demo` | 零售样例域，用于验证 DomainPack 扩展机制 |
+| `retail-demo` | `src/domains/retail-demo` | 零售参考域，用于验证 DomainPack 扩展机制 |
 
 ## 读文档入口
 
@@ -35,7 +37,7 @@
 - **Agentic 工具调用**：`agentic` handler 可以基于可暴露工具做多步骤计划、调用、总结，并受权限、确认、超时、重试和 domain policy 约束。
 - **企业入口**：HTTP Web、CLI、WeCom、Feishu、DingTalk、Webhook、Cron 通过 `EnterpriseGateway` 进入同一条业务链路。
 - **状态与治理**：Transcript、Session、Memory、Task、UserCron、EvolutionRuntime、Metrics、Langfuse adapter 都是独立模块，可按部署阶段开启。
-- **云商品灰度包**：`cloud_commodity` 提供完整 demo 数据、角色、评测、浏览器验收截图、工作手册、文章和 PPT 交付物。
+- **云商品领域能力**：`cloud_commodity` 提供完整样例数据、角色、评测、浏览器验收截图、工作手册、文章和 PPT 交付物。
 
 ## 架构概览
 
@@ -144,13 +146,13 @@ npm run start:dev
 npm run server:build
 ```
 
-附件上传需要 S3 兼容对象存储。只做聊天 demo 时可以不启用；要联调附件，可先起本地 MinIO：
+附件上传需要 S3 兼容对象存储。只做聊天试用时可以不启用；要联调附件，可先起本地 MinIO：
 
 ```bash
 docker compose -f docker-compose.attachments.yml up -d
 ```
 
-## 常用 demo 账号
+## 常用试用账号
 
 | user_id | 角色 | 推荐 domain |
 |---|---|---|
@@ -161,7 +163,7 @@ docker compose -f docker-compose.attachments.yml up -d
 | `store_gm_001` | 汽车门店总经理 | `dealer` |
 | `sales_manager_001` | 汽车销售经理 | `dealer` |
 | `sales_001` | 汽车销售顾问 | `dealer` |
-| `retail_user_001` | 零售样例用户 | `retail-demo` |
+| `retail_user_001` | 零售参考用户 | `retail-demo` |
 
 云商品示例问题：
 
@@ -241,7 +243,7 @@ curl http://127.0.0.1:3000/api/openui/capabilities
 | `OPENUI_STREAMS_PER_USER` | 单用户并发 SSE 流限制 | `3` |
 | `CHAT_STREAM_TIMEOUT_MS` | 单次流式回答超时 | `180000` |
 | `SSE_HEARTBEAT_MS` | SSE 心跳间隔 | `15000` |
-| `OPENUI_AUTH_DISABLED` | 本地 demo 可关闭鉴权 | `npm run server` 默认设为 `1` |
+| `OPENUI_AUTH_DISABLED` | 本地开发可关闭鉴权 | `npm run server` 默认设为 `1` |
 | `WECOM_MODE` | 企业微信 real/mock | `mock` |
 | `FEISHU_APP_ID` / `FEISHU_APP_SECRET` | 飞书渠道配置 | 空 |
 | `OBSERVABILITY_ENABLED` | 是否启用 Langfuse adapter | `true` |
@@ -271,7 +273,7 @@ data/
   cloud-commodity/          云商品 mock 数据
   domains/*/intent-codes/   各 domain 的 intent manifest
   dealer-*.json             经销商 mock 数据
-  users.json                demo 用户和权限
+  users.json                内置用户和权限
   recommended-commands.json 前端推荐命令
 
 docs/
@@ -323,7 +325,7 @@ npm run eval:cloud-user-stories
 npm run eval:domain-isolation
 ```
 
-运行中的云商品 demo 可用：
+运行中的云商品服务可用：
 
 ```bash
 BASE_URL=http://localhost:3000 node scripts/verify-cloud-ecs-demo.mjs
@@ -333,7 +335,7 @@ BASE_URL=http://localhost:3000 node scripts/verify-cloud-ecs-demo.mjs
 
 完整后端更适合部署为长驻 Node 服务，而不是纯 serverless 函数。推荐：
 
-- 小范围灰度：1 核 2G ECS 可以跑 Web demo，但建议只开放少量用户、关闭自部署观测和本机对象存储。
+- 小范围灰度：1 核 2G ECS 可以跑 Web 试用环境，但建议只开放少量用户、关闭自部署观测和本机对象存储。
 - 稳定试点：2 核 4G 起步，Node 进程用 systemd/PM2 守护，Nginx/ALB 做 HTTPS 反代。
 - 附件：接阿里云 OSS、S3 或 MinIO，不要依赖本机临时文件。
 - 观测：Langfuse 自部署建议独立机器或独立容器栈。
